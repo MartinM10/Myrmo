@@ -1,0 +1,146 @@
+/*
+ * Myrmo theme for VitePress: same palette and type as the website.
+ * Dark "underground" by default, light "limestone" alternative.
+ */
+:root {
+  --vp-font-family-base: "Geologica", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --vp-font-family-mono: "Fragment Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+  --myrmo-display: "Martian Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+
+  /* light: limestone */
+  --vp-c-bg: #f7f5f0;
+  --vp-c-bg-alt: #ebe8e1;
+  --vp-c-bg-soft: #ebe8e1;
+  --vp-c-bg-elv: #fbfaf7;
+  --vp-c-divider: #d6d0c4;
+  --vp-c-gutter: #d6d0c4;
+  --vp-c-border: #d6d0c4;
+  --vp-c-text-1: #1c1813;
+  --vp-c-text-2: #4f483e;
+  --vp-c-text-3: #7a7164;
+
+  --vp-c-brand-1: #a35a00;
+  --vp-c-brand-2: #b8650a;
+  --vp-c-brand-3: #e8901c;
+  --vp-c-brand-soft: rgba(232, 144, 28, 0.14);
+
+  --vp-c-tip-1: var(--vp-c-brand-1);
+  --vp-c-tip-soft: var(--vp-c-brand-soft);
+
+  --vp-code-block-bg: #1c1813;
+  --vp-code-block-color: #e9e0cf;
+  --vp-code-copy-code-bg: #241e17;
+  --vp-code-copy-code-hover-bg: #2d261d;
+  --vp-code-lang-color: #9d9282;
+  --vp-code-line-highlight-color: rgba(255, 178, 62, 0.1);
+
+  --vp-button-brand-bg: #e8901c;
+  --vp-button-brand-border: #e8901c;
+  --vp-button-brand-text: #1a1206;
+  --vp-button-brand-hover-bg: #ffb23e;
+  --vp-button-brand-hover-border: #ffb23e;
+  --vp-button-brand-hover-text: #1a1206;
+}
+
+.dark {
+  /* dark: loam */
+  --vp-c-bg: #13100c;
+  --vp-c-bg-alt: #0f0d0a;
+  --vp-c-bg-soft: #1c1813;
+  --vp-c-bg-elv: #1c1813;
+  --vp-c-divider: #2d261d;
+  --vp-c-gutter: #0f0d0a;
+  --vp-c-border: #2d261d;
+  --vp-c-text-1: #ede4d3;
+  --vp-c-text-2: #b9ad99;
+  --vp-c-text-3: #8a7f6e;
+
+  --vp-c-brand-1: #ffb23e;
+  --vp-c-brand-2: #f0a02c;
+  --vp-c-brand-3: #d98a12;
+  --vp-c-brand-soft: rgba(255, 178, 62, 0.14);
+
+  --vp-code-block-bg: #0e0c09;
+  --vp-code-bg: rgba(255, 178, 62, 0.08);
+  --vp-code-color: #f3c47e;
+}
+
+/* Display face for headings and the wordmark */
+.vp-doc h1,
+.vp-doc h2,
+.vp-doc h3,
+.VPNavBarTitle .title {
+  font-family: var(--myrmo-display);
+  letter-spacing: -0.02em;
+}
+.vp-doc h1 {
+  font-weight: 800;
+  font-stretch: 87.5%;
+  letter-spacing: -0.04em;
+}
+.vp-doc h2 {
+  font-stretch: 87.5%;
+  border-top-color: var(--vp-c-divider);
+}
+.VPNavBarTitle .title {
+  font-weight: 800;
+  font-stretch: 112.5%;
+  letter-spacing: -0.04em;
+}
+.VPNavBarTitle .logo {
+  height: 12px;
+  width: auto;
+}
+
+/* Sidebar group labels as small uppercase eyebrows */
+.VPSidebarItem.level-0 > .item > .text {
+  font-family: var(--myrmo-display);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* Tables: quieter */
+.vp-doc table {
+  font-size: 14px;
+}
+.vp-doc th {
+  font-family: var(--myrmo-display);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+
+/* HTTP method badges: write **GET** `/v1/...` in markdown, styled here */
+.vp-doc .method {
+  display: inline-block;
+  padding: 1px 8px;
+  margin-right: 6px;
+  border-radius: 4px;
+  font-family: var(--myrmo-display);
+  font-size: 11px;
+  font-weight: 700;
+  color: #1a1206;
+  background: var(--vp-c-brand-3);
+  vertical-align: 2px;
+}
+.vp-doc .method.get {
+  background: #93d17f;
+}
+
+/* Home hero */
+.VPHero .name,
+.VPHero .text {
+  font-family: var(--myrmo-display);
+  font-stretch: 87.5%;
+  letter-spacing: -0.045em;
+}
+.VPHero .name .clip {
+  background: none;
+  -webkit-text-fill-color: var(--vp-c-brand-1);
+  color: var(--vp-c-brand-1);
+}
+.VPFeature .title {
+  font-family: var(--myrmo-display);
+  font-size: 15px;
+}

@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env
+dist/
+build/
+.pytest_cache/
+# Local Qdrant storage and embedding model cache
+qdrant_data/
+.fastembed_cache/
+node_modules/
+docs/.vitepress/dist/
+docs/.vitepress/cache/

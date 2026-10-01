@@ -1,0 +1,14 @@
+# Myrmo local stack.
+# Today: the website and documentation. Next: gateway (Rust), enricher, Qdrant, Redis and the Laya decision model.
+name: myrmo
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: deploy/web.Dockerfile
+      args:
+        MYRMO_SITE_URL: http://localhost:3000
+    ports:
+      - "3000:80"
+    restart: unless-stopped
