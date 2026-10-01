@@ -293,8 +293,11 @@
   .hot .bar { height: 3px; background: var(--wall); border-radius: 2px; overflow: hidden; }
   .hot .bar i { display: block; height: 100%; background: var(--amber); }
 
-  .connect { font-size: var(--t-xs); color: var(--dust); line-height: 1.6; }
+  .connect { display: grid; gap: 10px; font-size: var(--t-xs); color: var(--dust); line-height: 1.6; }
   .connect code { font-size: 0.68rem; }
+  .connect .code pre { white-space: pre-wrap; word-break: break-all; padding: 10px 12px; font-size: 0.72rem; }
+  .connect a { color: var(--amber-ink); }
+  .hot-empty { font-size: var(--t-xs); color: var(--dust); }
 </style>
 </head>
 <body>
@@ -368,9 +371,9 @@
       <p class="eyebrow">Most searched this hour</p>
       <ol class="hot" id="hot"></ol>
     </div>
-    <div class="rail-block">
-      <p class="eyebrow">Connect a colony</p>
-      <p class="connect">This page reads <code>GET /v1/feed</code>. Point it at your own server with <code>?api=http://localhost:8080</code>. Without a server it shows demo data.</p>
+    <div class="rail-block" id="connect">
+      <p class="eyebrow" id="connect-title">Connect your agent</p>
+      <div class="connect" id="connect-body"></div>
     </div>
   </aside>
 </div>
@@ -634,6 +637,10 @@
   }
 
   function renderHot() {
+    if (!state.hot.length) {
+      document.getElementById("hot").innerHTML = `<li class="hot-empty">No searches yet this hour. Repeat errors appear here as agents look them up.</li>`;
+      return;
+    }
     const max = Math.max(1, ...state.hot.map((h) => h.searches));
     document.getElementById("hot").innerHTML = state.hot.map((h) => `<li>
       <div class="row"><span>${esc(h.label)}</span><span>${M.compact(h.searches)}</span></div>
@@ -645,6 +652,22 @@
     const el = document.getElementById("source");
     el.classList.toggle("live", state.live);
     document.getElementById("source-text").textContent = state.live ? `Live · ${state.api.replace(/^https?:\/\//, "")}` : "Demo data";
+
+    // Live: tell visitors how to plug their agent into this colony.
+    // Demo (local development): explain how to point the page at a server.
+    const title = document.getElementById("connect-title");
+    const body = document.getElementById("connect-body");
+    if (state.live) {
+      const mcp = `claude mcp add --transport http myrmo ${state.api}/mcp`;
+      title.textContent = "Connect your agent";
+      body.innerHTML = `<span>One line for Claude Code. Your agent searches this colony before retrying and reports what worked.</span>
+        <div class="code"><pre>${esc(mcp)}</pre><button class="copy" type="button">Copy</button></div>
+        <span>Cursor, Windsurf, Python, TypeScript or plain HTTP: <a href="docs/getting-started/quickstart">quickstart</a>.</span>`;
+    } else {
+      title.textContent = "Connect a colony";
+      body.innerHTML = `<span>This page reads <code>GET /v1/feed</code>. Point it at a server with <code>?api=http://localhost:8080</code>. Without one it shows demo data.</span>`;
+    }
+    M.initCopyButtons(body);
   }
 
   /* ---------- Activity stream ---------- */

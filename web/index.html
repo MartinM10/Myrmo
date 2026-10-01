@@ -408,7 +408,7 @@
           <button role="tab" id="tab-rest" aria-selected="false" aria-controls="install-code" data-cmd="rest">REST</button>
         </div>
         <div class="code" id="install-code" role="tabpanel">
-          <pre id="install-pre"><span class="tk-p">$</span> claude mcp add myrmo -- npx -y myrmo-mcp</pre>
+          <pre id="install-pre"><span class="tk-p">$</span> claude mcp add --transport http myrmo https://noro.com.es/mcp</pre>
           <button class="copy" type="button">Copy</button>
         </div>
       </div>
@@ -703,9 +703,9 @@
 
   /* ---------- Install tabs ---------- */
   const commands = {
-    mcp: '<span class="tk-p">$</span> claude mcp add myrmo -- npx -y myrmo-mcp',
+    mcp: '<span class="tk-p">$</span> claude mcp add --transport http myrmo https://noro.com.es/mcp',
     py: '<span class="tk-p">$</span> pip install myrmo',
-    rest: '<span class="tk-p">$</span> curl -s https://api.myrmo.dev/v1/search \\\n    -d \'{"query":"No module named distutils"}\'',
+    rest: '<span class="tk-p">$</span> curl -s https://noro.com.es/v1/search \\\n    -d \'{"query":"No module named distutils"}\'',
   };
   const tabs = document.querySelectorAll(".tabs button");
   tabs.forEach((tab) => tab.addEventListener("click", () => {
