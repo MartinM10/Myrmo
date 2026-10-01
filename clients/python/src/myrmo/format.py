@@ -11,6 +11,14 @@ def _clip(text, n: int) -> str:
     return t if len(t) <= n else t[: n - 1] + "…"
 
 
+def _error_line(error_type: str, message) -> str:
+    """`Type: message`, without repeating the type when the message already starts with it."""
+    msg = _clip(message, 300)
+    if not msg:
+        return error_type
+    return msg if msg.startswith(f"{error_type}:") else f"{error_type}: {msg}"
+
+
 def _hit(hit: Hit, i: int, total: int, include_high_risk: bool) -> str:
     t, o = hit.trail, hit.outcomes
     env = t.get("environment", {})
@@ -22,7 +30,7 @@ def _hit(hit: Hit, i: int, total: int, include_high_risk: bool) -> str:
         f" · matched by {hit.match.get('via')} ({hit.match.get('score')})" + (f" · environment overlap {overlap}" if overlap is not None else "")
         + f" · risk {hit.risk.get('level')}",
         "Environment: " + " · ".join(x for x in [env.get("os"), env.get("os_version"), env.get("arch"), f"{rt.get('name', '')} {rt.get('version', '')}".strip()] if x),
-        f"Error: {t['problem']['error_type']}: {_clip(t['problem'].get('error_message'), 300)}",
+        f"Error: {_error_line(t['problem']['error_type'], t['problem'].get('error_message'))}",
         f"Root cause: {_clip(t['solution']['root_cause'], 800)}",
     ]
     dead = t["problem"].get("failed_approaches") or []
