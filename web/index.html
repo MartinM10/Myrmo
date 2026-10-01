@@ -604,10 +604,10 @@
 
       <div class="bench-block" id="bench-load">
         <h3>Load: what one colony node sustains</h3>
-        <p>k6 against the Docker deployment, 100k indexed trails. Throughput is per vCPU so results compare across machines.</p>
+        <p>k6 against the Docker deployment with 100,000 indexed trails, 64 concurrent clients, each path measured alone. The whole colony and the load generator share one desktop, so these are floor numbers for a single node.</p>
         <div class="load-table-wrap">
           <table class="load-table">
-            <thead><tr><th scope="col">Path</th><th scope="col">req/s per vCPU</th><th scope="col">p50</th><th scope="col">p99</th></tr></thead>
+            <thead><tr><th scope="col">Path</th><th scope="col">req/s</th><th scope="col">p50</th><th scope="col">p99</th></tr></thead>
             <tbody id="load-rows"></tbody>
           </table>
         </div>
@@ -748,14 +748,13 @@
       : `<div class="pending-note"><span class="pill warn">first public run pending</span><span>Bars fill in from the first published run.</span></div>`);
 
     const rows = document.getElementById("load-rows");
-    const paths = ["Fingerprint lookup", "Semantic search", "Publish (202)", "Outcome report"];
     const load = R?.load;
-    rows.innerHTML = paths.map((name) => {
-      const r = load?.scenarios?.find((x) => x.name === name);
-      return r
-        ? `<tr><td>${name}</td><td>${M.compact(Math.round(r.rps_per_vcpu))}</td><td>${r.p50_ms.toFixed(1)} ms</td><td>${r.p99_ms.toFixed(1)} ms</td></tr>`
-        : `<tr><td>${name}</td><td class="na">—</td><td class="na">—</td><td class="na">—</td></tr>`;
-    }).join("");
+    const label = (name) => (name === "Semantic search" ? "Semantic search (saturated)" : name);
+    const ms = (v) => (v >= 1000 ? `${(v / 1000).toFixed(1)} s` : `${v.toFixed(1)} ms`);
+    rows.innerHTML = load?.scenarios?.length
+      ? load.scenarios.map((r) => `<tr><td>${M.esc(label(r.name))}</td><td>${M.compact(Math.round(r.rps))}</td><td>${ms(r.p50_ms)}</td><td>${ms(r.p99_ms)}</td></tr>`).join("")
+      : ["Fingerprint lookup", "Semantic search", "Publish (202)", "Outcome report"]
+          .map((name) => `<tr><td>${name}</td><td class="na">—</td><td class="na">—</td><td class="na">—</td></tr>`).join("");
     document.getElementById("load-meta").textContent = load
       ? `Run ${load.run_id} · ${load.date} · ${load.hardware}`
       : "Pending the first run on the reference machine.";

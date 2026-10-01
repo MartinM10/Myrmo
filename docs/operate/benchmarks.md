@@ -79,6 +79,32 @@ docker compose -f docker-compose.yml -f bench/compose.yml run --rm loadtest
 > The bench overrides disable rate limiting and fill the colony with synthetic trails. Never run
 > them against a production colony.
 
+### Latest results
+
+Run `load-20261001-1921`: one Intel Core i7-8700K desktop (6 cores, 12 threads, Docker Desktop on
+Windows) running the whole colony **and** the load generator, 100,100 indexed trails, 64 concurrent
+clients, enrichers paused so each path is measured alone. Zero errors on every path.
+
+| Path | Requests/s | p50 | p99 |
+|---|---|---|---|
+| Fingerprint lookup | 27,499 | 1.9 ms | 8.6 ms |
+| Semantic search, 40 req/s | 40 | 17.6 ms | 27.8 ms |
+| Semantic search, saturated | 88 | 735 ms | 2.3 s |
+| Publish (`202`) | 10,536 | 5.1 ms | 18.0 ms |
+| Outcome report | 12,046 | 4.8 ms | 13.4 ms |
+
+What this says:
+
+- The fingerprint path, where repeat errors go, sustains tens of thousands of requests per second
+  on one machine before any CDN is added.
+- Semantic search is bounded by the CPU embedding service (about 88 embeddings per second here).
+  Below that rate it answers in under 30 ms; above it, requests queue. It scales by adding `embed`
+  replicas or moving embeddings to a GPU, independently of the gateway.
+- Publishing and outcome reports only touch Valkey on the request path, so they stay in the
+  single-digit milliseconds.
+
+Raw output: `bench/results/load-20261001-1921/`.
+
 ## Publishing results
 
 Both runners write `bench/results/<run_id>/` (raw data, environment, versions) and update
