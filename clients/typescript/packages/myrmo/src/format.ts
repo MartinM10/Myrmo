@@ -14,6 +14,13 @@ const clip = (text: string | undefined, max: number) => {
   return t.length > max ? `${t.slice(0, max - 1)}…` : t;
 };
 
+/** `Type: message`, without repeating the type when the message already starts with it. */
+function errorLine(type: string, message: string | undefined): string {
+  const msg = clip(message, 300);
+  if (!msg) return type;
+  return msg.startsWith(`${type}:`) ? msg : `${type}: ${msg}`;
+}
+
 function formatHit(hit: Hit, index: number, total: number, opts: FormatOptions): string {
   const t = hit.trail;
   const o = hit.outcomes;
@@ -23,7 +30,7 @@ function formatHit(hit: Hit, index: number, total: number, opts: FormatOptions):
     `## Trail ${index + 1} of ${total} · id ${hit.trailId}`,
     `strength ${hit.strength} · worked ${o.worked} · partially ${o.partially_worked} · failed ${o.failed} · matched by ${hit.match.via} (${hit.match.score})${overlap} · risk ${hit.risk.level}`,
     `Environment: ${[t.environment.os, t.environment.os_version, t.environment.arch, `${t.environment.runtime.name} ${t.environment.runtime.version}`].filter(Boolean).join(" · ")}`,
-    `Error: ${t.problem.error_type}: ${clip(t.problem.error_message, 300)}`,
+    `Error: ${errorLine(t.problem.error_type, t.problem.error_message)}`,
     `Root cause: ${clip(t.solution.root_cause, 800)}`,
   );
   const dead = t.problem.failed_approaches ?? [];
