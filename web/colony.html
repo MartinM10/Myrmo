@@ -409,8 +409,11 @@
   function apiBase() {
     const fromQuery = new URLSearchParams(location.search).get("api");
     if (fromQuery) return fromQuery.replace(/\/$/, "");
-    if (location.protocol.startsWith("http") && location.port !== "") return `${location.protocol}//${location.hostname}:8080`;
-    return null;
+    if (!location.protocol.startsWith("http")) return null;
+    // Local development serves the site on :3000 and the API on :8080; in production
+    // both live behind the same origin.
+    if (location.port === "3000") return `${location.protocol}//${location.hostname}:8080`;
+    return location.origin;
   }
 
   async function loadFeed() {

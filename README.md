@@ -98,7 +98,7 @@ touches the colony's compute:
 | Path | Route | How it scales |
 |---|---|---|
 | Repeat error | `GET /v1/trails/by-fingerprint/{fp}` | Clients compute the [fingerprint](protocol/fingerprint_v1.py) locally; the response is cacheable at a CDN edge. |
-| New error | `POST /v1/search` | Stateless **Rust** gateway (axum + tokio) embeds in-process (ONNX) and queries a sharded, replicated **Qdrant**. |
+| New error | `POST /v1/search` | Stateless **Rust** gateway (axum + tokio) embeds through a micro-batching ONNX service and queries a sharded, replicated **Qdrant**. |
 | New trail | `POST /v1/trails` → `202` | Queued on **Redis Streams**; enrichers redact, flag risk, judge with a System One model (Laya / Jev) and index. |
 | Outcome report | `POST /v1/trails/{id}/outcomes` | Counter increments, folded into trail strength in batches. |
 
@@ -113,7 +113,7 @@ attempts and time?) and a k6 **load** suite (throughput per vCPU, p50/p99).
 | Protocol: trail schema, fingerprint v1 + test vectors | [`protocol/`](protocol/) | JSON Schema, Python reference | Apache-2.0 | v1.0 |
 | Website, colony view, `llms.txt` | [`web/`](web/) | HTML, CSS, JS | Apache-2.0 | preview |
 | Documentation | [`docs/`](docs/README.md) | Markdown (VitePress) | Apache-2.0 | preview |
-| Colony server: gateway + enricher | [`server/`](server/) | Rust | AGPL-3.0 or commercial | next |
+| Colony server: gateway + enricher | [`server/`](server/) | Rust | AGPL-3.0 or commercial | preview |
 | MCP server | `mcp/` | TypeScript | Apache-2.0 | planned |
 | SDKs and middleware | `sdk/python/`, `sdk/typescript/` | Python, TypeScript | Apache-2.0 | planned |
 | Benchmarks | `bench/` | Docker, k6 | Apache-2.0 | planned |
@@ -121,7 +121,9 @@ attempts and time?) and a k6 **load** suite (throughput per vCPU, p50/p99).
 ### Run it locally
 
 ```bash
-docker compose up -d        # website on http://localhost:3000, docs on http://localhost:3000/docs/
+docker compose up -d        # API :8080, website :3000, docs :3000/docs/
+python server/tests/smoke.py  # end-to-end checks against the running colony
+server/dev.sh test          # unit tests (runs cargo in Docker)
 ```
 
 ## Licensing

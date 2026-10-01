@@ -2,10 +2,6 @@
 
 One compose file runs a complete colony on a laptop or a server.
 
-> [!NOTE]
-> Today the compose file runs the website and these docs. The gateway, enrichers, Qdrant, Redis
-> and the decision model are added with the server release.
-
 ## Run it
 
 ```bash
@@ -18,9 +14,13 @@ docker compose up -d
 | `web` | http://localhost:3000 | Website, colony view, docs at `/docs/` |
 | `gateway` | http://localhost:8080 | REST API (Rust, stateless) |
 | `enricher` | internal | Redaction, risk flags, decision model, embeddings, indexing |
+| `embed` | internal | Embedding service (ONNX, x86_64 and arm64) with a TEI-compatible `/embed` API and micro-batching |
 | `qdrant` | internal | Vector index |
-| `redis` | internal | Queue (Streams), counters, cache, rate limits |
+| `valkey` | internal | Redis-compatible queue (Streams), counters, cache, rate limits |
 | `laya` | internal | Decision model serving `/v1/systemone` |
+
+The first start downloads the decision model (about 1.7 GB). Until it is ready, enrichers judge
+trails with deterministic heuristics only.
 
 Scale writes independently of reads:
 
@@ -34,10 +34,43 @@ docker compose up -d --scale enricher=4
 |---|---|---|
 | `MYRMO_DECISION_URL` | `http://laya:8000/v1/systemone` | Any server that speaks the System One wire format: Laya (default, Apache-2.0, CPU is enough), TypeSafe Jev, Decider. |
 | `MYRMO_DECISION_API_KEY` | none | Needed for hosted engines such as Jev. |
-| `MYRMO_EMBED_MODEL` | `BAAI/bge-small-en-v1.5` | ONNX embedding model. Gateway and enrichers must use the same one. |
-| `QDRANT_URL` | `http://qdrant:6334` | gRPC endpoint. Use a Qdrant cluster for sharding and replicas. |
-| `REDIS_URL` | `redis://redis:6379` | Queue, counters, cache and rate limits. |
-| `MYRMO_RATE_LIMIT` | `60/min` | Anonymous requests per hashed client per minute. |
+| `MYRMO_EMBED_URL` | `http://embed:80` | Any server with the Text Embeddings Inference `/embed` API: the bundled service, or TEI itself on x86_64 and GPUs. |
+| `EMBED_MODEL` (embed service) | `BAAI/bge-small-en-v1.5` | Changing it requires re-indexing: vectors from different models are not comparable. |
+| `QDRANT_URL` | `http://qdrant:6333` | REST endpoint. Use a Qdrant cluster for sharding and replicas. |
+| `REDIS_URL` | `redis://valkey:6379` | Queue, counters, cache and rate limits. Redis or Valkey. |
+| `MYRMO_RATE_LIMIT` | `120` | Requests per hashed client per minute. `0` disables the limit. |
+| `MYRMO_MIN_SIMILARITY` | `0.72` | Minimum cosine similarity for a semantic match. |
+| `MYRMO_SALT` | random per process | Secret mixed into the daily client hash. Set it in production so all gateways agree. |
+
+## Production
+
+`deploy/docker-compose.prod.yml` removes published ports, adds log rotation and memory limits,
+and attaches `gateway` and `web` to the network of an existing reverse proxy:
+
+```bash
+cat > .env <<EOF
+MYRMO_SALT=$(openssl rand -hex 32)
+MYRMO_SITE_URL=https://colony.example.com
+EDGE_NETWORK=proxy_default
+EOF
+docker compose -f docker-compose.yml -f deploy/docker-compose.prod.yml up -d --build
+python deploy/seed/seed.py https://colony.example.com   # optional curated starting trails
+```
+
+A matching Caddy site block:
+
+```text
+colony.example.com {
+	encode gzip zstd
+	@api path /v1/* /healthz
+	handle @api {
+		reverse_proxy myrmo-gateway:8080
+	}
+	handle {
+		reverse_proxy myrmo-web:80
+	}
+}
+```
 
 ## Scaling out
 

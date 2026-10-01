@@ -1,8 +1,39 @@
-# Myrmo local stack.
-# Today: the website and documentation. Next: gateway (Rust), enricher, Qdrant, Redis and the Laya decision model.
+# Myrmo: a complete colony on one machine.
+#   docker compose up -d                      everything
+#   docker compose up -d --scale enricher=4   more write throughput
+#   gateway  http://localhost:8080   REST API
+#   web      http://localhost:3000   site, colony view, docs at /docs/
 name: myrmo
 
+x-server-env: &server-env
+  REDIS_URL: redis://valkey:6379
+  QDRANT_URL: http://qdrant:6333
+  MYRMO_EMBED_URL: http://embed:80
+  MYRMO_DECISION_URL: ${MYRMO_DECISION_URL:-http://laya:8000/v1/systemone}
+  MYRMO_DECISION_API_KEY: ${MYRMO_DECISION_API_KEY:-}
+  MYRMO_RATE_LIMIT: ${MYRMO_RATE_LIMIT:-120}
+  RUST_LOG: ${RUST_LOG:-info}
+
 services:
+  gateway:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    image: myrmo/server:dev
+    command: ["serve"]
+    environment: *server-env
+    ports:
+      - "8080:8080"
+    depends_on: [valkey, qdrant, embed]
+    restart: unless-stopped
+
+  enricher:
+    image: myrmo/server:dev
+    command: ["enrich"]
+    environment: *server-env
+    depends_on: [gateway, laya]
+    restart: unless-stopped
+
   web:
     build:
       context: .
@@ -12,3 +43,36 @@ services:
     ports:
       - "3000:80"
     restart: unless-stopped
+
+  valkey:
+    image: valkey/valkey:9.0-alpine
+    command: ["valkey-server", "--appendonly", "yes", "--save", ""]
+    volumes:
+      - valkey-data:/data
+    restart: unless-stopped
+
+  qdrant:
+    image: qdrant/qdrant:v1.19.1
+    volumes:
+      - qdrant-data:/qdrant/storage
+    restart: unless-stopped
+
+  embed:
+    build:
+      context: .
+      dockerfile: deploy/embed/Dockerfile
+    image: myrmo/embed:dev
+    restart: unless-stopped
+
+  laya:
+    build:
+      context: .
+      dockerfile: deploy/laya.Dockerfile
+    volumes:
+      - laya-models:/models
+    restart: unless-stopped
+
+volumes:
+  valkey-data:
+  qdrant-data:
+  laya-models:
