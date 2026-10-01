@@ -7,6 +7,11 @@ noro.com.es, www.noro.com.es {
 		reverse_proxy myrmo-gateway:8080
 	}
 
+	# Hosted MCP server (Streamable HTTP)
+	handle /mcp {
+		reverse_proxy myrmo-mcp:3333
+	}
+
 	# Myrmo website, colony view and docs
 	handle {
 		reverse_proxy myrmo-web:80

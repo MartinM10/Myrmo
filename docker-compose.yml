@@ -2,6 +2,7 @@
 #   docker compose up -d                      everything
 #   docker compose up -d --scale enricher=4   more write throughput
 #   gateway  http://localhost:8080   REST API
+#   mcp      http://localhost:3333/mcp  hosted MCP server
 #   web      http://localhost:3000   site, colony view, docs at /docs/
 name: myrmo
 
@@ -9,7 +10,7 @@ x-server-env: &server-env
   REDIS_URL: redis://valkey:6379
   QDRANT_URL: http://qdrant:6333
   MYRMO_EMBED_URL: http://embed:80
-  MYRMO_DECISION_URL: ${MYRMO_DECISION_URL:-http://laya:8000/v1/systemone}
+  MYRMO_DECISION_URL: ${MYRMO_DECISION_URL-http://laya:8000/v1/systemone}
   MYRMO_DECISION_API_KEY: ${MYRMO_DECISION_API_KEY:-}
   MYRMO_RATE_LIMIT: ${MYRMO_RATE_LIMIT:-120}
   RUST_LOG: ${RUST_LOG:-info}
@@ -32,6 +33,18 @@ services:
     command: ["enrich"]
     environment: *server-env
     depends_on: [gateway, laya]
+    restart: unless-stopped
+
+  mcp:
+    build:
+      context: .
+      dockerfile: deploy/mcp.Dockerfile
+    image: myrmo/mcp:dev
+    environment:
+      MYRMO_URL: http://gateway:8080
+    ports:
+      - "3333:3333"
+    depends_on: [gateway]
     restart: unless-stopped
 
   web:

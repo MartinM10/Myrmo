@@ -1,7 +1,8 @@
 # Production overrides. Usage on the server:
 #   docker compose -f docker-compose.yml -f deploy/docker-compose.prod.yml up -d --build
 # Expects an external reverse proxy (Caddy) on the network named by EDGE_NETWORK that
-# routes /v1/* and /healthz to myrmo-gateway:8080 and everything else to myrmo-web:80.
+# routes /v1/* and /healthz to myrmo-gateway:8080, /mcp to myrmo-mcp:3333 and everything else
+# to myrmo-web:80.
 
 x-logging: &logging
   driver: json-file
@@ -26,6 +27,15 @@ services:
       MYRMO_SALT: ${MYRMO_SALT:?set MYRMO_SALT in .env}
     logging: *logging
     mem_limit: 512m
+
+  mcp:
+    ports: !reset []
+    networks:
+      default: {}
+      edge:
+        aliases: [myrmo-mcp]
+    logging: *logging
+    mem_limit: 256m
 
   web:
     ports: !reset []
