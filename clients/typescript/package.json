@@ -1,0 +1,9 @@
+{
+  "name": "myrmo-clients",
+  "private": true,
+  "workspaces": ["packages/myrmo", "packages/myrmo-mcp"],
+  "scripts": {
+    "build": "npm run build --workspaces",
+    "test": "npm run test --workspaces"
+  }
+}
