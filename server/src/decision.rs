@@ -60,9 +60,12 @@ impl Decision {
     pub async fn judge(&self, trail: &Value) -> Judgement {
         let heuristic = heuristic_judgement(trail);
         let Some(url) = &self.url else { return heuristic };
-        match self.ask_model(url, trail).await {
+        // Keyword rules are more precise than a zero-shot model when they match, so the
+        // model only chooses the category when the rules cannot.
+        let known_category = keyword_category(trail);
+        match self.ask_model(url, trail, known_category.is_none()).await {
             Ok(model) => Judgement {
-                category: model.category.unwrap_or(heuristic.category),
+                category: known_category.or(model.category).unwrap_or(heuristic.category),
                 // The model and the deterministic score each count for half.
                 quality: model.quality.map_or(heuristic.quality, |q| 0.5 * q + 0.5 * heuristic.quality),
                 injection: model.injection.unwrap_or(0.0).max(heuristic.injection),
@@ -76,17 +79,10 @@ impl Decision {
         }
     }
 
-    async fn ask_model(&self, url: &str, trail: &Value) -> anyhow::Result<ModelAnswers> {
-        let categories: serde_json::Map<String, Value> =
-            CATEGORIES.iter().map(|(name, description)| (name.to_string(), json!(description))).collect();
-        let body = json!({
+    async fn ask_model(&self, url: &str, trail: &Value, ask_category: bool) -> anyhow::Result<ModelAnswers> {
+        let mut body = json!({
             "state": describe(trail),
             "questions": {
-                "category": {
-                    "type": "choice",
-                    "instructions": "Which category best describes the technical problem?",
-                    "criteria": categories
-                },
                 "quality": {
                     "type": "score",
                     "instructions": "How useful is this write-up for another engineer who hits the same error?",
@@ -102,7 +98,16 @@ impl Decision {
                 }
             }
         });
-        let mut req = self.http.post(url).timeout(Duration::from_secs(30)).json(&body);
+        if ask_category {
+            let categories: serde_json::Map<String, Value> =
+                CATEGORIES.iter().map(|(name, description)| (name.to_string(), json!(description))).collect();
+            body["questions"]["category"] = json!({
+                "type": "choice",
+                "instructions": "Which category best describes the technical problem?",
+                "criteria": categories
+            });
+        }
+        let mut req = self.http.post(url).timeout(Duration::from_secs(60)).json(&body);
         if let Some(key) = &self.api_key {
             req = req.bearer_auth(key);
         }
@@ -197,8 +202,8 @@ const CATEGORY_KEYWORDS: [(&str, &[&str]); 12] = [
     ("dependency", &["modulenotfound", "no module named", "cannot find module", "could not resolve", "lockfile", "requirement", "dependency", "wheel", "peer dep", "importerror", "go.sum", "unsatisfied"]),
     ("platform", &["exec format", "cuda", "arm64", "architecture", "gpu", "glibc", "musl", "kernel image", "driver", "apple silicon"]),
     ("permissions", &["permission denied", "eacces", "eperm", "dubious ownership", "access is denied", "403", "operation not permitted"]),
-    ("authentication", &["authentication", "unauthorized", "401", "scram", "token expired", "invalid credentials", "login"]),
-    ("network", &["econnrefused", "econnreset", "timed out", "timeout", "429", "rate limit", "rate_limit", "dns", "getaddrinfo", "certificate", "ssl", "tls"]),
+    ("authentication", &["authentication", "unauthorized", "401", "scram", "token expired", "invalid credentials", "login failed", "failed to log in"]),
+    ("network", &["econnrefused", "econnreset", "timed out", "timeout", "429", "rate limit", "rate_limit", "dns", "getaddrinfo", "certificate", "ssl:", "sslerror", "tls handshake"]),
     ("build", &["compile", "build failed", "linker", "webpack", "error[e", "tsc", "ossl", "bundl"]),
     ("concurrency", &["deadlock", "race condition", "already borrowed", "mutex", "event loop"]),
     ("data", &["json", "decode", "parse error", "encoding", "unicode", "migration", "schema"]),
@@ -208,13 +213,19 @@ const CATEGORY_KEYWORDS: [(&str, &[&str]); 12] = [
     ("runtime", &["hydration", "nullpointer", "segmentation fault", "panicked", "typeerror", "runtimeerror", "exception"]),
 ];
 
-pub fn heuristic_category(trail: &Value) -> String {
+/// The category when a keyword rule matches, `None` otherwise.
+pub fn keyword_category(trail: &Value) -> Option<String> {
     let s = |p: &str| trail.pointer(p).and_then(Value::as_str).unwrap_or_default().to_lowercase();
     let haystack = format!("{} {} {}", s("/problem/error_type"), s("/problem/error_message"), s("/problem/summary"));
-    for (category, keywords) in CATEGORY_KEYWORDS {
-        if keywords.iter().any(|k| haystack.contains(k)) {
-            return category.to_string();
-        }
+    CATEGORY_KEYWORDS
+        .iter()
+        .find(|(_, keywords)| keywords.iter().any(|k| haystack.contains(k)))
+        .map(|(category, _)| category.to_string())
+}
+
+pub fn heuristic_category(trail: &Value) -> String {
+    if let Some(category) = keyword_category(trail) {
+        return category;
     }
     trail
         .pointer("/problem/category")
@@ -278,6 +289,14 @@ mod tests {
         assert_eq!(j.category, "dependency");
         assert!(j.quality >= 0.9, "{}", j.quality);
         assert_eq!(j.injection, 0.0);
+    }
+
+    #[test]
+    fn categorises_the_seed_trails() {
+        let seeds: Vec<Value> = serde_json::from_str(include_str!("../../deploy/seed/trails.json")).unwrap();
+        let got: Vec<String> = seeds.iter().map(heuristic_category).collect();
+        let want = ["dependency", "platform", "tooling", "build", "permissions", "network", "platform", "runtime", "authentication"];
+        assert_eq!(got, want);
     }
 
     #[test]

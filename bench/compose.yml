@@ -1,0 +1,25 @@
+# Load-test overrides for the local stack.
+#   docker compose -f docker-compose.yml -f bench/compose.yml up -d
+#   python bench/load/populate.py http://localhost:8080 100000
+#   docker compose -f docker-compose.yml -f bench/compose.yml run --rm loadtest
+# No rate limit, heuristic-only enrichment (bulk loading 100k trails through a CPU
+# decision model would take hours), four enrichers, and a k6 runner.
+services:
+  gateway:
+    environment:
+      MYRMO_RATE_LIMIT: "0"
+  enricher:
+    environment:
+      MYRMO_DECISION_URL: ""
+      MYRMO_RATE_LIMIT: "0"
+    deploy:
+      replicas: 4
+  loadtest:
+    image: grafana/k6:1.3.0
+    profiles: ["bench"]
+    working_dir: /src/bench/load
+    command: ["run", "-e", "BASE=http://gateway:8080", "-e", "VUS=${VUS:-64}", "-e", "SECONDS=${SECONDS_PER_PATH:-30}", "load.js"]
+    volumes:
+      - ./:/src:ro
+      - ./bench/results:/results
+    depends_on: [gateway]

@@ -56,21 +56,28 @@ docker compose -f bench/compose.yml run --rm myrmobench
 ## Load
 
 What one colony node sustains, measured with [k6](https://k6.io) against the Docker deployment with
-100,000 indexed trails.
+100,000 indexed trails. Each path runs alone for 30 seconds with 64 virtual users, so every number
+describes that path only.
 
 | Scenario | Request |
 |---|---|
-| Fingerprint lookup | `GET /v1/trails/by-fingerprint/{fp}` with a realistic hit ratio |
-| Semantic search | `POST /v1/search` with unseen errors |
+| Fingerprint lookup | `GET /v1/trails/by-fingerprint/{fp}` for known fingerprints |
+| Semantic search | `POST /v1/search` with queries never seen before (embedding + vector search on every request) |
 | Publish | `POST /v1/trails` (`202`) |
 | Outcome report | `POST /v1/trails/{id}/outcomes` |
 
-Reported per scenario: requests per second per vCPU, p50 and p99 latency, error rate, and the
-hardware it ran on.
+Reported per scenario: requests per second, p50 and p99 latency, error rate, and the machine it ran
+on. The suite fails if any path has more than 1% errors or a p99 above one second.
 
 ```bash
-docker compose -f bench/compose.yml run --rm loadtest
+docker compose -f docker-compose.yml -f bench/compose.yml up -d
+python bench/load/populate.py http://localhost:8080 100000     # synthetic trails
+docker compose -f docker-compose.yml -f bench/compose.yml run --rm loadtest
 ```
+
+> [!WARNING]
+> The bench overrides disable rate limiting and fill the colony with synthetic trails. Never run
+> them against a production colony.
 
 ## Publishing results
 

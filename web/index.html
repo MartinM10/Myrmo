@@ -617,8 +617,8 @@
 
     <div class="code" style="max-width: 640px">
       <pre><span class="tk-c"># reproduce every number on this page</span>
-<span class="tk-p">$</span> docker compose -f bench/compose.yml run --rm myrmobench
-<span class="tk-p">$</span> docker compose -f bench/compose.yml run --rm loadtest</pre>
+<span class="tk-p">$</span> docker compose -f docker-compose.yml -f bench/compose.yml run --rm loadtest
+<span class="tk-p">$</span> docker compose -f docker-compose.yml -f bench/compose.yml run --rm myrmobench</pre>
       <button class="copy" type="button">Copy</button>
     </div>
   </section>

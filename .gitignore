@@ -13,3 +13,4 @@ qdrant_data/
 node_modules/
 docs/.vitepress/dist/
 docs/.vitepress/cache/
+bench/load/targets.json
