@@ -1,0 +1,97 @@
+name: Release
+
+# release-please reads Conventional Commits on main, keeps a release PR open with the
+# next semantic version and CHANGELOG of every component, and tags + releases each
+# component when that PR is merged. Publishing jobs run only for released components.
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    outputs:
+      server: ${{ steps.release.outputs['server--release_created'] }}
+      server_version: ${{ steps.release.outputs['server--version'] }}
+      sdk_js: ${{ steps.release.outputs['clients/typescript/packages/myrmo--release_created'] }}
+      mcp: ${{ steps.release.outputs['clients/typescript/packages/myrmo-mcp--release_created'] }}
+      sdk_python: ${{ steps.release.outputs['clients/python--release_created'] }}
+    steps:
+      - uses: googleapis/release-please-action@v4
+        id: release
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  server-image:
+    name: Server image (GHCR)
+    needs: release-please
+    if: needs.release-please.outputs.server == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: server/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/myrmo-server:${{ needs.release-please.outputs.server_version }}
+            ghcr.io/${{ github.repository_owner }}/myrmo-server:latest
+
+  npm:
+    name: npm packages
+    needs: release-please
+    if: needs.release-please.outputs.sdk_js == 'true' || needs.release-please.outputs.mcp == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: clients/typescript
+    env:
+      NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+      - run: npm ci && npm run build && npm test
+      - name: Publish (skipped until the NPM_TOKEN secret exists)
+        if: env.NODE_AUTH_TOKEN != ''
+        run: |
+          if [ "${{ needs.release-please.outputs.sdk_js }}" = "true" ]; then npm publish -w packages/myrmo --access public; fi
+          if [ "${{ needs.release-please.outputs.mcp }}" = "true" ]; then npm publish -w packages/myrmo-mcp --access public; fi
+
+  pypi:
+    name: PyPI package
+    needs: release-please
+    if: needs.release-please.outputs.sdk_python == 'true' && vars.PUBLISH_PYPI == 'true'
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+    defaults:
+      run:
+        working-directory: clients/python
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install build && python -m build
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: clients/python/dist

@@ -1,0 +1,46 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "bootstrap-sha": "ac440bc77b5eeefbe6189fbc08eaa70ca520e4d1",
+  "include-component-in-tag": true,
+  "include-v-in-tag": true,
+  "pull-request-title-pattern": "chore: release${component} ${version}",
+  "changelog-sections": [
+    { "type": "feat", "section": "Features" },
+    { "type": "fix", "section": "Bug fixes" },
+    { "type": "perf", "section": "Performance" },
+    { "type": "security", "section": "Security" },
+    { "type": "docs", "section": "Documentation" },
+    { "type": "refactor", "section": "Refactoring", "hidden": true },
+    { "type": "test", "section": "Tests", "hidden": true },
+    { "type": "ci", "section": "CI", "hidden": true },
+    { "type": "chore", "section": "Chores", "hidden": true }
+  ],
+  "packages": {
+    ".": {
+      "release-type": "simple",
+      "component": "platform",
+      "package-name": "myrmo",
+      "exclude-paths": ["server", "clients", "protocol"]
+    },
+    "protocol": { "release-type": "simple", "component": "protocol", "package-name": "myrmo-protocol" },
+    "server": { "release-type": "rust", "component": "server", "package-name": "myrmo-server" },
+    "clients/typescript/packages/myrmo": {
+      "release-type": "node",
+      "component": "sdk-js",
+      "package-name": "myrmo",
+      "extra-files": ["src/client.ts"]
+    },
+    "clients/typescript/packages/myrmo-mcp": {
+      "release-type": "node",
+      "component": "mcp",
+      "package-name": "myrmo-mcp",
+      "extra-files": ["src/server.ts"]
+    },
+    "clients/python": {
+      "release-type": "python",
+      "component": "sdk-python",
+      "package-name": "myrmo",
+      "extra-files": ["src/myrmo/client.py"]
+    }
+  }
+}

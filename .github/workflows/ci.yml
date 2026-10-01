@@ -1,0 +1,130 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  protocol:
+    name: Protocol
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install jsonschema
+      - name: Fingerprint v1 reference passes its vectors
+        run: python protocol/fingerprint_v1.py
+      - name: Example and seed trails validate against the schema
+        run: |
+          python - <<'EOF'
+          import json
+          from jsonschema import Draft7Validator
+          schema = json.load(open("protocol/trail.v1.schema.json"))
+          Draft7Validator.check_schema(schema)
+          v = Draft7Validator(schema)
+          trails = [json.load(open("protocol/examples/trail.distutils.json"))] + json.load(open("deploy/seed/trails.json"))
+          errors = [(t["problem"]["error_type"], e.message) for t in trails for e in v.iter_errors(t)]
+          assert not errors, errors
+          print(f"{len(trails)} trails valid")
+          EOF
+
+  server:
+    name: Server (Rust)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: server
+      - run: cargo fmt --check
+      - run: cargo clippy --all-targets -- -D warnings
+      - run: cargo test
+
+  typescript:
+    name: SDK and MCP (TypeScript)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: clients/typescript
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: clients/typescript/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      - run: npm test
+
+  python:
+    name: SDK (Python ${{ matrix.python }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ["3.9", "3.13"]
+    defaults:
+      run:
+        working-directory: clients/python
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: pip install -e ".[test]"
+      - run: pytest -q
+
+  docs:
+    name: Docs
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: docs
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: docs/package-lock.json
+      - run: npm ci
+      - run: npx vitepress build
+
+  e2e:
+    name: End-to-end (Docker)
+    runs-on: ubuntu-latest
+    needs: [server]
+    env:
+      # Heuristic judgements only: the decision model is a 1.7 GB download.
+      MYRMO_DECISION_URL: ""
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start a colony
+        run: docker compose up -d --build --no-deps valkey qdrant embed gateway enricher
+      - name: Wait for the gateway
+        run: |
+          for i in $(seq 1 90); do curl -sf http://localhost:8080/healthz && exit 0; sleep 2; done
+          docker compose logs gateway enricher embed; exit 1
+      - name: Smoke test
+        run: python3 server/tests/smoke.py http://localhost:8080
+      - name: Logs on failure
+        if: failure()
+        run: docker compose logs --tail 100
