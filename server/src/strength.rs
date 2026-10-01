@@ -5,9 +5,16 @@ const Z: f64 = 1.96;
 const PRIOR_WEIGHT: f64 = 2.0;
 const HALF_LIFE_DAYS: f64 = 90.0;
 
-pub fn strength(worked: u64, partially_worked: u64, failed: u64, quality: f64, days_since_success: f64) -> f64 {
+pub fn strength(
+    worked: u64,
+    partially_worked: u64,
+    failed: u64,
+    quality: f64,
+    days_since_success: f64,
+) -> f64 {
     let n = (worked + partially_worked + failed) as f64 + PRIOR_WEIGHT;
-    let successes = worked as f64 + 0.5 * partially_worked as f64 + PRIOR_WEIGHT * quality.clamp(0.0, 1.0);
+    let successes =
+        worked as f64 + 0.5 * partially_worked as f64 + PRIOR_WEIGHT * quality.clamp(0.0, 1.0);
     let p = successes / n;
     let z2 = Z * Z;
     let centre = p + z2 / (2.0 * n);
@@ -26,7 +33,11 @@ mod tests {
 
     #[test]
     fn matches_documented_reference_points() {
-        assert!(close(strength(0, 0, 0, 0.8, 0.0), 0.223), "{}", strength(0, 0, 0, 0.8, 0.0));
+        assert!(
+            close(strength(0, 0, 0, 0.8, 0.0), 0.223),
+            "{}",
+            strength(0, 0, 0, 0.8, 0.0)
+        );
         assert!(close(strength(214, 12, 9, 0.7, 0.0), 0.895));
         assert!(close(strength(214, 12, 9, 0.7, 90.0), 0.448));
     }

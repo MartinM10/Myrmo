@@ -26,7 +26,10 @@ pub struct Config {
 }
 
 fn var(key: &str) -> Option<String> {
-    env::var(key).ok().map(|v| v.trim().to_string()).filter(|v| !v.is_empty())
+    env::var(key)
+        .ok()
+        .map(|v| v.trim().to_string())
+        .filter(|v| !v.is_empty())
 }
 
 impl Config {
@@ -35,9 +38,13 @@ impl Config {
         Self {
             bind: get("MYRMO_BIND", "0.0.0.0:8080"),
             redis_url: get("REDIS_URL", "redis://127.0.0.1:6379"),
-            qdrant_url: get("QDRANT_URL", "http://127.0.0.1:6333").trim_end_matches('/').to_string(),
+            qdrant_url: get("QDRANT_URL", "http://127.0.0.1:6333")
+                .trim_end_matches('/')
+                .to_string(),
             collection: get("MYRMO_COLLECTION", "trails"),
-            embed_url: get("MYRMO_EMBED_URL", "http://127.0.0.1:8081").trim_end_matches('/').to_string(),
+            embed_url: get("MYRMO_EMBED_URL", "http://127.0.0.1:8081")
+                .trim_end_matches('/')
+                .to_string(),
             decision_url: var("MYRMO_DECISION_URL"),
             decision_api_key: var("MYRMO_DECISION_API_KEY"),
             rate_limit_per_minute: get("MYRMO_RATE_LIMIT", "120").parse().unwrap_or(120),

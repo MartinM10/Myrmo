@@ -12,7 +12,10 @@ pub struct Embedder {
 
 impl Embedder {
     pub fn new(http: reqwest::Client, url: &str) -> Self {
-        Self { http, url: format!("{url}/embed") }
+        Self {
+            http,
+            url: format!("{url}/embed"),
+        }
     }
 
     pub async fn embed(&self, text: &str) -> Result<Vec<f32>> {
@@ -24,7 +27,11 @@ impl Embedder {
             .await
             .context("embedding service unreachable")?;
         if !res.status().is_success() {
-            bail!("embedding service {}: {}", res.status(), res.text().await.unwrap_or_default());
+            bail!(
+                "embedding service {}: {}",
+                res.status(),
+                res.text().await.unwrap_or_default()
+            );
         }
         let mut vectors: Vec<Vec<f32>> = res.json().await.context("invalid embedding response")?;
         vectors.pop().context("empty embedding response")

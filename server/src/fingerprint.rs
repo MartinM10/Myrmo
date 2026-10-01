@@ -15,12 +15,18 @@ const SEPARATOR: &str = "\u{1f}";
 static RULES: LazyLock<Vec<(Regex, &'static str)>> = LazyLock::new(|| {
     [
         (r#"\b[a-z][a-z0-9+.\-]*://[^\s'"<>]+"#, "<url>"),
-        (r"\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b", "<uuid>"),
+        (
+            r"\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b",
+            "<uuid>",
+        ),
         (r"\b0x[0-9a-f]+\b", "<hex>"),
         (r"\b[0-9a-f]{12,}\b", "<hex>"),
         (r"\b\d{1,3}(?:\.\d{1,3}){3}(?::\d+)?\b", "<ip>"),
         (r#"\b[a-z]:\\[^\s'"]+"#, "<path>"),
-        (r#"(?<![\w.<>])(?:~|\.{1,2})?/(?:[^\s'"/:]+/)*[^\s'"/:]*"#, "<path>"),
+        (
+            r#"(?<![\w.<>])(?:~|\.{1,2})?/(?:[^\s'"/:]+/)*[^\s'"/:]*"#,
+            "<path>",
+        ),
         (r"(?<![\w<>/])[\w.\-]+(?:/[\w.\-]+)+", "<path>"),
         (r"\b(?=[a-z_]*\d)(?=[0-9_]*[a-z])\w{12,}\b", "<id>"),
         (r"\bline \d+", "line <n>"),
@@ -28,7 +34,12 @@ static RULES: LazyLock<Vec<(Regex, &'static str)>> = LazyLock::new(|| {
         (r"\b\d{4,}\b", "<n>"),
     ]
     .into_iter()
-    .map(|(pattern, replacement)| (Regex::new(pattern).expect("valid fingerprint rule"), replacement))
+    .map(|(pattern, replacement)| {
+        (
+            Regex::new(pattern).expect("valid fingerprint rule"),
+            replacement,
+        )
+    })
     .collect()
 });
 
@@ -49,7 +60,11 @@ pub fn normalize_message(error_type: &str, message: &str) -> String {
         text = pattern.replace_all(&text, *replacement).into_owned();
     }
     let collapsed = WHITESPACE.replace_all(&text, " ");
-    collapsed.trim().chars().take(MAX_NORMALIZED_CHARS).collect()
+    collapsed
+        .trim()
+        .chars()
+        .take(MAX_NORMALIZED_CHARS)
+        .collect()
 }
 
 pub fn fingerprint(runtime: &str, error_type: &str, message: &str) -> String {
@@ -66,11 +81,21 @@ pub fn fingerprint(runtime: &str, error_type: &str, message: &str) -> String {
 /// The message a trail is fingerprinted by: `error_message`, else the first line of
 /// `raw_logs` containing `error_type`, else the first non-empty line.
 pub fn message_for_problem(problem: &Value) -> String {
-    if let Some(message) = problem.get("error_message").and_then(Value::as_str).filter(|m| !m.trim().is_empty()) {
+    if let Some(message) = problem
+        .get("error_message")
+        .and_then(Value::as_str)
+        .filter(|m| !m.trim().is_empty())
+    {
         return message.to_string();
     }
-    let error_type = problem.get("error_type").and_then(Value::as_str).unwrap_or_default();
-    let logs = problem.get("raw_logs").and_then(Value::as_str).unwrap_or_default();
+    let error_type = problem
+        .get("error_type")
+        .and_then(Value::as_str)
+        .unwrap_or_default();
+    let logs = problem
+        .get("raw_logs")
+        .and_then(Value::as_str)
+        .unwrap_or_default();
     logs.lines()
         .find(|line| !error_type.is_empty() && line.contains(error_type))
         .or_else(|| logs.lines().find(|line| !line.trim().is_empty()))
@@ -80,9 +105,15 @@ pub fn message_for_problem(problem: &Value) -> String {
 
 /// Fingerprint of a protocol trail.
 pub fn of_trail(trail: &Value) -> String {
-    let runtime = trail.pointer("/environment/runtime/name").and_then(Value::as_str).unwrap_or_default();
+    let runtime = trail
+        .pointer("/environment/runtime/name")
+        .and_then(Value::as_str)
+        .unwrap_or_default();
     let problem = &trail["problem"];
-    let error_type = problem.get("error_type").and_then(Value::as_str).unwrap_or_default();
+    let error_type = problem
+        .get("error_type")
+        .and_then(Value::as_str)
+        .unwrap_or_default();
     fingerprint(runtime, error_type, &message_for_problem(problem))
 }
 
@@ -93,12 +124,25 @@ mod tests {
     #[test]
     fn matches_reference_vectors() {
         let vectors: Vec<Value> =
-            serde_json::from_str(include_str!("../../protocol/fingerprint.v1.vectors.json")).unwrap();
+            serde_json::from_str(include_str!("../../protocol/fingerprint.v1.vectors.json"))
+                .unwrap();
         assert!(vectors.len() >= 16);
         for v in vectors {
-            let (rt, et, msg) = (v["runtime"].as_str().unwrap(), v["error_type"].as_str().unwrap(), v["message"].as_str().unwrap());
-            assert_eq!(normalize_message(et, msg), v["normalized"].as_str().unwrap(), "normalized: {msg}");
-            assert_eq!(fingerprint(rt, et, msg), v["fingerprint"].as_str().unwrap(), "fingerprint: {msg}");
+            let (rt, et, msg) = (
+                v["runtime"].as_str().unwrap(),
+                v["error_type"].as_str().unwrap(),
+                v["message"].as_str().unwrap(),
+            );
+            assert_eq!(
+                normalize_message(et, msg),
+                v["normalized"].as_str().unwrap(),
+                "normalized: {msg}"
+            );
+            assert_eq!(
+                fingerprint(rt, et, msg),
+                v["fingerprint"].as_str().unwrap(),
+                "fingerprint: {msg}"
+            );
         }
     }
 
@@ -108,6 +152,9 @@ mod tests {
             "error_type": "ModuleNotFoundError",
             "raw_logs": "Collecting numpy\nModuleNotFoundError: No module named 'distutils'"
         });
-        assert_eq!(message_for_problem(&problem), "ModuleNotFoundError: No module named 'distutils'");
+        assert_eq!(
+            message_for_problem(&problem),
+            "ModuleNotFoundError: No module named 'distutils'"
+        );
     }
 }

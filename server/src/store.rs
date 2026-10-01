@@ -18,7 +18,11 @@ pub struct Hit {
 
 impl Qdrant {
     pub fn new(http: reqwest::Client, base: &str, collection: &str) -> Self {
-        Self { http, base: base.to_string(), collection: collection.to_string() }
+        Self {
+            http,
+            base: base.to_string(),
+            collection: collection.to_string(),
+        }
     }
 
     fn url(&self, path: &str) -> String {
@@ -37,7 +41,12 @@ impl Qdrant {
 
     /// Create the collection and payload indexes if missing. Safe to call concurrently.
     pub async fn ensure_collection(&self, dimension: usize) -> Result<()> {
-        let exists = self.http.get(self.url("")).send().await.context("qdrant unreachable")?;
+        let exists = self
+            .http
+            .get(self.url(""))
+            .send()
+            .await
+            .context("qdrant unreachable")?;
         if exists.status().is_success() {
             return Ok(());
         }
@@ -52,12 +61,23 @@ impl Qdrant {
             .await?;
         // A concurrent creator wins the race with 409; that is fine.
         if !created.status().is_success() && created.status().as_u16() != 409 {
-            bail!("cannot create collection: {}", created.text().await.unwrap_or_default());
+            bail!(
+                "cannot create collection: {}",
+                created.text().await.unwrap_or_default()
+            );
         }
-        for (field, schema) in [("fingerprint", "keyword"), ("category", "keyword"), ("runtime", "keyword")] {
-            self.call(self.http.put(self.url("/index")).json(&json!({ "field_name": field, "field_schema": schema })))
-                .await
-                .ok();
+        for (field, schema) in [
+            ("fingerprint", "keyword"),
+            ("category", "keyword"),
+            ("runtime", "keyword"),
+        ] {
+            self.call(
+                self.http
+                    .put(self.url("/index"))
+                    .json(&json!({ "field_name": field, "field_schema": schema })),
+            )
+            .await
+            .ok();
         }
         Ok(())
     }
@@ -78,7 +98,11 @@ impl Qdrant {
             return Ok(vec![]);
         }
         let result = self
-            .call(self.http.post(self.url("/points")).json(&json!({ "ids": ids, "with_payload": true, "with_vector": false })))
+            .call(
+                self.http
+                    .post(self.url("/points"))
+                    .json(&json!({ "ids": ids, "with_payload": true, "with_vector": false })),
+            )
             .await?;
         Ok(result
             .as_array()
@@ -100,7 +124,10 @@ impl Qdrant {
             .as_array()
             .into_iter()
             .flatten()
-            .map(|p| Hit { id: id_string(&p["id"]), score: p["score"].as_f64().unwrap_or(0.0) })
+            .map(|p| Hit {
+                id: id_string(&p["id"]),
+                score: p["score"].as_f64().unwrap_or(0.0),
+            })
             .collect())
     }
 
@@ -113,8 +140,12 @@ impl Qdrant {
             .into_iter()
             .map(|(id, payload)| json!({ "set_payload": { "payload": payload, "points": [id] } }))
             .collect();
-        self.call(self.http.post(self.url("/points/batch?wait=false")).json(&json!({ "operations": operations })))
-            .await?;
+        self.call(
+            self.http
+                .post(self.url("/points/batch?wait=false"))
+                .json(&json!({ "operations": operations })),
+        )
+        .await?;
         Ok(())
     }
 }

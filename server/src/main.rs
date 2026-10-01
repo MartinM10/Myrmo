@@ -26,7 +26,10 @@ use tracing_subscriber::EnvFilter;
 async fn main() -> Result<()> {
     let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
     if std::env::var("MYRMO_LOG_JSON").is_ok_and(|v| v == "1") {
-        tracing_subscriber::fmt().with_env_filter(filter).json().init();
+        tracing_subscriber::fmt()
+            .with_env_filter(filter)
+            .json()
+            .init();
     } else {
         tracing_subscriber::fmt().with_env_filter(filter).init();
     }
@@ -50,10 +53,13 @@ async fn serve(st: state::AppState) -> Result<()> {
     let listener = tokio::net::TcpListener::bind(&st.cfg.bind).await?;
     tracing::info!(address = %st.cfg.bind, "gateway listening");
     let app = api::router(st);
-    axum::serve(listener, app.into_make_service_with_connect_info::<SocketAddr>())
-        .with_graceful_shutdown(async {
-            let _ = tokio::signal::ctrl_c().await;
-        })
-        .await?;
+    axum::serve(
+        listener,
+        app.into_make_service_with_connect_info::<SocketAddr>(),
+    )
+    .with_graceful_shutdown(async {
+        let _ = tokio::signal::ctrl_c().await;
+    })
+    .await?;
     Ok(())
 }

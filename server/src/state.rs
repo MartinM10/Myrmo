@@ -63,7 +63,11 @@ impl AppState {
 
         let qdrant = Qdrant::new(http.clone(), &cfg.qdrant_url, &cfg.collection);
         let embedder = Embedder::new(http.clone(), &cfg.embed_url);
-        let decision = Decision::new(http.clone(), cfg.decision_url.clone(), cfg.decision_api_key.clone());
+        let decision = Decision::new(
+            http.clone(),
+            cfg.decision_url.clone(),
+            cfg.decision_api_key.clone(),
+        );
 
         // The embedding model can take minutes to download on first start.
         let dimension = retry("embedding service", 200, || {
@@ -76,9 +80,18 @@ impl AppState {
             async move { qdrant.ensure_collection(dimension).await }
         })
         .await?;
-        tracing::info!(dimension, "connected to redis, qdrant and the embedding service");
+        tracing::info!(
+            dimension,
+            "connected to redis, qdrant and the embedding service"
+        );
 
-        Ok(AppState(Arc::new(Inner { cfg, redis, qdrant, embedder, decision })))
+        Ok(AppState(Arc::new(Inner {
+            cfg,
+            redis,
+            qdrant,
+            embedder,
+            decision,
+        })))
     }
 
     pub fn redis(&self) -> ConnectionManager {

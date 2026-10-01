@@ -3,8 +3,10 @@
 use serde_json::{Value, json};
 use std::sync::LazyLock;
 
-static SCHEMA: LazyLock<Value> =
-    LazyLock::new(|| serde_json::from_str(include_str!("../../protocol/trail.v1.schema.json")).expect("schema is valid JSON"));
+static SCHEMA: LazyLock<Value> = LazyLock::new(|| {
+    serde_json::from_str(include_str!("../../protocol/trail.v1.schema.json"))
+        .expect("schema is valid JSON")
+});
 
 static TRAIL: LazyLock<jsonschema::Validator> =
     LazyLock::new(|| jsonschema::draft7::new(&SCHEMA).expect("trail schema compiles"));
@@ -24,7 +26,11 @@ fn errors(validator: &jsonschema::Validator, instance: &Value) -> Result<(), Vec
         .take(20)
         .map(|e| json!({ "path": e.instance_path().to_string(), "message": e.to_string() }))
         .collect();
-    if details.is_empty() { Ok(()) } else { Err(details) }
+    if details.is_empty() {
+        Ok(())
+    } else {
+        Err(details)
+    }
 }
 
 pub fn validate_trail(instance: &Value) -> Result<(), Vec<Value>> {
@@ -41,13 +47,17 @@ mod tests {
 
     #[test]
     fn example_trail_is_valid() {
-        let example: Value = serde_json::from_str(include_str!("../../protocol/examples/trail.distutils.json")).unwrap();
+        let example: Value =
+            serde_json::from_str(include_str!("../../protocol/examples/trail.distutils.json"))
+                .unwrap();
         assert_eq!(validate_trail(&example), Ok(()));
     }
 
     #[test]
     fn rejects_absolute_patch_paths() {
-        let mut example: Value = serde_json::from_str(include_str!("../../protocol/examples/trail.distutils.json")).unwrap();
+        let mut example: Value =
+            serde_json::from_str(include_str!("../../protocol/examples/trail.distutils.json"))
+                .unwrap();
         example["solution"]["code_patches"][0]["file_path"] = json!("/home/x/req.txt");
         let errs = validate_trail(&example).unwrap_err();
         assert!(errs[0]["path"].as_str().unwrap().contains("code_patches"));

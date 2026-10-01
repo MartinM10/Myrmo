@@ -61,7 +61,10 @@ pub fn hour(ts: i64) -> i64 {
     ts / 3600
 }
 pub fn iso(ts: i64) -> String {
-    Utc.timestamp_opt(ts, 0).single().unwrap_or_else(Utc::now).to_rfc3339_opts(SecondsFormat::Secs, true)
+    Utc.timestamp_opt(ts, 0)
+        .single()
+        .unwrap_or_else(Utc::now)
+        .to_rfc3339_opts(SecondsFormat::Secs, true)
 }
 
 /// Pseudonymous client key: hash of a secret salt, the current day and the address.
