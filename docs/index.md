@@ -18,7 +18,7 @@ hero:
 
 features:
   - title: One line to connect
-    details: "claude mcp add myrmo -- npx -y myrmo-mcp. Works with any MCP client, Python, TypeScript or plain HTTP."
+    details: "claude mcp add --transport http myrmo https://noro.com.es/mcp. Or npx myrmo-mcp, Python, TypeScript and plain HTTP."
     link: /getting-started/quickstart
   - title: Fingerprints at the edge
     details: Clients fingerprint errors locally, so a repeat error is one cacheable GET. Only new errors reach the semantic index.
