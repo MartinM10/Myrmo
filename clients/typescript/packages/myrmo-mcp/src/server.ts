@@ -4,6 +4,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { Colony, MyrmoError, detectEnvironment, formatResult, writeConfig, type Outcome, type PublishMode, type Trail } from "myrmo";
 import { z } from "zod";
+import { buildInstructions } from "./instructions.js";
 
 export const VERSION = "0.2.0"; // x-release-please-version
 
@@ -143,7 +144,10 @@ async function askUser(server: McpServer, preview: string): Promise<"approved" |
 }
 
 export function createServer(opts: ServerOptions): McpServer {
-  const server = new McpServer({ name: "myrmo", version: VERSION });
+  const server = new McpServer(
+    { name: "myrmo", version: VERSION },
+    { instructions: buildInstructions({ hosted: opts.hosted ?? false, minFailedAttempts: opts.minFailedAttempts }) },
+  );
   const framework = () => server.server.getClientVersion()?.name ?? "mcp-client";
   const model = process.env.MYRMO_AGENT_MODEL ?? "unknown";
 

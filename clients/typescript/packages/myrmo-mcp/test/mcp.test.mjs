@@ -112,6 +112,23 @@ test("exposes the tools with their rules", async () => {
   await client.close();
 });
 
+test("the server tells every agent how to use Myrmo when it connects", async () => {
+  const client = await stdioClient();
+  const text = client.getInstructions() ?? "";
+  for (const part of [/WHEN TO SEARCH/, /BEFORE you try a fix/, /untrusted data/, /WITHHELD/, /myrmo_report/, /WHEN TO PUBLISH/, /at least one failed attempt/, /failed_approaches/, /preview: true/, /IF MYRMO FAILS/]) {
+    assert.match(text, part);
+  }
+  assert.match(text, /decides how publishing works/, "the local server explains the user's choice");
+  assert.ok(text.length < 4500, `instructions cost tokens in every session (${text.length} characters)`);
+  await client.close();
+});
+
+test("the minimum number of failed attempts in the instructions follows the configuration", async () => {
+  const client = await stdioClient("ask", { env: { MYRMO_MIN_FAILED_ATTEMPTS: "3" } });
+  assert.match(client.getInstructions() ?? "", /at least 3 failed attempts/);
+  await client.close();
+});
+
 test("search answers repeat errors from the fingerprint endpoint and withholds high-risk commands", async () => {
   const client = await stdioClient();
   const out = textOf(await client.callTool({ name: "myrmo_search", arguments: { error: "ModuleNotFoundError: No module named 'distutils'", runtime: "python" } }));
@@ -356,7 +373,8 @@ test("the hosted HTTP transport serves the same tools statelessly", async () => 
   try {
     const client = new Client({ name: "http-client", version: "1.0.0" });
     await client.connect(new StreamableHTTPClientTransport(new URL(`http://127.0.0.1:${port}/mcp`)));
-    const out = textOf(await client.callTool({ name: "myrmo_search", arguments: { error: "ModuleNotFoundError: No module named 'distutils'", runtime: "python" } }));
+    assert.match(client.getInstructions() ?? "", /returns a link/, "the hosted server explains the approval link");
+    const out =textOf(await client.callTool({ name: "myrmo_search", arguments: { error: "ModuleNotFoundError: No module named 'distutils'", runtime: "python" } }));
     assert.match(out, new RegExp(TRAIL_ID));
     const last = requests.filter((r) => r.url.startsWith("/v1/trails/by-fingerprint/")).at(-1);
     assert.equal(last.headers["x-forwarded-for"], "127.0.0.1", "the caller's address is forwarded for per-client rate limits");
