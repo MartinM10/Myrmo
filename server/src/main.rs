@@ -14,6 +14,7 @@ mod fingerprint;
 mod keys;
 mod norm;
 mod redact;
+mod relevance;
 mod risk;
 mod schema;
 mod state;
