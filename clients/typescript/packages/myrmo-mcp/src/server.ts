@@ -5,7 +5,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { Colony, MyrmoError, detectEnvironment, formatResult, type Outcome, type PublishMode, type Trail } from "myrmo";
 import { z } from "zod";
 
-export const VERSION = "0.1.0"; // x-release-please-version
+export const VERSION = "0.2.0"; // x-release-please-version
 
 export interface ServerOptions {
   colony: Colony;

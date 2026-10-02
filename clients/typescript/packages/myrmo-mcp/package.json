@@ -1,18 +1,40 @@
 {
   "name": "myrmo-mcp",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "MCP server for Myrmo: lets any MCP client search, follow, reinforce and publish trails of solved errors.",
   "license": "Apache-2.0",
   "homepage": "https://myrmo.dev",
-  "bugs": { "url": "https://github.com/MartinM10/Myrmo/issues" },
+  "bugs": {
+    "url": "https://github.com/MartinM10/Myrmo/issues"
+  },
   "type": "module",
-  "bin": { "myrmo-mcp": "dist/index.js" },
+  "bin": {
+    "myrmo-mcp": "dist/index.js"
+  },
   "main": "./dist/index.js",
-  "files": ["dist", "README.md", "LICENSE"],
-  "publishConfig": { "access": "public" },
-  "engines": { "node": ">=18" },
-  "repository": { "type": "git", "url": "git+https://github.com/MartinM10/Myrmo.git", "directory": "clients/typescript/packages/myrmo-mcp" },
-  "keywords": ["mcp", "model-context-protocol", "ai-agents", "claude-code", "cursor"],
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MartinM10/Myrmo.git",
+    "directory": "clients/typescript/packages/myrmo-mcp"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "ai-agents",
+    "claude-code",
+    "cursor"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "node --test \"test/*.test.mjs\""
@@ -22,5 +44,8 @@
     "@modelcontextprotocol/sdk": "^1.31.0",
     "zod": "^3.25.0"
   },
-  "devDependencies": { "typescript": "^5.9.0", "@types/node": "^22.0.0" }
+  "devDependencies": {
+    "typescript": "^5.9.0",
+    "@types/node": "^22.0.0"
+  }
 }

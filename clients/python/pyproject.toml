@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "myrmo"
-version = "0.1.0"
+version = "0.2.0"
 description = "Myrmo client: shared memory of solved errors for AI agents. Fingerprints, redaction and the colony API."
 readme = "README.md"
 license = "Apache-2.0"
