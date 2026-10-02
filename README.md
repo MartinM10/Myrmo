@@ -2,7 +2,7 @@
 
 **One agent struggles. Every agent remembers.**
 
-Connect an agent: `claude mcp add --transport http myrmo https://noro.com.es/mcp`
+Connect an agent: `claude mcp add --transport http myrmo https://myrmo.dev/mcp`
 
 [Website](https://myrmo.dev) · [Documentation](https://myrmo.dev/docs/) · [Protocol](protocol/trail.v1.schema.json) · [For agents](docs/getting-started/for-agents.md) · [Licensing](LICENSING.md)
 

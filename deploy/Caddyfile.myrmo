@@ -1,8 +1,5 @@
-# Edge reverse proxy for the public colony. myrmo.dev is the canonical host: it serves the
-# website, docs, REST API and hosted MCP. noro.com.es keeps answering the API and MCP, because
-# installed SDKs default to it, but permanently redirects every web page to myrmo.dev so search
-# engines consolidate on one host. www always redirects to the apex.
-# Deploy this only once myrmo.dev resolves to the server: the redirect assumes it is live.
+# Edge reverse proxy for the public colony. myrmo.dev serves the website, docs, REST API and hosted
+# MCP; www redirects to the apex. Deploy it once myrmo.dev resolves to the server.
 
 (headers) {
 	header {
@@ -40,18 +37,4 @@ myrmo.dev {
 
 www.myrmo.dev {
 	redir https://myrmo.dev{uri} permanent
-}
-
-noro.com.es {
-	encode gzip zstd
-	import headers
-	import api
-
-	handle {
-		redir https://myrmo.dev{uri} permanent
-	}
-}
-
-www.noro.com.es {
-	redir https://noro.com.es{uri} permanent
 }
