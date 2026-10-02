@@ -61,9 +61,14 @@ def main() -> None:
     # (the fingerprint ignores versions, so it stays the reference value).
     trail["environment"]["runtime"]["version"] = f"3.{int(run, 16) % 100000 + 100}.0"
     trail["problem"]["raw_logs"] += "\nexport OPENAI_API_KEY=sk-proj-abcdefghijklmnopqrstuvwx123456 from /home/martin/app"
+    trail["problem"]["raw_logs"] += "\nAuthorization: Basic dXNlcjpzdXBlcnNlY3Rwdw== and hf_AbCdEfGhIjKlMnOpQrStUvWxYz0123456789"
+    trail["problem"]["raw_logs"] += '\n{"user": "bob", "password": "hunter2hunter2"} Cookie: sid=abc123def456'
+    trail["problem"]["raw_logs"] += "\nfailed for fe80::1c2b:3dff:fe4a:5b6c and https://x.example/cb?access_token=abcdef123456"
     status, body, _ = call("POST", "/v1/trails", trail, agent=author)
     check(status == 202, f"POST /v1/trails -> 202 (got {status})")
-    check(body.get("redactions", {}).get("api_key") == 1, f"api key redacted on arrival: {body.get('redactions')}")
+    kinds = body.get("redactions", {})
+    check(kinds.get("api_key") == 2, f"provider tokens redacted on arrival: {kinds}")
+    check(all(kinds.get(k) == 1 for k in ("auth_header", "password_assignment", "cookie", "ipv6", "url_secret")), f"headers, JSON passwords, cookies, IPv6 and URL secrets redacted on arrival: {kinds}")
     trail_id, fp = body["trail_id"], body["fingerprint"]
     check(fp == "fp1_3927a18f5b14a126", f"fingerprint matches the reference implementation ({fp})")
 
@@ -72,7 +77,9 @@ def main() -> None:
     elapsed = time.time() - t0
     check(final.get("status") == "indexed", f"enriched and indexed in {elapsed:.1f}s: {final.get('status')} {final.get('reasons', '')}")
     check(final.get("category") == "dependency", f"category = {final.get('category')}")
-    check("sk-proj" not in json.dumps(final) and "/home/martin" not in json.dumps(final), "no secret or home path stored")
+    stored = json.dumps(final)
+    leaked = [x for x in ("sk-proj", "/home/martin", "dXNlcjpzdXBlcnNlY3Rwdw", "hf_AbCd", "hunter2hunter2", "abc123def456", "fe80::", "abcdef123456") if x in stored]
+    check(not leaked, f"no secret or home path stored{': leaked ' + str(leaked) if leaked else ''}")
 
     print("fingerprint lookup")
     status, body, headers = call("GET", f"/v1/trails/by-fingerprint/{fp}")

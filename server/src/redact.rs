@@ -1,94 +1,349 @@
 //! Deterministic redaction of secrets and personal data. Runs on every string of a
 //! payload; clients run the same detectors before sending.
+//!
+//! The rules are mirrored in clients/python/src/myrmo/redact.py and
+//! clients/typescript/packages/myrmo/src/redact.ts: all three must reproduce
+//! protocol/redact.v1.vectors.json exactly. Rules run in order, most specific first. A rule's
+//! replacement never matches a later rule (it starts with `<`, which no value pattern accepts),
+//! so redacting twice changes nothing.
 
 use regex::{Captures, Regex};
 use serde_json::Value;
 use std::collections::BTreeMap;
 use std::sync::LazyLock;
 
-type Replacer = fn(&Captures) -> Option<String>;
+/// The replacement for a match, or `None` to keep the match unchanged.
+type Replacer = Box<dyn Fn(&Captures) -> Option<String> + Send + Sync>;
 
 struct Rule {
     kind: &'static str,
     pattern: Regex,
-    /// Returns the replacement, or `None` to keep the match unchanged.
     replace: Replacer,
 }
 
-fn full(kind: &'static str) -> String {
+fn full(kind: &str) -> String {
     format!("<redacted:{kind}>")
 }
 
+fn g<'a>(c: &'a Captures, n: usize) -> &'a str {
+    c.get(n).map_or("", |m| m.as_str())
+}
+
+// Values that are references or placeholders, not secrets. The test is narrow on purpose: a
+// password may contain `(`, `$` or `/`, and leaking one costs far more than keeping a code
+// fragment, so only unmistakable references are kept: `$DB_PASSWORD`, `${{ secrets.X }}`,
+// `os.getenv(`, `get_secret()`, `None`, `****`, a URL, a path.
+const LITERALS: &[&str] = &[
+    "none",
+    "null",
+    "nil",
+    "true",
+    "false",
+    "undefined",
+    "required",
+    "optional",
+    "string",
+    "str",
+    "int",
+    "integer",
+    "bool",
+    "boolean",
+    "empty",
+    "redacted",
+    "password",
+    "secret",
+    "token",
+];
+static ENV_REFERENCE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"^(?:\$\{?[A-Z_][A-Z0-9_]*\}?|%[A-Za-z_][A-Za-z0-9_]*%)$").unwrap()
+});
+static CODE_REFERENCE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^[A-Za-z_][\w.]*(?:\(\)|[(\[])$").unwrap());
+
+fn is_reference(value: &str) -> bool {
+    let lower = value.to_lowercase();
+    ENV_REFERENCE.is_match(value)
+        || CODE_REFERENCE.is_match(value)
+        || ["${", "{{", "[", "{"].iter().any(|p| value.starts_with(p))
+        || ["http://", "https://", "./", "../", "~/"]
+            .iter()
+            .any(|p| lower.starts_with(p))
+        || (value.starts_with('/') && value[1..].contains('/'))
+        || LITERALS.contains(&lower.as_str())
+        || value.chars().all(|c| "*xX.#-_".contains(c))
+}
+
+fn luhn(digits: &str) -> bool {
+    let total: u32 = digits
+        .chars()
+        .rev()
+        .enumerate()
+        .map(|(i, ch)| {
+            let n = ch.to_digit(10).unwrap_or(0);
+            if !i.is_multiple_of(2) {
+                let doubled = n * 2;
+                if doubled > 9 { doubled - 9 } else { doubled }
+            } else {
+                n
+            }
+        })
+        .sum();
+    total.is_multiple_of(10)
+}
+
+fn ip(c: &Captures) -> Option<String> {
+    let ip = &c[0];
+    let valid = ip
+        .split('.')
+        .all(|octet| octet.parse::<u16>().is_ok_and(|n| n <= 255));
+    let harmless = matches!(ip, "127.0.0.1" | "0.0.0.0" | "255.255.255.255");
+    (valid && !harmless).then(|| full("ip"))
+}
+
+fn card(c: &Captures) -> Option<String> {
+    let digits: String = c[0].chars().filter(char::is_ascii_digit).collect();
+    ((13..=19).contains(&digits.len()) && luhn(&digits)).then(|| full("card"))
+}
+
+/// `name = value` becomes `name = <redacted:kind>` unless the value is a reference.
+fn keep_prefix(kind: &'static str, value_group: usize) -> Replacer {
+    Box::new(move |c| {
+        if is_reference(g(c, value_group)) {
+            return None;
+        }
+        let prefix: String = (1..value_group).map(|n| g(c, n)).collect();
+        Some(prefix + &full(kind))
+    })
+}
+
+fn authorization(c: &Captures) -> Option<String> {
+    let (prefix, scheme, value) = (g(c, 1), g(c, 2), g(c, 3));
+    let schemes = [
+        "bearer",
+        "basic",
+        "token",
+        "digest",
+        "negotiate",
+        "ntlm",
+        "hawk",
+    ];
+    if scheme.is_empty() && schemes.contains(&value.to_lowercase().as_str()) {
+        return None; // `Bearer <redacted:token>`: the credential is already gone
+    }
+    if is_reference(value) {
+        return None;
+    }
+    Some(format!("{prefix}{scheme}{}", full("auth_header")))
+}
+
+fn assignment(c: &Captures) -> Option<String> {
+    if is_reference(g(c, 3)) {
+        return None;
+    }
+    Some(format!("{}{}{}", g(c, 1), g(c, 2), full("secret")))
+}
+
 static RULES: LazyLock<Vec<Rule>> = LazyLock::new(|| {
-    let rule = |kind, pattern: &str, replace: Replacer| Rule {
-        kind,
-        pattern: Regex::new(pattern).expect("valid redaction rule"),
-        replace,
-    };
+    fn rule(
+        kind: &'static str,
+        case_insensitive: bool,
+        pattern: &str,
+        replace: impl Fn(&Captures) -> Option<String> + Send + Sync + 'static,
+    ) -> Rule {
+        let source = if case_insensitive {
+            format!("(?i){pattern}")
+        } else {
+            pattern.to_string()
+        };
+        Rule {
+            kind,
+            pattern: Regex::new(&source).expect("valid redaction rule"),
+            replace: Box::new(replace),
+        }
+    }
     vec![
         rule(
             "private_key",
-            r"(?s)-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----.*?-----END [A-Z0-9 ]*PRIVATE KEY-----",
+            false,
+            r"-----BEGIN [A-Z0-9 ]*PRIVATE KEY(?: BLOCK)?-----[\s\S]*?-----END [A-Z0-9 ]*PRIVATE KEY(?: BLOCK)?-----",
             |_| Some(full("private_key")),
         ),
-        rule("api_key", r"\bsk-ant-[A-Za-z0-9_\-]{20,}", |_| {
+        rule(
+            "private_key",
+            false,
+            r"-----BEGIN [A-Z0-9 ]*PRIVATE KEY(?: BLOCK)?-----(?:(?:\\n|\r?\n)[A-Za-z0-9+/=]{16,})*",
+            |_| Some(full("private_key")),
+        ),
+        rule(
+            "password_hash",
+            false,
+            r"\$(?:2[abxy]\$[0-9]{2}\$[./A-Za-z0-9]{53}|argon2(?:id|i|d)\$[^\s'\x22<>]{20,}|[156y]\$[./A-Za-z0-9]{1,16}\$[./A-Za-z0-9]{20,})",
+            |_| Some(full("password_hash")),
+        ),
+        rule("api_key", false, r"\bsk-ant-[A-Za-z0-9_\-]{20,}", |_| {
             Some(full("api_key"))
         }),
         rule(
             "api_key",
+            false,
             r"\bsk-(?:proj-|svcacct-)?[A-Za-z0-9_\-]{20,}",
             |_| Some(full("api_key")),
         ),
         rule(
             "api_key",
+            false,
             r"\bgh[pousr]_[A-Za-z0-9]{30,}|\bgithub_pat_[A-Za-z0-9_]{22,}",
             |_| Some(full("api_key")),
         ),
-        rule("api_key", r"\bglpat-[A-Za-z0-9_\-]{20,}", |_| {
+        rule("api_key", false, r"\bglpat-[A-Za-z0-9_\-]{20,}", |_| {
             Some(full("api_key"))
         }),
-        rule("api_key", r"\bxox[abprs]-[A-Za-z0-9\-]{10,}", |_| {
+        rule("api_key", false, r"\bxox[abprs]-[A-Za-z0-9\-]{10,}", |_| {
             Some(full("api_key"))
         }),
-        rule("api_key", r"\bAIza[0-9A-Za-z_\-]{35}", |_| {
+        rule("api_key", false, r"\bAIza[0-9A-Za-z_\-]{35}", |_| {
             Some(full("api_key"))
-        }),
-        rule("api_key", r"\b[rs]k_(?:live|test)_[A-Za-z0-9]{20,}", |_| {
-            Some(full("api_key"))
-        }),
-        rule("aws_access_key", r"\b(?:AKIA|ASIA)[0-9A-Z]{16}\b", |_| {
-            Some(full("aws_access_key"))
         }),
         rule(
+            "api_key",
+            false,
+            r"\b[rs]k_(?:live|test)_[A-Za-z0-9]{20,}",
+            |_| Some(full("api_key")),
+        ),
+        rule("api_key", false, r"\bnpm_[A-Za-z0-9]{36}\b", |_| {
+            Some(full("api_key"))
+        }),
+        rule("api_key", false, r"\bhf_[A-Za-z0-9]{30,}", |_| {
+            Some(full("api_key"))
+        }),
+        rule(
+            "api_key",
+            false,
+            r"\bSG\.[A-Za-z0-9_\-]{16,}\.[A-Za-z0-9_\-]{16,}",
+            |_| Some(full("api_key")),
+        ),
+        rule(
+            "api_key",
+            false,
+            r"\bpypi-AgEIcHlwaS5vcmc[A-Za-z0-9_\-]{40,}",
+            |_| Some(full("api_key")),
+        ),
+        rule("api_key", false, r"\bya29\.[A-Za-z0-9_\-]{20,}", |_| {
+            Some(full("api_key"))
+        }),
+        rule(
+            "api_key",
+            false,
+            r"\b(?:dckr_pat_|dop_v1_|gsk_|xai-|r8_|lin_api_|pplx-|shp(?:at|ca|pa|ss)_|whsec_|sq0(?:atp|csp)-|glptt-|glrt-|GOCSPX-)[A-Za-z0-9_\-]{16,}",
+            |_| Some(full("api_key")),
+        ),
+        rule(
+            "api_key",
+            false,
+            r"\b(?:dapi|SK)[0-9a-f]{32}\b|\bkey-[0-9a-f]{32}\b",
+            |_| Some(full("api_key")),
+        ),
+        rule(
+            "api_key",
+            false,
+            r"\b(?:secret_[A-Za-z0-9]{43}|ntn_[A-Za-z0-9]{36,})\b",
+            |_| Some(full("api_key")),
+        ),
+        rule(
+            "api_key",
+            true,
+            r"\b((?:account|sharedaccess)key\s*=)[A-Za-z0-9+/=]{20,}",
+            |c| Some(format!("{}{}", g(c, 1), full("api_key"))),
+        ),
+        rule(
             "aws_access_key",
-            r#"(?i)(aws_secret_access_key\s*[=:]\s*['"]?)[A-Za-z0-9/+=]{40}"#,
-            |c| Some(format!("{}{}", &c[1], full("aws_access_key"))),
+            false,
+            r"\b(?:AKIA|ASIA)[0-9A-Z]{16}\b",
+            |_| Some(full("aws_access_key")),
+        ),
+        rule(
+            "aws_access_key",
+            true,
+            r"(aws_secret_access_key\s*[=:]\s*['\x22]?)[A-Za-z0-9/+=]{40}",
+            |c| Some(format!("{}{}", g(c, 1), full("aws_access_key"))),
+        ),
+        rule(
+            "webhook",
+            true,
+            r"https://hooks\.slack\.com/services/[A-Za-z0-9/]{20,}|https://(?:discord(?:app)?\.com)/api/webhooks/[0-9]+/[A-Za-z0-9_\-]+|https://[a-z0-9.\-]*webhook\.office\.com/[^\s'\x22<>]+",
+            |_| Some(full("webhook")),
         ),
         rule(
             "jwt",
+            false,
             r"\beyJ[A-Za-z0-9_\-]{8,}\.[A-Za-z0-9_\-]{8,}\.[A-Za-z0-9_\-]{8,}",
             |_| Some(full("jwt")),
         ),
         rule(
             "token",
-            r"(?i)\b(bearer\s+)[A-Za-z0-9\-._~+/]{16,}=*",
-            |c| Some(format!("{}{}", &c[1], full("token"))),
+            true,
+            r"\b(bearer\s+)[A-Za-z0-9\-._~+/]{16,}=*",
+            |c| Some(format!("{}{}", g(c, 1), full("token"))),
+        ),
+        rule(
+            "auth_header",
+            true,
+            r"\b((?:proxy-)?authorization['\x22]?[ \t]*[:=][ \t]*['\x22]?)((?:[A-Za-z][A-Za-z0-9_\-]*[ \t]+)?)([^\s'\x22,;<>]{6,})",
+            authorization,
+        ),
+        rule(
+            "auth_header",
+            true,
+            r"\b((?:x-api-key|x-auth-token|x-access-token|x-amz-security-token|x-csrf-token|x-xsrf-token|x-goog-api-key|x-gitlab-token|x-github-token|private-token|api-key|apikey)['\x22]?[ \t]*[:=][ \t]*['\x22]?)([^\s'\x22,;<>]{4,})",
+            keep_prefix("auth_header", 2),
+        ),
+        rule(
+            "cookie",
+            true,
+            r"\b((?:set-)?cookie['\x22]?[ \t]*:[ \t]*['\x22]?)([^\r\n'\x22<>]{6,})",
+            |c| Some(format!("{}{}", g(c, 1), full("cookie"))),
         ),
         rule(
             "connection_string",
-            r"(?i)\b([a-z][a-z0-9+.\-]*://)[^:/\s@<>]+:[^@\s/<>]+@",
-            |c| Some(format!("{}{}@", &c[1], full("connection_string"))),
+            true,
+            r"\b([a-z][a-z0-9+.\-]{0,30}://)[^:/\s@<>]+:[^@\s/<>]+@",
+            |c| Some(format!("{}{}@", g(c, 1), full("connection_string"))),
+        ),
+        rule(
+            "connection_string",
+            true,
+            r"\b([a-z][a-z0-9+.\-]{0,30}://)[A-Za-z0-9_\-.~%]{20,}@",
+            |c| Some(format!("{}{}@", g(c, 1), full("connection_string"))),
+        ),
+        rule(
+            "url_secret",
+            true,
+            r"([?&;](?:access_token|refresh_token|id_token|token|api[_-]?key|apikey|secret|client_secret|password|passwd|pwd|sig|signature|x-amz-signature|x-amz-security-token|x-amz-credential|private_token|sessionid|jwt)=)([^&\s'\x22<>#]{4,})",
+            keep_prefix("url_secret", 2),
         ),
         rule(
             "password_assignment",
-            r#"(?i)\b(password|passwd|pwd|secret|api[_-]?key|access[_-]?token|auth[_-]?token|client[_-]?secret)(\s*[=:]\s*)(['"]?)[^\s'",;<>]{4,}"#,
-            |c| Some(format!("{}{}{}{}", &c[1], &c[2], &c[3], full("secret"))),
+            true,
+            r"\b([\w.\-]{0,64}(?:password|passwd|pwd|passphrase|secret|api[_-]?key|apikey|access[_-]?key|private[_-]?key|signing[_-]?key|encryption[_-]?key|access[_-]?token|auth[_-]?token)[\w.\-]{0,64}['\x22]?[ \t]*[=:][ \t]*)(['\x22]?)([^\s'\x22,;<>]{4,})",
+            assignment,
+        ),
+        rule(
+            "password_assignment",
+            true,
+            r"\b([\w.\-]{0,64}(?:token|credentials?|session[_-]?id|sessionid|csrf|xsrf)[\w.\-]{0,64}['\x22]?[ \t]*[=:][ \t]*)(['\x22]?)([^\s'\x22,;<>]{12,})",
+            assignment,
+        ),
+        rule(
+            "password_assignment",
+            true,
+            r"((?:^|\s)--?(?:password|passwd|pwd|pass|passphrase|secret|token|api[_-]?key|access[_-]?key|auth[_-]?token|client[_-]?secret|private[_-]?key)(?:=|[ \t]+))(['\x22]?)([^\s'\x22<>\-][^\s'\x22<>]{2,})",
+            assignment,
         ),
         rule(
             "email",
-            r"\b[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}\b",
+            false,
+            r"\b[A-Za-z0-9._%+\-]{1,64}@[A-Za-z0-9.\-]{1,255}\.[A-Za-z]{2,}\b",
             |c| {
-                // `git@github.com:org/repo` is an address form, not personal data.
                 if c[0].starts_with("git@") {
                     None
                 } else {
@@ -96,29 +351,41 @@ static RULES: LazyLock<Vec<Rule>> = LazyLock::new(|| {
                 }
             },
         ),
-        rule("ip", r"\b(?:\d{1,3}\.){3}\d{1,3}\b", |c| {
-            let ip = &c[0];
-            let valid = ip
-                .split('.')
-                .all(|octet| octet.parse::<u16>().is_ok_and(|n| n <= 255));
-            let harmless = matches!(ip, "127.0.0.1" | "0.0.0.0" | "255.255.255.255");
-            if valid && !harmless {
-                Some(full("ip"))
-            } else {
-                None
-            }
-        }),
+        rule("ip", false, r"\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b", ip),
+        rule(
+            "ipv6",
+            false,
+            r"\b(?:[0-9A-Fa-f]{1,4}:){7}[0-9A-Fa-f]{1,4}\b|\b(?:[0-9A-Fa-f]{1,4}:){1,5}:(?:[0-9A-Fa-f]{1,4}:){0,4}[0-9A-Fa-f]{1,4}\b",
+            |_| Some(full("ipv6")),
+        ),
+        rule(
+            "mac",
+            false,
+            r"\b(?:[0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}\b",
+            |_| Some(full("mac")),
+        ),
+        rule(
+            "hostname",
+            true,
+            r"(://|@)(?:[A-Za-z0-9\-]{1,63}\.){1,10}(?:internal|corp|intranet|lan|localdomain|home\.arpa|local)\b",
+            |c| Some(format!("{}{}", g(c, 1), full("hostname"))),
+        ),
         rule(
             "phone",
-            r"\+\d{1,3}[\s.\-]?\(?\d{2,4}\)?[\s.\-]?\d{3,4}[\s.\-]?\d{3,4}\b",
+            false,
+            r"\+[0-9]{1,3}[\s.\-]?\(?[0-9]{2,4}\)?[\s.\-]?[0-9]{3,4}[\s.\-]?[0-9]{3,4}\b",
             |_| Some(full("phone")),
         ),
-        rule("home_path", r#"(/home/|/Users/)[^/\s'"<>]+"#, |c| {
-            Some(format!("{}<user>", &c[1]))
+        rule("card", false, r"\b[3-6](?:[ \-]?[0-9]){12,18}\b", card),
+        rule("home_path", false, r"(/home/|/Users/)[^/\s'\x22<>]+", |c| {
+            Some(format!("{}<user>", g(c, 1)))
         }),
-        rule("home_path", r#"(?i)([a-z]:\\Users\\)[^\\\s'"<>]+"#, |c| {
-            Some(format!("{}<user>", &c[1]))
-        }),
+        rule(
+            "home_path",
+            true,
+            r"([a-z]:\\Users\\)[^\\\s'\x22<>]+",
+            |c| Some(format!("{}<user>", g(c, 1))),
+        ),
     ]
 });
 
@@ -185,7 +452,7 @@ mod tests {
         let (out, _) = r("postgres://admin:hunter2@db.internal:5432/app");
         assert_eq!(
             out,
-            "postgres://<redacted:connection_string>@db.internal:5432/app"
+            "postgres://<redacted:connection_string>@<redacted:hostname>:5432/app"
         );
 
         let (out, _) = r("password=SuperSecret123 next");
@@ -231,5 +498,32 @@ mod tests {
         redact_value(&mut v, &mut Report::new());
         assert_eq!(v, once);
         assert_eq!(v["a"][1]["b"], "ok");
+    }
+
+    #[test]
+    fn matches_every_normative_vector() {
+        #[derive(serde::Deserialize)]
+        struct Vector {
+            input: String,
+            output: String,
+            kinds: BTreeMap<String, usize>,
+        }
+        let vectors: Vec<Vector> =
+            serde_json::from_str(include_str!("../../protocol/redact.v1.vectors.json")).unwrap();
+        assert!(vectors.len() >= 100);
+        for v in vectors {
+            let mut report = Report::new();
+            let out = redact_str(&v.input, &mut report);
+            assert_eq!(out, v.output, "output for {:?}", v.input);
+            let kinds: BTreeMap<String, usize> =
+                report.iter().map(|(k, n)| (k.to_string(), *n)).collect();
+            assert_eq!(kinds, v.kinds, "kinds for {:?}", v.input);
+            assert_eq!(
+                redact_str(&out, &mut Report::new()),
+                out,
+                "idempotent for {:?}",
+                v.input
+            );
+        }
     }
 }
