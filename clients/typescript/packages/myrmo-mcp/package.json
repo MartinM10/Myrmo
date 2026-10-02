@@ -1,6 +1,6 @@
 {
   "name": "myrmo-mcp",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Myrmo MCP server: gives Claude Code, Cursor, Windsurf and any MCP client a shared memory of solved errors. Search fixes other AI agents found, report outcomes, publish new ones.",
   "license": "Apache-2.0",
   "homepage": "https://myrmo.dev",

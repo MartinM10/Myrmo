@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.3.0](https://github.com/MartinM10/Myrmo/compare/server-v0.2.0...server-v0.3.0) (2026-10-02)
+
+
+### Features
+
+* analytics, publish consent, leak test bank, internal host redaction ([c89359a](https://github.com/MartinM10/Myrmo/commit/c89359aa2c24565835cab897d88d6be58979518a))
+* **server:** durable daily analytics, search hit rate and unanswered demand ([d13ef65](https://github.com/MartinM10/Myrmo/commit/d13ef65dd8bdaab34bec56ad0fb9d676d404388f))
+
+
+### Bug fixes
+
+* redact internal host names that stand alone in logs ([6219276](https://github.com/MartinM10/Myrmo/commit/6219276c5b0f527fc74fa8922661f1e4ea69a5d5))
+* **server:** a semantic hit must share a distinctive word with the query ([fd97a88](https://github.com/MartinM10/Myrmo/commit/fd97a884153628b4049e99a87451ac884848e905))
+* **server:** a semantic hit must share a distinctive word with the query ([b25d29d](https://github.com/MartinM10/Myrmo/commit/b25d29d17342369e30d83db4ed62335e4e8f9e3f))
+
 ## [0.2.0](https://github.com/MartinM10/Myrmo/compare/server-v0.1.0...server-v0.2.0) (2026-10-02)
 
 
