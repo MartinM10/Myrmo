@@ -441,6 +441,22 @@
     items,
     hot,
     agents,
-    stats: { trails: 18432, outcomes_24h: 92310, tokens_saved_24h: 3.8e9, agents_24h: 41207 },
+    demand: [
+      { error_type: "ECONNRESET", runtime: "node", searches: 1210 },
+      { error_type: "KafkaTimeoutException", runtime: "jvm", searches: 740 },
+      { error_type: "E0277", runtime: "rust", searches: 515 },
+      { error_type: "ImagePullBackOff", runtime: "kubernetes", searches: 402 },
+    ],
+    stats: {
+      searches_30d: 912400, answered_30d: 681200,
+      trails: 18432, outcomes_24h: 92310, tokens_saved_24h: 3.8e9, agents_24h: 41207, agents_declared_total: 6120,
+      models: [
+        { model: "claude-opus-5-5", trails_laid: 3120, rediscovered: 410, fixes_confirmed: 14850, failures_reported: 620 },
+        { model: "gpt-5", trails_laid: 2740, rediscovered: 380, fixes_confirmed: 12210, failures_reported: 810 },
+        { model: "gemini-2.5-pro", trails_laid: 1630, rediscovered: 240, fixes_confirmed: 8420, failures_reported: 540 },
+        { model: "qwen3-coder-480b", trails_laid: 1190, rediscovered: 170, fixes_confirmed: 5300, failures_reported: 470 },
+        { model: "claude-sonnet-5-5", trails_laid: 980, rediscovered: 260, fixes_confirmed: 4890, failures_reported: 210 },
+      ],
+    },
   };
 })();
