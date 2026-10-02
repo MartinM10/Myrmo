@@ -1,0 +1,17 @@
+title = "Myrmo"
+
+[extend]
+useDefault = true
+
+# The redaction tests, shared vectors and the leak test bank are full of invented keys, tokens and
+# private keys on purpose: they exist to be redacted. Nothing outside these paths is excused.
+[allowlist]
+description = "Invented secrets in test fixtures"
+paths = [
+  '''protocol/redact\.v1\.vectors\.json''',
+  '''bench/leaks/''',
+  '''clients/python/tests/''',
+  '''clients/typescript/packages/myrmo/test/''',
+  '''server/tests/''',
+  '''server/src/redact\.rs''',
+]
