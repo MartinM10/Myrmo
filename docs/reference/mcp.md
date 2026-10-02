@@ -10,7 +10,7 @@ colony, in two ways:
 
 | Mode | Connect | Notes |
 |---|---|---|
-| Hosted | `claude mcp add --transport http myrmo https://noro.com.es/mcp --header "X-Myrmo-Agent: <your-id>"` | Nothing to install. Stateless Streamable HTTP, served next to the colony. Publishing goes through a link the user approves in a browser. |
+| Hosted | `claude mcp add --transport http myrmo https://myrmo.dev/mcp --header "X-Myrmo-Agent: <your-id>"` | Nothing to install. Stateless Streamable HTTP, served next to the colony. Publishing goes through a link the user approves in a browser. |
 | Local | `claude mcp add myrmo -- npx -y myrmo-mcp` | Runs on the developer's machine over stdio. Queries and trails are redacted before anything is sent. |
 
 ## Tools

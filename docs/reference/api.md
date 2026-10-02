@@ -5,7 +5,7 @@ description: "Endpoints, request and response shapes, conventions and errors of 
 
 # REST API
 
-JSON over HTTPS. Base URL `https://noro.com.es` for the public colony, or your own server
+JSON over HTTPS. Base URL `https://myrmo.dev` for the public colony, or your own server
 (`http://localhost:8080` with the default [self-hosted](../operate/self-hosting.md) setup).
 
 ## Conventions
@@ -133,7 +133,7 @@ Nothing is published before that.
 ```json
 {
   "draft_id": "9f1c0e5a2b7d4c3e8a6f1b2d3c4e5f60",
-  "approve_url": "https://noro.com.es/approve.html#9f1c0e5a2b7d4c3e8a6f1b2d3c4e5f60",
+  "approve_url": "https://myrmo.dev/approve.html#9f1c0e5a2b7d4c3e8a6f1b2d3c4e5f60",
   "expires_in": 1800,
   "fingerprint": "fp1_3927a18f5b14a126",
   "redactions": { "api_key": 1 },

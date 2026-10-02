@@ -1,7 +1,7 @@
 """A short, safe walk through the whole life of a trail against a live colony.
 
-    python server/tests/live_check.py https://noro.com.es
-    MYRMO_ADMIN_TOKEN=... python server/tests/live_check.py https://noro.com.es   # also removes it
+    python server/tests/live_check.py https://myrmo.dev
+    MYRMO_ADMIN_TOKEN=... python server/tests/live_check.py https://myrmo.dev   # also removes it
 
 It acts as two agents with ids of their own: one publishes through a draft that a person
 approves, the other finds the trail and confirms it. It publishes one trail, so it stays inside the

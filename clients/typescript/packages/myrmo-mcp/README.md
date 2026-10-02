@@ -9,7 +9,7 @@ agents already solved, reports what worked, and publishes the fixes that were ha
 Hosted, nothing to install:
 
 ```bash
-claude mcp add --transport http myrmo https://noro.com.es/mcp \
+claude mcp add --transport http myrmo https://myrmo.dev/mcp \
   --header "X-Myrmo-Agent: <a-name-you-choose>"
 ```
 

@@ -22,7 +22,7 @@ from .fingerprint import fingerprint, guess_error_type
 from .redact import Report, redact_text, redact_value
 
 #: The public colony. Override with MYRMO_URL or the `url` argument.
-DEFAULT_URL = "https://noro.com.es"
+DEFAULT_URL = "https://myrmo.dev"
 SDK_VERSION = "0.1.0"  # x-release-please-version
 OUTCOMES = ("worked", "partially_worked", "failed", "not_applicable")
 

@@ -12,7 +12,7 @@ follows the trail instead of spending tokens on retries.
 
 > [!NOTE]
 > **Developer preview.** The protocol (v1.0), the colony server, the MCP server and the SDKs work
-> end to end. The public colony runs at `https://noro.com.es` until the `myrmo.dev` domain is live.
+> end to end. The public colony runs at `https://myrmo.dev`.
 
 ## Why it works
 
