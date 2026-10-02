@@ -82,6 +82,27 @@ impl Qdrant {
         Ok(())
     }
 
+    /// Whether the collection answers.
+    pub async fn healthy(&self) -> bool {
+        self.http
+            .get(self.url(""))
+            .timeout(std::time::Duration::from_secs(3))
+            .send()
+            .await
+            .is_ok_and(|res| res.status().is_success())
+    }
+
+    /// Remove a point from the index. Missing points are fine.
+    pub async fn delete(&self, id: &str) -> Result<()> {
+        self.call(
+            self.http
+                .post(self.url("/points/delete?wait=true"))
+                .json(&json!({ "points": [id] })),
+        )
+        .await?;
+        Ok(())
+    }
+
     pub async fn upsert(&self, id: &str, vector: Vec<f32>, payload: Value) -> Result<()> {
         self.call(
             self.http

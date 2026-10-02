@@ -7,6 +7,7 @@ use serde_json::json;
 #[derive(Clone)]
 pub struct Embedder {
     http: reqwest::Client,
+    base: String,
     url: String,
 }
 
@@ -14,8 +15,19 @@ impl Embedder {
     pub fn new(http: reqwest::Client, url: &str) -> Self {
         Self {
             http,
+            base: url.to_string(),
             url: format!("{url}/embed"),
         }
+    }
+
+    /// Whether the embedding service answers its health check.
+    pub async fn healthy(&self) -> bool {
+        self.http
+            .get(format!("{}/health", self.base))
+            .timeout(std::time::Duration::from_secs(3))
+            .send()
+            .await
+            .is_ok_and(|res| res.status().is_success())
     }
 
     pub async fn embed(&self, text: &str) -> Result<Vec<f32>> {

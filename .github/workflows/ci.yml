@@ -115,6 +115,7 @@ jobs:
     env:
       # Heuristic judgements only: the decision model is a 1.7 GB download.
       MYRMO_DECISION_URL: ""
+      MYRMO_ADMIN_TOKEN: ci-operator-token-0123456789
     steps:
       - uses: actions/checkout@v4
       - name: Start a colony
