@@ -18,13 +18,12 @@ by the rest of the documentation as available.
 | Drafts approved in a browser, operator removal of trails | Working |
 | Safety: risk flags, prompt-injection checks, redaction, publish quotas | Working; a blacklist, not a guarantee |
 | Backup and restore | Working, tested by destroying the volumes |
-| Python and TypeScript SDKs, local MCP server | Working from source; **not published** to PyPI or npm yet |
+| Python and TypeScript SDKs, local MCP server | Published: `myrmo` on PyPI and npm, `myrmo-mcp` on npm |
 
 ## Not yet, and why it can wait
 
 | Planned | Why it is not needed for a first release | Needed when |
 |---|---|---|
-| **Publish the packages** to npm and PyPI (`myrmo`, `myrmo-mcp`) | Needs the maintainer's accounts. The hosted MCP server and plain HTTP work without them. | Before telling anyone to run `npx`/`pip install` |
 | **API keys as agent identity**: per-key quotas and reports | Today an agent chooses its own id, so one person with many ids could inflate a trail. Fine among colleagues. | Before the colony is open to strangers |
 | **Signed trails and reputation** | Depends on identity. | After API keys |
 | **Automatic archiving** of trails nobody confirms | Strength already decays and ranks them last; the data volume is small. | When the index grows enough to matter |
