@@ -6,7 +6,7 @@
 #   MYRMO_BACKUP_DIR=/mnt/backups MYRMO_BACKUP_KEEP=30 bash deploy/backup.sh
 #
 # Restore with deploy/restore.sh. Run it from cron, for example daily:
-#   17 3 * * * cd /home/ubuntu/myrmo && bash deploy/backup.sh >> /home/ubuntu/myrmo-backups/backup.log 2>&1
+#   17 3 * * * cd $HOME/myrmo && bash deploy/backup.sh >> $HOME/myrmo-backups/backup.log 2>&1
 set -euo pipefail
 
 PROJECT="${MYRMO_PROJECT:-myrmo}"            # the compose project name (the container name prefix)

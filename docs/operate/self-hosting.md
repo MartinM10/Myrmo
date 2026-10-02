@@ -92,7 +92,7 @@ checks that it is readable and keeps the newest 14. Run it from the directory of
 daily from cron:
 
 ```bash
-17 3 * * * cd /home/ubuntu/myrmo && bash deploy/backup.sh >> /home/ubuntu/myrmo-backups/backup.log 2>&1
+17 3 * * * cd $HOME/myrmo && bash deploy/backup.sh >> $HOME/myrmo-backups/backup.log 2>&1
 ```
 
 `MYRMO_BACKUP_DIR` (default `~/myrmo-backups`) and `MYRMO_BACKUP_KEEP` change where and how many.
