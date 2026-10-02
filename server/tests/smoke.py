@@ -257,6 +257,17 @@ def main() -> None:
     check(status == 400, "an invalid draft is refused up front")
 
     print("operator")
+    status, _, _ = call("GET", "/v1/analytics")
+    check(status in (401, 501), f"daily analytics need an operator token (got {status})")
+    status, body, _ = call("GET", "/v1/demand")
+    check(status == 200 and len(body["unanswered"]) <= 8, "the public demand list is capped at 8")
+    if ADMIN:
+        status, body, _ = call("GET", "/v1/analytics?days=1", token=ADMIN)
+        check(status == 200 and "days" in body, f"an operator reads the daily analytics (got {status})")
+        status, body, _ = call("GET", "/v1/demand?days=30", token=ADMIN)
+        check(status == 200 and body["days"] == 30, "an operator can ask for a longer demand window")
+        status, _, _ = call("GET", "/v1/analytics", token="x" * 20)
+        check(status == 401, "a wrong operator token cannot read analytics")
     status, body, _ = call("DELETE", f"/v1/trails/{first['trail_id']}")
     check(status in (401, 501), f"removing a trail needs an operator token (got {status})")
     if ADMIN:

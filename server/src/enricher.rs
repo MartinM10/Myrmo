@@ -370,6 +370,18 @@ async fn enrich(st: &AppState, id: &str, mut trail: Value) -> Result<()> {
                     .ignore();
             }
             let _: () = pipe.query_async(&mut con).await?;
+            if counted {
+                crate::analytics::record(
+                    &mut con,
+                    now,
+                    &[(
+                        "rediscovered",
+                        crate::analytics::clean_label(&agent_info["model"]),
+                        1,
+                    )],
+                )
+                .await;
+            }
             tracing::info!(trail = %id, into = %existing_id, counted, "trail merged");
             return Ok(());
         }
@@ -472,6 +484,25 @@ async fn enrich(st: &AppState, id: &str, mut trail: Value) -> Result<()> {
         .ignore()
         .query_async(&mut con)
         .await?;
+    crate::analytics::record(
+        &mut con,
+        now,
+        &[
+            ("trails", None, 1),
+            ("failed_attempts", None, failed_attempts),
+            (
+                "laid",
+                crate::analytics::clean_label(&agent_info["model"]),
+                1,
+            ),
+            (
+                "fw_laid",
+                crate::analytics::clean_label(&agent_info["framework"]),
+                1,
+            ),
+        ],
+    )
+    .await;
     tracing::info!(trail = %id, category = %judgement.category, quality = judgement.quality, engine = judgement.engine, "trail indexed");
     Ok(())
 }
