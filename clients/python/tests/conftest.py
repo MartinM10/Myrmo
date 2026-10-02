@@ -47,6 +47,8 @@ class FakeColony:
 
     def __init__(self):
         self.requests = []
+        #: Verdicts the colony gives for the published trail, one per poll (the last repeats).
+        self.verdicts = [{"status": "queued"}, {"status": "indexed"}]
 
     def __call__(self, request: httpx.Request) -> httpx.Response:
         body = json.loads(request.content) if request.content else None
@@ -62,6 +64,15 @@ class FakeColony:
             return httpx.Response(202, json={"trail_id": TRAIL_ID, "counted": True, "strength": 0.91})
         if path == "/v1/trails":
             return httpx.Response(202, json={"trail_id": "c71e0f4a-2b9d-4e63-a8f5-0d3b7c1e9a26", "fingerprint": KNOWN_FP, "status": "queued", "redactions": {}})
+        if request.method == "POST" and path == "/v1/drafts":
+            return httpx.Response(201, json={"draft_id": "a" * 32, "approve_url": "http://colony/approve.html#" + "a" * 32, "expires_in": 1800, "fingerprint": KNOWN_FP, "redactions": {"api_key": 1}, "risk": {"level": "low", "flags": []}})
+        if request.method == "GET" and path == "/v1/drafts/" + "a" * 32:
+            return httpx.Response(200, json={"draft_id": "a" * 32, "state": "pending", "expires_in": 600})
+        if request.method == "GET" and path.startswith("/v1/drafts/"):
+            return httpx.Response(404, json={"error": {"code": "not_found", "message": "gone"}})
+        if request.method == "GET" and path == "/v1/trails/c71e0f4a-2b9d-4e63-a8f5-0d3b7c1e9a26":
+            verdict = self.verdicts.pop(0) if len(self.verdicts) > 1 else self.verdicts[0]
+            return httpx.Response(200, json={"trail_id": "c71e0f4a-2b9d-4e63-a8f5-0d3b7c1e9a26", **verdict})
         if path == "/v1/trails/bad":
             return httpx.Response(400, json={"error": {"code": "invalid_trail", "message": "bad", "details": [{"path": "/x"}]}})
         return httpx.Response(404, json={"error": {"code": "not_found", "message": path}})

@@ -8,6 +8,7 @@ Lookup order, cheapest first:
 
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 import time
@@ -74,6 +75,14 @@ def _hits(results: Sequence[Dict[str, Any]]) -> List[Hit]:
 def _env(key: str) -> Optional[str]:
     value = os.environ.get(key, "").strip()
     return value or None
+
+
+def _draft_result(data: Dict[str, Any], redactions: Dict[str, int]) -> Dict[str, Any]:
+    """`draft_id`, `approve_url` (give it to the user), `expires_in`, `fingerprint`, `redactions`, `risk`."""
+    merged = dict(redactions)
+    for kind, n in (data.get("redactions") or {}).items():
+        merged[kind] = merged.get(kind, 0) + n
+    return {**data, "redactions": merged}
 
 
 class _Base:
@@ -246,10 +255,34 @@ class Colony(_Base):
         data["redactions"] = report
         return data
 
+    def create_draft(self, trail: Dict[str, Any]) -> Dict[str, Any]:
+        """Ask the colony to hold a trail until a person approves it in a browser.
+
+        For clients that cannot ask their user: nothing is published until the user opens
+        `approve_url` and chooses. Redacts locally first."""
+        redacted, report = self.preview(trail)
+        return _draft_result(self._check(self._http.post("/v1/drafts", json=redacted)), report)
+
+    def draft(self, draft_id: str) -> Optional[Dict[str, Any]]:
+        """State of a draft (`pending`, `published` or `discarded`), or None when it expired."""
+        res = self._http.get(f"/v1/drafts/{draft_id}")
+        data = self._check(res)
+        return None if res.status_code == 404 else data
+
     def trail(self, trail_id: str) -> Optional[Dict[str, Any]]:
         res = self._http.get(f"/v1/trails/{trail_id}")
         data = self._check(res)
         return None if res.status_code == 404 else data
+
+    def wait_for_trail(self, trail_id: str, timeout: float = 30.0, interval: float = 1.5) -> Optional[Dict[str, Any]]:
+        """Publishing returns while the colony still checks the trail. Wait for its verdict
+        (`indexed`, `merged` or `rejected` with `reasons`); returns the last state seen."""
+        deadline = time.monotonic() + timeout
+        while True:
+            trail = self.trail(trail_id)
+            if trail is None or trail.get("status") != "queued" or time.monotonic() >= deadline:
+                return trail
+            time.sleep(interval)
 
     def session(self, task: str, **kwargs) -> "Session":
         """Start a session for one task. See `myrmo.Session`."""
@@ -316,3 +349,25 @@ class AsyncColony(_Base):
             report[kind] = report.get(kind, 0) + n
         data["redactions"] = report
         return data
+
+    async def create_draft(self, trail: Dict[str, Any]) -> Dict[str, Any]:
+        redacted, report = self.preview(trail)
+        return _draft_result(self._check(await self._http.post("/v1/drafts", json=redacted)), report)
+
+    async def draft(self, draft_id: str) -> Optional[Dict[str, Any]]:
+        res = await self._http.get(f"/v1/drafts/{draft_id}")
+        data = self._check(res)
+        return None if res.status_code == 404 else data
+
+    async def trail(self, trail_id: str) -> Optional[Dict[str, Any]]:
+        res = await self._http.get(f"/v1/trails/{trail_id}")
+        data = self._check(res)
+        return None if res.status_code == 404 else data
+
+    async def wait_for_trail(self, trail_id: str, timeout: float = 30.0, interval: float = 1.5) -> Optional[Dict[str, Any]]:
+        deadline = time.monotonic() + timeout
+        while True:
+            trail = await self.trail(trail_id)
+            if trail is None or trail.get("status") != "queued" or time.monotonic() >= deadline:
+                return trail
+            await asyncio.sleep(interval)
