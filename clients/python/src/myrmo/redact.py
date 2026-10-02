@@ -145,6 +145,12 @@ _RULES: List[Tuple[str, re.Pattern, Replacer]] = [
         ("ipv6", r"\b(?:[0-9A-Fa-f]{1,4}:){7}[0-9A-Fa-f]{1,4}\b|\b(?:[0-9A-Fa-f]{1,4}:){1,5}:(?:[0-9A-Fa-f]{1,4}:){0,4}[0-9A-Fa-f]{1,4}\b", 0, lambda m: _full("ipv6")),
         ("mac", r"\b(?:[0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}\b", 0, lambda m: _full("mac")),
         ("hostname", r"(://|@)(?:[A-Za-z0-9\-]{1,63}\.){1,10}(?:internal|corp|intranet|lan|localdomain|home\.arpa|local)\b", re.I, lambda m: m.group(1) + _full("hostname")),
+        # An internal host name on its own, for example in a DNS error. It must end the name: `jdk.internal.misc`
+        # and `com.acme.corp.Service` are Java packages, not hosts. `.local` is left out: it is also a file
+        # suffix (`.env.local`), so it is only redacted inside URLs. The rule is listed twice because a match
+        # consumes the character after it, which would hide a second host separated by a single space.
+        ("hostname", r"(^|[^A-Za-z0-9.\-_])(?:[A-Za-z0-9\-]{1,63}\.){1,10}(?:internal|corp|intranet|lan|localdomain|home\.arpa)($|[^A-Za-z0-9.\-_]|\.\s)", re.I, lambda m: m.group(1) + _full("hostname") + m.group(2)),
+        ("hostname", r"(^|[^A-Za-z0-9.\-_])(?:[A-Za-z0-9\-]{1,63}\.){1,10}(?:internal|corp|intranet|lan|localdomain|home\.arpa)($|[^A-Za-z0-9.\-_]|\.\s)", re.I, lambda m: m.group(1) + _full("hostname") + m.group(2)),
         ("phone", r"\+[0-9]{1,3}[\s.\-]?\(?[0-9]{2,4}\)?[\s.\-]?[0-9]{3,4}[\s.\-]?[0-9]{3,4}\b", 0, lambda m: _full("phone")),
         ("card", r"\b[3-6](?:[ \-]?[0-9]){12,18}\b", 0, _card),
         ("home_path", r"(/home/|/Users/)[^/\s'\x22<>]+", 0, lambda m: m.group(1) + "<user>"),
