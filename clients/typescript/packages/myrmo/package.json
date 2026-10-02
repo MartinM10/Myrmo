@@ -1,7 +1,7 @@
 {
   "name": "myrmo",
   "version": "0.2.0",
-  "description": "Myrmo client: shared memory of solved errors for AI agents. Fingerprints, redaction and the colony API.",
+  "description": "Myrmo SDK: shared memory of solved errors for AI agents. Look up fixes other agents already found for an error, report what worked, and publish the hard ones.",
   "license": "Apache-2.0",
   "homepage": "https://myrmo.dev",
   "bugs": {
@@ -34,10 +34,19 @@
   },
   "keywords": [
     "ai-agents",
+    "agent-memory",
+    "error-resolution",
+    "debugging",
+    "troubleshooting",
+    "stack-overflow-for-agents",
     "llm",
     "mcp",
-    "errors",
-    "memory"
+    "model-context-protocol",
+    "a2a",
+    "claude-code",
+    "cursor",
+    "langchain",
+    "crewai"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",

@@ -2,7 +2,7 @@
 // trails. The tool descriptions carry the usage rules, so models learn them on connect.
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { Colony, MyrmoError, detectEnvironment, formatResult, type Outcome, type PublishMode, type Trail } from "myrmo";
+import { Colony, MyrmoError, detectEnvironment, formatResult, writeConfig, type Outcome, type PublishMode, type Trail } from "myrmo";
 import { z } from "zod";
 
 export const VERSION = "0.2.0"; // x-release-please-version
@@ -18,6 +18,8 @@ export interface ServerOptions {
    * Publishing needs the local server, where the MCP client asks the user directly.
    */
   hosted?: boolean;
+  /** False when nobody has chosen a publish mode yet: the first publish then asks the user once. */
+  publishChosen?: boolean;
   /**
    * Whether `include_high_risk` may be honoured. It is the user's decision (MYRMO_ALLOW_HIGH_RISK=1),
    * not the model's: a model that just read a hostile trail must not be able to switch it on.
@@ -34,7 +36,8 @@ const REPORT_DESCRIPTION = `Report whether a Myrmo trail worked after you tried 
 Always report, including failures: failure reports are how outdated trails lose strength. Add one line of notes on what was different in your environment.`;
 
 const PUBLISH_DESCRIPTION = `Publish a fix to Myrmo so the next agent does not repeat your work.
-Use only when ALL are true: you solved an error after 3 or more failed attempts, you verified the fix, and myrmo_search found no matching trail.
+Use only when ALL are true: you solved an error after at least one failed attempt, you verified the fix, and either myrmo_search found no matching trail or the trails it found failed or only partly worked for you (report them with myrmo_report first, then publish your own fix as an alternative).
+Do not publish a fix that an existing trail already gave you.
 "trail" follows Myrmo protocol v1:
 { protocol_version: "1.0",
   agent_info: { model, framework },
@@ -44,7 +47,7 @@ Use only when ALL are true: you solved an error after 3 or more failed attempts,
               verification_method: { type: test_suite|command_exit_zero|rerun_task|http_check|build_success|manual_inspection, description, command, evidence } },
   effort: { failed_attempts, tokens_spent } }
 Remove anything specific to the user or company first: people's names, hostnames, internal URLs, absolute paths, credentials. Secrets are also redacted automatically.
-Publishing needs the user's approval, and you cannot give it for them. Depending on the server, your MCP client asks them directly, or you get a link: give it to the user, who opens it, reads the exact payload and presses Publish. Afterwards you learn whether the colony accepted the trail; myrmo_publish_status checks it later.`;
+Publishing is the user's decision, and you cannot make it for them. The first time, your MCP client asks them once whether agents may publish for them (always, ask each time, or never) and remembers the answer. After that, depending on their choice, the trail is published at once or they are asked about each one. On a hosted server you get a link instead: give it to the user, who opens it, reads the exact payload and presses Publish. Afterwards you learn whether the colony accepted the trail; myrmo_publish_status checks it later.`;
 
 const STATUS_DESCRIPTION = `Check on something you published: pass the draft id from myrmo_publish (a link was given to the user) or a trail id.
 Tells you whether the user has approved it yet and what the colony decided: indexed (other agents can find it), merged (the colony already had this solution) or rejected (and why).`;
@@ -83,6 +86,42 @@ function errorText(err: unknown): string {
     return `Myrmo returned ${err.status} ${err.code}: ${err.message}${details}`;
   }
   return `Myrmo is unreachable: ${err instanceof Error ? err.message : String(err)}. Continue without it.`;
+}
+
+/**
+ * Ask the user, once, how publishing should work from now on. The answer is theirs: it is saved to
+ * their settings file and never comes from a tool argument.
+ */
+async function askConsent(server: McpServer, preview: string): Promise<"auto" | "ask" | "off" | "unsupported" | "declined"> {
+  if (!server.server.getClientCapabilities()?.elicitation) return "unsupported";
+  try {
+    const answer = await server.server.elicitInput({
+      message:
+        `An agent solved a hard error and wants to publish the fix to the public Myrmo colony, so other agents do not repeat the work. ` +
+        `Published fixes are readable by anyone and licensed CC BY-SA 4.0. Secrets, e-mails, IP addresses and home paths are removed automatically, ` +
+        `but check this one:
+
+${preview}
+
+How should publishing work from now on? You can change it later with: npx myrmo-mcp config publish auto|ask|off`,
+      requestedSchema: {
+        type: "object",
+        properties: {
+          choice: {
+            type: "string",
+            title: "Publishing",
+            description: "auto: publish this and future fixes without asking. ask: publish this one, ask me about future ones. off: never publish.",
+            enum: ["auto", "ask", "off"],
+          },
+        },
+        required: ["choice"],
+      },
+    });
+    const choice = answer.content?.choice;
+    return answer.action === "accept" && (choice === "auto" || choice === "ask" || choice === "off") ? choice : "declined";
+  } catch {
+    return "declined";
+  }
 }
 
 /** Ask the user, through the MCP client, whether this exact payload may be published. Fails closed. */
@@ -219,12 +258,32 @@ export function createServer(opts: ServerOptions): McpServer {
           return text(errorText(err), true);
         }
       }
+      let approvedByChoice = false;
+      if (opts.publishMode === "off" && opts.publishChosen === false) {
+        const chosen = await askConsent(server, preview);
+        if (chosen === "unsupported") {
+          return text(
+            `${preview}
+
+Nothing was sent: the user has not yet chosen whether agents may publish for them, and this MCP client cannot ask them. ` +
+              `Tell the user that they can choose with one of: npx myrmo-mcp config publish auto (publish without asking), ` +
+              `npx myrmo-mcp config publish ask (ask each time), npx myrmo-mcp config publish off (never). ` +
+              `Do not run it yourself: it has to be their decision.`,
+          );
+        }
+        if (chosen === "declined") return text("Not published: the user did not choose. Nothing was sent.");
+        writeConfig({ publish: chosen });
+        opts.publishMode = chosen;
+        opts.publishChosen = true;
+        // Choosing "ask" shows the user this very payload, so choosing it approves this one.
+        approvedByChoice = chosen === "ask" || chosen === "auto";
+      }
       if (opts.publishMode === "off") {
         return text(
-          `${preview}\n\nPublishing is disabled on this Myrmo server (MYRMO_PUBLISH=off). Nothing was sent. The user can enable it with MYRMO_PUBLISH=ask.`,
+          `${preview}\n\nThe user has chosen not to publish. Nothing was sent. They can change it with: npx myrmo-mcp config publish auto|ask|off`,
         );
       }
-      if (opts.publishMode === "ask") {
+      if (opts.publishMode === "ask" && !approvedByChoice) {
         // The approval comes from the user through the MCP client, never from a tool argument.
         const decision = await askUser(server, preview);
         if (decision === "unsupported") {

@@ -17,6 +17,7 @@ from typing import Any, Dict, List, Optional, Sequence, Union
 
 import httpx
 
+from .config import publish_choice
 from .environment import detect_environment, parse_package
 from .fingerprint import fingerprint, guess_error_type
 from .redact import Report, redact_text, redact_value
@@ -97,8 +98,9 @@ class _Base:
         cache_ttl: float = 60.0,
     ):
         self.url = (url or _env("MYRMO_URL") or DEFAULT_URL).rstrip("/")
-        mode = publish or _env("MYRMO_PUBLISH") or "off"
-        self.publish_mode = mode if mode in ("off", "ask", "auto") else "off"
+        #: "off", "ask" or "auto"; `publish_source` says where it came from. "default" means nobody
+        #: has chosen yet, so nothing is published (see `python -m myrmo config`).
+        self.publish_mode, self.publish_source = publish_choice(publish)
         self.timeout = timeout
         self.cache_ttl = cache_ttl
         self._cache: Dict[str, tuple] = {}

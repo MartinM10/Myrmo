@@ -109,6 +109,7 @@ export default defineConfig({
         text: "Reference",
         items: [
           { text: "REST API", link: "/reference/api" },
+          { text: "Configuration and defaults", link: "/reference/configuration" },
           { text: "MCP server", link: "/reference/mcp" },
           { text: "SDKs", link: "/reference/sdks" },
           { text: "Protocol", link: "/reference/protocol" },

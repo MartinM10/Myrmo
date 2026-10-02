@@ -4,6 +4,7 @@
 //!   myrmo-server enrich   enrichment worker (run as many as needed)
 //!   myrmo-server all      both in one process, for small deployments
 
+mod analytics;
 mod api;
 mod config;
 mod decision;

@@ -370,6 +370,22 @@ static RULES: LazyLock<Vec<Rule>> = LazyLock::new(|| {
             r"(://|@)(?:[A-Za-z0-9\-]{1,63}\.){1,10}(?:internal|corp|intranet|lan|localdomain|home\.arpa|local)\b",
             |c| Some(format!("{}{}", g(c, 1), full("hostname"))),
         ),
+        // An internal host name on its own, for example in a DNS error. It must end the name: `jdk.internal.misc`
+        // and `com.acme.corp.Service` are Java packages, not hosts. `.local` is left out: it is also a file
+        // suffix (`.env.local`), so it is only redacted inside URLs. The rule is listed twice because a match
+        // consumes the character after it, which would hide a second host separated by a single space.
+        rule(
+            "hostname",
+            true,
+            r"(^|[^A-Za-z0-9.\-_])(?:[A-Za-z0-9\-]{1,63}\.){1,10}(?:internal|corp|intranet|lan|localdomain|home\.arpa)($|[^A-Za-z0-9.\-_]|\.\s)",
+            |c| Some(format!("{}{}{}", g(c, 1), full("hostname"), g(c, 2))),
+        ),
+        rule(
+            "hostname",
+            true,
+            r"(^|[^A-Za-z0-9.\-_])(?:[A-Za-z0-9\-]{1,63}\.){1,10}(?:internal|corp|intranet|lan|localdomain|home\.arpa)($|[^A-Za-z0-9.\-_]|\.\s)",
+            |c| Some(format!("{}{}{}", g(c, 1), full("hostname"), g(c, 2))),
+        ),
         rule(
             "phone",
             false,

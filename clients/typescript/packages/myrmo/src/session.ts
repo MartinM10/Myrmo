@@ -14,7 +14,7 @@ export interface SessionOptions {
   runtimeVersion: string;
   packages?: (string | Package)[];
   agent?: { model: string; framework: string };
-  /** Failed attempts before a fix is worth publishing. Default: MYRMO_MIN_FAILED_ATTEMPTS or 3. */
+  /** Failed attempts before a fix is worth publishing. Default: MYRMO_MIN_FAILED_ATTEMPTS or 1. */
   minFailedAttempts?: number;
 }
 
@@ -39,6 +39,9 @@ export class Session {
   private readonly started = Date.now();
   private readonly failures: { approach: string; why: string; errorType: string; message: string; logs: string }[] = [];
   private matchedExisting = false;
+  /** Trails the agent followed that did not (fully) work: the fix that follows may be a better alternative. */
+  private readonly triedFailed: { id: string; outcome: string; notes: string }[] = [];
+  private solvedByTrail = false;
 
   constructor(
     private readonly colony: Colony,
@@ -68,14 +71,29 @@ export class Session {
   }
 
   /**
+   * Report what happened when the agent followed a trail. A trail that failed or only partly
+   * worked is what makes a different fix worth publishing as an alternative, even though the
+   * colony already had an answer for this error. A trail that worked means there is nothing new
+   * to publish.
+   */
+  async tried(trailId: string, outcome: "worked" | "partially_worked" | "failed" | "not_applicable", notes = "") {
+    const result = await this.colony.report(trailId, outcome, { notes, agentInfo: this.options.agent });
+    if (outcome === "worked") this.solvedByTrail = true;
+    if (outcome === "failed" || outcome === "partially_worked") this.triedFailed.push({ id: trailId, outcome, notes });
+    return result;
+  }
+
+  /**
    * The task succeeded. Returns the drafted trail when it is worth publishing, and publishes
    * it when the colony's publish mode is `auto`. In `ask` mode the caller shows the draft
    * (see `colony.preview`) and calls `colony.publish` after approval.
    */
   async succeeded(success: Success): Promise<{ draft: Trail | null; published?: PublishResult }> {
-    const min = this.options.minFailedAttempts ?? Number(process.env.MYRMO_MIN_FAILED_ATTEMPTS ?? 3);
+    const min = this.options.minFailedAttempts ?? Number(process.env.MYRMO_MIN_FAILED_ATTEMPTS ?? 1);
     const last = this.failures.at(-1);
-    if (!last || this.failures.length < min || this.matchedExisting || success.verification.type === "none") {
+    // Nothing new when an existing trail already solved it, or when one matched and was never tried.
+    const covered = this.solvedByTrail || (this.matchedExisting && this.triedFailed.length === 0);
+    if (!last || this.failures.length < min || covered || success.verification.type === "none") {
       return { draft: null };
     }
     const env = detectEnvironment();
@@ -95,7 +113,13 @@ export class Session {
         summary: (success.summary ?? `${this.options.task}: ${last.message}`).slice(0, 1000).padEnd(20, "."),
         task_context: this.options.task.slice(0, 1000),
         raw_logs: last.logs.slice(0, 16_000),
-        failed_approaches: this.failures.slice(0, -1).map((f) => ({ approach: f.approach.slice(0, 500), why_it_failed: f.why.slice(0, 500) })),
+        failed_approaches: [
+          ...this.failures.slice(0, -1).map((f) => ({ approach: f.approach.slice(0, 500), why_it_failed: f.why.slice(0, 500) })),
+          ...this.triedFailed.map((t) => ({
+            approach: `Followed Myrmo trail ${t.id}`,
+            why_it_failed: (t.notes || (t.outcome === "failed" ? "it did not work in this environment" : "it only partly worked")).slice(0, 500),
+          })),
+        ],
       },
       solution: {
         root_cause: success.rootCause,

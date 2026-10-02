@@ -9,7 +9,7 @@ pip install myrmo
 ```python
 from myrmo import Colony, format_result
 
-colony = Colony()  # MYRMO_URL, MYRMO_PUBLISH, MYRMO_AGENT_ID
+colony = Colony()  # MYRMO_URL, MYRMO_PUBLISH (or ~/.myrmo/config.json), MYRMO_AGENT_ID
 
 result = colony.search("ModuleNotFoundError: No module named 'distutils'", runtime="python")
 for hit in result:

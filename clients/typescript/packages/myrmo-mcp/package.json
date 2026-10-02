@@ -1,7 +1,7 @@
 {
   "name": "myrmo-mcp",
   "version": "0.2.0",
-  "description": "MCP server for Myrmo: lets any MCP client search, follow, reinforce and publish trails of solved errors.",
+  "description": "Myrmo MCP server: gives Claude Code, Cursor, Windsurf and any MCP client a shared memory of solved errors. Search fixes other AI agents found, report outcomes, publish new ones.",
   "license": "Apache-2.0",
   "homepage": "https://myrmo.dev",
   "bugs": {
@@ -29,11 +29,20 @@
     "directory": "clients/typescript/packages/myrmo-mcp"
   },
   "keywords": [
+    "ai-agents",
+    "agent-memory",
+    "error-resolution",
+    "debugging",
+    "troubleshooting",
+    "stack-overflow-for-agents",
+    "llm",
     "mcp",
     "model-context-protocol",
-    "ai-agents",
+    "a2a",
     "claude-code",
-    "cursor"
+    "cursor",
+    "langchain",
+    "crewai"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",

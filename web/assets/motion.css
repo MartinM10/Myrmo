@@ -1,0 +1,144 @@
+/*
+ * Motion layer, loaded after base.css. Everything here is additive and ends in the
+ * element's normal, visible state, so a page that never runs an animation still reads
+ * fine. Remove the <link> to this file to go back to the still design.
+ */
+
+/* ---------- Hero: a short staged entrance ---------- */
+@keyframes rise {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes draw-line {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+@keyframes drift {
+  0%   { transform: translate3d(-4%, -2%, 0) scale(1); opacity: 0.55; }
+  50%  { transform: translate3d(5%, 3%, 0) scale(1.15); opacity: 0.85; }
+  100% { transform: translate3d(-4%, -2%, 0) scale(1); opacity: 0.55; }
+}
+
+.hero-copy > * { animation: rise 0.8s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+.hero-copy > :nth-child(1) { animation-delay: 0.05s; }
+.hero-copy > :nth-child(2) { animation-delay: 0.15s; }
+.hero-copy > :nth-child(3) { animation-delay: 0.3s; }
+.hero-copy > :nth-child(4) { animation-delay: 0.42s; }
+.hero-copy > :nth-child(5) { animation-delay: 0.54s; }
+
+/* A slow pheromone glow drifting behind the simulation */
+.sim-wrap::before {
+  content: "";
+  position: absolute;
+  inset: -10%;
+  pointer-events: none;
+  background: radial-gradient(40% 35% at 30% 55%, rgba(var(--amber-glow), 0.14), transparent 70%);
+  animation: drift 14s ease-in-out infinite;
+}
+#sim { z-index: 1; }
+
+/* ---------- Scroll reveals (CSS only; fully visible where unsupported) ---------- */
+@supports (animation-timeline: view()) {
+  .section-head,
+  .lifecycle li,
+  .agent-view > div,
+  .trust > *,
+  .scale-notes > div,
+  .plan,
+  .closing > *,
+  .bench-block {
+    animation: rise linear both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 35%;
+  }
+  .lifecycle li:nth-child(2) { animation-range: entry 4% entry 39%; }
+  .lifecycle li:nth-child(3) { animation-range: entry 8% entry 43%; }
+  .lifecycle li:nth-child(4) { animation-range: entry 12% entry 47%; }
+
+  /* the dotted line of each step extends as the step arrives */
+  .lifecycle li::before {
+    transform-origin: left center;
+    animation: draw-line linear both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 55%;
+  }
+}
+
+/* The strength chart draws itself once it scrolls into view (class added by script) */
+@keyframes stroke-in { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+@keyframes fade-in   { from { opacity: 0; } to { opacity: 1; } }
+#strength-chart .line { stroke-dasharray: 1; stroke-dashoffset: 0; }
+#strength-chart.drawing .line { animation: stroke-in 2.2s cubic-bezier(0.3, 0.6, 0.2, 1) both; }
+#strength-chart.drawing .area { animation: fade-in 1.4s 1.2s ease-out both; }
+#strength-chart.drawing circle { animation: fade-in 0.6s ease-out both; }
+
+/* ---------- Hover and focus ---------- */
+.btn { transition: transform 0.18s ease, box-shadow 0.25s ease, background 0.15s, border-color 0.15s; }
+.btn:hover { transform: translateY(-2px); }
+.btn-amber:hover { box-shadow: 0 8px 28px -8px rgba(var(--amber-glow), 0.65); }
+
+.nav-links a { position: relative; }
+.nav-links a::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -5px;
+  height: 1px;
+  background: var(--amber);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 0.28s ease;
+}
+.nav-links a:hover::after,
+.nav-links a[aria-current="page"]::after { transform: scaleX(1); }
+
+.node, .plan, .code, .chart-box { transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.3s ease; }
+.node:hover { transform: translateY(-3px); border-color: color-mix(in srgb, var(--amber) 60%, var(--wall)); }
+.plan:hover { background: color-mix(in srgb, var(--tunnel) 70%, transparent); }
+.code:hover { border-color: color-mix(in srgb, var(--amber) 35%, var(--wall)); }
+.lifecycle li { transition: transform 0.25s ease; }
+.lifecycle li:hover { transform: translateY(-3px); }
+.lifecycle code { transition: background 0.2s, color 0.2s; }
+.lifecycle li:hover code { background: rgba(var(--amber-glow), 0.18); color: var(--amber-ink); }
+
+/* Live indicator pulses */
+@keyframes ping {
+  0%   { box-shadow: 0 0 0 0 rgba(var(--amber-glow), 0.55); }
+  100% { box-shadow: 0 0 0 9px rgba(var(--amber-glow), 0); }
+}
+.sim-caption .live::before { animation: ping 1.8s ease-out infinite; }
+.source.live .dot { animation: ping 1.8s ease-out infinite; }
+
+/* ---------- Colony view ---------- */
+@keyframes dot-on { from { transform: scale(0.2); opacity: 0.2; } to { transform: none; opacity: 1; } }
+.trail-card { transition: transform 0.25s ease, border-color 0.25s ease, background 0.25s ease; }
+.trail-card:hover { transform: translateY(-2px); border-color: color-mix(in srgb, var(--amber) 40%, var(--wall)); }
+.meter .cells i.on { animation: dot-on 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.meter .cells i.on:nth-child(1) { animation-delay: 0.05s; }
+.meter .cells i.on:nth-child(2) { animation-delay: 0.1s; }
+.meter .cells i.on:nth-child(3) { animation-delay: 0.15s; }
+.meter .cells i.on:nth-child(4) { animation-delay: 0.2s; }
+.meter .cells i.on:nth-child(5) { animation-delay: 0.25s; }
+.meter .cells i.on:nth-child(6) { animation-delay: 0.3s; }
+.meter .cells i.on:nth-child(7) { animation-delay: 0.35s; }
+.meter .cells i.on:nth-child(8) { animation-delay: 0.4s; }
+.meter .cells i.on:nth-child(9) { animation-delay: 0.45s; }
+.meter .cells i.on:nth-child(10) { animation-delay: 0.5s; }
+
+.feed > .trail-card { animation: rise 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+.feed > .trail-card:nth-child(2) { animation-delay: 0.06s; }
+.feed > .trail-card:nth-child(3) { animation-delay: 0.12s; }
+.feed > .trail-card:nth-child(4) { animation-delay: 0.18s; }
+.feed > .trail-card:nth-child(n+5) { animation-delay: 0.22s; }
+
+.hot .bar i { transform-origin: left center; animation: draw-line 1s 0.2s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+.chip { transition: color 0.15s, border-color 0.15s, background 0.2s, transform 0.15s; }
+.chip:hover { transform: translateY(-1px); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}

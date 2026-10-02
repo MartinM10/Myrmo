@@ -50,6 +50,8 @@ pub fn router(state: AppState) -> Router {
         .route("/v1/feed", get(feed))
         .route("/v1/activity", get(activity))
         .route("/v1/stats", get(stats))
+        .route("/v1/analytics", get(analytics))
+        .route("/v1/demand", get(demand))
         .layer(middleware::from_fn_with_state(state.clone(), rate_limit))
         .route("/healthz", get(|| async { "ok" }))
         .route("/readyz", get(readyz))
@@ -210,6 +212,17 @@ async fn rate_limit(
         .arg(keys::stat_agents(keys::hour(now)))
         .arg(90_000)
         .ignore();
+    // Durable analytics: distinct agents per day, and declared (stable) ids all time.
+    pipe.cmd("PFADD")
+        .arg(crate::analytics::agents_day_key(now))
+        .arg(&agent)
+        .ignore();
+    if declared {
+        pipe.cmd("PFADD")
+            .arg(crate::analytics::AGENTS_ALL)
+            .arg(&agent)
+            .ignore();
+    }
     if limit > 0 {
         pipe.cmd("INCR").arg(keys::rate(&client, minute));
         pipe.cmd("EXPIRE")
@@ -431,7 +444,19 @@ fn valid_fingerprint(fp: &str) -> bool {
             .all(|c| c.is_ascii_hexdigit())
 }
 
-async fn by_fingerprint(State(st): State<AppState>, Path(fp): Path<String>) -> ApiResult<Response> {
+/// The model the caller declares with `X-Myrmo-Model`, validated; used only for aggregate counters.
+fn asking_model(headers: &HeaderMap) -> Option<String> {
+    headers
+        .get("x-myrmo-model")
+        .and_then(|v| v.to_str().ok())
+        .and_then(|v| crate::analytics::clean_label(&json!(v)))
+}
+
+async fn by_fingerprint(
+    State(st): State<AppState>,
+    headers: HeaderMap,
+    Path(fp): Path<String>,
+) -> ApiResult<Response> {
     if !valid_fingerprint(&fp) {
         return Err(ApiError::bad_request(
             "Expected a fingerprint like fp1_0123456789abcdef.",
@@ -441,6 +466,16 @@ async fn by_fingerprint(State(st): State<AppState>, Path(fp): Path<String>) -> A
     let cached: Option<String> = con.get(keys::fingerprint_cache(&fp)).await?;
     if let Some(body) = cached {
         let value: Value = serde_json::from_str(&body).unwrap_or(Value::Null);
+        crate::analytics::record_search(
+            &mut con,
+            keys::now(),
+            &fp,
+            "",
+            "",
+            true,
+            asking_model(&headers),
+        )
+        .await;
         return Ok(cacheable(value, StatusCode::OK, 300));
     }
     let ids: Vec<String> = con.smembers(keys::fingerprint(&fp)).await?;
@@ -475,6 +510,7 @@ async fn by_fingerprint(State(st): State<AppState>, Path(fp): Path<String>) -> A
         .ignore()
         .query_async(&mut con)
         .await?;
+    crate::analytics::record_search(&mut con, now, &fp, "", "", true, asking_model(&headers)).await;
     Ok(cacheable(body, StatusCode::OK, 300))
 }
 
@@ -503,6 +539,7 @@ fn guess_error_type(query: &str) -> String {
 
 async fn search(
     State(st): State<AppState>,
+    headers: HeaderMap,
     body: Result<Bytes, BytesRejection>,
 ) -> ApiResult<Json<Value>> {
     let value = parse_body(body)?;
@@ -573,6 +610,18 @@ async fn search(
         .collect();
     ranked.sort_by(|a, b| b.0.total_cmp(&a.0));
     ranked.truncate(limit);
+
+    // For later analysis: was the agent helped, and which model asked (optional header).
+    crate::analytics::record_search(
+        &mut con,
+        now,
+        &fp,
+        runtime,
+        &error_type,
+        !ranked.is_empty(),
+        asking_model(&headers),
+    )
+    .await;
 
     // Only labels of existing trails are counted, so query text is never stored.
     if let Some(best) = candidates.iter().find(|c| fp_ids.contains(&c.id)) {
@@ -1241,6 +1290,7 @@ async fn report_outcome(
         .await?
         .is_some();
     let counted = !is_author && first_today;
+    let mut analytics_outcome: Option<String> = None;
 
     let env = &report["environment"];
     let env_key = format!(
@@ -1344,9 +1394,23 @@ async fn report_outcome(
             .arg(0)
             .arg(199)
             .ignore();
+        analytics_outcome = Some(outcome.clone());
     }
     pipe.cmd("HGETALL").arg(keys::outcomes(&id));
     let (hash,): (HashMap<String, String>,) = pipe.query_async(&mut con).await?;
+    if let Some(outcome) = analytics_outcome {
+        // Which model followed the trail and what happened: kept for later analysis.
+        let model = crate::analytics::clean_label(&agent_info["model"]);
+        let tokens: i64 = meta.get("tokens").and_then(|t| t.parse().ok()).unwrap_or(0);
+        let mut inc: Vec<(&str, Option<String>, i64)> = vec![("outcomes", None, 1)];
+        if outcome == "worked" {
+            inc.push(("tokens_saved", None, tokens));
+        }
+        if outcome != "not_applicable" {
+            inc.push((outcome.as_str(), model, 1));
+        }
+        crate::analytics::record(&mut con, now, &inc).await;
+    }
 
     let outcomes = Outcomes::from_hash(&hash);
     let quality: f64 = meta
@@ -1469,6 +1533,64 @@ async fn activity(
     Ok(Json(json!({ "events": events })))
 }
 
+/// Errors agents asked for that nobody has solved yet: where the colony should grow next.
+/// Everyone gets the top few of the last week; an operator can ask for more and for longer.
+async fn demand(
+    State(st): State<AppState>,
+    headers: HeaderMap,
+    Query(q): Query<AnalyticsQuery>,
+) -> ApiResult<Response> {
+    if authorize_operator(&st, &headers).is_ok() {
+        let days = q.days.unwrap_or(7).clamp(1, 90);
+        let list = crate::analytics::demand(&mut st.redis(), days, 50).await?;
+        let mut res = Json(json!({ "unanswered": list, "days": days })).into_response();
+        res.headers_mut().insert(
+            header::CACHE_CONTROL,
+            HeaderValue::from_static("private, no-store"),
+        );
+        return Ok(res);
+    }
+    let list = crate::analytics::demand(&mut st.redis(), 7, 8).await?;
+    let mut res = cacheable(
+        json!({ "unanswered": list, "days": 7 }),
+        StatusCode::OK,
+        120,
+    );
+    // The same URL answers an operator with more, so a shared cache must not mix the two.
+    res.headers_mut()
+        .insert(header::VARY, HeaderValue::from_static("authorization"));
+    Ok(res)
+}
+
+#[derive(Deserialize)]
+struct AnalyticsQuery {
+    days: Option<i64>,
+}
+
+/// Daily aggregates for analysis: distinct agents, trails laid, outcomes, tokens saved, and
+/// per-model and per-framework counters. Operator only: it is the colony's own history, it is
+/// the most expensive read, and it is part of what the colony sells. Aggregated; nothing here
+/// identifies an agent.
+async fn analytics(
+    State(st): State<AppState>,
+    headers: HeaderMap,
+    Query(q): Query<AnalyticsQuery>,
+) -> ApiResult<Response> {
+    authorize_operator(&st, &headers)?;
+    let days = q.days.unwrap_or(30).clamp(1, 365);
+    let rows = crate::analytics::export(&mut st.redis(), days).await?;
+    let mut res = Json(json!({
+        "days": rows,
+        "models_total": crate::analytics::model_leaderboard(&rows, 50),
+    }))
+    .into_response();
+    res.headers_mut().insert(
+        header::CACHE_CONTROL,
+        HeaderValue::from_static("private, no-store"),
+    );
+    Ok(res)
+}
+
 async fn stats(State(st): State<AppState>) -> ApiResult<Json<Value>> {
     let now = keys::now();
     let hour = keys::hour(now);
@@ -1501,11 +1623,46 @@ async fn stats(State(st): State<AppState>) -> ApiResult<Json<Value>> {
         .query_async(&mut con)
         .await?;
     let hot: Vec<(String, f64)> = con.zrevrange_withscores(keys::hot(hour), 0, 4).await?;
+    let declared_total: u64 = redis::cmd("PFCOUNT")
+        .arg(crate::analytics::AGENTS_ALL)
+        .query_async(&mut con)
+        .await?;
+    // Models and answer rate over the last 30 days. Cached briefly: this endpoint is public.
+    let summary: Value = match con.get::<_, Option<String>>("cache:summary").await? {
+        Some(cached) => serde_json::from_str(&cached).unwrap_or(Value::Null),
+        None => {
+            let rows = crate::analytics::export(&mut con, 30).await?;
+            let total = |k: &str| -> i64 {
+                rows.iter()
+                    .map(|r| r["totals"][k].as_i64().unwrap_or(0))
+                    .sum()
+            };
+            let summary = json!({
+                "models": crate::analytics::model_leaderboard(&rows, 10),
+                "searches_30d": total("searches"),
+                "answered_30d": total("search_hits"),
+            });
+            let _: () = redis::cmd("SET")
+                .arg("cache:summary")
+                .arg(summary.to_string())
+                .arg("EX")
+                .arg(60)
+                .query_async(&mut con)
+                .await?;
+            summary
+        }
+    };
+    let models = summary["models"].clone();
     Ok(Json(json!({
         "trails": trails.unwrap_or(0),
         "outcomes_24h": outcomes.into_iter().flatten().sum::<u64>(),
         "tokens_saved_24h": tokens.into_iter().flatten().sum::<u64>(),
         "agents_24h": agents,
+        "agents_declared_total": declared_total,
+        "models": models,
+        "models_self_reported": true,
+        "searches_30d": summary["searches_30d"],
+        "answered_30d": summary["answered_30d"],
         "hot": hot.into_iter().map(|(label, n)| json!({ "label": label, "searches": n as u64 })).collect::<Vec<_>>(),
     })))
 }

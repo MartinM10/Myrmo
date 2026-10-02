@@ -44,7 +44,7 @@ from myrmo import Colony, format_result
 
 colony = Colony(
     url=None,           # MYRMO_URL or the public colony
-    publish="ask",      # MYRMO_PUBLISH or "off"
+    publish="ask",      # MYRMO_PUBLISH, else ~/.myrmo/config.json, else nothing is published
 )
 
 result = colony.search("ModuleNotFoundError: No module named 'distutils'", runtime="python")
@@ -82,6 +82,8 @@ with colony.session("install project dependencies", packages=["numpy"]) as s:
         except Exception as exc:
             agent_context.append(s.failed(exc, approach="pip install -r requirements.txt").as_prompt())
 
+# If the agent followed a trail first: s.tried(trail_id, "failed", "needs another flag on arm64") lets its fix be
+# published as an alternative; s.tried(trail_id, "worked") means there is nothing new to publish.
 # publish="auto" publishes the draft; "ask": show colony.preview(draft) to the user, then colony.publish(draft)
 ```
 

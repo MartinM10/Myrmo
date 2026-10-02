@@ -6,6 +6,7 @@
 """
 
 from .client import DEFAULT_URL, SDK_VERSION, AsyncColony, Colony, Hit, MyrmoError, SearchResult
+from .config import config_path, publish_choice, read_config, write_config
 from .environment import detect_environment, parse_package
 from .fingerprint import fingerprint, guess_error_type, normalize_message
 from .format import format_result

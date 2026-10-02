@@ -139,6 +139,12 @@ const RULES: Rule[] = [
   r("ipv6", String.raw`\b(?:[0-9A-Fa-f]{1,4}:){7}[0-9A-Fa-f]{1,4}\b|\b(?:[0-9A-Fa-f]{1,4}:){1,5}:(?:[0-9A-Fa-f]{1,4}:){0,4}[0-9A-Fa-f]{1,4}\b`, "", fixed("ipv6")),
   r("mac", String.raw`\b(?:[0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}\b`, "", fixed("mac")),
   r("hostname", String.raw`(:\/\/|@)(?:[A-Za-z0-9\-]{1,63}\.){1,10}(?:internal|corp|intranet|lan|localdomain|home\.arpa|local)\b`, "i", (m) => m[1] + full("hostname")),
+  // An internal host name on its own, for example in a DNS error. It must end the name: `jdk.internal.misc`
+  // and `com.acme.corp.Service` are Java packages, not hosts. `.local` is left out: it is also a file
+  // suffix (`.env.local`), so it is only redacted inside URLs. The rule is listed twice because a match
+  // consumes the character after it, which would hide a second host separated by a single space.
+  r("hostname", String.raw`(^|[^A-Za-z0-9.\-_])(?:[A-Za-z0-9\-]{1,63}\.){1,10}(?:internal|corp|intranet|lan|localdomain|home\.arpa)($|[^A-Za-z0-9.\-_]|\.\s)`, "i", (m) => m[1] + full("hostname") + m[2]),
+  r("hostname", String.raw`(^|[^A-Za-z0-9.\-_])(?:[A-Za-z0-9\-]{1,63}\.){1,10}(?:internal|corp|intranet|lan|localdomain|home\.arpa)($|[^A-Za-z0-9.\-_]|\.\s)`, "i", (m) => m[1] + full("hostname") + m[2]),
   r("phone", String.raw`\+[0-9]{1,3}[\s.\-]?\(?[0-9]{2,4}\)?[\s.\-]?[0-9]{3,4}[\s.\-]?[0-9]{3,4}\b`, "", fixed("phone")),
   r("card", String.raw`\b[3-6](?:[ \-]?[0-9]){12,18}\b`, "", card),
   r("home_path", String.raw`(\/home\/|\/Users\/)[^/\s'\x22<>]+`, "", (m) => `${m[1]}<user>`),
