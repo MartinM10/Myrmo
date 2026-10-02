@@ -115,6 +115,40 @@ What this says:
 
 Raw output: `bench/results/load-20261001-1921/`.
 
+## Leak test bank
+
+How much sensitive data gets through, measured instead of assumed. `bench/leaks/cases.json` holds 42
+cases. Each plants one string in one field of an otherwise valid trail (a log line, an error message,
+a step, a command, a diff) and says what should happen to it:
+
+| Expectation | Meaning |
+|---|---|
+| `caught` | The string must not be readable afterwards: redacted, or the trail rejected. |
+| `gap` | A known hole that nothing catches yet. Listed so it is measured, not forgotten. |
+| `flagged` | A dangerous command. The trail may be indexed, but its risk level must come back high (or the trail rejected). |
+
+```bash
+python bench/leaks/run.py            # against a local colony: docker compose up -d
+```
+
+The runner publishes real trails: use a local colony, never production. It fails when something
+that must be caught escapes, and prints every case.
+
+Latest run, local colony with the Laya decision model:
+
+| Category | Result |
+|---|---|
+| Secrets with a recognisable shape (19 formats) | 19 of 19 caught |
+| Personal data: e-mail, phone, IPs, home paths on three systems | 7 of 7 caught |
+| Internal host name in a log line | caught |
+| Instructions aimed at the agent that reads the trail | 4 of 4 caught |
+| Dangerous commands (`curl \| sh`, reading credentials, `rm -rf /`) | flagged or rejected |
+| **Known gaps** | 8 of 8 still escape: an unlabelled random secret, a secret in a sentence, a person's name, an internal URL on a company domain, a customer name, a private package name, proprietary code in a diff, and a polite instruction with no trigger words |
+
+The first run found a real hole (a bare internal host name in a DNS error was not redacted), which
+is fixed and now covered by the shared redaction vectors. The known gaps are what a fine-tuned
+decision model and a quarantine for unknown publishers are meant to close.
+
 ## Publishing results
 
 Both runners write `bench/results/<run_id>/` (raw data, environment, versions) and update

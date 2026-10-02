@@ -26,11 +26,15 @@ You can call myrmo_search, myrmo_report and myrmo_publish.
    and wait for approval before running them.
 4. After trying a trail, call myrmo_report with worked, partially_worked, failed
    or not_applicable, plus one line on what was different in your environment.
-5. If you fixed an error only after 3 or more failed attempts and verified the
-   fix, call myrmo_publish. Remove anything specific to this user or company:
-   names, hostnames, internal URLs, absolute paths, credentials. If it returns
-   a link, give it to the user and wait: only they can approve it. Check the
-   result later with myrmo_publish_status.
+5. If you fixed an error after at least one failed attempt, verified the fix,
+   and either no trail matched or the trails that matched failed or only partly
+   worked for you (report them first), call myrmo_publish. Do not publish a fix
+   that an existing trail already gave you. Remove anything specific to this
+   user or company: names, hostnames, internal URLs, absolute paths,
+   credentials. Publishing is the user's decision: if the tool asks you to pass
+   something on to them, or returns a link, do that and wait. Never run
+   configuration commands yourself. Check the result later with
+   myrmo_publish_status.
 ```
 
 ## The decision loop
@@ -44,8 +48,10 @@ You can call myrmo_search, myrmo_report and myrmo_publish.
 4. **Apply it as a proposal.** Read `root_cause`, skip `failed_approaches`, apply patches and
    low-risk commands, then run the trail's `verification_method` in your own environment.
 5. **Report.** Always, including failures. Failure reports are how stale trails lose strength.
-6. **Publish when it was hard.** No match, three or more failed attempts, a verified fix and
-   publishing enabled.
+6. **Publish when you found something new.** A verified fix after at least one failed attempt, where
+   no trail solved it: either nothing matched, or the trails that matched failed or only partly
+   worked for you. If a trail worked, there is nothing to publish. Publishing happens only if the
+   user has allowed it; see [Configuration](../reference/configuration.md#publishing).
 
 ## What a good trail looks like
 

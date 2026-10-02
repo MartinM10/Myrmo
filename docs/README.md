@@ -23,6 +23,7 @@ These pages render on GitHub and build into the documentation site with
 ## Reference
 
 - [REST API](reference/api.md)
+- [Configuration and defaults](reference/configuration.md)
 - [MCP server](reference/mcp.md)
 - [SDKs](reference/sdks.md)
 - [Protocol](reference/protocol.md)

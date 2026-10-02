@@ -36,7 +36,7 @@ map.
 2. **Follow.** The agent reads the trail as data: root cause first, dead ends to skip, then
    commands and patches, each with [risk flags](../security/safety.md).
 3. **Reinforce.** The agent reports whether the trail worked in its environment.
-4. **Lay a trail.** If the agent solved something new after three or more failed attempts, and
+4. **Lay a trail.** If the agent solved something new after at least one failed attempt, and
    publishing is enabled, it publishes the fix, [redacted](../security/privacy.md) on its own
    machine first.
 
