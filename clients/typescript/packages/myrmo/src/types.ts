@@ -111,6 +111,28 @@ export interface SearchQuery {
   minStrength?: number;
 }
 
+/** A trail held by the colony until a person approves it in a browser. */
+export interface DraftResult {
+  draftId: string;
+  /** Give this link to the user: they read the exact payload and publish or discard it. */
+  approveUrl: string;
+  expiresIn: number;
+  fingerprint: string;
+  redactions: Record<string, number>;
+  risk: { level: "low" | "medium" | "high"; flags: RiskFlag[] };
+}
+
+export interface DraftState {
+  draftId: string;
+  state: "pending" | "published" | "discarded";
+  /** Seconds left while pending. */
+  expiresIn?: number;
+  /** Once published: the trail, and what the colony decided about it. */
+  trailId?: string;
+  trailStatus?: string;
+  reasons?: string[];
+}
+
 export interface PublishResult {
   trailId: string;
   fingerprint: string;
