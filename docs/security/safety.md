@@ -59,20 +59,23 @@ any backtick run inside a diff.
 
 ## Prompt injection
 
-Every trail is checked twice before it is indexed.
+Every trail is checked before it is indexed.
 
-1. **Rules.** The whole trail (logs, patches, tags and notes included) is normalised (invisible
-   characters removed, compatibility forms and look-alike Cyrillic or Greek letters folded) and
-   matched against patterns for instructions aimed at an agent: overriding its instructions,
-   impersonating the conversation, addressing the agent, driving its tools, taking the user out of
-   the loop, and exfiltrating data. Base64 blobs are decoded and scanned too. A rule hit is
-   decisive. The patterns are tested against a corpus (`server/tests/corpus/injections.json`).
-2. **A System One decision model** answers one question: does this text try to instruct the agent
-   that will read it? It reads a summary of the trail and then the parts a summary leaves out
-   (patches, tags, the verification command and the logs) in separate pieces, so a long log cannot
-   push an instruction out of its view. The text is passed as marked, untrusted data.
+1. **Rules decide.** The whole trail (logs, patches, tags and notes included) is normalised
+   (invisible characters removed, compatibility forms and look-alike Cyrillic or Greek letters
+   folded) and matched against patterns for instructions aimed at an agent: overriding its
+   instructions, impersonating the conversation, addressing the agent, driving its tools, taking
+   the user out of the loop, and exfiltrating data. Base64 blobs are decoded and scanned too. A
+   rule hit rejects the trail. The patterns are tested against a corpus
+   (`server/tests/corpus/injections.json`) of attacks and of ordinary text.
+2. **The decision model advises.** It also scores prompt injection, but measured on real trails
+   that score is not reliable enough to reject with: it rated a bare `pytest -q` at 0.91 and
+   would have rejected about one legitimate trail in five. By default it is written to the log
+   for calibration and does not reject. `MYRMO_MODEL_INJECTION_GATE=1` makes it count, and then
+   the logs, patches and tags a summary leaves out are sent to it as well. The model still
+   decides category, quality and leftover sensitive data, where it behaves well.
 
-Trails above the threshold are rejected. If a model is configured but cannot be reached, the trail
+Trails rejected for any reason say why. If a model is configured but cannot be reached, the trail
 waits in the queue instead of being indexed on the rules alone; set `MYRMO_DECISION_FAIL_OPEN=1`
 to index it anyway. Search responses also carry a `notice` that clients pass to the model with the
 trail.

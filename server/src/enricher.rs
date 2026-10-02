@@ -251,6 +251,10 @@ async fn enrich(st: &AppState, id: &str, mut trail: Value) -> Result<()> {
     let fp = fingerprint::of_trail(&trail);
 
     let judgement: Judgement = st.decision.judge(&trail).await;
+    if let Some(score) = judgement.model_injection {
+        // Not a verdict (see MYRMO_MODEL_INJECTION_GATE): kept so the question can be calibrated.
+        tracing::info!(trail = %id, model_injection = score, "decision model injection score");
+    }
     // The model is configured but down: only the rules looked at this trail. Wait for the model
     // rather than index on that alone, unless the operator chose otherwise.
     if judgement.degraded && !st.cfg.decision_fail_open {

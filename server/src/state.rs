@@ -67,6 +67,7 @@ impl AppState {
             http.clone(),
             cfg.decision_url.clone(),
             cfg.decision_api_key.clone(),
+            cfg.model_injection_gate,
         );
 
         // The embedding model can take minutes to download on first start.
