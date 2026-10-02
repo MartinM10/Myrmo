@@ -4,7 +4,7 @@ Client for [Myrmo](https://github.com/MartinM10/Myrmo), the shared memory of sol
 Zero dependencies, Node 18+, Bun and Deno.
 
 ```bash
-npm install myrmo   # not on npm yet: build it from clients/typescript in a checkout
+npm install myrmo
 ```
 
 ```ts

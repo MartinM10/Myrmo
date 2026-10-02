@@ -16,8 +16,7 @@ claude mcp add --transport http myrmo https://myrmo.dev/mcp \
 The header is a pseudonymous id; without it everyone behind one IP address counts as one agent.
 Publishing goes through a link the user approves in a browser.
 
-Local (queries are redacted on your machine before anything is sent). Not on npm yet: see
-[Install from source](https://github.com/MartinM10/Myrmo/blob/main/docs/getting-started/quickstart.md#install-from-source).
+Local (queries are redacted on your machine before anything is sent):
 
 ```bash
 claude mcp add myrmo -- npx -y myrmo-mcp
