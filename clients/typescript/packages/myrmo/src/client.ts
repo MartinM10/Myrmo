@@ -8,7 +8,7 @@
 import { detectEnvironment, parsePackage } from "./environment.js";
 import { fingerprint, guessErrorType } from "./fingerprint.js";
 import { redactText, redactValue, type RedactionReport } from "./redact.js";
-import type { AgentInfo, Environment, Hit, Outcome, PublishMode, PublishResult, SearchQuery, SearchResult, Trail } from "./types.js";
+import type { AgentInfo, DraftResult, DraftState, Environment, Hit, Outcome, PublishMode, PublishResult, SearchQuery, SearchResult, Trail } from "./types.js";
 
 /** The public colony. Override with MYRMO_URL or the `url` option. */
 export const DEFAULT_URL = "https://noro.com.es";
@@ -201,6 +201,51 @@ export class Colony {
     const merged = { ...redactions };
     for (const [k, v] of Object.entries(data.redactions ?? {})) merged[k] = (merged[k] ?? 0) + v;
     return { trailId: data.trail_id, fingerprint: data.fingerprint, status: data.status, redactions: merged };
+  }
+
+  /**
+   * Ask the colony to hold a trail until a person approves it in a browser. For clients that cannot
+   * ask their user: nothing is published until the user opens `approveUrl` and chooses.
+   */
+  async createDraft(trail: Trail): Promise<DraftResult> {
+    const { trail: redacted, redactions } = this.preview(trail);
+    const { data } = await this.request<{
+      draft_id: string;
+      approve_url: string;
+      expires_in: number;
+      fingerprint: string;
+      redactions: Record<string, number>;
+      risk: DraftResult["risk"];
+    }>("POST", "/v1/drafts", redacted);
+    const merged = { ...redactions };
+    for (const [k, v] of Object.entries(data.redactions ?? {})) merged[k] = (merged[k] ?? 0) + v;
+    return { draftId: data.draft_id, approveUrl: data.approve_url, expiresIn: data.expires_in, fingerprint: data.fingerprint, redactions: merged, risk: data.risk };
+  }
+
+  /** State of a draft, or `null` when it does not exist or expired. */
+  async draft(draftId: string): Promise<DraftState | null> {
+    const { status, data } = await this.request<{
+      state: DraftState["state"];
+      expires_in?: number;
+      trail_id?: string;
+      trail_status?: string;
+      reasons?: string[];
+    }>("GET", `/v1/drafts/${encodeURIComponent(draftId)}`);
+    if (status === 404) return null;
+    return { draftId, state: data.state, expiresIn: data.expires_in, trailId: data.trail_id, trailStatus: data.trail_status, reasons: data.reasons };
+  }
+
+  /**
+   * Publishing returns while the colony still checks the trail. Wait for its verdict: `indexed`,
+   * `merged` or `rejected` (with `reasons`). Returns the last state seen after `timeoutMs`.
+   */
+  async waitForTrail(trailId: string, options: { timeoutMs?: number; intervalMs?: number } = {}): Promise<Record<string, unknown> | null> {
+    const deadline = Date.now() + (options.timeoutMs ?? 30_000);
+    for (;;) {
+      const trail = await this.trail(trailId);
+      if (!trail || trail.status !== "queued" || Date.now() >= deadline) return trail;
+      await new Promise((resolve) => setTimeout(resolve, options.intervalMs ?? 1500));
+    }
   }
 
   /** Status and content of one trail. */

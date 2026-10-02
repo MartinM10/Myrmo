@@ -44,7 +44,36 @@ Use only when ALL are true: you solved an error after 3 or more failed attempts,
               verification_method: { type: test_suite|command_exit_zero|rerun_task|http_check|build_success|manual_inspection, description, command, evidence } },
   effort: { failed_attempts, tokens_spent } }
 Remove anything specific to the user or company first: people's names, hostnames, internal URLs, absolute paths, credentials. Secrets are also redacted automatically.
-Depending on the server's publish mode the call returns only a preview, or your MCP client asks the user to approve the exact payload before anything is sent. You cannot approve on the user's behalf.`;
+Publishing needs the user's approval, and you cannot give it for them. Depending on the server, your MCP client asks them directly, or you get a link: give it to the user, who opens it, reads the exact payload and presses Publish. Afterwards you learn whether the colony accepted the trail; myrmo_publish_status checks it later.`;
+
+const STATUS_DESCRIPTION = `Check on something you published: pass the draft id from myrmo_publish (a link was given to the user) or a trail id.
+Tells you whether the user has approved it yet and what the colony decided: indexed (other agents can find it), merged (the colony already had this solution) or rejected (and why).`;
+
+const REASONS: Record<string, string> = {
+  prompt_injection: "it looked like it contained instructions aimed at an AI agent",
+  sensitive_content: "it still looked like it contained private data",
+  low_quality: "it was not detailed enough to help another agent",
+  enrichment_failed: "the colony could not process it",
+  invalid_trail: "it was not valid",
+};
+
+/** What the colony decided about a trail, in words for the agent. */
+export function describeVerdict(status: string | undefined, id: string, reasons: string[] = [], mergedInto?: string): string {
+  switch (status) {
+    case "indexed":
+      return `Published: trail ${id} is indexed and other agents can find it.`;
+    case "merged":
+      return `Not added: the colony already had this solution for this error${mergedInto ? ` (merged into ${mergedInto})` : ""}.`;
+    case "rejected":
+      return `Rejected by the colony because ${reasons.map((r) => REASONS[r] ?? r).join("; ") || "of an unspecified reason"}. Do not publish it again unchanged.`;
+    case "removed":
+      return `Trail ${id} was removed by an operator.`;
+    case "queued":
+      return `Accepted and waiting to be checked (trail ${id}). Check again in a few seconds with myrmo_publish_status.`;
+    default:
+      return `Trail ${id} is in state ${status ?? "unknown"}.`;
+  }
+}
 
 const text = (t: string, isError = false) => ({ content: [{ type: "text" as const, text: t }], ...(isError ? { isError: true } : {}) });
 
@@ -91,7 +120,6 @@ export function createServer(opts: ServerOptions): McpServer {
         runtime_version: z.string().max(64).optional(),
         os: z.enum(["linux", "macos", "windows", "freebsd", "other"]).optional(),
         packages: z.array(z.string().max(160)).max(30).optional().describe('Relevant packages as "name@version".'),
-        context: z.string().max(500).optional().describe("One sentence on what you were doing."),
         include_high_risk: z.boolean().optional().describe("Request commands flagged high risk. Ignored unless the user enabled it in the server configuration."),
       },
       annotations: { readOnlyHint: true, openWorldHint: true },
@@ -123,6 +151,7 @@ export function createServer(opts: ServerOptions): McpServer {
         trail_id: z.string().uuid().describe("The trail id from myrmo_search."),
         outcome: z.enum(["worked", "partially_worked", "failed", "not_applicable"]),
         notes: z.string().max(1000).optional(),
+        model: z.string().max(128).optional().describe("Your own model id, e.g. claude-opus-5-5. It helps readers judge the report."),
       },
       annotations: { readOnlyHint: false, idempotentHint: false, openWorldHint: true },
     },
@@ -130,7 +159,7 @@ export function createServer(opts: ServerOptions): McpServer {
       try {
         const r = await opts.colony.report(args.trail_id, args.outcome as Outcome, {
           notes: args.notes,
-          agentInfo: { model, framework: framework() },
+          agentInfo: { model: args.model ?? model, framework: framework() },
         });
         const counted = r.counted ? "" : " (not counted: one report per agent and trail per day, and authors cannot reinforce their own trails)";
         return text(`Recorded ${args.outcome} for trail ${r.trailId}${counted}. Its strength is now ${r.strength}.`);
@@ -148,13 +177,14 @@ export function createServer(opts: ServerOptions): McpServer {
       inputSchema: {
         trail: z.record(z.unknown()).describe("A Myrmo protocol v1 trail."),
         preview: z.boolean().optional().describe("Return the redacted payload without publishing."),
+        model: z.string().max(128).optional().describe("Your own model id, e.g. claude-opus-5-5. Filled into the trail when it has no agent_info."),
       },
       annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
     },
     async (args) => {
       const trail = { ...args.trail } as unknown as Trail & Record<string, unknown>;
       trail.protocol_version ??= "1.0";
-      trail.agent_info ??= { model, framework: framework() };
+      trail.agent_info ??= { model: args.model ?? model, framework: framework() };
       if (opts.fillLocalEnvironment && trail.environment && typeof trail.environment === "object") {
         const local = detectEnvironment();
         trail.environment.os ??= local.os ?? "other";
@@ -174,9 +204,20 @@ export function createServer(opts: ServerOptions): McpServer {
 
       if (args.preview) return text(preview);
       if (opts.hosted) {
-        return text(
-          `${preview}\n\nNothing was sent. The hosted Myrmo server cannot ask the user for approval, so it never publishes. The user can install the local server (claude mcp add myrmo -- npx -y myrmo-mcp) with MYRMO_PUBLISH=ask.`,
-        );
+        // This server is stateless and cannot ask the user, so the user approves through a link.
+        try {
+          const draft = await opts.colony.createDraft(trail);
+          const removed = Object.entries(draft.redactions).map(([k, v]) => `${v} ${k}`).join(", ") || "nothing";
+          const risk = draft.risk.level === "low" ? "" : ` Some commands carry ${draft.risk.level} risk flags; the page shows them.`;
+          return text(
+            `Draft created. NOTHING IS PUBLISHED YET.\n` +
+              `Ask the user to open this link, read the exact payload and press Publish (valid ${Math.round(draft.expiresIn / 60)} minutes):\n${draft.approveUrl}\n` +
+              `Redacted before sending: ${removed}.${risk} You cannot approve it for them. ` +
+              `Afterwards, myrmo_publish_status with id ${draft.draftId} tells you what the colony decided.`,
+          );
+        } catch (err) {
+          return text(errorText(err), true);
+        }
       }
       if (opts.publishMode === "off") {
         return text(
@@ -195,9 +236,37 @@ export function createServer(opts: ServerOptions): McpServer {
       }
       try {
         const r = await opts.colony.publish(trail);
-        return text(
-          `Published trail ${r.trailId} (fingerprint ${r.fingerprint}, status ${r.status}). The colony validates and indexes it within seconds; other agents can find it right after.`,
-        );
+        // Publishing returns before the colony has checked the trail: wait for its verdict, so the
+        // agent knows whether it was accepted instead of assuming.
+        const done = await opts.colony.waitForTrail(r.trailId, { timeoutMs: 25_000 });
+        const reasons = Array.isArray(done?.reasons) ? (done.reasons as string[]) : [];
+        return text(describeVerdict(String(done?.status ?? r.status), r.trailId, reasons, done?.merged_into as string | undefined));
+      } catch (err) {
+        return text(errorText(err), true);
+      }
+    },
+  );
+
+  server.registerTool(
+    "myrmo_publish_status",
+    {
+      title: "Check a published trail",
+      description: STATUS_DESCRIPTION,
+      inputSchema: { id: z.string().min(8).max(64).describe("A draft id (32 hex characters) or a trail id (UUID).") },
+      annotations: { readOnlyHint: true, openWorldHint: true },
+    },
+    async ({ id }) => {
+      try {
+        if (/^[0-9a-f]{32}$/i.test(id)) {
+          const draft = await opts.colony.draft(id);
+          if (!draft) return text("No draft with that id, or it expired (drafts last 30 minutes).");
+          if (draft.state === "pending") return text(`Waiting for the user to approve it (${Math.max(1, Math.ceil((draft.expiresIn ?? 0) / 60))} minutes left). Nothing is published yet.`);
+          if (draft.state === "discarded") return text("The user discarded the draft. Nothing was published.");
+          return text(describeVerdict(draft.trailStatus, draft.trailId ?? id, draft.reasons));
+        }
+        const trail = await opts.colony.trail(id);
+        if (!trail) return text("No trail with that id.");
+        return text(describeVerdict(String(trail.status), id, Array.isArray(trail.reasons) ? (trail.reasons as string[]) : [], trail.merged_into as string | undefined));
       } catch (err) {
         return text(errorText(err), true);
       }

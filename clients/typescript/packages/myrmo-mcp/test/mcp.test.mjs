@@ -16,6 +16,12 @@ const ENTRY = fileURLToPath(new URL("../dist/index.js", import.meta.url));
 const KNOWN_FP = fingerprint("python", "ModuleNotFoundError", "ModuleNotFoundError: No module named 'distutils'");
 const TRAIL_ID = "3f2b8c1e-9a4d-4e2f-8b1a-2c3d4e5f6a7b";
 const requests = [];
+const PENDING = "a".repeat(32);
+const PUBLISHED = "b".repeat(32);
+const DISCARDED = "c".repeat(32);
+const NEW_TRAIL = "c71e0f4a-2b9d-4e63-a8f5-0d3b7c1e9a26";
+/** What the fake colony decides about a published trail; tests change it. */
+let verdict = { status: "indexed", reasons: [] };
 
 const trail = {
   protocol_version: "1.0",
@@ -63,6 +69,12 @@ before(async () => {
     if (req.method === "GET" && req.url.startsWith("/v1/trails/by-fingerprint/")) return send(404, { error: { code: "not_found", message: "none" } });
     if (req.method === "POST" && req.url === "/v1/search") return send(200, { fingerprint: "fp1_0000000000000000", results: [], notice: "untrusted" });
     if (req.method === "POST" && req.url === `/v1/trails/${TRAIL_ID}/outcomes`) return send(202, { trail_id: TRAIL_ID, counted: true, strength: 0.91 });
+    if (req.method === "POST" && req.url === "/v1/drafts") return send(201, { draft_id: PENDING, approve_url: `http://colony.example/approve.html#${PENDING}`, expires_in: 1800, fingerprint: KNOWN_FP, redactions: { api_key: 1 }, risk: { level: "low", flags: [] } });
+    if (req.method === "GET" && req.url === `/v1/drafts/${PENDING}`) return send(200, { draft_id: PENDING, state: "pending", expires_in: 600 });
+    if (req.method === "GET" && req.url === `/v1/drafts/${PUBLISHED}`) return send(200, { draft_id: PUBLISHED, state: "published", trail_id: NEW_TRAIL, trail_status: "rejected", reasons: ["prompt_injection"] });
+    if (req.method === "GET" && req.url === `/v1/drafts/${DISCARDED}`) return send(200, { draft_id: DISCARDED, state: "discarded" });
+    if (req.method === "GET" && req.url.startsWith("/v1/drafts/")) return send(404, { error: { code: "not_found", message: "gone" } });
+    if (req.method === "GET" && req.url === `/v1/trails/${NEW_TRAIL}`) return send(200, { trail_id: NEW_TRAIL, ...verdict });
     if (req.method === "POST" && req.url === "/v1/trails") return send(202, { trail_id: "c71e0f4a-2b9d-4e63-a8f5-0d3b7c1e9a26", fingerprint: KNOWN_FP, status: "queued", redactions: {} });
     send(404, { error: { code: "not_found", message: req.url } });
   });
@@ -89,10 +101,10 @@ async function stdioClient(publish = "ask", { answer, env = {} } = {}) {
 
 const published = () => requests.filter((r) => r.url === "/v1/trails").length;
 
-test("exposes the three tools with their rules", async () => {
+test("exposes the tools with their rules", async () => {
   const client = await stdioClient();
   const { tools } = await client.listTools();
-  assert.deepEqual(tools.map((t) => t.name).sort(), ["myrmo_publish", "myrmo_report", "myrmo_search"]);
+  assert.deepEqual(tools.map((t) => t.name).sort(), ["myrmo_publish", "myrmo_publish_status", "myrmo_report", "myrmo_search"]);
   assert.match(tools.find((t) => t.name === "myrmo_search").description, /BEFORE attempting a fix/);
   await client.close();
 });
@@ -115,6 +127,14 @@ test("search falls back to semantic search and says when nothing matches", async
   const out = textOf(await client.callTool({ name: "myrmo_search", arguments: { error: "WeirdError: something nobody has seen" } }));
   assert.match(out, /No trail in the Myrmo colony matches/);
   assert.ok(requests.some((r) => r.url === "/v1/search"));
+  await client.close();
+});
+
+test("a report carries the model the agent says it is", async () => {
+  const client = await stdioClient();
+  await client.callTool({ name: "myrmo_report", arguments: { trail_id: TRAIL_ID, outcome: "worked", model: "claude-opus-5-5" } });
+  const sent = requests.filter((r) => r.url === `/v1/trails/${TRAIL_ID}/outcomes`).at(-1);
+  assert.equal(sent.body.agent_info.model, "claude-opus-5-5");
   await client.close();
 });
 
@@ -146,7 +166,7 @@ test("in ask mode the user approves the exact redacted payload through the clien
   const secret = { ...trail, problem: { ...trail.problem, raw_logs: "key sk-ant-api03-abcdefghijklmnopqrstuvwxyz0123" } };
   const before = published();
   const done = textOf(await client.callTool({ name: "myrmo_publish", arguments: { trail: secret } }));
-  assert.match(done, /Published trail c71e0f4a/);
+  assert.match(done, /Published: trail c71e0f4a.* indexed/);
   assert.equal(shown.length, 1, "the user was asked once");
   assert.match(shown[0], /redacted locally: 1 api_key/);
   assert.doesNotMatch(shown[0], /sk-ant-api03/);
@@ -180,7 +200,7 @@ test("the model cannot approve on the user's behalf", async () => {
 test("auto mode publishes without asking, because the user opted in", async () => {
   const client = await stdioClient("auto");
   const before = published();
-  assert.match(textOf(await client.callTool({ name: "myrmo_publish", arguments: { trail } })), /Published trail/);
+  assert.match(textOf(await client.callTool({ name: "myrmo_publish", arguments: { trail } })), /Published: trail/);
   assert.equal(published(), before + 1);
   await client.close();
 });
@@ -208,6 +228,45 @@ test("publishing stays off unless enabled", async () => {
   await client.close();
 });
 
+test("the agent learns when the colony rejects what it published", async () => {
+  verdict = { status: "rejected", reasons: ["prompt_injection", "low_quality"] };
+  try {
+    const client = await stdioClient("auto");
+    const out = textOf(await client.callTool({ name: "myrmo_publish", arguments: { trail } }));
+    assert.match(out, /Rejected by the colony/);
+    assert.match(out, /instructions aimed at an AI agent/);
+    assert.match(out, /not detailed enough/);
+    assert.match(out, /Do not publish it again unchanged/);
+    await client.close();
+  } finally {
+    verdict = { status: "indexed", reasons: [] };
+  }
+});
+
+test("a trail the colony already had is reported as merged", async () => {
+  verdict = { status: "merged", merged_into: TRAIL_ID };
+  try {
+    const client = await stdioClient("auto");
+    const out = textOf(await client.callTool({ name: "myrmo_publish", arguments: { trail } }));
+    assert.match(out, /already had this solution/);
+    assert.match(out, new RegExp(TRAIL_ID));
+    await client.close();
+  } finally {
+    verdict = { status: "indexed", reasons: [] };
+  }
+});
+
+test("publish status answers for drafts and trails", async () => {
+  const client = await stdioClient();
+  const ask = async (id) => textOf(await client.callTool({ name: "myrmo_publish_status", arguments: { id } }));
+  assert.match(await ask(PENDING), /Waiting for the user to approve.*10 minutes left/);
+  assert.match(await ask(DISCARDED), /discarded/);
+  assert.match(await ask(PUBLISHED), /Rejected by the colony.*instructions aimed at an AI agent/);
+  assert.match(await ask("d".repeat(32)), /No draft with that id, or it expired/);
+  assert.match(await ask(NEW_TRAIL), /Published: trail c71e0f4a/);
+  await client.close();
+});
+
 test("the hosted HTTP transport serves the same tools statelessly", async () => {
   const port = 30000 + Math.floor(Math.random() * 20000);
   const proc = spawn(process.execPath, [ENTRY, "--http", "--port", String(port), "--host", "127.0.0.1"], {
@@ -223,9 +282,18 @@ test("the hosted HTTP transport serves the same tools statelessly", async () => 
     const last = requests.filter((r) => r.url.startsWith("/v1/trails/by-fingerprint/")).at(-1);
     assert.equal(last.headers["x-forwarded-for"], "127.0.0.1", "the caller's address is forwarded for per-client rate limits");
     const before = published();
-    const refusal = textOf(await client.callTool({ name: "myrmo_publish", arguments: { trail, confirmed: true } }));
-    assert.match(refusal, /hosted Myrmo server cannot ask the user/);
-    assert.equal(published(), before, "the hosted server never publishes");
+    const drafts = () => requests.filter((r) => r.method === "POST" && r.url === "/v1/drafts").length;
+    const draftsBefore = drafts();
+    const draftText = textOf(await client.callTool({ name: "myrmo_publish", arguments: { trail, confirmed: true } }));
+    assert.match(draftText, /NOTHING IS PUBLISHED YET/);
+    assert.match(draftText, new RegExp(`http://colony.example/approve.html#${PENDING}`));
+    assert.match(draftText, /You cannot approve it for them/);
+    assert.equal(drafts(), draftsBefore + 1, "a draft was created for the user to approve");
+    assert.equal(published(), before, "the hosted server never publishes by itself");
+    const sentDraft = requests.filter((r) => r.url === "/v1/drafts").at(-1);
+    assert.equal(sentDraft.body.problem.error_type, "ModuleNotFoundError", "the colony received the trail to hold");
+    const status = textOf(await client.callTool({ name: "myrmo_publish_status", arguments: { id: PENDING } }));
+    assert.match(status, /Waiting for the user to approve/);
     await client.close();
   } finally {
     proc.kill();

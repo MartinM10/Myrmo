@@ -1,10 +1,11 @@
+import json
 from uuid import uuid4
 
 import httpx
 import pytest
 
 from conftest import KNOWN_FP, TRAIL, TRAIL_ID, FakeColony
-from myrmo import Colony, MyrmoError, Verification, format_result
+from myrmo import AsyncColony, Colony, MyrmoError, Verification, format_result
 
 DISTUTILS = "ModuleNotFoundError: No module named 'distutils'"
 
@@ -108,3 +109,47 @@ def test_langchain_tool_errors_trigger_a_search(colony):
     handler = MyrmoCallbackHandler(colony, runtime="python")
     handler.on_tool_error(ModuleNotFoundError("No module named 'distutils'"), run_id=uuid4())
     assert handler.searches == 1 and "myrmo_trails" in handler.latest_hints
+
+
+NEW_TRAIL = "c71e0f4a-2b9d-4e63-a8f5-0d3b7c1e9a26"
+
+
+def test_a_draft_waits_for_the_user_and_redacts_first(colony, fake):
+    secret = {**TRAIL, "problem": {**TRAIL["problem"], "raw_logs": "key sk-ant-api03-abcdefghijklmnopqrstuvwxyz0123"}}
+    draft = colony.create_draft(secret)
+    assert draft["approve_url"].endswith("#" + "a" * 32)
+    assert draft["redactions"]["api_key"] == 2  # once locally, once counted by the colony
+    sent = next(body for method, path, body, _ in fake.requests if path == "/v1/drafts")
+    assert "sk-ant-api03" not in json.dumps(sent), "the secret never leaves the machine"
+    assert colony.draft("a" * 32)["state"] == "pending"
+    assert colony.draft("b" * 32) is None, "an expired draft is None"
+    assert not any(path == "/v1/trails" and method == "POST" for method, path, _, _ in fake.requests), "creating a draft publishes nothing"
+
+
+def test_wait_for_trail_returns_the_verdict(colony):
+    verdict = colony.wait_for_trail(NEW_TRAIL, timeout=5, interval=0)
+    assert verdict["status"] == "indexed"
+
+
+def test_wait_for_trail_gives_up_and_returns_the_last_state(colony, fake):
+    fake.verdicts = [{"status": "queued"}]
+    assert colony.wait_for_trail(NEW_TRAIL, timeout=0.05, interval=0.01)["status"] == "queued"
+
+
+def test_a_rejected_trail_comes_with_its_reasons(colony, fake):
+    fake.verdicts = [{"status": "rejected", "reasons": ["prompt_injection"]}]
+    verdict = colony.wait_for_trail(NEW_TRAIL, timeout=5, interval=0)
+    assert verdict["status"] == "rejected" and verdict["reasons"] == ["prompt_injection"]
+
+
+def test_async_drafts_and_verdicts():
+    import asyncio
+
+    async def scenario():
+        async with AsyncColony(transport=httpx.MockTransport(FakeColony())) as colony:
+            draft = await colony.create_draft(TRAIL)
+            assert draft["draft_id"] == "a" * 32
+            assert (await colony.draft("a" * 32))["state"] == "pending"
+            assert (await colony.wait_for_trail(NEW_TRAIL, timeout=5, interval=0))["status"] == "indexed"
+
+    asyncio.run(scenario())
