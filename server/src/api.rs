@@ -1115,6 +1115,13 @@ async fn remove_trail(
     if status == "indexed" {
         pipe.cmd("DECR").arg(keys::STAT_TRAILS).ignore();
     }
+    // The "hot" list names trails by their label: a removed trail must not stay on it.
+    if let Some(label) = meta.get("label") {
+        let hour = keys::hour(now);
+        for h in [hour, hour - 1] {
+            pipe.cmd("ZREM").arg(keys::hot(h)).arg(label).ignore();
+        }
+    }
     pipe.cmd("DEL").arg(keys::trail(&id)).ignore();
     pipe.cmd("HSET")
         .arg(keys::trail(&id))
