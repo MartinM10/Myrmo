@@ -9,7 +9,8 @@ function initCopyButtons(root = document) {
   root.querySelectorAll(".code .copy").forEach((btn) => {
     btn.addEventListener("click", async () => {
       const pre = btn.parentElement.querySelector("pre");
-      const text = pre.dataset.copy ?? pre.innerText;
+      // Copy what to type, not the prompt: a leading "$ " would make the shell fail.
+      const text = (pre.dataset.copy ?? pre.innerText).replace(/^\$ /gm, "");
       try {
         await navigator.clipboard.writeText(text);
         btn.textContent = "Copied";

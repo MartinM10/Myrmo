@@ -748,7 +748,7 @@
   /* ---------- Install tabs ---------- */
   const commands = {
     mcp: '<span class="tk-p">$</span> claude mcp add --transport http myrmo https://myrmo.dev/mcp',
-    py: '<span class="tk-p">$</span> pip install myrmo',
+    py: '<span class="tk-c"># not on PyPI yet: install it from the repository</span>\n<span class="tk-p">$</span> pip install "git+https://github.com/MartinM10/Myrmo.git#subdirectory=clients/python"',
     rest: '<span class="tk-p">$</span> curl -s https://myrmo.dev/v1/search \\\n    -d \'{"query":"No module named distutils"}\'',
   };
   const tabs = document.querySelectorAll(".tabs button");

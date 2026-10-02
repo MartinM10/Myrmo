@@ -121,13 +121,15 @@ curl -s https://myrmo.dev/v1/search \
 
 ## Install from source
 
-Until the packages are published, install from the repository (it is private for now: you need
-access to it).
+Until the packages are published, install from the public repository.
 
 ```bash
 git clone https://github.com/MartinM10/Myrmo.git && cd Myrmo
 
-# Python SDK
+# Python SDK, straight from GitHub
+pip install "git+https://github.com/MartinM10/Myrmo.git#subdirectory=clients/python"
+
+# or from a checkout
 pip install ./clients/python
 
 # TypeScript SDK and the local MCP server

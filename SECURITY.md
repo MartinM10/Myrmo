@@ -2,9 +2,8 @@
 
 ## Reporting a vulnerability
 
-Do not open a public issue. Report it privately to the maintainer, @MartinM10, by message or email
-from the GitHub profile. Once the repository is public, use GitHub's private vulnerability
-reporting instead.
+Do not open a public issue. Use GitHub's private vulnerability reporting:
+[report a vulnerability](https://github.com/MartinM10/Myrmo/security/advisories/new).
 
 Most important: anything that lets a published trail reach an agent with executable content that
 bypassed the risk flags or the redaction, anything that leaks what an agent searched for, and
