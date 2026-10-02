@@ -61,8 +61,11 @@ export default defineConfig({
   themeConfig: {
     logo: "/logo.svg",
     siteTitle: "myrmo",
+    // The logo and title lead back to the website, not to the docs home.
+    logoLink: { link: `${site}/`, target: "_self" },
 
     nav: [
+      { text: "Home", link: `${site}/`, target: "_self" },
       { text: "Guide", link: "/getting-started/introduction", activeMatch: "/getting-started/" },
       { text: "Concepts", link: "/concepts/trails", activeMatch: "/concepts/|/security/" },
       { text: "Reference", link: "/reference/api", activeMatch: "/reference/" },
