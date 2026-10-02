@@ -5,6 +5,7 @@ import type { Colony } from "./client.js";
 import { detectEnvironment, parsePackage } from "./environment.js";
 import { formatResult } from "./format.js";
 import { fingerprint, guessErrorType } from "./fingerprint.js";
+import { redactText } from "./redact.js";
 import type { CodePatch, Package, PublishResult, SearchResult, ShellCommand, Trail, Verification } from "./types.js";
 
 export interface SessionOptions {
@@ -116,9 +117,13 @@ export class Session {
     return { draft };
   }
 
-  /** Fingerprint of the most recent failure, if any. */
+  /**
+   * Fingerprint of the most recent failure, if any. Computed over the redacted message, like the
+   * one the colony computes for a published trail: an IP, an e-mail or a token in the message
+   * would otherwise give a different fingerprint on the agent's side.
+   */
   get lastFingerprint(): string | null {
     const last = this.failures.at(-1);
-    return last ? fingerprint(this.options.runtime, last.errorType, last.message) : null;
+    return last ? fingerprint(this.options.runtime, last.errorType, redactText(last.message)) : null;
   }
 }

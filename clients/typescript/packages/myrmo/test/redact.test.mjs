@@ -1,5 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { redactText, redactValue } from "../dist/index.js";
 
 const r = (s) => redactText(s);
@@ -7,7 +8,7 @@ const r = (s) => redactText(s);
 test("removes secrets", () => {
   assert.ok(!r("export ANTHROPIC_API_KEY=sk-ant-api03-abcdefghijklmnopqrstuvwxyz0123").includes("sk-ant-api03"));
   assert.equal(r("AKIAIOSFODNN7EXAMPLE used"), "<redacted:aws_access_key> used");
-  assert.equal(r("postgres://admin:hunter2@db.internal:5432/app"), "postgres://<redacted:connection_string>@db.internal:5432/app");
+  assert.equal(r("postgres://admin:hunter2@db.internal:5432/app"), "postgres://<redacted:connection_string>@<redacted:hostname>:5432/app");
   assert.equal(r("password=SuperSecret123 next"), "password=<redacted:secret> next");
   assert.equal(r("Authorization: Bearer abcdefghijklmnop1234567890"), "Authorization: Bearer <redacted:token>");
   assert.equal(r("-----BEGIN OPENSSH PRIVATE KEY-----\nAAAA\n-----END OPENSSH PRIVATE KEY-----"), "<redacted:private_key>");
@@ -29,4 +30,26 @@ test("redacts nested values, counts kinds, and is idempotent", () => {
   assert.deepEqual(redactValue(once), once);
   assert.equal(once.a[1].b, "ok");
   assert.equal(report.password_assignment, 1);
+});
+
+const VECTORS = JSON.parse(readFileSync(new URL("../../../../../protocol/redact.v1.vectors.json", import.meta.url), "utf8"));
+
+test("matches every normative redaction vector", () => {
+  assert.ok(VECTORS.length >= 100);
+  for (const v of VECTORS) {
+    const kinds = {};
+    const out = redactText(v.input, kinds);
+    assert.equal(out, v.output, `output for ${JSON.stringify(v.input)}`);
+    assert.deepEqual(Object.fromEntries(Object.entries(kinds).sort()), v.kinds, `kinds for ${JSON.stringify(v.input)}`);
+    assert.equal(redactText(out), out, `idempotent for ${JSON.stringify(v.input)}`);
+  }
+});
+
+test("long hostile input is redacted in bounded time", () => {
+  // Unbounded prefixes made these quadratic: 16,000 characters took a second.
+  for (const text of ["a.".repeat(8000), "://" + "a.".repeat(8000), "word.".repeat(3000) + "token=x", "a@".repeat(8000)]) {
+    const start = performance.now();
+    redactText(text);
+    assert.ok(performance.now() - start < 500, `took ${Math.round(performance.now() - start)} ms`);
+  }
 });
