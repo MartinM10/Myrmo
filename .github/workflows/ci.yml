@@ -84,6 +84,36 @@ jobs:
       - run: npm run build
       - run: npm test
 
+  plugin:
+    name: Claude Code plugin
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node --test "plugins/myrmo/test/*.test.mjs"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install jsonschema
+      - name: The example trail in the plugin's skill is valid
+        run: |
+          python - <<'EOF'
+          import json, re
+          from jsonschema import Draft7Validator
+          skill = open("plugins/myrmo/skills/myrmo/SKILL.md", encoding="utf-8").read()
+          trail = json.loads(re.search(r"```json\s(.*?)```", skill, re.S).group(1))
+          # The MCP server fills in what an agent may leave out.
+          trail.setdefault("agent_info", {"model": "m", "framework": "f"})
+          trail["problem"].setdefault("raw_logs", "(none provided)")
+          trail["solution"].setdefault("code_patches", [])
+          schema = json.load(open("protocol/trail.v1.schema.json"))
+          errors = [e.message for e in Draft7Validator(schema).iter_errors(trail)]
+          assert not errors, errors
+          print("skill example valid")
+          EOF
+
   python:
     name: SDK (Python ${{ matrix.python }})
     runs-on: ubuntu-latest
