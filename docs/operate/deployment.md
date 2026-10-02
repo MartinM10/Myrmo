@@ -41,13 +41,27 @@ command, so it can run `deploy/server-deploy.sh` and nothing else: no shell, no 
 other files.
 
 ```text
-command="/home/ubuntu/bin/myrmo-deploy",no-port-forwarding,no-X11-forwarding,no-agent-forwarding,no-pty ssh-ed25519 AAAA… myrmo-github-deploy
+command="/home/<user>/bin/myrmo-deploy",no-port-forwarding,no-X11-forwarding,no-agent-forwarding,no-pty ssh-ed25519 AAAA… myrmo-github-deploy
 ```
 
 The script accepts only a 40-character commit id and a tar archive of the repository, which it
 caps at 300 MB. Anyone who can push to `main` can still run code on the server through the
 repository's own build, which is the normal trust model for continuous deployment. Protect `main`
 accordingly.
+
+## Safe in a public repository
+
+The Deploy workflow runs with secrets, so it is built so that only code from a push to `main` of
+this repository can reach the server:
+
+- It deploys only when the CI run behind it was a **push** (not a pull request), on branch `main`,
+  from **this repository** (not a fork), and it re-checks that the commit is part of `main`'s
+  history. A pull request from a fork can make CI pass and can even be called `main`, which is why
+  each condition is checked separately.
+- Pull requests from forks never see the secrets, and the repository requires approval before
+  running workflows for any outside contributor.
+- The repository keeps the server's address, user and key out of the code: they are secrets, and
+  the examples here use placeholders.
 
 ## One-time setup
 
@@ -66,12 +80,13 @@ ssh-keygen -t ed25519 -N '' -C myrmo-github-deploy -f deploy_key
 # append to ~/.ssh/authorized_keys on the server, prefixed with the restriction line shown above
 ```
 
-Add three repository secrets (Settings, Secrets and variables, Actions):
+Add four repository secrets (Settings, Secrets and variables, Actions):
 
 | Secret | Value |
 |---|---|
 | `DEPLOY_SSH_KEY` | The private key (`deploy_key`). Delete your local copy afterwards. |
 | `DEPLOY_HOST` | The server's address. |
+| `DEPLOY_USER` | The user the key logs in as. |
 | `DEPLOY_KNOWN_HOSTS` | The output of `ssh-keyscan -t ed25519 <host>`, checked against the fingerprint you trust. |
 
 `~/myrmo/.env` on the server needs `MYRMO_SALT`, `MYRMO_SITE_URL` and `EDGE_NETWORK`, plus
@@ -84,7 +99,7 @@ Deploy any commit on demand from the Actions tab (**Deploy**, **Run workflow**),
 with the key:
 
 ```bash
-git archive --format=tar HEAD | ssh -i deploy_key ubuntu@<host> "$(git rev-parse HEAD)"
+git archive --format=tar HEAD | ssh -i deploy_key <user>@<host> "$(git rev-parse HEAD)"
 ```
 
 ## When something goes wrong
