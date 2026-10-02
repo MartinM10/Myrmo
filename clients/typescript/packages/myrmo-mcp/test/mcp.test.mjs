@@ -9,6 +9,7 @@ import { fileURLToPath } from "node:url";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import { ElicitRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 import { fingerprint } from "myrmo";
 
 const ENTRY = fileURLToPath(new URL("../dist/index.js", import.meta.url));
@@ -73,13 +74,20 @@ after(() => colony.close());
 
 const textOf = (r) => r.content.map((c) => c.text).join("\n");
 
-async function stdioClient(publish = "ask") {
-  const client = new Client({ name: "test-client", version: "1.0.0" });
+/**
+ * `answer` makes the client elicitation-capable, like a real MCP host: it is called with the
+ * request shown to the user and returns what the user chose (`{ action, content }`).
+ */
+async function stdioClient(publish = "ask", { answer, env = {} } = {}) {
+  const client = new Client({ name: "test-client", version: "1.0.0" }, answer ? { capabilities: { elicitation: {} } } : undefined);
+  if (answer) client.setRequestHandler(ElicitRequestSchema, async (req) => answer(req.params));
   await client.connect(
-    new StdioClientTransport({ command: process.execPath, args: [ENTRY], env: { ...process.env, MYRMO_URL: colonyUrl, MYRMO_PUBLISH: publish } }),
+    new StdioClientTransport({ command: process.execPath, args: [ENTRY], env: { ...process.env, MYRMO_URL: colonyUrl, MYRMO_PUBLISH: publish, ...env } }),
   );
   return client;
 }
+
+const published = () => requests.filter((r) => r.url === "/v1/trails").length;
 
 test("exposes the three tools with their rules", async () => {
   const client = await stdioClient();
@@ -120,29 +128,82 @@ test("report records the outcome", async () => {
   await client.close();
 });
 
-test("publish refuses easy fixes, asks before sending, then publishes when confirmed", async () => {
-  const client = await stdioClient("ask");
+test("publish refuses easy fixes", async () => {
+  const client = await stdioClient("ask", { answer: async () => ({ action: "accept", content: { publish: true } }) });
   const easy = textOf(await client.callTool({ name: "myrmo_publish", arguments: { trail: { ...trail, effort: { failed_attempts: 1 } } } }));
   assert.match(easy, /Not published/);
+  await client.close();
+});
 
+test("in ask mode the user approves the exact redacted payload through the client", async () => {
+  const shown = [];
+  const client = await stdioClient("ask", {
+    answer: async (params) => {
+      shown.push(params.message);
+      return { action: "accept", content: { publish: true } };
+    },
+  });
   const secret = { ...trail, problem: { ...trail.problem, raw_logs: "key sk-ant-api03-abcdefghijklmnopqrstuvwxyz0123" } };
-  const before = requests.filter((r) => r.url === "/v1/trails").length;
-  const asked = textOf(await client.callTool({ name: "myrmo_publish", arguments: { trail: secret } }));
-  assert.match(asked, /Nothing was sent yet/);
-  assert.match(asked, /redacted locally: 1 api_key/);
-  assert.doesNotMatch(asked, /sk-ant-api03/);
-  assert.equal(requests.filter((r) => r.url === "/v1/trails").length, before);
-
-  const done = textOf(await client.callTool({ name: "myrmo_publish", arguments: { trail: secret, confirmed: true } }));
+  const before = published();
+  const done = textOf(await client.callTool({ name: "myrmo_publish", arguments: { trail: secret } }));
   assert.match(done, /Published trail c71e0f4a/);
+  assert.equal(shown.length, 1, "the user was asked once");
+  assert.match(shown[0], /redacted locally: 1 api_key/);
+  assert.doesNotMatch(shown[0], /sk-ant-api03/);
+  assert.equal(published(), before + 1);
   const sent = requests.filter((r) => r.url === "/v1/trails").at(-1);
   assert.ok(!JSON.stringify(sent.body).includes("sk-ant-api03"), "secret never leaves the machine");
   await client.close();
 });
 
+test("nothing is sent when the user declines, cancels or says no", async () => {
+  for (const answer of [{ action: "decline" }, { action: "cancel" }, { action: "accept", content: { publish: false } }]) {
+    const client = await stdioClient("ask", { answer: async () => answer });
+    const before = published();
+    const out = textOf(await client.callTool({ name: "myrmo_publish", arguments: { trail } }));
+    assert.match(out, /Not published: the user did not approve/);
+    assert.equal(published(), before);
+    await client.close();
+  }
+});
+
+test("the model cannot approve on the user's behalf", async () => {
+  // A client that cannot ask the user: a model-supplied `confirmed: true` must not publish.
+  const client = await stdioClient("ask");
+  const before = published();
+  const out = textOf(await client.callTool({ name: "myrmo_publish", arguments: { trail, confirmed: true } }));
+  assert.match(out, /cannot ask the user for approval/);
+  assert.equal(published(), before);
+  await client.close();
+});
+
+test("auto mode publishes without asking, because the user opted in", async () => {
+  const client = await stdioClient("auto");
+  const before = published();
+  assert.match(textOf(await client.callTool({ name: "myrmo_publish", arguments: { trail } })), /Published trail/);
+  assert.equal(published(), before + 1);
+  await client.close();
+});
+
+test("the model cannot switch on high-risk commands; the user can", async () => {
+  const args = { error: "ModuleNotFoundError: No module named 'distutils'", runtime: "python", include_high_risk: true };
+  const refused = await stdioClient();
+  const withheld = textOf(await refused.callTool({ name: "myrmo_search", arguments: args }));
+  assert.match(withheld, /WITHHELD: pipe_to_shell/);
+  assert.doesNotMatch(withheld, /curl -fsSL/);
+  await refused.close();
+
+  const allowed = await stdioClient("ask", { env: { MYRMO_ALLOW_HIGH_RISK: "1" } });
+  const shown = textOf(await allowed.callTool({ name: "myrmo_search", arguments: args }));
+  assert.match(shown, /curl -fsSL/);
+  const notAsked = textOf(await allowed.callTool({ name: "myrmo_search", arguments: { ...args, include_high_risk: false } }));
+  assert.doesNotMatch(notAsked, /curl -fsSL/, "still off unless the model asks and the user allowed it");
+  await allowed.close();
+});
+
 test("publishing stays off unless enabled", async () => {
   const client = await stdioClient("off");
-  const out = textOf(await client.callTool({ name: "myrmo_publish", arguments: { trail, confirmed: true } }));
+  const out = textOf(await client.callTool({ name: "myrmo_publish", arguments: { trail } }));
   assert.match(out, /Publishing is disabled/);
   await client.close();
 });
@@ -161,6 +222,10 @@ test("the hosted HTTP transport serves the same tools statelessly", async () => 
     assert.match(out, new RegExp(TRAIL_ID));
     const last = requests.filter((r) => r.url.startsWith("/v1/trails/by-fingerprint/")).at(-1);
     assert.equal(last.headers["x-forwarded-for"], "127.0.0.1", "the caller's address is forwarded for per-client rate limits");
+    const before = published();
+    const refusal = textOf(await client.callTool({ name: "myrmo_publish", arguments: { trail, confirmed: true } }));
+    assert.match(refusal, /hosted Myrmo server cannot ask the user/);
+    assert.equal(published(), before, "the hosted server never publishes");
     await client.close();
   } finally {
     proc.kill();
