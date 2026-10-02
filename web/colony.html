@@ -58,6 +58,29 @@
   }
   .source .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ochre); }
   .source.live .dot { background: var(--moss); }
+  .source[data-status="unreachable"] .dot { background: var(--ember); }
+  .source .ell i { font-style: normal; }
+  @media (prefers-reduced-motion: no-preference) {
+    /* Connecting: the dot sends out signal rings, the dots in the label walk like ants along a trail,
+       and the text flickers now and then as if the line were noisy. */
+    .source[data-status="loading"] .dot { animation: ping 1.3s ease-out infinite; }
+    @keyframes ping {
+      0% { box-shadow: 0 0 0 0 rgba(var(--amber-glow), 0.7); }
+      80%, 100% { box-shadow: 0 0 0 9px rgba(var(--amber-glow), 0); }
+    }
+    .source[data-status="loading"] .ell i { animation: walk 1.2s ease-in-out infinite; }
+    .source[data-status="loading"] .ell i:nth-child(2) { animation-delay: 0.2s; }
+    .source[data-status="loading"] .ell i:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes walk { 0%, 100% { opacity: 0.2; } 35% { opacity: 1; color: var(--amber); } }
+    .source[data-status="loading"] #source-text { animation: noise 3s steps(1) infinite; }
+    @keyframes noise {
+      0%, 88%, 94%, 100% { text-shadow: none; transform: none; }
+      90% { text-shadow: -1.5px 0 rgba(255, 90, 60, 0.8), 1.5px 0 rgba(255, 190, 60, 0.8); transform: translateX(1px); }
+      92% { text-shadow: 1.5px 0 rgba(255, 90, 60, 0.8), -1.5px 0 rgba(255, 190, 60, 0.8); transform: translateX(-1px); }
+    }
+    .source[data-status="unreachable"] .dot { animation: fade 2s ease-in-out infinite; }
+    @keyframes fade { 50% { opacity: 0.25; } }
+  }
 
   .toolbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
   .search {
@@ -761,10 +784,12 @@
   function renderSource() {
     const el = document.getElementById("source");
     el.classList.toggle("live", state.live);
-    document.getElementById("source-text").textContent = {
+    el.dataset.status = state.status;
+    const label = document.getElementById("source-text");
+    if (state.status === "loading") label.innerHTML = 'Connecting<span class="ell"><i>.</i><i>.</i><i>.</i></span>';
+    else label.textContent = {
       live: `Live · ${(state.api ?? "").replace(/^https?:\/\//, "")}`,
       demo: "Demo data, not real",
-      loading: "Connecting…",
       unreachable: "Colony unreachable",
     }[state.status];
 
