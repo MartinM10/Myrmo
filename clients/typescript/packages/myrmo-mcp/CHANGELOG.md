@@ -1,0 +1,20 @@
+# Changelog
+
+## [0.2.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.1.0...mcp-v0.2.0) (2026-10-02)
+
+
+### Features
+
+* **mcp:** let the hosted server publish through a link, and tell the agent what happened ([9a9d1b5](https://github.com/MartinM10/Myrmo/commit/9a9d1b5a59534a8a5af67103c40daaed6953f9e4))
+* **mcp:** MCP server over stdio and hosted Streamable HTTP ([ac886d3](https://github.com/MartinM10/Myrmo/commit/ac886d31b26b1ad9495b065c4d3607082969c8c9))
+
+
+### Bug fixes
+
+* a way back from the docs to the site; license, URLs and README in the published packages ([06a0623](https://github.com/MartinM10/Myrmo/commit/06a0623f929334bdc2b898eb169d01b83048cb96))
+* **mcp:** let the user, not the model, approve publishing and high-risk commands ([f1449bd](https://github.com/MartinM10/Myrmo/commit/f1449bdbfb543e85a402d81d3f2e52bdf12ae73b))
+
+
+### Documentation
+
+* say what exists, add a team-trial guide, a roadmap and a security policy ([9965b62](https://github.com/MartinM10/Myrmo/commit/9965b62278ed8a1504f97dd15ff23464dd0eb209))
