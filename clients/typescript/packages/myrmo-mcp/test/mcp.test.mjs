@@ -228,6 +228,24 @@ test("auto mode publishes without asking, because the user opted in", async () =
   await client.close();
 });
 
+test("fields the protocol requires but an agent may leave out are filled in before sending", async () => {
+  const client = await stdioClient("auto");
+  const lean = structuredClone(trail);
+  delete lean.agent_info;
+  delete lean.problem.raw_logs;
+  delete lean.solution.code_patches;
+  delete lean.solution.shell_commands_executed;
+  delete lean.environment.packages;
+  await client.callTool({ name: "myrmo_publish", arguments: { trail: lean } });
+  const sent = requests.filter((r) => r.url === "/v1/trails").at(-1).body;
+  assert.equal(sent.problem.raw_logs, "(none provided)", "the schema does not accept an empty raw_logs");
+  assert.deepEqual(sent.solution.code_patches, []);
+  assert.deepEqual(sent.solution.shell_commands_executed, []);
+  assert.deepEqual(sent.environment.packages, []);
+  assert.ok(sent.agent_info.model && sent.agent_info.framework);
+  await client.close();
+});
+
 test("the model cannot switch on high-risk commands; the user can", async () => {
   const args = { error: "ModuleNotFoundError: No module named 'distutils'", runtime: "python", include_high_risk: true };
   const refused = await stdioClient();
