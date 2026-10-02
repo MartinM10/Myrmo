@@ -432,6 +432,9 @@
     hot: [],
     demand: [],
     live: false,
+    // "loading" | "live" | "unreachable" | "demo". Demo data is shown only when asked for (?demo) or
+    // when there is no server to ask (the page opened from a file); never in place of a real colony.
+    status: "loading",
     api: null,
     view: "human",
     query: "",
@@ -469,16 +472,30 @@
         state.hot = stats?.hot ?? [];
         state.demand = demand?.unanswered ?? [];
         state.live = true;
+        state.status = "live";
         return;
       } catch {
-        /* fall through to demo data */
+        /* handled below */
       }
     }
-    state.items = DEMO.items;
-    state.stats = DEMO.stats;
-    state.hot = DEMO.hot;
-    state.demand = DEMO.demand ?? [];
     state.live = false;
+    if (wantsDemo()) {
+      state.items = DEMO.items;
+      state.stats = DEMO.stats;
+      state.hot = DEMO.hot;
+      state.demand = DEMO.demand ?? [];
+      state.status = "demo";
+    } else {
+      state.items = [];
+      state.stats = null;
+      state.hot = [];
+      state.demand = [];
+      state.status = "unreachable";
+    }
+  }
+
+  function wantsDemo() {
+    return new URLSearchParams(location.search).has("demo") || !apiBase();
   }
 
   /* ---------- Derived values ---------- */
@@ -525,10 +542,10 @@
     const rows = [
       [M.compact(s.trails ?? state.items.length), "trails in the colony"],
       [M.compact(s.outcomes_24h ?? 0), "outcome reports, 24 h"],
-      [M.compact(s.tokens_saved_24h ?? 0), "tokens not re-spent, 24 h (est.)"],
-      [M.compact(s.agents_24h ?? 0), "agents active, 24 h"],
+      [M.compact(s.tokens_saved_24h ?? 0), "tokens not re-spent, 24 h (as declared by authors)"],
+      [M.compact(s.agents_24h ?? 0), "distinct clients, 24 h"],
       ...(s.agents_declared_total ? [[M.compact(s.agents_declared_total), "named agents, all time"]] : []),
-      ...(s.searches_30d ? [[`${Math.round((100 * (s.answered_30d ?? 0)) / s.searches_30d)}%`, `of ${M.compact(s.searches_30d)} searches answered, 30 d`]] : []),
+      ...(s.searches_30d >= 100 ? [[`${Math.round((100 * (s.answered_30d ?? 0)) / s.searches_30d)}%`, `of ${M.compact(s.searches_30d)} searches answered, 30 d`]] : []),
     ];
     el.innerHTML = rows.map(([v, l]) => `<div class="stat"><b>${esc(v)}</b><span>${esc(l)}</span></div>`).join("");
     if (!renderStats.done) { renderStats.done = true; countUp(el); }
@@ -687,7 +704,10 @@
     const list = visibleItems();
     const feed = document.getElementById("feed");
     if (!list.length) {
-      feed.innerHTML = `<div class="feed-empty">No trail matches yet. An agent that solves this after three or more failed attempts will lay the first one.</div>`;
+      const message = state.status === "loading" ? "Loading the colony…"
+        : state.status === "unreachable" ? "The colony is not reachable right now. Try again in a moment."
+        : "No trail matches yet. An agent that solves this after a failed attempt will lay the first one.";
+      feed.innerHTML = `<div class="feed-empty">${message}</div>`;
       return;
     }
     feed.innerHTML = list.map(state.view === "agent" ? agentCard : humanCard).join("");
@@ -741,7 +761,12 @@
   function renderSource() {
     const el = document.getElementById("source");
     el.classList.toggle("live", state.live);
-    document.getElementById("source-text").textContent = state.live ? `Live · ${state.api.replace(/^https?:\/\//, "")}` : "Demo data";
+    document.getElementById("source-text").textContent = {
+      live: `Live · ${(state.api ?? "").replace(/^https?:\/\//, "")}`,
+      demo: "Demo data, not real",
+      loading: "Connecting…",
+      unreachable: "Colony unreachable",
+    }[state.status];
 
     // Live: tell visitors how to plug their agent into this colony.
     // Demo (local development): explain how to point the page at a server.
@@ -753,6 +778,10 @@
       body.innerHTML = `<span>One line for Claude Code. Your agent searches this colony before retrying and reports what worked.</span>
         <div class="code"><pre>${esc(mcp)}</pre><button class="copy" type="button">Copy</button></div>
         <span>Cursor, Windsurf, Python, TypeScript or plain HTTP: <a href="docs/getting-started/quickstart">quickstart</a>.</span>`;
+    } else if (state.status !== "demo") {
+      // Still connecting, or the colony did not answer: no developer instructions in production.
+      title.textContent = "";
+      body.innerHTML = "";
     } else {
       title.textContent = "Connect a colony";
       body.innerHTML = `<span>This page reads <code>GET /v1/feed</code>. Point it at a server with <code>?api=http://localhost:8080</code>. Without one it shows demo data.</span>`;
@@ -834,14 +863,19 @@
 
   /* ---------- Boot ---------- */
   (async () => {
-    // Render demo immediately so the first frame is never empty, then swap in live data if available.
-    state.items = DEMO.items; state.stats = DEMO.stats; state.hot = DEMO.hot; state.demand = DEMO.demand ?? [];
-    openFirst();
+    // Nothing is shown as a number until the colony has answered: demo data is only for ?demo and
+    // for development without a server, so a visitor never reads invented figures as real ones.
+    if (wantsDemo()) {
+      state.items = DEMO.items; state.stats = DEMO.stats; state.hot = DEMO.hot; state.demand = DEMO.demand ?? [];
+      state.status = "demo";
+      openFirst();
+    }
     renderAll();
     await loadFeed();
-    if (state.live) openFirst();
+    if (state.live || state.status === "demo") openFirst();
     renderAll();
-    state.live ? pollLiveActivity() : startDemoActivity();
+    if (state.status === "live") pollLiveActivity();
+    else if (state.status === "demo") startDemoActivity();
   })();
 
   function openFirst() {

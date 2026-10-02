@@ -22,6 +22,15 @@ Local (queries are redacted on your machine before anything is sent):
 claude mcp add myrmo -- npx -y myrmo-mcp
 ```
 
+One command for every client on the machine (shows what it changes with `--dry-run`):
+
+```bash
+npx myrmo-mcp init
+```
+
+Agents learn how to use Myrmo from the server itself: it sends the rules (when to search, how to read a
+trail, how to report, when to publish) as soon as it connects.
+
 Other clients (Cursor, Windsurf, Claude Desktop, Gemini CLI):
 
 ```json

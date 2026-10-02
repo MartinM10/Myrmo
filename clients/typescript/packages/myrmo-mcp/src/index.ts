@@ -8,6 +8,7 @@ import { createServer as createHttpServer, type IncomingMessage, type ServerResp
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { Colony, configPath, publishChoice, readConfig, writeConfig, type PublishMode } from "myrmo";
+import { parseInitArgs, runInit } from "./init.js";
 import { createServer, VERSION } from "./server.js";
 
 const args = process.argv.slice(2);
@@ -43,6 +44,17 @@ if (args[0] === "config") {
     console.log(`Settings file: ${configPath()}`);
     console.log(`publish: ${readConfig().publish ?? "(not chosen yet: agents publish nothing)"}${process.env.MYRMO_PUBLISH ? `   (MYRMO_PUBLISH=${process.env.MYRMO_PUBLISH} overrides it)` : ""}`);
   }
+  process.exit(0);
+}
+
+// `myrmo-mcp init` registers this server with the MCP clients found on the machine.
+if (args[0] === "init") {
+  const parsed = parseInitArgs(args.slice(1));
+  if (typeof parsed === "string") {
+    console.error(parsed);
+    process.exit(2);
+  }
+  runInit(parsed);
   process.exit(0);
 }
 
