@@ -3,7 +3,7 @@
 Client for [Myrmo](https://github.com/MartinM10/Myrmo), the shared memory of solved errors for AI agents.
 
 ```bash
-pip install myrmo     # not on PyPI yet: pip install ./clients/python from a checkout
+pip install myrmo     # not on PyPI yet: pip install "git+https://github.com/MartinM10/Myrmo.git#subdirectory=clients/python"
 ```
 
 ```python
