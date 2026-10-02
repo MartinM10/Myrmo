@@ -1,0 +1,638 @@
+[
+ {
+  "input": "export ANTHROPIC_API_KEY=sk-ant-api03-abcdefghijklmnopqrstuvwxyz0123",
+  "output": "export ANTHROPIC_API_KEY=<redacted:api_key>",
+  "kinds": {
+   "api_key": 1
+  }
+ },
+ {
+  "input": "AKIAIOSFODNN7EXAMPLE used",
+  "output": "<redacted:aws_access_key> used",
+  "kinds": {
+   "aws_access_key": 1
+  }
+ },
+ {
+  "input": "password=SuperSecret123 next",
+  "output": "password=<redacted:secret> next",
+  "kinds": {
+   "password_assignment": 1
+  }
+ },
+ {
+  "input": "Authorization: Bearer abcdefghijklmnop1234567890",
+  "output": "Authorization: Bearer <redacted:token>",
+  "kinds": {
+   "token": 1
+  }
+ },
+ {
+  "input": "-----BEGIN OPENSSH PRIVATE KEY-----\nAAAA\n-----END OPENSSH PRIVATE KEY-----",
+  "output": "<redacted:private_key>",
+  "kinds": {
+   "private_key": 1
+  }
+ },
+ {
+  "input": "mail ana.garcia@acme.com now",
+  "output": "mail <redacted:email> now",
+  "kinds": {
+   "email": 1
+  }
+ },
+ {
+  "input": "git@github.com:org/repo.git",
+  "output": "git@github.com:org/repo.git",
+  "kinds": {}
+ },
+ {
+  "input": "connect 10.0.3.17:5432",
+  "output": "connect <redacted:ip>:5432",
+  "kinds": {
+   "ip": 1
+  }
+ },
+ {
+  "input": "listen 127.0.0.1:8080",
+  "output": "listen 127.0.0.1:8080",
+  "kinds": {}
+ },
+ {
+  "input": "version 10.0.26100.1",
+  "output": "version 10.0.26100.1",
+  "kinds": {}
+ },
+ {
+  "input": "C:\\Users\\ana\\proj\\cfg.yaml",
+  "output": "C:\\Users\\<user>\\proj\\cfg.yaml",
+  "kinds": {
+   "home_path": 1
+  }
+ },
+ {
+  "input": "call +34 612 345 678 now",
+  "output": "call <redacted:phone> now",
+  "kinds": {
+   "phone": 1
+  }
+ },
+ {
+  "input": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U",
+  "output": "<redacted:jwt>",
+  "kinds": {
+   "jwt": 1
+  }
+ },
+ {
+  "input": "token=ghx_abcdef1234567890abcdef",
+  "output": "token=<redacted:secret>",
+  "kinds": {
+   "password_assignment": 1
+  }
+ },
+ {
+  "input": "Authorization: Basic dXNlcjpzdXBlcnNlY3RwdzEyMw==",
+  "output": "Authorization: Basic <redacted:auth_header>",
+  "kinds": {
+   "auth_header": 1
+  }
+ },
+ {
+  "input": "Authorization: Bearer abcdefghijklmnop1234567890",
+  "output": "Authorization: Bearer <redacted:token>",
+  "kinds": {
+   "token": 1
+  }
+ },
+ {
+  "input": "Authorization: Bearer short",
+  "output": "Authorization: Bearer short",
+  "kinds": {}
+ },
+ {
+  "input": "Authorization: token ghx_abcdefghijklmnopqrstuv",
+  "output": "Authorization: token <redacted:auth_header>",
+  "kinds": {
+   "auth_header": 1
+  }
+ },
+ {
+  "input": "curl -H 'Authorization: Basic dXNlcjpwYXNz' https://api.example.com",
+  "output": "curl -H 'Authorization: Basic <redacted:auth_header>' https://api.example.com",
+  "kinds": {
+   "auth_header": 1
+  }
+ },
+ {
+  "input": "mysql --password hunter2222 -h db",
+  "output": "mysql --password <redacted:secret> -h db",
+  "kinds": {
+   "password_assignment": 1
+  }
+ },
+ {
+  "input": "mysql --password=hunter2222 -h db",
+  "output": "mysql --password=<redacted:secret> -h db",
+  "kinds": {
+   "password_assignment": 1
+  }
+ },
+ {
+  "input": "docker login -u bob --password-stdin",
+  "output": "docker login -u bob --password-stdin",
+  "kinds": {}
+ },
+ {
+  "input": "deploy --token $DEPLOY_TOKEN --env prod",
+  "output": "deploy --token $DEPLOY_TOKEN --env prod",
+  "kinds": {}
+ },
+ {
+  "input": "{\"username\": \"bob\", \"password\": \"hunter2hunter2\"}",
+  "output": "{\"username\": \"bob\", \"password\": \"<redacted:secret>\"}",
+  "kinds": {
+   "password_assignment": 1
+  }
+ },
+ {
+  "input": "{'client_secret': 'abcd1234efgh5678'}",
+  "output": "{'client_secret': '<redacted:secret>'}",
+  "kinds": {
+   "password_assignment": 1
+  }
+ },
+ {
+  "input": "DB_PASSWORD=Winter(2024)x",
+  "output": "DB_PASSWORD=<redacted:secret>",
+  "kinds": {
+   "password_assignment": 1
+  }
+ },
+ {
+  "input": "MYSQL_PWD=s3cret!pass",
+  "output": "MYSQL_PWD=<redacted:secret>",
+  "kinds": {
+   "password_assignment": 1
+  }
+ },
+ {
+  "input": "GITHUB_TOKEN=ghs_abcdefghijklmnopqrstuvwxyz0123456789",
+  "output": "GITHUB_TOKEN=<redacted:api_key>",
+  "kinds": {
+   "api_key": 1
+  }
+ },
+ {
+  "input": "export SERVICE_TOKEN=abcdefghij1234567890",
+  "output": "export SERVICE_TOKEN=<redacted:secret>",
+  "kinds": {
+   "password_assignment": 1
+  }
+ },
+ {
+  "input": "password: ${{ secrets.DB_PASSWORD }}",
+  "output": "password: ${{ secrets.DB_PASSWORD }}",
+  "kinds": {}
+ },
+ {
+  "input": "password=$DB_PASSWORD",
+  "output": "password=$DB_PASSWORD",
+  "kinds": {}
+ },
+ {
+  "input": "password=os.getenv(\"DB_PASSWORD\")",
+  "output": "password=os.getenv(\"DB_PASSWORD\")",
+  "kinds": {}
+ },
+ {
+  "input": "password = None",
+  "output": "password = None",
+  "kinds": {}
+ },
+ {
+  "input": "api_key=****",
+  "output": "api_key=****",
+  "kinds": {}
+ },
+ {
+  "input": "secret_key = get_secret()",
+  "output": "secret_key = get_secret()",
+  "kinds": {}
+ },
+ {
+  "input": "token_type=Bearer",
+  "output": "token_type=Bearer",
+  "kinds": {}
+ },
+ {
+  "input": "max_tokens=4096",
+  "output": "max_tokens=4096",
+  "kinds": {}
+ },
+ {
+  "input": "tokens: 512",
+  "output": "tokens: 512",
+  "kinds": {}
+ },
+ {
+  "input": "author: John Smith",
+  "output": "author: John Smith",
+  "kinds": {}
+ },
+ {
+  "input": "kind: Secret\ntype: Opaque",
+  "output": "kind: Secret\ntype: Opaque",
+  "kinds": {}
+ },
+ {
+  "input": "npm_Abcdefghijklmnopqrstuvwxyz0123456789",
+  "output": "<redacted:api_key>",
+  "kinds": {
+   "api_key": 1
+  }
+ },
+ {
+  "input": "hf_AbCdEfGhIjKlMnOpQrStUvWxYz0123456789",
+  "output": "<redacted:api_key>",
+  "kinds": {
+   "api_key": 1
+  }
+ },
+ {
+  "input": "SG.abcdefghijklmnopqrstuv.abcdefghijklmnopqrstuvwxyz0123456789ABCDEFG",
+  "output": "<redacted:api_key>",
+  "kinds": {
+   "api_key": 1
+  }
+ },
+ {
+  "input": "pypi-AgEIcHlwaS5vcmcCJGFiY2RlZmdoaWprbG1ub3BxcnN0dXZ3eHl6MDEyMzQ1Njc4OQ",
+  "output": "<redacted:api_key>",
+  "kinds": {
+   "api_key": 1
+  }
+ },
+ {
+  "input": "ya29.a0AfH6SMBabcdefghijklmnopqrstuvwxyz0123456789",
+  "output": "<redacted:api_key>",
+  "kinds": {
+   "api_key": 1
+  }
+ },
+ {
+  "input": "dckr_pat_AbCdEfGhIjKlMnOpQrStUvWxYz",
+  "output": "<redacted:api_key>",
+  "kinds": {
+   "api_key": 1
+  }
+ },
+ {
+  "input": "dapi0123456789abcdef0123456789abcdef",
+  "output": "<redacted:api_key>",
+  "kinds": {
+   "api_key": 1
+  }
+ },
+ {
+  "input": "key-0123456789abcdef0123456789abcdef",
+  "output": "<redacted:api_key>",
+  "kinds": {
+   "api_key": 1
+  }
+ },
+ {
+  "input": "GOCSPX-abcdefghijklmnopqrstuvwxyz12",
+  "output": "<redacted:api_key>",
+  "kinds": {
+   "api_key": 1
+  }
+ },
+ {
+  "input": "https://hooks.slack.com/services/T01234567/B01234567/abcdefghijklmnopqrstuvwx",
+  "output": "<redacted:webhook>",
+  "kinds": {
+   "webhook": 1
+  }
+ },
+ {
+  "input": "https://discord.com/api/webhooks/123456789012345678/abcDEF_ghi-JKL",
+  "output": "<redacted:webhook>",
+  "kinds": {
+   "webhook": 1
+  }
+ },
+ {
+  "input": "DefaultEndpointsProtocol=https;AccountName=acme;AccountKey=Zm9vYmFyZm9vYmFyZm9vYmFyZm9vYmFyZm9vYmFy==;EndpointSuffix=core.windows.net",
+  "output": "DefaultEndpointsProtocol=https;AccountName=acme;AccountKey=<redacted:api_key>;EndpointSuffix=core.windows.net",
+  "kinds": {
+   "api_key": 1
+  }
+ },
+ {
+  "input": "X-Api-Key: abcd1234efgh5678",
+  "output": "X-Api-Key: <redacted:auth_header>",
+  "kinds": {
+   "auth_header": 1
+  }
+ },
+ {
+  "input": "Cookie: session=abc123def456; theme=dark",
+  "output": "Cookie: <redacted:cookie>",
+  "kinds": {
+   "cookie": 1
+  }
+ },
+ {
+  "input": "Set-Cookie: sid=abc123def456ghi; Path=/; HttpOnly",
+  "output": "Set-Cookie: <redacted:cookie>",
+  "kinds": {
+   "cookie": 1
+  }
+ },
+ {
+  "input": "https://example.com/cb?code=1&access_token=abcdef123456&state=x",
+  "output": "https://example.com/cb?code=1&access_token=<redacted:url_secret>&state=x",
+  "kinds": {
+   "url_secret": 1
+  }
+ },
+ {
+  "input": "https://x.blob.core.windows.net/c/f?sv=2020&sig=abcDEF123%2Bxyz%3D&se=2030",
+  "output": "https://x.blob.core.windows.net/c/f?sv=2020&sig=<redacted:url_secret>&se=2030",
+  "kinds": {
+   "url_secret": 1
+  }
+ },
+ {
+  "input": "https://ghp_abcdefghijklmnopqrstuvwxyz0123456789@github.com/org/repo.git",
+  "output": "https://<redacted:api_key>@github.com/org/repo.git",
+  "kinds": {
+   "api_key": 1
+  }
+ },
+ {
+  "input": "https://abcdefghijklmnopqrstuvwxyz123456@sentry.example.com/42",
+  "output": "https://<redacted:connection_string>@sentry.example.com/42",
+  "kinds": {
+   "connection_string": 1
+  }
+ },
+ {
+  "input": "postgres://admin:hunter2@db.internal:5432/app",
+  "output": "postgres://<redacted:connection_string>@<redacted:hostname>:5432/app",
+  "kinds": {
+   "connection_string": 1,
+   "hostname": 1
+  }
+ },
+ {
+  "input": "ssh me@macbook-pro.local",
+  "output": "ssh <redacted:email>",
+  "kinds": {
+   "email": 1
+  }
+ },
+ {
+  "input": "$argon2id$v=19$m=65536,t=3,p=4$c29tZXNhbHQ$RdescudvJCsgt3ub+b+dWRWJTmaaJObG",
+  "output": "<redacted:password_hash>",
+  "kinds": {
+   "password_hash": 1
+  }
+ },
+ {
+  "input": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASC\nKcwggSjAgEAAoIBAQC7VJTUt9Us8cKj\n(log truncated)",
+  "output": "<redacted:private_key>\n(log truncated)",
+  "kinds": {
+   "private_key": 1
+  }
+ },
+ {
+  "input": "-----BEGIN PGP PRIVATE KEY BLOCK-----\nlQOYBF\n-----END PGP PRIVATE KEY BLOCK-----",
+  "output": "<redacted:private_key>",
+  "kinds": {
+   "private_key": 1
+  }
+ },
+ {
+  "input": "{\"private_key\": \"-----BEGIN PRIVATE KEY-----\\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASC\\n-----END PRIVATE KEY-----\\n\"}",
+  "output": "{\"private_key\": \"<redacted:private_key>\\n\"}",
+  "kinds": {
+   "private_key": 1
+  }
+ },
+ {
+  "input": "fe80::1c2b:3dff:fe4a:5b6c refused",
+  "output": "<redacted:ipv6> refused",
+  "kinds": {
+   "ipv6": 1
+  }
+ },
+ {
+  "input": "2001:0db8:85a3:0000:0000:8a2e:0370:7334",
+  "output": "<redacted:ipv6>",
+  "kinds": {
+   "ipv6": 1
+  }
+ },
+ {
+  "input": "::1 and std::string",
+  "output": "::1 and std::string",
+  "kinds": {}
+ },
+ {
+  "input": "mac aa:bb:cc:dd:ee:ff up",
+  "output": "mac <redacted:mac> up",
+  "kinds": {
+   "mac": 1
+  }
+ },
+ {
+  "input": "card 4111 1111 1111 1111 declined",
+  "output": "card <redacted:card> declined",
+  "kinds": {
+   "card": 1
+  }
+ },
+ {
+  "input": "card 4111111111111112 declined",
+  "output": "card 4111111111111112 declined",
+  "kinds": {}
+ },
+ {
+  "input": "ts 1727860000000 and 17278600000000000",
+  "output": "ts 1727860000000 and 17278600000000000",
+  "kinds": {}
+ },
+ {
+  "input": "uuid 3f2b8c1e-9a4d-4e2f-8b1a-2c3d4e5f6a7b",
+  "output": "uuid 3f2b8c1e-9a4d-4e2f-8b1a-2c3d4e5f6a7b",
+  "kinds": {}
+ },
+ {
+  "input": "sha256:3f2b8c1e9a4d4e2f8b1a2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f",
+  "output": "sha256:3f2b8c1e9a4d4e2f8b1a2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f",
+  "kinds": {}
+ },
+ {
+  "input": "git commit 0123456789abcdef0123456789abcdef01234567",
+  "output": "git commit 0123456789abcdef0123456789abcdef01234567",
+  "kinds": {}
+ },
+ {
+  "input": "cp .env.example .env.local",
+  "output": "cp .env.example .env.local",
+  "kinds": {}
+ },
+ {
+  "input": "jdk.internal.misc.Unsafe",
+  "output": "jdk.internal.misc.Unsafe",
+  "kinds": {}
+ },
+ {
+  "input": "File \"/home/ana/app/x.py\", line 3",
+  "output": "File \"/home/<user>/app/x.py\", line 3",
+  "kinds": {
+   "home_path": 1
+  }
+ },
+ {
+  "input": "ModuleNotFoundError: No module named 'distutils'",
+  "output": "ModuleNotFoundError: No module named 'distutils'",
+  "kinds": {}
+ },
+ {
+  "input": "pip install --index-url https://pypi.org/simple requests",
+  "output": "pip install --index-url https://pypi.org/simple requests",
+  "kinds": {}
+ },
+ {
+  "input": "password policy requires 12 characters",
+  "output": "password policy requires 12 characters",
+  "kinds": {}
+ },
+ {
+  "input": "Enter your password:",
+  "output": "Enter your password:",
+  "kinds": {}
+ },
+ {
+  "input": "10:20:30 server started on 10.0.3.17:8080",
+  "output": "10:20:30 server started on <redacted:ip>:8080",
+  "kinds": {
+   "ip": 1
+  }
+ },
+ {
+  "input": "requests.get(url, headers={\"Authorization\": \"Bearer abcdefghijklmnop1234567890\"})",
+  "output": "requests.get(url, headers={\"Authorization\": \"Bearer <redacted:token>\"})",
+  "kinds": {
+   "token": 1
+  }
+ },
+ {
+  "input": "headers = {'Authorization': 'Basic dXNlcjpwYXNz', 'Accept': 'json'}",
+  "output": "headers = {'Authorization': 'Basic <redacted:auth_header>', 'Accept': 'json'}",
+  "kinds": {
+   "auth_header": 1
+  }
+ },
+ {
+  "input": "headers = {'X-Api-Key': 'abcd1234efgh5678'}",
+  "output": "headers = {'X-Api-Key': '<redacted:auth_header>'}",
+  "kinds": {
+   "auth_header": 1
+  }
+ },
+ {
+  "input": "{\"Cookie\": \"sid=abc123def456\"}",
+  "output": "{\"Cookie\": \"<redacted:cookie>\"}",
+  "kinds": {
+   "cookie": 1
+  }
+ },
+ {
+  "input": "//registry.npmjs.org/:_authToken=abcd1234-efgh-5678-ijkl",
+  "output": "//registry.npmjs.org/:_authToken=<redacted:secret>",
+  "kinds": {
+   "password_assignment": 1
+  }
+ },
+ {
+  "input": "export AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+  "output": "export AWS_SECRET_ACCESS_KEY=<redacted:aws_access_key>",
+  "kinds": {
+   "aws_access_key": 1
+  }
+ },
+ {
+  "input": "ENV API_KEY=abcd1234",
+  "output": "ENV API_KEY=<redacted:secret>",
+  "kinds": {
+   "password_assignment": 1
+  }
+ },
+ {
+  "input": "apiKey: abcd1234efgh",
+  "output": "apiKey: <redacted:auth_header>",
+  "kinds": {
+   "auth_header": 1
+  }
+ },
+ {
+  "input": "kubectl create secret generic db --from-literal=password=abc123xyz",
+  "output": "kubectl create secret generic db --from-literal=password=<redacted:secret>",
+  "kinds": {
+   "password_assignment": 1
+  }
+ },
+ {
+  "input": "$2b$12$abcdefghijklmnopqrstuuABCDEFGHIJKLMNOPQRSTUVWXYZ01234",
+  "output": "<redacted:password_hash>",
+  "kinds": {
+   "password_hash": 1
+  }
+ },
+ {
+  "input": "auth_token = request.headers.get('Authorization')",
+  "output": "auth_token = request.headers.get('Authorization')",
+  "kinds": {}
+ },
+ {
+  "input": "Invalid token: signature has expired",
+  "output": "Invalid token: signature has expired",
+  "kinds": {}
+ },
+ {
+  "input": "Unauthorized: token expired at 2026-10-02T08:00:00Z",
+  "output": "Unauthorized: token expired at 2026-10-02T08:00:00Z",
+  "kinds": {}
+ },
+ {
+  "input": "error: invalid password for user 'bob'",
+  "output": "error: invalid password for user 'bob'",
+  "kinds": {}
+ },
+ {
+  "input": "Password: ******",
+  "output": "Password: ******",
+  "kinds": {}
+ },
+ {
+  "input": "{\"token\": \"abc\"}",
+  "output": "{\"token\": \"abc\"}",
+  "kinds": {}
+ },
+ {
+  "input": "credentials: required",
+  "output": "credentials: required",
+  "kinds": {}
+ },
+ {
+  "input": "secret: my-database-credentials-v2",
+  "output": "secret: <redacted:secret>",
+  "kinds": {
+   "password_assignment": 1
+  }
+ }
+]

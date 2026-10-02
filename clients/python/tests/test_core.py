@@ -3,6 +3,7 @@ from pathlib import Path
 
 from myrmo import fingerprint, guess_error_type, normalize_message, redact_text, redact_value
 
+REDACTION_VECTORS = json.loads((Path(__file__).resolve().parents[3] / "protocol/redact.v1.vectors.json").read_text(encoding="utf-8"))
 VECTORS = json.loads((Path(__file__).resolve().parents[3] / "protocol/fingerprint.v1.vectors.json").read_text(encoding="utf-8"))
 
 
@@ -22,7 +23,7 @@ def test_guesses_error_type():
 def test_removes_secrets():
     assert "sk-ant-api03" not in redact_text("export ANTHROPIC_API_KEY=sk-ant-api03-abcdefghijklmnopqrstuvwxyz0123")
     assert redact_text("AKIAIOSFODNN7EXAMPLE used") == "<redacted:aws_access_key> used"
-    assert redact_text("postgres://admin:hunter2@db.internal:5432/app") == "postgres://<redacted:connection_string>@db.internal:5432/app"
+    assert redact_text("postgres://admin:hunter2@db.internal:5432/app") == "postgres://<redacted:connection_string>@<redacted:hostname>:5432/app"
     assert redact_text("password=SuperSecret123 next") == "password=<redacted:secret> next"
     assert redact_text("Authorization: Bearer abcdefghijklmnop1234567890") == "Authorization: Bearer <redacted:token>"
     assert redact_text("-----BEGIN OPENSSH PRIVATE KEY-----\nAAAA\n-----END OPENSSH PRIVATE KEY-----") == "<redacted:private_key>"
@@ -44,3 +45,23 @@ def test_redaction_is_nested_counted_and_idempotent():
     assert redact_value(once) == once
     assert once["a"][1]["b"] == "ok"
     assert report == {"password_assignment": 1}
+
+
+def test_matches_every_normative_redaction_vector():
+    assert len(REDACTION_VECTORS) >= 100
+    for v in REDACTION_VECTORS:
+        kinds = {}
+        out = redact_text(v["input"], kinds)
+        assert out == v["output"], v["input"]
+        assert dict(sorted(kinds.items())) == v["kinds"], v["input"]
+        assert redact_text(out) == out, f"not idempotent: {v['input']!r}"
+
+
+def test_long_hostile_input_is_redacted_in_bounded_time():
+    # Unbounded prefixes made these quadratic: 16,000 characters took twenty seconds.
+    import time
+
+    for text in ["a." * 8000, "://" + "a." * 8000, "word." * 3000 + "token=x", "a@" * 8000]:
+        start = time.perf_counter()
+        redact_text(text)
+        assert time.perf_counter() - start < 3, text[:20]

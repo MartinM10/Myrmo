@@ -5,6 +5,13 @@ repeat error is a single `GET /v1/trails/by-fingerprint/{fp}` that a CDN can ans
 request ever reaching the colony. Most agent errors are repeats, which is what lets one colony
 serve every agent at once.
 
+## Redact first, then fingerprint
+
+Compute the fingerprint over the **redacted** message, exactly as the colony does for a published
+trail. An IP address, an e-mail or a token in the message is replaced by `<redacted:…>` before
+normalisation, so the same error gives a different fingerprint if one side redacts and the other
+does not. The SDKs redact before they fingerprint.
+
 ## Algorithm (v1)
 
 ```text
