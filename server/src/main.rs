@@ -40,7 +40,13 @@ async fn main() -> Result<()> {
 
     match mode.as_str() {
         "serve" => serve(st).await,
-        "enrich" => enricher::run(st).await,
+        "enrich" => {
+            // On a stop signal, leave unfinished entries pending: they are reclaimed and retried.
+            tokio::select! {
+                result = enricher::run(st) => result,
+                () = shutdown_signal() => Ok(()),
+            }
+        }
         "all" => {
             tokio::spawn(enricher::run(st.clone()));
             serve(st).await
@@ -57,9 +63,32 @@ async fn serve(st: state::AppState) -> Result<()> {
         listener,
         app.into_make_service_with_connect_info::<SocketAddr>(),
     )
-    .with_graceful_shutdown(async {
-        let _ = tokio::signal::ctrl_c().await;
-    })
+    .with_graceful_shutdown(shutdown_signal())
     .await?;
     Ok(())
+}
+
+/// Resolves on Ctrl-C or SIGTERM. `docker stop` sends SIGTERM, which a process running as
+/// PID 1 ignores unless it installs a handler: without this every deploy waited out the grace
+/// period and ended in SIGKILL, dropping in-flight requests.
+async fn shutdown_signal() {
+    let ctrl_c = async {
+        let _ = tokio::signal::ctrl_c().await;
+    };
+    #[cfg(unix)]
+    let terminate = async {
+        match tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate()) {
+            Ok(mut signal) => {
+                signal.recv().await;
+            }
+            Err(_) => std::future::pending::<()>().await,
+        }
+    };
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+    tokio::select! {
+        () = ctrl_c => {},
+        () = terminate => {},
+    }
+    tracing::info!("shutting down");
 }

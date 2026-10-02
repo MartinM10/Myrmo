@@ -147,6 +147,9 @@ fn parse_body(body: Result<Bytes, BytesRejection>) -> ApiResult<Value> {
 #[derive(Clone)]
 pub struct Caller {
     pub agent: String,
+    /// Daily-rotated hash of the address. Unlike `agent`, the caller cannot choose it, so
+    /// quotas are counted against it.
+    pub client: String,
 }
 
 fn valid_agent_id(id: &str) -> bool {
@@ -179,6 +182,7 @@ async fn rate_limit(
         .unwrap_or_else(|| client.clone());
     req.extensions_mut().insert(Caller {
         agent: agent.clone(),
+        client: client.clone(),
     });
 
     let now = keys::now();
@@ -569,6 +573,51 @@ async fn search(
 // ---------------------------------------------------------------------------
 // POST /v1/trails
 
+/// Publishing is the only expensive write: every trail costs enrichment and a model call. Refuse
+/// when the queue is already deep (so the backlog cannot exhaust memory), then charge the
+/// client's hourly quota. The quota counts the hashed address, not the self-declared agent id.
+async fn enforce_publish_limits(st: &AppState, caller: &Caller) -> ApiResult<()> {
+    let mut con = st.redis();
+    let queue_max = st.cfg.queue_max;
+    if queue_max > 0 {
+        let depth: u64 = con.xlen(keys::STREAM).await?;
+        if depth >= queue_max {
+            tracing::warn!(depth, queue_max, "publish queue is full");
+            let mut err = ApiError::new(
+                StatusCode::SERVICE_UNAVAILABLE,
+                "busy",
+                "The colony is catching up on new trails. Retry in a minute.",
+            );
+            err.retry_after = Some(60);
+            return Err(err);
+        }
+    }
+    let limit = st.cfg.publish_limit_per_hour;
+    if limit > 0 {
+        let now = keys::now();
+        let key = keys::publish_quota(&caller.client, keys::hour(now));
+        let (used,): (u64,) = redis::pipe()
+            .cmd("INCR")
+            .arg(&key)
+            .cmd("EXPIRE")
+            .arg(&key)
+            .arg(3_700)
+            .ignore()
+            .query_async(&mut con)
+            .await?;
+        if used > limit {
+            let mut err = ApiError::new(
+                StatusCode::TOO_MANY_REQUESTS,
+                "publish_limited",
+                format!("Publishing quota of {limit} trails per hour reached."),
+            );
+            err.retry_after = Some(3_600 - now % 3_600);
+            return Err(err);
+        }
+    }
+    Ok(())
+}
+
 async fn publish(
     State(st): State<AppState>,
     Extension(caller): Extension<Caller>,
@@ -583,6 +632,7 @@ async fn publish(
         )
         .details(json!(details))
     })?;
+    enforce_publish_limits(&st, &caller).await?;
     let mut report = Report::new();
     redact::redact_value(&mut trail, &mut report);
 

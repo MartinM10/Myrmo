@@ -8,6 +8,8 @@ services:
   gateway:
     environment:
       MYRMO_RATE_LIMIT: "0"
+      MYRMO_PUBLISH_LIMIT: "0"
+      MYRMO_QUEUE_MAX: "0"
   enricher:
     environment:
       MYRMO_DECISION_URL: ""

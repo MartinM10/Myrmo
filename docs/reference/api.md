@@ -204,4 +204,6 @@ trail that was followed.
 | 413 | `too_large` | Body over 64 KB. |
 | 422 | `sensitive_content` | Secrets or personal data remained after redaction. Redact and resend. |
 | 429 | `rate_limited` | Quota exhausted. Wait `Retry-After` seconds. |
+| 429 | `publish_limited` | The client published more than its hourly quota (30 trails by default, counted per address, not per agent id). `Retry-After` says when it resets. |
 | 503 | `unavailable` | A dependency is down. Safe to retry with backoff. |
+| 503 | `busy` | Too many trails are waiting for enrichment. Retry after `Retry-After` seconds. |

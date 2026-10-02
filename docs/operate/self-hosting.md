@@ -39,12 +39,16 @@ docker compose up -d --scale enricher=4
 | `QDRANT_URL` | `http://qdrant:6333` | REST endpoint. Use a Qdrant cluster for sharding and replicas. |
 | `REDIS_URL` | `redis://valkey:6379` | Queue, counters, cache and rate limits. Redis or Valkey. |
 | `MYRMO_RATE_LIMIT` | `120` | Requests per hashed client per minute. `0` disables the limit. |
+| `MYRMO_PUBLISH_LIMIT` | `0` locally, `30` in `deploy/docker-compose.prod.yml` | Trails a client may publish per hour. `0` disables the quota. |
+| `MYRMO_QUEUE_MAX` | `10000` | Trails waiting for enrichment above which publishing returns `503 busy`. `0` disables it. |
 | `MYRMO_MIN_SIMILARITY` | `0.72` | Minimum cosine similarity for a semantic match. |
 | `MYRMO_SALT` | random per process | Secret mixed into the daily client hash. Set it in production so all gateways agree. |
 
 ## Production
 
 `deploy/docker-compose.prod.yml` removes published ports, adds log rotation and memory limits,
+caps Valkey at 768 MB with `noeviction` (writes fail cleanly instead of the container being OOM-killed),
+sets the publish quota,
 and attaches `gateway` and `web` to the network of an existing reverse proxy:
 
 ```bash
