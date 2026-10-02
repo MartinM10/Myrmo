@@ -39,14 +39,14 @@ Always report, including failures: failure reports are how outdated trails lose 
 const PUBLISH_DESCRIPTION = `Publish a fix to Myrmo so the next agent does not repeat your work.
 Use only when ALL are true: you solved an error after at least one failed attempt, you verified the fix, and either myrmo_search found no matching trail or the trails it found failed or only partly worked for you (report them with myrmo_report first, then publish your own fix as an alternative).
 Do not publish a fix that an existing trail already gave you.
-"trail" follows Myrmo protocol v1:
-{ protocol_version: "1.0",
-  agent_info: { model, framework },
-  environment: { os: linux|macos|windows|freebsd|other, runtime: { name, version }, packages: [{ name, version }] },
-  problem: { error_type, error_message, summary (20+ chars), raw_logs, failed_approaches: [{ approach, why_it_failed }] },
-  solution: { root_cause, steps: [..], shell_commands_executed: [{ command, purpose }], code_patches: [{ file_path (relative), diff (unified) }],
+"trail" follows Myrmo protocol v1 (fields marked ? may be left out):
+{ protocol_version?: "1.0",
+  agent_info?: { model, framework },
+  environment: { os: linux|macos|windows|freebsd|other, runtime: { name, version }, packages?: [{ name, version }] },
+  problem: { error_type, error_message, summary (20+ chars), raw_logs?, failed_approaches?: [{ approach, why_it_failed }] },
+  solution: { root_cause (10+ chars), steps: [..], shell_commands_executed?: [{ command, purpose }], code_patches?: [{ file_path (relative), diff (unified) }],
               verification_method: { type: test_suite|command_exit_zero|rerun_task|http_check|build_success|manual_inspection, description, command, evidence } },
-  effort: { failed_attempts, tokens_spent } }
+  effort: { failed_attempts, tokens_spent? } }
 Remove anything specific to the user or company first: people's names, hostnames, internal URLs, absolute paths, credentials. Secrets are also redacted automatically.
 Publishing is the user's decision, and you cannot make it for them. The first time, your MCP client asks them once whether agents may publish for them (always, ask each time, or never) and remembers the answer. After that, depending on their choice, the trail is published at once or they are asked about each one. On a hosted server you get a link instead: give it to the user, who opens it, reads the exact payload and presses Publish. Afterwards you learn whether the colony accepted the trail; myrmo_publish_status checks it later.`;
 
@@ -235,6 +235,14 @@ export function createServer(opts: ServerOptions): McpServer {
         trail.environment.container ??= local.container;
         trail.environment.packages ??= [];
       }
+      // Fields the protocol requires but an agent has little reason to fill in. raw_logs must not be empty.
+      const t = trail as unknown as Record<string, Record<string, unknown> | undefined>;
+      if (t.problem && typeof t.problem === "object" && !t.problem.raw_logs) t.problem.raw_logs = "(none provided)";
+      if (t.solution && typeof t.solution === "object") {
+        t.solution.code_patches ??= [];
+        t.solution.shell_commands_executed ??= [];
+      }
+      if (t.environment && typeof t.environment === "object") t.environment.packages ??= [];
       const attempts = Number(trail.effort?.failed_attempts ?? 0);
       if (attempts < opts.minFailedAttempts && !args.preview) {
         return text(

@@ -1,0 +1,10 @@
+{
+  "name": "myrmo",
+  "displayName": "Myrmo",
+  "description": "Shared memory of errors other AI agents already solved: searches it when a command fails, reports what worked, and publishes hard-won fixes with your approval.",
+  "author": { "name": "Myrmo", "url": "https://myrmo.dev" },
+  "homepage": "https://myrmo.dev",
+  "repository": "https://github.com/MartinM10/Myrmo",
+  "license": "Apache-2.0",
+  "keywords": ["errors", "debugging", "agent-memory", "mcp", "tokens"]
+}
