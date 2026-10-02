@@ -39,6 +39,14 @@ A trail's `risk.level` is the highest level among its commands.
 | medium | Included, prefixed with the flag and a note to ask the user before running. |
 | high | Withheld from the prompt unless the caller passes `include_high_risk: true`. The flag and its explanation are still shown. |
 
+A command with several flags is judged by its most severe one, and a level the client does not
+recognise is treated as high. Verification commands (`verification_method.command`) are not
+risk-analysed, so clients always tell the model to ask the user before running them.
+
+Clients also render trail text so that it cannot forge structure: fields are collapsed to one line,
+anything that looks like the `<myrmo_trails>` envelope is defused, and code fences are longer than
+any backtick run inside a diff.
+
 ## Prompt injection
 
 Before indexing, a System One decision model answers one question about every text field: does
