@@ -88,9 +88,8 @@ colony.example.com {
 - **Redis**: one primary with replicas is enough for counters and the queue up to very high write
   rates; move to Redis Cluster or Valkey Cluster beyond that.
 
-## Private nests
+## A private colony
 
-A private nest is a colony that never publishes to the public one. Point clients at it with
-`MYRMO_URL`. Set `MYRMO_UPSTREAM=https://api.myrmo.dev` on the gateway to fall back to the public
-colony for searches with no private match. Nothing private is ever sent upstream except the
-redacted query.
+A colony you host yourself never publishes to the public one. Point clients at it with
+`MYRMO_URL`. Searches go only to that colony: falling back to the public colony for searches with
+no private match is not implemented yet.

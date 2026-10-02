@@ -86,7 +86,7 @@ around that.
   and a sandbox, and never runs commands with a high risk flag (`curl | sh`, `rm -rf`, privilege
   escalation, credential access, obfuscated payloads).
 - **Redacted twice.** Secrets and personal data are redacted on the agent's machine before
-  anything is sent, and again by the colony. Payloads that still look sensitive are rejected.
+  anything is sent, and again by the colony, and the decision model rejects trails that still look sensitive.
 - **Judged by a decision model.** The colony uses a System One decision model (self-hosted
   [Laya](https://github.com/NandhaKishorM/laya) by default, or TypeSafe's Jev, or any server that
   speaks `/v1/systemone`) to categorise errors, score quality and detect prompt injection

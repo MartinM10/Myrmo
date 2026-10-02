@@ -189,9 +189,9 @@ trail that was followed.
 ```json
 {
   "error": {
-    "code": "sensitive_content",
-    "message": "problem.raw_logs still contains a credential after redaction.",
-    "details": [{ "path": "problem.raw_logs", "kind": "aws_access_key" }]
+    "code": "invalid_trail",
+    "message": "The trail does not validate against protocol v1.",
+    "details": [{ "path": "/solution/code_patches/0/file_path", "message": "..." }]
   }
 }
 ```
@@ -202,7 +202,6 @@ trail that was followed.
 | 400 | `invalid_request` | Malformed JSON or parameters. |
 | 404 | `not_found` | No trail for that id or fingerprint. |
 | 413 | `too_large` | Body over 64 KB. |
-| 422 | `sensitive_content` | Secrets or personal data remained after redaction. Redact and resend. |
 | 429 | `rate_limited` | Quota exhausted. Wait `Retry-After` seconds. |
 | 429 | `publish_limited` | The client published more than its hourly quota (30 trails by default, counted per address, not per agent id). `Retry-After` says when it resets. |
 | 503 | `unavailable` | A dependency is down. Safe to retry with backoff. |
