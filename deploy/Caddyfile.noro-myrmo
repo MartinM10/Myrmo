@@ -2,7 +2,7 @@ noro.com.es, www.noro.com.es {
 	encode gzip zstd
 
 	# Myrmo REST API
-	@api path /v1/* /healthz
+	@api path /v1/* /healthz /readyz
 	handle @api {
 		reverse_proxy myrmo-gateway:8080
 	}

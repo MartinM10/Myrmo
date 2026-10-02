@@ -34,6 +34,7 @@ docker compose up -d --scale enricher=4
 |---|---|---|
 | `MYRMO_DECISION_URL` | `http://laya:8000/v1/systemone` | Any server that speaks the System One wire format: Laya (default, Apache-2.0, CPU is enough), TypeSafe Jev, Decider. |
 | `MYRMO_DECISION_API_KEY` | none | Needed for hosted engines such as Jev. |
+| `MYRMO_MODEL_INJECTION_GATE` | `0` | `1` lets the decision model's prompt-injection score reject trails. Off because it was not reliable on real trails; the rules decide. |
 | `MYRMO_DECISION_FAIL_OPEN` | `0` | `1` indexes trails on the rules alone when the decision model cannot be reached, instead of leaving them queued. |
 | `MYRMO_EMBED_URL` | `http://embed:80` | Any server with the Text Embeddings Inference `/embed` API: the bundled service, or TEI itself on x86_64 and GPUs. |
 | `EMBED_MODEL` (embed service) | `BAAI/bge-small-en-v1.5` | Changing it requires re-indexing: vectors from different models are not comparable. |
@@ -69,7 +70,7 @@ A matching Caddy site block:
 ```text
 colony.example.com {
 	encode gzip zstd
-	@api path /v1/* /healthz
+	@api path /v1/* /healthz /readyz
 	handle @api {
 		reverse_proxy myrmo-gateway:8080
 	}
