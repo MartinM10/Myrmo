@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.2.1](https://github.com/MartinM10/Myrmo/compare/platform-v0.2.0...platform-v0.2.1) (2026-10-02)
+
+
+### Bug fixes
+
+* **web:** the Python install tab is `pip install myrmo` again, and llms.txt lists the packages ([967fc93](https://github.com/MartinM10/Myrmo/commit/967fc9346f911d392581e3a6ebbeeee5c2d82d65))
+
+
+### Documentation
+
+* the packages are published ([383ae76](https://github.com/MartinM10/Myrmo/commit/383ae76c8be2eb5a5445d6c5bad98fc821032fc7))
+
 ## [0.2.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.1.0...platform-v0.2.0) (2026-10-02)
 
 
