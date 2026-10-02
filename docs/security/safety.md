@@ -19,15 +19,25 @@ Every shell command is analysed when the trail is indexed. Flags are attached to
 
 | Flag | Level | Examples |
 |---|---|---|
-| `pipe_to_shell` | high | `curl … \| sh`, `wget -O- … \| bash`, `iwr … \| iex` |
-| `obfuscated_payload` | high | `base64 -d \| bash`, `eval $(…)`, `powershell -enc` |
-| `recursive_delete` | high | `rm -rf /`, `rm -rf ~`, `Remove-Item -Recurse` outside the project |
-| `credential_access` | high | Reading `~/.ssh`, `~/.aws/credentials`, keychains, dumping `env` |
-| `network_exfiltration` | high | `curl -d @file`, `nc` or `scp` to remote hosts |
-| `destructive_disk` | high | `mkfs`, `dd of=/dev/…`, `format` |
-| `privilege_escalation` | medium | `sudo`, `runas`, `chmod 777`, `chown root` |
-| `weakens_security` | medium | `--openssl-legacy-provider`, `verify=False`, `NODE_TLS_REJECT_UNAUTHORIZED=0`, `safe.directory '*'` |
-| `persistence` | medium | `crontab`, systemd units, `Run` registry keys, shell profile edits |
+| `pipe_to_shell` | high | `curl … \| sh`, `wget -O- … \| sudo -E bash`, `iwr … \| iex`, `… \| /bin/bash`. A pipe into a program that takes data (`curl … \| python3 -m json.tool`) is not flagged. |
+| `download_and_execute` | high | `sh -c "$(curl …)"`, `bash <(curl …)`, `iex (iwr …)`, `curl -o f … && bash f`, `python -c "exec(urlopen(…).read())"`. Downloading without running is not flagged. |
+| `obfuscated_payload` | high | `base64 -d \| bash`, `echo … \| tr … \| sh`, `$(echo … \| base64 -d)`, `\x63\x75…` strings, `powershell -enc` |
+| `recursive_delete` | high | `rm -rf /`, `rm -rf "$HOME"`, `rm -rf --no-preserve-root /`, `find / -delete`, `Remove-Item -Recurse` outside the project. Judged by the target: `rm -rf build/*` is fine. |
+| `credential_access` | high | Reading `~/.ssh`, `~/.aws/credentials`, `.git-credentials`, `/proc/self/environ`, keychains, dumping `env` |
+| `network_exfiltration` | high | `curl -d @file`, `curl -T -`, `… \| nc host port`, `/dev/tcp/…`, `scp` or `rsync` to remote hosts |
+| `destructive_disk` | high | `mkfs`, `dd of=/dev/…`, `shred /dev/…`, `wipefs`, `format` |
+| `privileged_container` | high | `docker run --privileged`, `-v /:/host`, `--pid=host`, `--cap-add=SYS_ADMIN`, `nsenter` |
+| `privilege_escalation` | medium | `sudo`, `su -`, `runas`, `chmod 777`, `chmod u+s`, `/etc/sudoers`, mounting `docker.sock` |
+| `weakens_security` | medium | `--openssl-legacy-provider`, `verify=False`, `NODE_TLS_REJECT_UNAUTHORIZED=0`, `--no-check-certificate`, `ufw disable` |
+| `persistence` | medium | `crontab`, systemd units, `authorized_keys`, `Run` registry keys, shell profile edits |
+| `untrusted_package_source` | medium | `pip install --index-url http://…`, `pip install git+https://…`, `npm install user/repo`, `npm config set registry`, `add-apt-repository`, `brew tap` |
+| `dynamic_eval` | medium | `eval "$(…)"` of generated shell code |
+
+Commands are normalised before analysis (invisible characters, `c''url`, `cu\rl`, `${IFS}`), split
+into statements and pipelines, and checked structurally as well as with patterns. This is still a
+blacklist: it can be evaded, so `low` means "nothing recognised", not "safe". The rules are tested
+against a corpus of malicious and ordinary commands (`server/tests/corpus/commands.json`); a
+bypass you find belongs there.
 
 A trail's `risk.level` is the highest level among its commands.
 
@@ -49,13 +59,27 @@ any backtick run inside a diff.
 
 ## Prompt injection
 
-Before indexing, a System One decision model answers one question about every text field: does
-this text try to instruct the agent that will read it? Trails above the threshold are rejected.
-Search responses also carry a `notice` that clients pass to the model with the trail.
+Every trail is checked twice before it is indexed.
+
+1. **Rules.** The whole trail (logs, patches, tags and notes included) is normalised (invisible
+   characters removed, compatibility forms and look-alike Cyrillic or Greek letters folded) and
+   matched against patterns for instructions aimed at an agent: overriding its instructions,
+   impersonating the conversation, addressing the agent, driving its tools, taking the user out of
+   the loop, and exfiltrating data. Base64 blobs are decoded and scanned too. A rule hit is
+   decisive. The patterns are tested against a corpus (`server/tests/corpus/injections.json`).
+2. **A System One decision model** answers one question: does this text try to instruct the agent
+   that will read it? It reads a summary of the trail and then the parts a summary leaves out
+   (patches, tags, the verification command and the logs) in separate pieces, so a long log cannot
+   push an instruction out of its view. The text is passed as marked, untrusted data.
+
+Trails above the threshold are rejected. If a model is configured but cannot be reached, the trail
+waits in the queue instead of being indexed on the rules alone; set `MYRMO_DECISION_FAIL_OPEN=1`
+to index it anyway. Search responses also carry a `notice` that clients pass to the model with the
+trail.
 
 The decision model is pluggable: [Laya](https://github.com/NandhaKishorM/laya) self-hosted by
 default (Apache-2.0, runs on CPU), TypeSafe Jev, or any server that speaks the `/v1/systemone`
-wire format. Deterministic rules run first and keep working without any model.
+wire format. Without a model (`MYRMO_DECISION_URL` empty) only the rules run.
 
 ## Reporting a vulnerability
 
