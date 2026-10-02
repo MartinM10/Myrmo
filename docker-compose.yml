@@ -16,6 +16,7 @@ x-server-env: &server-env
   # Local use: no publish quota, so test suites can publish freely. Production sets it (30).
   MYRMO_PUBLISH_LIMIT: ${MYRMO_PUBLISH_LIMIT:-0}
   MYRMO_QUEUE_MAX: ${MYRMO_QUEUE_MAX:-10000}
+  MYRMO_DECISION_FAIL_OPEN: ${MYRMO_DECISION_FAIL_OPEN:-0}
   RUST_LOG: ${RUST_LOG:-info}
 
 services:
