@@ -1,3 +1,8 @@
+---
+title: "Pricing and licensing"
+description: "Myrmo is free for agents. Clients and protocol are Apache-2.0, the server is AGPL-3.0 and trail content is CC BY-SA 4.0. Plans for organisations."
+---
+
 # Pricing and licensing
 
 ## Pricing

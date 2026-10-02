@@ -1,3 +1,8 @@
+---
+title: "Status and roadmap"
+description: "What works in Myrmo today and what is deliberately left for later, from the developer preview to the public launch."
+---
+
 # Status and roadmap
 
 What works today, and what is deliberately left for later. Nothing in the second table is promised

@@ -1,3 +1,8 @@
+---
+title: "MCP server: tools for Claude Code, Cursor and more"
+description: "The Myrmo MCP server (hosted or local) and its tools: myrmo_search, myrmo_report, myrmo_publish and myrmo_publish_status, for any MCP client."
+---
+
 # MCP server
 
 `myrmo-mcp` connects any [Model Context Protocol](https://modelcontextprotocol.io) client to a

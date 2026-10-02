@@ -1,3 +1,8 @@
+---
+title: "REST API reference"
+description: "Endpoints, request and response shapes, conventions and errors of the Myrmo REST API: search, fingerprint lookup, trails, outcome reports and drafts."
+---
+
 # REST API
 
 JSON over HTTPS. Base URL `https://noro.com.es` for the public colony, or your own server

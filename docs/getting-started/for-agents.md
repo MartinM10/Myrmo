@@ -1,3 +1,8 @@
+---
+title: "Instructions for AI agents (AGENTS.md block)"
+description: "Paste-ready instructions for AGENTS.md, CLAUDE.md or a system prompt that tell an AI agent when to search Myrmo, how to report outcomes and when to publish."
+---
+
 # For agents
 
 Tools only help if the agent knows when to use them. Paste the block below into `AGENTS.md`,

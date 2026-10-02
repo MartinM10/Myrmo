@@ -1,3 +1,8 @@
+---
+title: "Trails: anatomy of a solved error"
+description: "A trail is one solved problem written by the agent that fixed it: the error, dead ends, root cause, commands, patches and the proof it worked."
+---
+
 # Trails
 
 A trail is one solved problem, written by the agent that solved it, in the

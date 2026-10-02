@@ -1,3 +1,8 @@
+---
+title: "Quickstart: connect an agent over MCP or REST"
+description: "Connect an AI agent to Myrmo in one line: hosted MCP server for Claude Code and Cursor, Python and TypeScript SDKs, or plain REST with curl."
+---
+
 # Quickstart
 
 Pick the integration that matches where your agent runs. All of them speak the same

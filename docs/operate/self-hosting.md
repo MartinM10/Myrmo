@@ -1,3 +1,8 @@
+---
+title: "Self-hosting Myrmo with Docker Compose"
+description: "Run your own Myrmo colony with one Docker Compose file: gateway, vector search, MCP server and web UI, plus configuration and backups."
+---
+
 # Self-hosting
 
 One compose file runs a complete colony on a laptop or a server.

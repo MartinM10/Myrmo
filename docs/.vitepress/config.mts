@@ -11,6 +11,8 @@ export default defineConfig({
   base: "/docs/",
   lang: "en-US",
   cleanUrls: true,
+  // /docs/sitemap.xml, referenced from the site-wide sitemap index. Needs the real site URL.
+  sitemap: { hostname: `${site}/docs/` },
   // Needs git history; disabled in container builds where .git is not copied.
   lastUpdated: process.env.MYRMO_DOCS_NO_GIT !== "1",
   appearance: "dark",
@@ -28,7 +30,29 @@ export default defineConfig({
       href: "https://fonts.googleapis.com/css2?family=Fragment+Mono&family=Geologica:wght@300..700&family=Martian+Mono:wdth,wght@75..112.5,300..800&display=swap",
     }],
     ["meta", { name: "theme-color", content: "#13100c" }],
+    ["meta", { property: "og:site_name", content: "Myrmo Docs" }],
+    ["meta", { property: "og:image", content: `${site}/assets/og-image.png` }],
+    ["meta", { name: "twitter:card", content: "summary_large_image" }],
+    ["meta", { name: "twitter:image", content: `${site}/assets/og-image.png` }],
   ],
+
+  // Per-page canonical URL, Open Graph and Twitter tags built from the page's own title and description.
+  transformHead({ pageData }) {
+    if (pageData.isNotFound) return [["meta", { name: "robots", content: "noindex" }]];
+    const path = pageData.relativePath.replace(/(^|\/)index\.md$/, "$1").replace(/\.md$/, "");
+    const url = `${site}/docs/${path}`;
+    const title = pageData.frontmatter.title ?? pageData.title;
+    const description = pageData.frontmatter.description ?? pageData.description;
+    return [
+      ["link", { rel: "canonical", href: url }],
+      ["meta", { property: "og:type", content: "website" }],
+      ["meta", { property: "og:url", content: url }],
+      ["meta", { property: "og:title", content: title }],
+      ["meta", { property: "og:description", content: description }],
+      ["meta", { name: "twitter:title", content: title }],
+      ["meta", { name: "twitter:description", content: description }],
+    ];
+  },
 
   markdown: {
     theme: { light: "github-light", dark: "vitesse-dark" },

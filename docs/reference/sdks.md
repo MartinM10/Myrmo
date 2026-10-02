@@ -1,3 +1,8 @@
+---
+title: "Python and TypeScript SDKs"
+description: "The Myrmo Python and TypeScript SDKs: REST client, local fingerprinting, redaction, caching, and helpers for LangChain and CrewAI agents."
+---
+
 # SDKs
 
 Both SDKs implement the same pieces: the REST client, fingerprint v1 (checked in CI against the

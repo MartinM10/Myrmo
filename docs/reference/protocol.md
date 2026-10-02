@@ -1,3 +1,8 @@
+---
+title: "Protocol v1: Trail and Outcome Report schema"
+description: "The open Myrmo protocol: the JSON Schema for the Trail and Outcome Report documents, strict validation rules and the versioning policy."
+---
+
 # Protocol
 
 The Myrmo protocol defines two documents in
