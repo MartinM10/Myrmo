@@ -113,6 +113,27 @@ def main() -> None:
     }, agent=author)
     check(status == 202 and not body["counted"], "the author cannot reinforce their own trail")
 
+    print("re-discovery")
+
+    def worked() -> int:
+        return call("GET", f"/v1/trails/{trail_id}")[1]["outcomes"]["worked"]
+
+    def republish(candidate: dict, agent: str) -> dict:
+        status, body, _ = call("POST", "/v1/trails", candidate, agent=agent)
+        check(status == 202, f"republish by {agent} -> 202 (got {status})")
+        return wait_for_status(body["trail_id"])
+
+    base = worked()
+    merged = republish(trail, f"rediscoverer_{run}")
+    check(merged.get("status") == "merged" and merged.get("merged_into") == trail_id, f"the same solution merges into the original: {merged.get('status')}")
+    check(worked() == base + 1, "an independent re-discovery counts as one success")
+    check(republish(trail, f"rediscoverer_{run}").get("status") == "merged" and worked() == base + 1, "the same agent twice in a day is merged but not counted")
+    check(republish(trail, author).get("status") == "merged" and worked() == base + 1, "the author re-publishing their own solution does not reinforce it")
+    alternative = copy.deepcopy(trail)
+    alternative["solution"]["shell_commands_executed"] = [{"command": "uv pip install 'numpy>=1.26,<2'", "purpose": "Reinstall with uv instead of pip."}]
+    other = republish(alternative, f"alternative_{run}")
+    check(other.get("status") == "indexed" and worked() == base + 1, f"a different solution is kept as an alternative, not merged: {other.get('status')}")
+
     print("feed, activity, stats")
     time.sleep(2.5)  # let the enricher fold counters into the index
     status, body, _ = call("GET", "/v1/feed?limit=5")

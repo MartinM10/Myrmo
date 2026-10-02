@@ -166,6 +166,18 @@ async fn reject(st: &AppState, id: &str, reasons: &[&str]) -> Result<()> {
     Ok(())
 }
 
+/// Whether a trail merged into an existing one counts as a `worked` report for it. Authors cannot
+/// confirm their own trails, and an agent counts once a day (`first_today`). Trails without a
+/// recorded author (published before authors were kept) cannot be told apart, so they count.
+fn counts_as_reinforcement(
+    new_author: Option<&str>,
+    existing_author: Option<&str>,
+    first_today: bool,
+) -> bool {
+    let same_author = matches!((new_author, existing_author), (Some(a), Some(b)) if a == b);
+    first_today && !same_author
+}
+
 fn same_environment(a: &Value, b: &Value) -> bool {
     let s = |v: &Value, p: &str| {
         v.pointer(p)
@@ -250,61 +262,88 @@ async fn enrich(st: &AppState, id: &str, mut trail: Value) -> Result<()> {
         .unwrap_or("agent")
         .to_string();
 
-    // An equivalent trail for the same environment exists: the independent re-discovery
-    // counts as a success for it instead of creating a duplicate.
+    // The same solution for the same error and environment already exists: merge into it instead
+    // of creating a duplicate. A different solution is kept as an alternative, not discarded.
     let siblings: Vec<String> = con.smembers(keys::fingerprint(&fp)).await?;
     if !siblings.is_empty() {
         let existing = st.qdrant.get(&siblings).await?;
-        if let Some((existing_id, _)) = existing
-            .iter()
-            .find(|(_, p)| same_environment(&p["trail"]["environment"], &trail["environment"]))
-        {
-            let event = json!({
-                "kind": "reinforced", "agent": agent_info, "trail_id": existing_id,
-                "text": format!("via {framework} rediscovered and reinforced {}", &existing_id[..8]), "at": keys::iso(now)
-            });
-            let _: () = redis::pipe()
-                .cmd("HINCRBY")
-                .arg(keys::outcomes(existing_id))
-                .arg("worked")
-                .arg(1)
-                .ignore()
-                .cmd("HSET")
-                .arg(keys::outcomes(existing_id))
-                .arg("last_success_ts")
-                .arg(now)
-                .ignore()
-                .cmd("SADD")
-                .arg(keys::DIRTY)
-                .arg(existing_id)
-                .ignore()
-                .cmd("ZADD")
-                .arg(keys::FEED)
-                .arg(now)
-                .arg(existing_id)
-                .ignore()
-                .cmd("DEL")
-                .arg(keys::fingerprint_cache(&fp))
-                .ignore()
-                .cmd("HSET")
+        let solution = fingerprint::solution_fingerprint(&trail);
+        if let Some((existing_id, _)) = existing.iter().find(|(_, p)| {
+            same_environment(&p["trail"]["environment"], &trail["environment"])
+                && fingerprint::solution_fingerprint(&p["trail"]) == solution
+        }) {
+            // A re-discovery is an independent confirmation only when it comes from somebody
+            // else, once a day: the same rules as an outcome report.
+            let new_author: Option<String> = con.hget(keys::trail(id), "author").await?;
+            let existing_author: Option<String> =
+                con.hget(keys::trail(existing_id), "author").await?;
+            let first_today = match &new_author {
+                Some(author) => redis::cmd("SET")
+                    .arg(keys::seen(existing_id, author))
+                    .arg(1)
+                    .arg("NX")
+                    .arg("EX")
+                    .arg(86_400)
+                    .query_async::<Option<String>>(&mut con)
+                    .await?
+                    .is_some(),
+                None => true,
+            };
+            let counted = counts_as_reinforcement(
+                new_author.as_deref(),
+                existing_author.as_deref(),
+                first_today,
+            );
+
+            let mut pipe = redis::pipe();
+            pipe.cmd("HSET")
                 .arg(keys::trail(id))
                 .arg("status")
                 .arg("merged")
                 .arg("merged_into")
                 .arg(existing_id)
-                .ignore()
-                .cmd("LPUSH")
-                .arg(keys::ACTIVITY)
-                .arg(event.to_string())
-                .ignore()
-                .cmd("LTRIM")
-                .arg(keys::ACTIVITY)
-                .arg(0)
-                .arg(199)
-                .ignore()
-                .query_async(&mut con)
-                .await?;
-            tracing::info!(trail = %id, into = %existing_id, "trail merged");
+                .arg("reinforced")
+                .arg(i32::from(counted))
+                .ignore();
+            if counted {
+                let event = json!({
+                    "kind": "reinforced", "agent": agent_info, "trail_id": existing_id,
+                    "text": format!("via {framework} rediscovered and reinforced {}", &existing_id[..8]), "at": keys::iso(now)
+                });
+                pipe.cmd("HINCRBY")
+                    .arg(keys::outcomes(existing_id))
+                    .arg("worked")
+                    .arg(1)
+                    .ignore()
+                    .cmd("HSET")
+                    .arg(keys::outcomes(existing_id))
+                    .arg("last_success_ts")
+                    .arg(now)
+                    .ignore()
+                    .cmd("SADD")
+                    .arg(keys::DIRTY)
+                    .arg(existing_id)
+                    .ignore()
+                    .cmd("ZADD")
+                    .arg(keys::FEED)
+                    .arg(now)
+                    .arg(existing_id)
+                    .ignore()
+                    .cmd("DEL")
+                    .arg(keys::fingerprint_cache(&fp))
+                    .ignore()
+                    .cmd("LPUSH")
+                    .arg(keys::ACTIVITY)
+                    .arg(event.to_string())
+                    .ignore()
+                    .cmd("LTRIM")
+                    .arg(keys::ACTIVITY)
+                    .arg(0)
+                    .arg(199)
+                    .ignore();
+            }
+            let _: () = pipe.query_async(&mut con).await?;
+            tracing::info!(trail = %id, into = %existing_id, counted, "trail merged");
             return Ok(());
         }
     }
@@ -462,4 +501,38 @@ async fn flush_once(st: &AppState) -> Result<()> {
         })
         .collect();
     st.qdrant.set_payloads(updates).await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn authors_cannot_reinforce_their_own_trails() {
+        assert!(!counts_as_reinforcement(
+            Some("agent_a"),
+            Some("agent_a"),
+            true
+        ));
+        assert!(counts_as_reinforcement(
+            Some("agent_b"),
+            Some("agent_a"),
+            true
+        ));
+    }
+
+    #[test]
+    fn an_agent_counts_once_a_day() {
+        assert!(!counts_as_reinforcement(
+            Some("agent_b"),
+            Some("agent_a"),
+            false
+        ));
+    }
+
+    #[test]
+    fn unknown_authors_are_not_blocked() {
+        assert!(counts_as_reinforcement(None, Some("agent_a"), true));
+        assert!(counts_as_reinforcement(Some("agent_b"), None, true));
+    }
 }
