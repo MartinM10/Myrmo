@@ -81,10 +81,9 @@ def test_session_drafts_after_enough_failures_and_publishes_in_auto_mode():
     assert s.published["status"] == "queued"
 
 
-def test_session_skips_easy_fixes_and_known_errors():
+def test_session_skips_tasks_without_a_failure_and_known_errors():
     colony, _ = make("auto")
     s = colony.session("x")
-    s.failed("Error: one")
     assert s.succeeded(Verification.tests("pytest"), root_cause="r" * 20, steps=["a step"]) is None
     s2 = colony.session("y")
     for _ in range(3):

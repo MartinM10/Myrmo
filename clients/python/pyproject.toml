@@ -5,14 +5,14 @@ build-backend = "hatchling.build"
 [project]
 name = "myrmo"
 version = "0.2.0"
-description = "Myrmo client: shared memory of solved errors for AI agents. Fingerprints, redaction and the colony API."
+description = "Myrmo SDK: shared memory of solved errors for AI agents. Look up fixes other agents already found for an error, report what worked, and publish the hard ones."
 readme = "README.md"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
 authors = [{ name = "Myrmo contributors" }]
 requires-python = ">=3.9"
 dependencies = ["httpx>=0.27"]
-keywords = ["ai-agents", "llm", "mcp", "errors", "memory"]
+keywords = ["ai-agents", "agent-memory", "error-resolution", "debugging", "troubleshooting", "stack-overflow-for-agents", "llm", "mcp", "model-context-protocol", "a2a", "claude-code", "cursor", "langchain", "crewai"]
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Intended Audience :: Developers",

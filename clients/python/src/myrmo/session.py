@@ -60,9 +60,12 @@ class Session:
         self.runtime_version = runtime_version or (platform.python_version() if runtime == "python" else "unknown")
         self.packages = list(packages)
         self.agent = agent or {"model": "unknown", "framework": "myrmo-python"}
-        self.min_failed_attempts = min_failed_attempts or int(os.environ.get("MYRMO_MIN_FAILED_ATTEMPTS", "3"))
+        self.min_failed_attempts = min_failed_attempts or int(os.environ.get("MYRMO_MIN_FAILED_ATTEMPTS", "1"))
         self.failures: List[Dict[str, str]] = []
         self.matched_existing = False
+        #: Trails the agent followed that did not (fully) work: its own fix may be a better alternative.
+        self.tried_failed: List[Dict[str, str]] = []
+        self.solved_by_trail = False
         self.draft: Optional[Dict[str, Any]] = None
         self.published: Optional[Dict[str, Any]] = None
         self._started = time.monotonic()
@@ -89,6 +92,17 @@ class Session:
             self.matched_existing = True
         return Hints(result)
 
+    def tried(self, trail_id: str, outcome: str, notes: str = "") -> Dict[str, Any]:
+        """Report what happened when the agent followed a trail. A trail that failed or only partly
+        worked is what makes a different fix worth publishing as an alternative, even though the
+        colony already had an answer. A trail that worked means there is nothing new to publish."""
+        result = self.colony.report(trail_id, outcome, notes or None, agent_info=self.agent)
+        if outcome == "worked":
+            self.solved_by_trail = True
+        if outcome in ("failed", "partially_worked"):
+            self.tried_failed.append({"id": trail_id, "outcome": outcome, "notes": notes})
+        return result
+
     def succeeded(
         self,
         verification: Verification,
@@ -103,7 +117,9 @@ class Session:
         """The task succeeded. Returns the drafted trail when it is worth publishing and
         publishes it when the colony's publish mode is "auto". In "ask" mode, show
         `colony.preview(draft)` to the user and call `colony.publish(draft)` after approval."""
-        if not self.failures or len(self.failures) < self.min_failed_attempts or self.matched_existing or verification.type == "none":
+        # Nothing new when an existing trail already solved it, or when one matched and was never tried.
+        covered = self.solved_by_trail or (self.matched_existing and not self.tried_failed)
+        if not self.failures or len(self.failures) < self.min_failed_attempts or covered or verification.type == "none":
             return None
         last = self.failures[-1]
         env = detect_environment(self.packages)
@@ -119,7 +135,14 @@ class Session:
                 "summary": summary if len(summary) >= 20 else summary.ljust(20, "."),
                 "task_context": self.task[:1000],
                 "raw_logs": last["logs"] or last["message"],
-                "failed_approaches": [{"approach": f["approach"][:500], "why_it_failed": f["why"]} for f in self.failures[:-1]],
+                "failed_approaches": [{"approach": f["approach"][:500], "why_it_failed": f["why"]} for f in self.failures[:-1]]
+                + [
+                    {
+                        "approach": f"Followed Myrmo trail {t['id']}",
+                        "why_it_failed": (t["notes"] or ("it did not work in this environment" if t["outcome"] == "failed" else "it only partly worked"))[:500],
+                    }
+                    for t in self.tried_failed
+                ],
             },
             "solution": {
                 "root_cause": root_cause,
