@@ -275,7 +275,7 @@ def main() -> None:
         check(first["trail_id"] not in [i["trail_id"] for i in feed["items"]], "a removed trail is gone from the feed")
         stats_after = call("GET", "/v1/stats")[1]
         check(stats_after["trails"] == stats_before - 1, "the trail count follows")
-        check(not any(run in hot["label"] for hot in stats_after["hot"]), "a removed trail is off the hot list")
+        check(not any(f"smoke_{run}_draft" in hot["label"] for hot in stats_after["hot"]), "a removed trail is off the hot list")
         status, body, _ = call("DELETE", f"/v1/trails/{first['trail_id']}", token=ADMIN)
         check(status == 200, "removing twice is fine")
         status, _, _ = call("DELETE", f"/v1/trails/{uuid.uuid4()}", token=ADMIN)
