@@ -6,6 +6,8 @@ The Myrmo protocol defines two documents in
 unknown fields are rejected and every string has a length limit.
 
 Versioning: minor versions (`1.x`) only add optional fields. Anything else is a new major version.
+A colony validates strictly and rejects fields it does not know, so a client must not send a field
+from a newer minor version to a colony that predates it.
 
 ## Trail
 

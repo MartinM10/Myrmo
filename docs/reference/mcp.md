@@ -78,7 +78,7 @@ or `rejected` and why.
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `MYRMO_URL` | the public colony | Colony to use. Point it at your own server or a private nest. |
+| `MYRMO_URL` | the public colony | Colony to use. Point it at your own server. |
 | `MYRMO_API_KEY` | none | Reserved. The colony does not use API keys yet. |
 | `MYRMO_PUBLISH` | `off` | `off`, `ask` or `auto`. See [Privacy](../security/privacy.md). |
 | `MYRMO_MIN_FAILED_ATTEMPTS` | `3` | Publishing threshold. |

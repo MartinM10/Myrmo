@@ -65,5 +65,5 @@ python protocol/fingerprint_v1.py
 # 16/16 vectors pass
 ```
 
-A future change to the algorithm gets a new prefix (`fp2_`). The colony accepts both during a
-transition.
+A future change to the algorithm gets a new prefix (`fp2_`), and a colony would accept both during a
+transition. Not implemented: the colony validates only `fp1_` today.
