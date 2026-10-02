@@ -1,0 +1,63 @@
+name: Deploy
+
+# Deploys to production when CI has passed on main. The server runs deploy/server-deploy.sh as
+# the forced command of a dedicated key, so this job can do nothing else on the server.
+# One-time setup and rollback: docs/operate/deployment.md.
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Never two deploys at once, and never cancel one halfway.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy to production
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+      SITE: https://myrmo.dev
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Prepare the SSH connection
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+
+      - name: Send the code and deploy
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+        run: |
+          git archive --format=tar "$SHA" | ssh -i ~/.ssh/deploy_key \
+            -o StrictHostKeyChecking=yes -o ServerAliveInterval=30 \
+            "ubuntu@$DEPLOY_HOST" "$SHA"
+
+      - name: Check production from outside
+        run: |
+          for path in /healthz /readyz / /colony.html /docs/ /v1/stats; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' --retry 5 --retry-delay 5 --retry-all-errors "$SITE$path")
+            echo "$path -> $code"
+            [ "$code" = "200" ] || exit 1
+          done
+          curl -sf -X POST "$SITE/mcp" -H 'content-type: application/json' -H 'accept: application/json, text/event-stream' \
+            -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' | grep -q myrmo_search
+          echo "hosted MCP lists its tools"

@@ -1,0 +1,104 @@
+---
+title: "Automatic deployment to production"
+description: "How the production colony updates itself when CI passes on main: the restricted deploy key, backup before every deploy, health checks, automatic rollback, and the one-time server setup."
+---
+
+# Automatic deployment
+
+Every push to `main` that passes CI is deployed to production by GitHub Actions
+(`.github/workflows/deploy.yml`). Nobody has to log in to the server.
+
+```text
+push to main ─► CI passes ─► Deploy workflow ─► ssh (restricted key) ─► deploy/server-deploy.sh
+                                                  │
+                  back up data ─► build new images ─► swap ─► health check ─┬─► done
+                  (abort if it fails)  (abort if it fails)                    └─► roll back, job fails
+```
+
+## What the server script guarantees
+
+`deploy/server-deploy.sh` runs on the server and does these things in order:
+
+1. **Backs up the data** with `deploy/backup.sh`. If the backup fails, nothing changes.
+2. **Builds the new images before touching anything that runs.** A failed build changes nothing.
+3. **Swaps the code and recreates only the services whose image changed.** `.env` stays on the
+   server and carries over; volumes are never removed.
+4. **Waits up to 4 minutes** for the gateway (`/readyz`), the hosted MCP server and the website to
+   answer.
+5. **Rolls back** to the previous version if they do not, and the workflow fails.
+
+The workflow then checks production from outside: `/healthz`, `/readyz`, the site, the colony view,
+the docs, `/v1/stats` and the hosted MCP tool list.
+
+> [!NOTE]
+> Recreating a container takes a few seconds, so there is a short blip per deploy. It is not a
+> zero-downtime deployment. That needs more than one server.
+
+## Why the deploy key is safe to keep in GitHub
+
+The key in GitHub's secrets is a dedicated one. On the server it is registered with a forced
+command, so it can run `deploy/server-deploy.sh` and nothing else: no shell, no port forwarding, no
+other files.
+
+```text
+command="/home/ubuntu/bin/myrmo-deploy",no-port-forwarding,no-X11-forwarding,no-agent-forwarding,no-pty ssh-ed25519 AAAA… myrmo-github-deploy
+```
+
+The script accepts only a 40-character commit id and a tar archive of the repository, which it
+caps at 300 MB. Anyone who can push to `main` can still run code on the server through the
+repository's own build, which is the normal trust model for continuous deployment. Protect `main`
+accordingly.
+
+## One-time setup
+
+On the server, as the deploy user:
+
+```bash
+mkdir -p ~/bin
+cp ~/myrmo/deploy/server-deploy.sh ~/bin/myrmo-deploy
+chmod 755 ~/bin/myrmo-deploy
+```
+
+Create a key pair on any machine and authorise it on the server with the restriction above:
+
+```bash
+ssh-keygen -t ed25519 -N '' -C myrmo-github-deploy -f deploy_key
+# append to ~/.ssh/authorized_keys on the server, prefixed with the restriction line shown above
+```
+
+Add three repository secrets (Settings, Secrets and variables, Actions):
+
+| Secret | Value |
+|---|---|
+| `DEPLOY_SSH_KEY` | The private key (`deploy_key`). Delete your local copy afterwards. |
+| `DEPLOY_HOST` | The server's address. |
+| `DEPLOY_KNOWN_HOSTS` | The output of `ssh-keyscan -t ed25519 <host>`, checked against the fingerprint you trust. |
+
+`~/myrmo/.env` on the server needs `MYRMO_SALT`, `MYRMO_SITE_URL` and `EDGE_NETWORK`, plus
+`MYRMO_ADMIN_TOKEN` for the operator endpoints. A change to `deploy/server-deploy.sh` itself does
+not apply by itself: copy it to `~/bin/myrmo-deploy` again.
+
+## Running it by hand
+
+Deploy any commit on demand from the Actions tab (**Deploy**, **Run workflow**), or from a shell
+with the key:
+
+```bash
+git archive --format=tar HEAD | ssh -i deploy_key ubuntu@<host> "$(git rev-parse HEAD)"
+```
+
+## When something goes wrong
+
+| Symptom | What to do |
+|---|---|
+| The workflow fails at "Send the code and deploy" | Read the job log: the script prints why (backup failed, build failed, unhealthy). On the server, `~/myrmo-deploys.log` has the full history. |
+| It says it rolled back | The previous version is running and healthy. The failed code is in `~/myrmo.failed`. Fix the cause and push again. |
+| It says the rollback is also unhealthy | A person is needed. Look at `docker compose logs`, then restore data with `deploy/restore.sh` if needed. Backups are in `~/myrmo-backups` (daily, and one before every deploy). |
+| You need to stop deploys | Disable the **Deploy** workflow in the Actions tab, or remove the key's line from `authorized_keys`. |
+
+The commit that is running is in `~/myrmo/.deployed-sha` on the server.
+
+## Rotating the key
+
+Generate a new key pair, replace the line in `authorized_keys`, update `DEPLOY_SSH_KEY`, and delete
+the old private key.

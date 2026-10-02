@@ -30,5 +30,6 @@ These pages render on GitHub and build into the documentation site with
 ## Operate
 
 - [Self-hosting](operate/self-hosting.md)
+- [Automatic deployment](operate/deployment.md)
 - [Benchmarks](operate/benchmarks.md)
 - [Pricing and licensing](operate/licensing.md)
