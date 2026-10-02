@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import copy
 import json
+import os
 import sys
 import time
 import urllib.error
@@ -17,21 +18,34 @@ import uuid
 from pathlib import Path
 
 BASE = (sys.argv[1] if len(sys.argv) > 1 else "http://localhost:8080").rstrip("/")
+#: Operator token of the colony under test. Without it the operator checks are skipped.
+ADMIN = os.environ.get("MYRMO_ADMIN_TOKEN", "")
+#: Trails this run created, removed at the end when an operator token is available.
+CREATED: list = []
 ROOT = Path(__file__).resolve().parents[2]
 EXAMPLE = json.loads((ROOT / "protocol/examples/trail.distutils.json").read_text(encoding="utf-8"))
 
 
-def call(method: str, path: str, body: dict | None = None, agent: str | None = None) -> tuple[int, dict, dict]:
+def call(method: str, path: str, body: dict | None = None, agent: str | None = None, token: str | None = None) -> tuple[int, dict, dict]:
     data = json.dumps(body).encode() if body is not None else None
     req = urllib.request.Request(BASE + path, data=data, method=method)
     req.add_header("content-type", "application/json")
     if agent:
         req.add_header("x-myrmo-agent", agent)
-    try:
-        with urllib.request.urlopen(req, timeout=60) as res:
-            return res.status, json.loads(res.read() or b"null"), dict(res.headers)
-    except urllib.error.HTTPError as err:
-        return err.code, json.loads(err.read() or b"null"), dict(err.headers)
+    if token is not None:
+        req.add_header("authorization", f"Bearer {token}")
+    for attempt in range(4):
+        try:
+            with urllib.request.urlopen(req, timeout=60) as res:
+                return res.status, json.loads(res.read() or b"null"), dict(res.headers)
+        except urllib.error.HTTPError as err:
+            result = err.code, json.loads(err.read() or b"null"), dict(err.headers)
+            # The colony rate-limits per address: wait out the window instead of failing.
+            if err.code == 429 and path.startswith("/v1/") and attempt < 3:
+                time.sleep(min(int(err.headers.get("Retry-After", "5")) + 1, 65))
+                continue
+            return result
+    return result
 
 
 def check(condition: bool, message: str) -> None:
@@ -46,7 +60,7 @@ def wait_for_status(trail_id: str, timeout: float = 120) -> dict:
         _, body, _ = call("GET", f"/v1/trails/{trail_id}")
         if body.get("status") != "queued":
             return body
-        time.sleep(0.5)
+        time.sleep(1)
     return body
 
 
@@ -70,6 +84,7 @@ def main() -> None:
     check(kinds.get("api_key") == 2, f"provider tokens redacted on arrival: {kinds}")
     check(all(kinds.get(k) == 1 for k in ("auth_header", "password_assignment", "cookie", "ipv6", "url_secret")), f"headers, JSON passwords, cookies, IPv6 and URL secrets redacted on arrival: {kinds}")
     trail_id, fp = body["trail_id"], body["fingerprint"]
+    CREATED.append(trail_id)
     check(fp == "fp1_3927a18f5b14a126", f"fingerprint matches the reference implementation ({fp})")
 
     t0 = time.time()
@@ -128,6 +143,7 @@ def main() -> None:
     def republish(candidate: dict, agent: str) -> dict:
         status, body, _ = call("POST", "/v1/trails", candidate, agent=agent)
         check(status == 202, f"republish by {agent} -> 202 (got {status})")
+        CREATED.append(body["trail_id"])
         return wait_for_status(body["trail_id"])
 
     base = worked()
@@ -175,6 +191,7 @@ def main() -> None:
         mutate(candidate)
         status, body, _ = call("POST", "/v1/trails", candidate, agent=author)
         check(status == 202, f"variant {label} accepted for enrichment (got {status})")
+        CREATED.append(body["trail_id"])
         return wait_for_status(body["trail_id"])
 
     print("hidden instructions and risky commands")
@@ -187,6 +204,90 @@ def main() -> None:
     check(substituted.get("risk", {}).get("level") == "high" and "download_and_execute" in flags, f"process substitution flagged: {sorted(flags)}")
     data_pipe = variant(4, lambda t: t["solution"]["shell_commands_executed"].insert(0, {"command": "curl -s https://api.example.com/x | python3 -m json.tool", "purpose": "Inspect the response."}))
     check(data_pipe.get("risk", {}).get("level") == "low", f"data piped into a program is not flagged: {data_pipe.get('risk')}")
+
+    def unique(label: str) -> dict:
+        candidate = copy.deepcopy(EXAMPLE)
+        # The colony treats the same major.minor runtime as the same environment and merges equal
+        # solutions, so every fixture gets a minor version of its own.
+        minor = (int(run, 16) % 100000) * 10 + {"anon": 1, "draft": 2, "discard": 3}[label]
+        candidate["environment"]["runtime"]["version"] = f"6.{minor}.0"
+        candidate["problem"]["error_message"] = f"ModuleNotFoundError: No module named 'smoke_{run}_{label}'"
+        return candidate
+
+    print("anonymous publishers cannot confirm their own trail")
+    own = unique("anon")
+    status, body, _ = call("POST", "/v1/trails", own)  # no X-Myrmo-Agent: identified by a daily hash only
+    check(status == 202, f"publish without an agent id -> 202 (got {status})")
+    CREATED.append(body["trail_id"])
+    wait_for_status(body["trail_id"])
+    status, report, _ = call("POST", f"/v1/trails/{body['trail_id']}/outcomes", {
+        "protocol_version": "1.0", "outcome": "worked", "agent_info": {"model": "m", "framework": "f"},
+    })
+    check(status == 202 and not report["counted"], "the same address cannot reinforce a trail it published")
+
+    print("drafts: a person approves in a browser")
+    draft_trail = unique("draft")
+    trails_before = call("GET", "/v1/stats")[1]["trails"]
+    status, draft, _ = call("POST", "/v1/drafts", draft_trail, agent=author)
+    check(status == 201 and len(draft["draft_id"]) == 32, f"POST /v1/drafts -> 201 (got {status})")
+    token = draft["draft_id"]
+    check(draft["approve_url"].endswith(f"/approve.html#{token}"), f"the approval link keeps the token in the fragment: {draft['approve_url']}")
+    time.sleep(1.5)
+    check(call("GET", "/v1/stats")[1]["trails"] == trails_before, "nothing is published before approval")
+    status, view, headers = call("GET", f"/v1/drafts/{token}")
+    check(status == 200 and view["state"] == "pending" and view["trail"]["problem"]["error_type"] == "ModuleNotFoundError", "the draft shows the payload to approve")
+    check("no-store" in headers.get("Cache-Control", headers.get("cache-control", "")), "drafts are never cached")
+    status, first, _ = call("POST", f"/v1/drafts/{token}/publish")
+    check(status == 202 and first["status"] == "queued", f"approving publishes it (got {status})")
+    CREATED.append(first["trail_id"])
+    status, again, _ = call("POST", f"/v1/drafts/{token}/publish")
+    check(status == 202 and again["trail_id"] == first["trail_id"], "approving twice publishes once")
+    wait_for_status(first["trail_id"])
+    status, view, _ = call("GET", f"/v1/drafts/{token}")
+    check(view["state"] == "published" and view["trail_status"] == "indexed" and "trail" not in view, f"the draft reports the outcome: {view.get('trail_status')}")
+    status, body, _ = call("POST", "/v1/drafts", unique("discard"), agent=author)
+    other = body["draft_id"]
+    status, body, _ = call("POST", f"/v1/drafts/{other}/discard")
+    check(status == 200 and body["state"] == "discarded", "a draft can be discarded")
+    status, body, _ = call("POST", f"/v1/drafts/{other}/publish")
+    check(status == 409, f"a discarded draft cannot be published (got {status})")
+    status, _, _ = call("GET", "/v1/drafts/" + "0" * 32)
+    check(status == 404, "an unknown or expired draft -> 404")
+    status, _, _ = call("POST", "/v1/drafts", {"nope": 1})
+    check(status == 400, "an invalid draft is refused up front")
+
+    print("operator")
+    status, body, _ = call("DELETE", f"/v1/trails/{first['trail_id']}")
+    check(status in (401, 501), f"removing a trail needs an operator token (got {status})")
+    if ADMIN:
+        status, _, _ = call("DELETE", f"/v1/trails/{first['trail_id']}", token="not-the-token-0000")
+        check(status == 401, "a wrong operator token is refused")
+        stats_before = call("GET", "/v1/stats")[1]["trails"]
+        status, body, _ = call("DELETE", f"/v1/trails/{first['trail_id']}", {"reason": "smoke test"}, token=ADMIN)
+        check(status == 200 and body["status"] == "removed", f"an operator removes a trail (got {status})")
+        status, body, _ = call("GET", f"/v1/trails/{first['trail_id']}")
+        check(body.get("status") == "removed", "the id answers removed, not found")
+        status, body, _ = call("GET", f"/v1/trails/by-fingerprint/{draft['fingerprint']}")
+        check(first["trail_id"] not in [r["trail_id"] for r in body.get("results", [])], "a removed trail is gone from fingerprint lookups")
+        status, body, _ = call("POST", "/v1/search", {"query": draft_trail["problem"]["error_message"], "environment": {"runtime": {"name": "python"}}})
+        check(first["trail_id"] not in [r["trail_id"] for r in body["results"]], "a removed trail is gone from search")
+        feed = call("GET", "/v1/feed?limit=50")[1]
+        check(first["trail_id"] not in [i["trail_id"] for i in feed["items"]], "a removed trail is gone from the feed")
+        check(call("GET", "/v1/stats")[1]["trails"] == stats_before - 1, "the trail count follows")
+        status, body, _ = call("DELETE", f"/v1/trails/{first['trail_id']}", token=ADMIN)
+        check(status == 200, "removing twice is fine")
+        status, _, _ = call("DELETE", f"/v1/trails/{uuid.uuid4()}", token=ADMIN)
+        check(status == 404, "removing an unknown trail -> 404")
+    else:
+        print("  skip  operator removal (set MYRMO_ADMIN_TOKEN to the colony's operator token)")
+
+    print("limits and readiness")
+    status, body, _ = call("POST", "/v1/search", {"query": "x", "min_strength": 7})
+    check(status == 400, "min_strength outside 0 to 1 -> 400")
+    status, _, _ = call("GET", "/v1/feed?cursor=99999999")
+    check(status == 400, "a feed cursor out of range -> 400")
+    status, body, _ = call("GET", "/readyz")
+    check(status == 200 and body["ready"] and body["redis"] and body["qdrant"] and body["embedding"], f"readiness: {body}")
 
     print("validation")
     invalid = copy.deepcopy(EXAMPLE)
@@ -205,5 +306,15 @@ def main() -> None:
     print("all checks passed")
 
 
+def cleanup() -> None:
+    """Remove what this run published, so reruns (and failed runs) leave the colony as they found it."""
+    if ADMIN and CREATED:
+        removed = sum(call("DELETE", f"/v1/trails/{tid}", token=ADMIN)[0] == 200 for tid in CREATED)
+        print(f"cleanup: removed {removed} of {len(CREATED)} trails this run created")
+
+
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    finally:
+        cleanup()

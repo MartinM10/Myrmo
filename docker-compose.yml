@@ -26,7 +26,12 @@ services:
       dockerfile: server/Dockerfile
     image: myrmo/server:dev
     command: ["serve"]
-    environment: *server-env
+    environment:
+      <<: *server-env
+      # Operator endpoints (removing a trail) and the approval links of drafts. Only the gateway
+      # needs them. The operator token must be at least 16 characters; unset disables them.
+      MYRMO_ADMIN_TOKEN: ${MYRMO_ADMIN_TOKEN:-}
+      MYRMO_PUBLIC_URL: ${MYRMO_PUBLIC_URL:-http://localhost:3000}
     ports:
       - "8080:8080"
     depends_on: [valkey, qdrant, embed]

@@ -240,6 +240,12 @@ fn label(trail: &Value) -> String {
 }
 
 async fn enrich(st: &AppState, id: &str, mut trail: Value) -> Result<()> {
+    // An operator removed the trail while it waited in the queue: drop it.
+    let removed: Option<String> = st.redis().hget(keys::trail(id), "status").await?;
+    if removed.as_deref() == Some("removed") {
+        tracing::info!(trail = %id, "removed before enrichment, dropped");
+        return Ok(());
+    }
     // Second redaction pass: the gateway already ran it, rules may have been updated since.
     redact::redact_value(&mut trail, &mut Report::new());
     let fp = fingerprint::of_trail(&trail);
@@ -284,9 +290,16 @@ async fn enrich(st: &AppState, id: &str, mut trail: Value) -> Result<()> {
         }) {
             // A re-discovery is an independent confirmation only when it comes from somebody
             // else, once a day: the same rules as an outcome report.
-            let new_author: Option<String> = con.hget(keys::trail(id), "author").await?;
-            let existing_author: Option<String> =
-                con.hget(keys::trail(existing_id), "author").await?;
+            let new_meta: std::collections::HashMap<String, String> =
+                con.hgetall(keys::trail(id)).await?;
+            let existing_meta: std::collections::HashMap<String, String> =
+                con.hgetall(keys::trail(existing_id)).await?;
+            let new_author = crate::api::trail_author(&mut con, id, &new_meta)
+                .await
+                .map_err(|_| anyhow::anyhow!("cannot read the trail author"))?;
+            let existing_author = crate::api::trail_author(&mut con, existing_id, &existing_meta)
+                .await
+                .map_err(|_| anyhow::anyhow!("cannot read the trail author"))?;
             let first_today = match &new_author {
                 Some(author) => redis::cmd("SET")
                     .arg(keys::seen(existing_id, author))

@@ -34,6 +34,19 @@ pub fn fingerprint(fp: &str) -> String {
 pub fn fingerprint_cache(fp: &str) -> String {
     format!("cache:fp:{fp}")
 }
+/// Hash of the address that published a trail without declaring an agent id. It exists only to stop
+/// a publisher from confirming their own trail, and expires with the daily salt rotation.
+pub fn anon_author(id: &str) -> String {
+    format!("anon_author:{id}")
+}
+/// A trail waiting for a person to approve it (hash, short TTL).
+pub fn draft(token: &str) -> String {
+    format!("draft:{token}")
+}
+/// Drafts created by one client (or `all`) in one hour.
+pub fn draft_quota(client: &str, hour: i64) -> String {
+    format!("dq:{client}:{hour}")
+}
 /// One report per agent per trail per day counts for strength.
 pub fn seen(id: &str, agent: &str) -> String {
     format!("seen:{id}:{agent}")

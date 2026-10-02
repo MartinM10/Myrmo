@@ -16,6 +16,7 @@ services:
     environment:
       MYRMO_SALT: ${MYRMO_SALT:?set MYRMO_SALT in .env}
       MYRMO_PUBLISH_LIMIT: ${MYRMO_PUBLISH_LIMIT:-30}
+      MYRMO_PUBLIC_URL: ${MYRMO_SITE_URL:?set MYRMO_SITE_URL in .env}
     networks:
       default: {}
       edge:

@@ -25,6 +25,11 @@ pub struct Config {
     pub publish_limit_per_hour: u64,
     /// Trails waiting for enrichment above which publishing is refused with 503. 0 disables it.
     pub queue_max: u64,
+    /// Bearer token for operator endpoints (removing a trail). Unset, or shorter than 16
+    /// characters, disables them.
+    pub admin_token: Option<String>,
+    /// Public address of the website, used to build approval links for drafts.
+    pub public_url: String,
     /// Minimum cosine similarity for a semantic match.
     pub min_similarity: f64,
     /// Secret mixed into the daily client hash. Random per process when unset.
@@ -59,6 +64,10 @@ impl Config {
             rate_limit_per_minute: get("MYRMO_RATE_LIMIT", "120").parse().unwrap_or(120),
             publish_limit_per_hour: get("MYRMO_PUBLISH_LIMIT", "30").parse().unwrap_or(30),
             queue_max: get("MYRMO_QUEUE_MAX", "10000").parse().unwrap_or(10_000),
+            public_url: get("MYRMO_PUBLIC_URL", "http://localhost:3000")
+                .trim_end_matches('/')
+                .to_string(),
+            admin_token: var("MYRMO_ADMIN_TOKEN").filter(|t| t.len() >= 16),
             min_similarity: get("MYRMO_MIN_SIMILARITY", "0.72").parse().unwrap_or(0.72),
             salt: var("MYRMO_SALT").unwrap_or_else(|| uuid::Uuid::new_v4().to_string()),
             consumer_name: get("HOSTNAME", "enricher"),

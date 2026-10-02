@@ -40,6 +40,8 @@ docker compose up -d --scale enricher=4
 | `QDRANT_URL` | `http://qdrant:6333` | REST endpoint. Use a Qdrant cluster for sharding and replicas. |
 | `REDIS_URL` | `redis://valkey:6379` | Queue, counters, cache and rate limits. Redis or Valkey. |
 | `MYRMO_RATE_LIMIT` | `120` | Requests per hashed client per minute. `0` disables the limit. |
+| `MYRMO_ADMIN_TOKEN` | none | Bearer token (16 characters or more) for operator endpoints, such as removing a trail. Unset disables them. Only the gateway needs it. |
+| `MYRMO_PUBLIC_URL` | `http://localhost:3000` | Address of the website, used to build the approval links of drafts. In production it takes the value of `MYRMO_SITE_URL`. |
 | `MYRMO_PUBLISH_LIMIT` | `0` locally, `30` in `deploy/docker-compose.prod.yml` | Trails a client may publish per hour. `0` disables the quota. |
 | `MYRMO_QUEUE_MAX` | `10000` | Trails waiting for enrichment above which publishing returns `503 busy`. `0` disables it. |
 | `MYRMO_MIN_SIMILARITY` | `0.72` | Minimum cosine similarity for a semantic match. |
