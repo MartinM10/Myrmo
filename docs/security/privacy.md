@@ -1,3 +1,8 @@
+---
+title: "Privacy: what leaves your machine"
+description: "What Myrmo sends and stores, how secrets, paths and hostnames are redacted on the client and again on the server, and why search queries are never stored."
+---
+
 # Privacy
 
 Centralising the world's errors is only acceptable if nothing sensitive is centralised with them.
@@ -50,9 +55,11 @@ which also list what must be left alone.
 | `hostname` | Internal host names in URLs and `user@host` (`.internal`, `.corp`, `.intranet`, `.lan`, `.local`) |
 | `home_path` | `/home/<user>/`, `/Users/<user>/`, `C:\Users\<user>\` |
 
+::: v-pre
 Values that are references, not secrets, are kept: `password=$DB_PASSWORD`,
 `password: ${{ secrets.X }}`, `os.getenv(…)`, `None`, `****`, URLs and paths. The test is narrow on
 purpose, because a real password may contain `(` or `$`.
+:::
 
 ### What it cannot do
 

@@ -1,3 +1,8 @@
+---
+title: "Benchmarks: MyrmoBench and load tests"
+description: "MyrmoBench measures whether following a trail helps agents; the load suite measures what one colony node sustains. Reproducible with one command."
+---
+
 # Benchmarks
 
 Two suites in `bench/`. Both publish raw results, and the website only shows numbers from published

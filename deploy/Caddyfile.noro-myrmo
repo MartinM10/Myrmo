@@ -1,19 +1,57 @@
-noro.com.es, www.noro.com.es {
-	encode gzip zstd
+# Edge reverse proxy for the public colony. myrmo.dev is the canonical host: it serves the
+# website, docs, REST API and hosted MCP. noro.com.es keeps answering the API and MCP, because
+# installed SDKs default to it, but permanently redirects every web page to myrmo.dev so search
+# engines consolidate on one host. www always redirects to the apex.
+# Deploy this only once myrmo.dev resolves to the server: the redirect assumes it is live.
 
-	# Myrmo REST API
+(headers) {
+	header {
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+}
+
+(api) {
+	# Machine endpoints are not pages: keep them out of search results without blocking agents.
 	@api path /v1/* /healthz /readyz
 	handle @api {
+		header X-Robots-Tag "noindex, nofollow"
 		reverse_proxy myrmo-gateway:8080
 	}
 
 	# Hosted MCP server (Streamable HTTP)
 	handle /mcp {
+		header X-Robots-Tag "noindex, nofollow"
 		reverse_proxy myrmo-mcp:3333
 	}
+}
 
-	# Myrmo website, colony view and docs
+myrmo.dev {
+	encode gzip zstd
+	import headers
+	import api
+
+	# Website, colony view and docs
 	handle {
 		reverse_proxy myrmo-web:80
 	}
+}
+
+www.myrmo.dev {
+	redir https://myrmo.dev{uri} permanent
+}
+
+noro.com.es {
+	encode gzip zstd
+	import headers
+	import api
+
+	handle {
+		redir https://myrmo.dev{uri} permanent
+	}
+}
+
+www.noro.com.es {
+	redir https://noro.com.es{uri} permanent
 }

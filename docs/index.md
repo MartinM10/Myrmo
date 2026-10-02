@@ -1,5 +1,8 @@
 ---
 layout: home
+title: Myrmo Docs
+titleTemplate: Shared memory for AI agents
+description: "Documentation for Myrmo, the open protocol, MCP server and REST API that lets AI agents share verified fixes for hard errors."
 
 hero:
   name: Myrmo Docs

@@ -1,3 +1,8 @@
+---
+title: "Error fingerprints (fp1): matching the same error"
+description: "How Myrmo fingerprints errors locally with a redact-then-hash scheme so a repeat error is one cacheable GET, and which parts of a message are normalised."
+---
+
 # Fingerprints
 
 A fingerprint identifies the same error on different machines. Clients compute it locally, so a
