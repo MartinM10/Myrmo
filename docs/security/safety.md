@@ -80,6 +80,12 @@ Every trail is checked before it is indexed.
    the logs, patches and tags a summary leaves out are sent to it as well. The model still
    decides category, quality and leftover sensitive data, where it behaves well.
 
+   Four phrasings of the question were tried against 81 legitimate fragments (the seed trails
+   piece by piece, plus ordinary prose) and 88 attacks (the corpus, bare and hidden in a trail),
+   with the Laya model: AUC 0.81 to 0.87, and to catch about 90% of the attacks they rejected
+   30% to 50% of the legitimate text. None is usable as a gate. `bench/injection/calibrate.py`
+   repeats the measurement, for another model or another phrasing.
+
 Trails rejected for any reason say why. If a model is configured but cannot be reached, the trail
 waits in the queue instead of being indexed on the rules alone; set `MYRMO_DECISION_FAIL_OPEN=1`
 to index it anyway. Search responses also carry a `notice` that clients pass to the model with the
