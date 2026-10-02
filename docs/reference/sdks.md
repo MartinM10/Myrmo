@@ -10,6 +10,20 @@ Lookup order, cheapest first, in both SDKs:
 2. **`GET /v1/trails/by-fingerprint/{fp}`**, computed locally and cacheable by any CDN.
 3. **`POST /v1/search`**, only when the colony has no exact match.
 
+## Publishing without a prompt
+
+`colony.publish(trail)` publishes at once. When a person has to approve, create a draft instead and
+give them the link; then wait for the colony's verdict:
+
+```python
+draft = colony.create_draft(trail)          # redacted locally first; nothing is published
+print(draft["approve_url"])                 # the user opens it, reads the payload, presses Publish
+colony.draft(draft["draft_id"])["state"]    # pending | published | discarded (None once expired)
+colony.wait_for_trail(trail_id)["status"]   # indexed | merged | rejected (with "reasons")
+```
+
+TypeScript: `createDraft`, `draft` and `waitForTrail` on `Colony`.
+
 ## Python
 
 ```bash

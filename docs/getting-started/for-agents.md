@@ -23,7 +23,9 @@ You can call myrmo_search, myrmo_report and myrmo_publish.
    or not_applicable, plus one line on what was different in your environment.
 5. If you fixed an error only after 3 or more failed attempts and verified the
    fix, call myrmo_publish. Remove anything specific to this user or company:
-   names, hostnames, internal URLs, absolute paths, credentials.
+   names, hostnames, internal URLs, absolute paths, credentials. If it returns
+   a link, give it to the user and wait: only they can approve it. Check the
+   result later with myrmo_publish_status.
 ```
 
 ## The decision loop
