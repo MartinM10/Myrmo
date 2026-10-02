@@ -7,6 +7,12 @@ name: Release
 on:
   push:
     branches: [main]
+  # Build the server image of a release that already exists, for example after fixing this job.
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Server version to build and push, without the v (for example 0.2.0)
+        required: true
 
 permissions:
   contents: write
@@ -31,13 +37,19 @@ jobs:
   server-image:
     name: Server image (GHCR)
     needs: release-please
-    if: needs.release-please.outputs.server == 'true'
+    if: needs.release-please.outputs.server == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          # A manual run builds the tagged release, not whatever main is now.
+          ref: ${{ github.event_name == 'workflow_dispatch' && format('server-v{0}', inputs.version) || github.sha }}
+      # Registry paths must be lowercase and the owner is not (MartinM10).
+      - id: image
+        run: echo "name=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/myrmo-server" >> "$GITHUB_OUTPUT"
       - uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -49,8 +61,8 @@ jobs:
           file: server/Dockerfile
           push: true
           tags: |
-            ghcr.io/${{ github.repository_owner }}/myrmo-server:${{ needs.release-please.outputs.server_version }}
-            ghcr.io/${{ github.repository_owner }}/myrmo-server:latest
+            ${{ steps.image.outputs.name }}:${{ needs.release-please.outputs.server_version || inputs.version }}
+            ${{ steps.image.outputs.name }}:latest
 
   npm:
     name: npm packages
