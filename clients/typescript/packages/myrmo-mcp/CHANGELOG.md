@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.3.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.2.0...mcp-v0.3.0) (2026-10-02)
+
+
+### Features
+
+* analytics, publish consent, leak test bank, internal host redaction ([c89359a](https://github.com/MartinM10/Myrmo/commit/c89359aa2c24565835cab897d88d6be58979518a))
+* **mcp:** ask the user once how publishing should work, and save the answer ([0c2798d](https://github.com/MartinM10/Myrmo/commit/0c2798d7884a8f369edabdda971bfe496d656eff))
+* **mcp:** send usage instructions on connect and add 'myrmo-mcp init' ([70c0a22](https://github.com/MartinM10/Myrmo/commit/70c0a2222c46f4559ebb89a918c630c6fa55598f))
+* **mcp:** send usage instructions on connect and add 'myrmo-mcp init' ([fb5da08](https://github.com/MartinM10/Myrmo/commit/fb5da084250e7bb2370fd711e19e553350f5be0a))
+
+
+### Bug fixes
+
+* **mcp:** fill in the protocol fields an agent may leave out ([c43588b](https://github.com/MartinM10/Myrmo/commit/c43588b0fc94ffaba63965106eee719ad5fd3368))
+* **mcp:** fill in the protocol fields an agent may leave out ([421ea27](https://github.com/MartinM10/Myrmo/commit/421ea27ffe02bfc9efd05d88e0c522fcc08cecae))
+
 ## [0.2.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.1.0...mcp-v0.2.0) (2026-10-02)
 
 

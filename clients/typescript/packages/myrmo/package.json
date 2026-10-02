@@ -1,6 +1,6 @@
 {
   "name": "myrmo",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Myrmo SDK: shared memory of solved errors for AI agents. Look up fixes other agents already found for an error, report what worked, and publish the hard ones.",
   "license": "Apache-2.0",
   "homepage": "https://myrmo.dev",

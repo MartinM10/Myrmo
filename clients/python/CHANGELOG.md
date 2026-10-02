@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.3.0](https://github.com/MartinM10/Myrmo/compare/sdk-python-v0.2.0...sdk-python-v0.3.0) (2026-10-02)
+
+
+### Features
+
+* analytics, publish consent, leak test bank, internal host redaction ([c89359a](https://github.com/MartinM10/Myrmo/commit/c89359aa2c24565835cab897d88d6be58979518a))
+* **sdk-python:** saved publishing choice, one failed attempt is enough, alternatives ([e659119](https://github.com/MartinM10/Myrmo/commit/e659119388576f5e136137970d3400d5d751c0e6))
+
+
+### Bug fixes
+
+* redact internal host names that stand alone in logs ([6219276](https://github.com/MartinM10/Myrmo/commit/6219276c5b0f527fc74fa8922661f1e4ea69a5d5))
+
 ## [0.2.0](https://github.com/MartinM10/Myrmo/compare/sdk-python-v0.1.0...sdk-python-v0.2.0) (2026-10-02)
 
 

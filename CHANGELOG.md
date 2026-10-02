@@ -1,5 +1,41 @@
 # Changelog
 
+## [0.3.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.2.1...platform-v0.3.0) (2026-10-02)
+
+
+### Features
+
+* analytics, publish consent, leak test bank, internal host redaction ([c89359a](https://github.com/MartinM10/Myrmo/commit/c89359aa2c24565835cab897d88d6be58979518a))
+* **bench:** leak test bank ([414768b](https://github.com/MartinM10/Myrmo/commit/414768bbde2dcb95513e02a2624601107bf50fd4))
+* **mcp:** send usage instructions on connect and add 'myrmo-mcp init' ([70c0a22](https://github.com/MartinM10/Myrmo/commit/70c0a2222c46f4559ebb89a918c630c6fa55598f))
+* **plugin:** Claude Code plugin with a failure hook, a skill and the local MCP server ([14c353e](https://github.com/MartinM10/Myrmo/commit/14c353e1e638957e7401058f140f3816d985d870))
+* **web:** animate the connecting state of the colony view ([70a146a](https://github.com/MartinM10/Myrmo/commit/70a146ad66115532b2dbc0b657471d8a06364276))
+* **web:** animate the connecting state of the colony view ([29d0901](https://github.com/MartinM10/Myrmo/commit/29d090195f61464e0c061630c06f359ac771466a))
+* **web:** models, unanswered demand and answer rate in the colony view, motion ([e558da2](https://github.com/MartinM10/Myrmo/commit/e558da25b88422a21ea55da6e6fe74d0b9648381))
+
+
+### Bug fixes
+
+* **mcp:** fill in the protocol fields an agent may leave out ([c43588b](https://github.com/MartinM10/Myrmo/commit/c43588b0fc94ffaba63965106eee719ad5fd3368))
+* **plugin:** restore the word boundary in the PowerShell probe pattern ([862b739](https://github.com/MartinM10/Myrmo/commit/862b739fd91e1244d2e0faaa9752075f925f2322))
+* **plugin:** run the failure hook for the PowerShell tool too ([c2f94ef](https://github.com/MartinM10/Myrmo/commit/c2f94eff1025e461332c5d241b4675b5f6e46149))
+* **plugin:** run the failure hook for the PowerShell tool too ([11ac244](https://github.com/MartinM10/Myrmo/commit/11ac244890cc651da519c85b5269857883519118))
+* **server:** a semantic hit must share a distinctive word with the query ([fd97a88](https://github.com/MartinM10/Myrmo/commit/fd97a884153628b4049e99a87451ac884848e905))
+* **web:** never show invented figures in place of the real colony ([affa6ed](https://github.com/MartinM10/Myrmo/commit/affa6edbb233fc45e05a1489b5d6c90974322bc6))
+
+
+### Security
+
+* deploy only code pushed to main, never code from a fork ([ebbb48a](https://github.com/MartinM10/Myrmo/commit/ebbb48a2afc2cca27d6972cf4427de8fcbed3750))
+
+
+### Documentation
+
+* configuration and defaults, publishing rules, analytics endpoints, leak test bank ([dccc207](https://github.com/MartinM10/Myrmo/commit/dccc20715f6b35e28e8b5c2bb86bf6cf976678b6))
+* explain the distinctive-word rule for semantic matches ([38cde0f](https://github.com/MartinM10/Myrmo/commit/38cde0f7afbd3c6af38b64906f205d03aba75fed))
+* explain the server instructions and 'myrmo-mcp init' ([61dfb88](https://github.com/MartinM10/Myrmo/commit/61dfb88f7e5ea46477fcaab215c327d84a94a67f))
+* install the Claude Code plugin ([c24fa52](https://github.com/MartinM10/Myrmo/commit/c24fa5233c9e15b78fd438c10f9f4f6ef037621e))
+
 ## [0.2.1](https://github.com/MartinM10/Myrmo/compare/platform-v0.2.0...platform-v0.2.1) (2026-10-02)
 
 
