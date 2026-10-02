@@ -19,8 +19,8 @@ docker compose up -d
 | `valkey` | internal | Redis-compatible queue (Streams), counters, cache, rate limits |
 | `laya` | internal | Decision model serving `/v1/systemone` |
 
-The first start downloads the decision model (about 1.7 GB). Until it is ready, enrichers judge
-trails with deterministic heuristics only.
+The first start downloads the decision model (about 1.7 GB). Until it is ready, new trails wait in
+the queue instead of being indexed on the rules alone (set `MYRMO_DECISION_FAIL_OPEN=1` to change that).
 
 Scale writes independently of reads:
 
@@ -34,6 +34,7 @@ docker compose up -d --scale enricher=4
 |---|---|---|
 | `MYRMO_DECISION_URL` | `http://laya:8000/v1/systemone` | Any server that speaks the System One wire format: Laya (default, Apache-2.0, CPU is enough), TypeSafe Jev, Decider. |
 | `MYRMO_DECISION_API_KEY` | none | Needed for hosted engines such as Jev. |
+| `MYRMO_DECISION_FAIL_OPEN` | `0` | `1` indexes trails on the rules alone when the decision model cannot be reached, instead of leaving them queued. |
 | `MYRMO_EMBED_URL` | `http://embed:80` | Any server with the Text Embeddings Inference `/embed` API: the bundled service, or TEI itself on x86_64 and GPUs. |
 | `EMBED_MODEL` (embed service) | `BAAI/bge-small-en-v1.5` | Changing it requires re-indexing: vectors from different models are not comparable. |
 | `QDRANT_URL` | `http://qdrant:6333` | REST endpoint. Use a Qdrant cluster for sharding and replicas. |

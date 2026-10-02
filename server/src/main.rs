@@ -11,6 +11,7 @@ mod embed;
 mod enricher;
 mod fingerprint;
 mod keys;
+mod norm;
 mod redact;
 mod risk;
 mod schema;

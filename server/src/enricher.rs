@@ -141,6 +141,11 @@ async fn handle(st: AppState, entry: StreamId) {
                 .await;
         }
         // Left pending; another pass (or another enricher) retries after RECLAIM_IDLE_MS.
+        Err(err) if err.is::<decision::ModelUnavailable>() => {
+            // An outage of the model says nothing about the trail: it must not use up its attempts.
+            let _: redis::RedisResult<i64> = con.hincr(keys::trail(&id), "attempts", -1).await;
+            tracing::warn!(trail = %id, "decision model unavailable, trail stays queued");
+        }
         Err(err) => {
             tracing::warn!(trail = %id, attempts, error = %err, "enrichment failed, will retry")
         }
@@ -240,6 +245,11 @@ async fn enrich(st: &AppState, id: &str, mut trail: Value) -> Result<()> {
     let fp = fingerprint::of_trail(&trail);
 
     let judgement: Judgement = st.decision.judge(&trail).await;
+    // The model is configured but down: only the rules looked at this trail. Wait for the model
+    // rather than index on that alone, unless the operator chose otherwise.
+    if judgement.degraded && !st.cfg.decision_fail_open {
+        return Err(decision::ModelUnavailable.into());
+    }
     let mut reasons = Vec::new();
     if judgement.injection >= decision::INJECTION_THRESHOLD {
         reasons.push("prompt_injection");
