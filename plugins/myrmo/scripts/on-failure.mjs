@@ -13,7 +13,7 @@ import { join } from "node:path";
 
 // Commands that fail as part of normal work: a probe that found nothing, a diff that differs.
 const PROBES = /^\s*(?:sudo\s+)?(?:grep|egrep|fgrep|rg|ag|diff|cmp|test|\[|\[\[|which|where|type|command\s+-v|ls|cat|head|tail|echo|printf|find|stat|file|wc|git\s+(?:diff|status|log|show|grep|rev-parse|ls-files))\b/;
-const PS_PROBES = /^\s*(?:select-string|sls|get-childitem|gci|dir|get-content|gc|type|test-path|where-object|get-command|gcm|get-item|get-process|get-location|write-host|write-output|compare-object|diff)/i;
+const PS_PROBES = /^\s*(?:select-string|sls|get-childitem|gci|dir|get-content|gc|type|test-path|where-object|get-command|gcm|get-item|get-process|get-location|write-host|write-output|compare-object|diff)\b/i;
 const SHELLS = new Set(["Bash", "PowerShell"]);
 // Exit codes that mean a person or the system stopped the command: interrupt, timeout, kill, terminate.
 const STOPPED = new Set([124, 130, 137, 143]);
