@@ -5,6 +5,7 @@
 //   2. GET /v1/trails/by-fingerprint/{fp} (cacheable by any CDN; most traffic ends here)
 //   3. POST /v1/search (embedding + vector search; only for errors the colony has not fingerprinted)
 
+import { publishChoice } from "./config.js";
 import { detectEnvironment, parsePackage } from "./environment.js";
 import { fingerprint, guessErrorType } from "./fingerprint.js";
 import { redactText, redactValue, type RedactionReport } from "./redact.js";
@@ -62,6 +63,8 @@ const env = (key: string) => (typeof process !== "undefined" ? process.env[key] 
 export class Colony {
   readonly url: string;
   readonly publishMode: PublishMode;
+  /** Where the publish mode came from. `default` means nobody has chosen yet, so nothing is published. */
+  readonly publishSource: "option" | "env" | "file" | "default";
   private readonly apiKey?: string;
   private readonly agentId?: string;
   private readonly timeoutMs: number;
@@ -73,8 +76,9 @@ export class Colony {
     this.url = (options.url ?? env("MYRMO_URL") ?? DEFAULT_URL).replace(/\/+$/, "");
     this.apiKey = options.apiKey ?? env("MYRMO_API_KEY");
     this.agentId = options.agentId ?? env("MYRMO_AGENT_ID");
-    const mode = options.publish ?? (env("MYRMO_PUBLISH") as PublishMode | undefined) ?? "off";
-    this.publishMode = ["off", "ask", "auto"].includes(mode) ? mode : "off";
+    const choice = publishChoice(options.publish);
+    this.publishMode = choice.mode;
+    this.publishSource = choice.source;
     this.timeoutMs = options.timeoutMs ?? 10_000;
     this.headers = options.headers ?? {};
     this.cacheTtlMs = options.cacheTtlMs ?? 60_000;
