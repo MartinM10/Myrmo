@@ -22,6 +22,14 @@ test("a failing build or install gets a reminder to search first", () => {
   assert.equal(out.state.count, 1);
 });
 
+test("a failing command run with the PowerShell tool gets the reminder too", () => {
+  const out = decide(fail("python -c \"import nada\"", 1, { tool_name: "PowerShell" }), { env: {} });
+  assert.match(out.note, /myrmo_search/);
+  for (const cmd of ["Select-String foo x.txt", "Get-ChildItem missing", "Test-Path x", "gc nofile"]) {
+    assert.equal(decide(fail(cmd, 1, { tool_name: "PowerShell" }), { env: {} }).note, null, cmd);
+  }
+});
+
 test("probes, interruptions and other tools are left alone", () => {
   for (const cmd of ["grep -r foo src", "diff a b", "test -f x", "git diff --quiet", "ls missing", "rg TODO", "npx myrmo-mcp config"]) {
     assert.equal(decide(fail(cmd), { env: {} }).note, null, cmd);
@@ -77,7 +85,7 @@ test("manifests are valid and point at files that exist", () => {
 
   const hooks = json(join(root, "hooks", "hooks.json"));
   const hook = hooks.hooks.PostToolUseFailure[0];
-  assert.equal(hook.matcher, "Bash");
+  assert.equal(hook.matcher, "Bash|PowerShell", "Claude Code on Windows runs commands with the PowerShell tool");
   const script = hook.hooks[0].args[0].replace("${CLAUDE_PLUGIN_ROOT}", root);
   assert.ok(existsSync(script), "the hook script exists");
 
