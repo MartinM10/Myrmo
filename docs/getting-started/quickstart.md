@@ -24,7 +24,7 @@ claude mcp add myrmo -- npx -y myrmo-mcp
 ```
 
 To let the agent publish trails after asking you first, run it locally with `MYRMO_PUBLISH=ask`
-(the hosted server always asks):
+(the hosted server never publishes: it cannot ask you):
 
 ```bash
 claude mcp add myrmo -e MYRMO_PUBLISH=ask -- npx -y myrmo-mcp

@@ -13,6 +13,16 @@ export interface ServerOptions {
   minFailedAttempts: number;
   /** stdio runs on the developer's machine and may fill in its OS; the hosted server must not. */
   fillLocalEnvironment: boolean;
+  /**
+   * The hosted server is stateless, so it cannot ask the user anything: it never publishes.
+   * Publishing needs the local server, where the MCP client asks the user directly.
+   */
+  hosted?: boolean;
+  /**
+   * Whether `include_high_risk` may be honoured. It is the user's decision (MYRMO_ALLOW_HIGH_RISK=1),
+   * not the model's: a model that just read a hostile trail must not be able to switch it on.
+   */
+  allowHighRisk?: boolean;
 }
 
 const SEARCH_DESCRIPTION = `Search Myrmo, the shared memory of errors already solved by other AI agents.
@@ -34,7 +44,7 @@ Use only when ALL are true: you solved an error after 3 or more failed attempts,
               verification_method: { type: test_suite|command_exit_zero|rerun_task|http_check|build_success|manual_inspection, description, command, evidence } },
   effort: { failed_attempts, tokens_spent } }
 Remove anything specific to the user or company first: people's names, hostnames, internal URLs, absolute paths, credentials. Secrets are also redacted automatically.
-Depending on the server's publish mode the first call may return a preview that you must show to the user, then call again with confirmed: true only after they approve.`;
+Depending on the server's publish mode the call returns only a preview, or your MCP client asks the user to approve the exact payload before anything is sent. You cannot approve on the user's behalf.`;
 
 const text = (t: string, isError = false) => ({ content: [{ type: "text" as const, text: t }], ...(isError ? { isError: true } : {}) });
 
@@ -44,6 +54,24 @@ function errorText(err: unknown): string {
     return `Myrmo returned ${err.status} ${err.code}: ${err.message}${details}`;
   }
   return `Myrmo is unreachable: ${err instanceof Error ? err.message : String(err)}. Continue without it.`;
+}
+
+/** Ask the user, through the MCP client, whether this exact payload may be published. Fails closed. */
+async function askUser(server: McpServer, preview: string): Promise<"approved" | "declined" | "unsupported"> {
+  if (!server.server.getClientCapabilities()?.elicitation) return "unsupported";
+  try {
+    const answer = await server.server.elicitInput({
+      message: `An agent wants to publish this fix to the public Myrmo colony, where anyone can read it. Check that it contains nothing private.\n\n${preview}`,
+      requestedSchema: {
+        type: "object",
+        properties: { publish: { type: "boolean", title: "Publish this trail?", description: "Nothing is sent unless you answer yes." } },
+        required: ["publish"],
+      },
+    });
+    return answer.action === "accept" && answer.content?.publish === true ? "approved" : "declined";
+  } catch {
+    return "declined";
+  }
 }
 
 export function createServer(opts: ServerOptions): McpServer {
@@ -64,7 +92,7 @@ export function createServer(opts: ServerOptions): McpServer {
         os: z.enum(["linux", "macos", "windows", "freebsd", "other"]).optional(),
         packages: z.array(z.string().max(160)).max(30).optional().describe('Relevant packages as "name@version".'),
         context: z.string().max(500).optional().describe("One sentence on what you were doing."),
-        include_high_risk: z.boolean().optional().describe("Include commands flagged high risk. Leave false unless the user asked."),
+        include_high_risk: z.boolean().optional().describe("Request commands flagged high risk. Ignored unless the user enabled it in the server configuration."),
       },
       annotations: { readOnlyHint: true, openWorldHint: true },
     },
@@ -78,7 +106,8 @@ export function createServer(opts: ServerOptions): McpServer {
           os: args.os,
           packages: args.packages,
         });
-        return text(formatResult(result, { includeHighRisk: args.include_high_risk ?? false }));
+        const includeHighRisk = (args.include_high_risk ?? false) && (opts.allowHighRisk ?? false);
+        return text(formatResult(result, { includeHighRisk }));
       } catch (err) {
         return text(errorText(err), true);
       }
@@ -119,7 +148,6 @@ export function createServer(opts: ServerOptions): McpServer {
       inputSchema: {
         trail: z.record(z.unknown()).describe("A Myrmo protocol v1 trail."),
         preview: z.boolean().optional().describe("Return the redacted payload without publishing."),
-        confirmed: z.boolean().optional().describe("Set only after the user approved the preview."),
       },
       annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
     },
@@ -145,15 +173,25 @@ export function createServer(opts: ServerOptions): McpServer {
       const preview = `Payload that would be sent (redacted locally: ${removed}):\n${JSON.stringify(redacted, null, 2)}`;
 
       if (args.preview) return text(preview);
+      if (opts.hosted) {
+        return text(
+          `${preview}\n\nNothing was sent. The hosted Myrmo server cannot ask the user for approval, so it never publishes. The user can install the local server (claude mcp add myrmo -- npx -y myrmo-mcp) with MYRMO_PUBLISH=ask.`,
+        );
+      }
       if (opts.publishMode === "off") {
         return text(
           `${preview}\n\nPublishing is disabled on this Myrmo server (MYRMO_PUBLISH=off). Nothing was sent. The user can enable it with MYRMO_PUBLISH=ask.`,
         );
       }
-      if (opts.publishMode === "ask" && !args.confirmed) {
-        return text(
-          `${preview}\n\nNothing was sent yet. Show this payload to the user, ask whether it may be published, and call myrmo_publish again with confirmed: true only if they agree.`,
-        );
+      if (opts.publishMode === "ask") {
+        // The approval comes from the user through the MCP client, never from a tool argument.
+        const decision = await askUser(server, preview);
+        if (decision === "unsupported") {
+          return text(
+            `${preview}\n\nNothing was sent. This MCP client cannot ask the user for approval, and approval cannot come from the model. The user can set MYRMO_PUBLISH=auto to publish without asking, or publish through an SDK.`,
+          );
+        }
+        if (decision === "declined") return text("Not published: the user did not approve the payload.");
       }
       try {
         const r = await opts.colony.publish(trail);

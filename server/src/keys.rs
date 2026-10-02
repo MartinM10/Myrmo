@@ -41,6 +41,10 @@ pub fn seen(id: &str, agent: &str) -> String {
 pub fn rate(client: &str, minute: i64) -> String {
     format!("rl:{client}:{minute}")
 }
+/// Trails queued by one client in one hour, for the publish quota.
+pub fn publish_quota(client: &str, hour: i64) -> String {
+    format!("pq:{client}:{hour}")
+}
 pub fn stat_outcomes(hour: i64) -> String {
     format!("stats:outcomes:{hour}")
 }

@@ -8,6 +8,8 @@ use std::sync::LazyLock;
 use unicode_normalization::UnicodeNormalization;
 
 pub const PREFIX: &str = "fp1_";
+/// Prefix of [`solution_fingerprint`]. Server-side only: it is not part of the wire protocol.
+pub const SOLUTION_PREFIX: &str = "sf1_";
 const MAX_NORMALIZED_CHARS: usize = 300;
 const SEPARATOR: &str = "\u{1f}";
 
@@ -78,6 +80,57 @@ pub fn fingerprint(runtime: &str, error_type: &str, message: &str) -> String {
     format!("{PREFIX}{}", &hex::encode(digest)[..16])
 }
 
+/// Trailing whitespace and line endings never change what a command or a patch does.
+fn normalize_lines(text: &str) -> String {
+    text.lines()
+        .map(str::trim_end)
+        .collect::<Vec<_>>()
+        .join("\n")
+        .trim()
+        .to_string()
+}
+
+/// Identifies *what a trail does*, as opposed to [`fingerprint`], which identifies the error it
+/// fixes. Two trails for the same error are the same solution only when they run the same commands
+/// and apply the same patches; wording (purpose, steps, root cause) is ignored. Trails with
+/// neither commands nor patches fall back to their steps.
+pub fn solution_fingerprint(trail: &Value) -> String {
+    let items = |key: &str| {
+        trail
+            .pointer(&format!("/solution/{key}"))
+            .and_then(Value::as_array)
+            .cloned()
+            .unwrap_or_default()
+    };
+    let text = |v: &Value, key: &str| {
+        normalize_lines(v.get(key).and_then(Value::as_str).unwrap_or_default())
+    };
+    // Commands are ordered; patches are not.
+    let mut parts: Vec<String> = items("shell_commands_executed")
+        .iter()
+        .map(|c| format!("cmd:{}", text(c, "command")))
+        .collect();
+    let mut patches: Vec<String> = items("code_patches")
+        .iter()
+        .map(|p| format!("patch:{}:{}", text(p, "file_path"), text(p, "diff")))
+        .collect();
+    patches.sort();
+    parts.extend(patches);
+    if parts.is_empty() {
+        parts = items("steps")
+            .iter()
+            .map(|s| {
+                format!(
+                    "step:{}",
+                    normalize_lines(s.as_str().unwrap_or_default()).to_lowercase()
+                )
+            })
+            .collect();
+    }
+    let digest = Sha256::digest(parts.join(SEPARATOR).as_bytes());
+    format!("{SOLUTION_PREFIX}{}", &hex::encode(digest)[..16])
+}
+
 /// The message a trail is fingerprinted by: `error_message`, else the first line of
 /// `raw_logs` containing `error_type`, else the first non-empty line.
 pub fn message_for_problem(problem: &Value) -> String {
@@ -144,6 +197,58 @@ mod tests {
                 "fingerprint: {msg}"
             );
         }
+    }
+
+    fn trail(commands: &[&str], patches: &[(&str, &str)], purpose: &str) -> Value {
+        serde_json::json!({ "solution": {
+            "root_cause": purpose,
+            "steps": [purpose],
+            "shell_commands_executed": commands.iter().map(|c| serde_json::json!({"command": c, "purpose": purpose})).collect::<Vec<_>>(),
+            "code_patches": patches.iter().map(|(f, d)| serde_json::json!({"file_path": f, "diff": d})).collect::<Vec<_>>(),
+        }})
+    }
+
+    #[test]
+    fn solution_fingerprint_ignores_wording_whitespace_and_patch_order() {
+        let a = trail(
+            &["pip install 'numpy>=1.26'"],
+            &[("a.txt", "+1\n"), ("b.txt", "+2\n")],
+            "first wording",
+        );
+        let b = trail(
+            &["pip install 'numpy>=1.26'  "],
+            &[("b.txt", "+2\r\n"), ("a.txt", "+1")],
+            "another wording",
+        );
+        assert_eq!(solution_fingerprint(&a), solution_fingerprint(&b));
+        assert!(solution_fingerprint(&a).starts_with(SOLUTION_PREFIX));
+    }
+
+    #[test]
+    fn solution_fingerprint_tells_different_solutions_apart() {
+        let base = trail(&["pip install numpy"], &[], "w");
+        assert_ne!(
+            solution_fingerprint(&base),
+            solution_fingerprint(&trail(&["pip install numpy==1.0"], &[], "w"))
+        );
+        assert_ne!(
+            solution_fingerprint(&base),
+            solution_fingerprint(&trail(&["pip install numpy"], &[("a.txt", "+1")], "w"))
+        );
+        // Command order matters.
+        assert_ne!(
+            solution_fingerprint(&trail(&["a", "b"], &[], "w")),
+            solution_fingerprint(&trail(&["b", "a"], &[], "w"))
+        );
+        // Without commands or patches, the steps decide.
+        assert_ne!(
+            solution_fingerprint(&trail(&[], &[], "do this")),
+            solution_fingerprint(&trail(&[], &[], "do that"))
+        );
+        assert_eq!(
+            solution_fingerprint(&trail(&[], &[], "Do This")),
+            solution_fingerprint(&trail(&[], &[], "do this"))
+        );
     }
 
     #[test]

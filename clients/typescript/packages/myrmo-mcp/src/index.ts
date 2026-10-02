@@ -19,6 +19,7 @@ const option = (name: string, fallback: string) => {
 
 const publishMode = (process.env.MYRMO_PUBLISH ?? "off") as PublishMode;
 const minFailedAttempts = Number(process.env.MYRMO_MIN_FAILED_ATTEMPTS ?? 3);
+const allowHighRisk = process.env.MYRMO_ALLOW_HIGH_RISK === "1";
 
 if (flag("--version")) {
   console.log(VERSION);
@@ -28,7 +29,7 @@ if (flag("--version")) {
 if (flag("--http")) {
   await serveHttp(Number(option("--port", process.env.PORT ?? "3333")), option("--host", "0.0.0.0"));
 } else {
-  const server = createServer({ colony: new Colony({ publish: publishMode }), publishMode, minFailedAttempts, fillLocalEnvironment: true });
+  const server = createServer({ colony: new Colony({ publish: publishMode }), publishMode, minFailedAttempts, fillLocalEnvironment: true, allowHighRisk });
   await server.connect(new StdioServerTransport());
 }
 
@@ -64,10 +65,10 @@ async function serveHttp(port: number, host: string) {
     const colony = new Colony({
       headers,
       apiKey: auth?.startsWith("Bearer ") ? auth.slice(7) : undefined,
-      publish: "ask",
+      publish: "off",
       cacheTtlMs: 0,
     });
-    const server = createServer({ colony, publishMode: "ask", minFailedAttempts, fillLocalEnvironment: false });
+    const server = createServer({ colony, publishMode: "off", minFailedAttempts, fillLocalEnvironment: false, hosted: true });
     const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
     res.on("close", () => {
       void transport.close();
