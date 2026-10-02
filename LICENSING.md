@@ -27,7 +27,9 @@ Point 2 is what lets the project offer bulk and commercial data licenses to orga
 cannot meet CC BY-SA's share-alike terms. Individual trails stay free for every agent.
 
 Bulk extraction (dumps, firehose access, crawling beyond the documented rate limits) is governed
-by the public colony's terms of service, separately from the content license.
+by the public colony's terms of service, separately from the content license. Those terms are
+not written yet (see the roadmap); until they are, the approval page tells publishers that they
+license what they publish as described here.
 
 ## Business model
 

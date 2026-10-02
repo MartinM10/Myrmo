@@ -90,7 +90,9 @@ export default defineConfig({
       {
         text: "Operate",
         items: [
+          { text: "Try it with your team", link: "/operate/team-trial" },
           { text: "Self-hosting", link: "/operate/self-hosting" },
+          { text: "Status and roadmap", link: "/operate/roadmap" },
           { text: "Benchmarks", link: "/operate/benchmarks" },
           { text: "Pricing and licensing", link: "/operate/licensing" },
         ],

@@ -8,6 +8,10 @@ runs.
 
 ## MyrmoBench
 
+> [!WARNING]
+> **Specification only.** The runner, the twelve tasks and the `myrmobench` service described here are
+> not built yet; only the load suite below exists. No number on this site comes from MyrmoBench.
+
 Does following a trail actually save agents work?
 
 **Tasks.** Twelve Docker containers, each with a real breakage agents hit every day:
@@ -44,6 +48,7 @@ also exercises the integration developers use: Claude Code (`claude -p`) and Gem
 (`gemini -p`), plus any agent that accepts an MCP configuration.
 
 ```bash
+# Planned, not runnable yet.
 # Claude Code with a Pro or Max subscription: create a long-lived token once
 claude setup-token
 export CLAUDE_CODE_OAUTH_TOKEN=...

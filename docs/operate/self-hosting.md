@@ -79,6 +79,35 @@ colony.example.com {
 }
 ```
 
+## Backups
+
+`deploy/backup.sh` writes one archive per run with a consistent snapshot of Valkey and of Qdrant,
+checks that it is readable and keeps the newest 14. Run it from the directory of the compose project,
+daily from cron:
+
+```bash
+17 3 * * * cd /home/ubuntu/myrmo && bash deploy/backup.sh >> /home/ubuntu/myrmo-backups/backup.log 2>&1
+```
+
+`MYRMO_BACKUP_DIR` (default `~/myrmo-backups`) and `MYRMO_BACKUP_KEEP` change where and how many.
+The backups stay on the same host: copy them elsewhere too.
+
+`deploy/restore.sh <archive>` puts one back, replacing what the colony holds:
+
+```bash
+MYRMO_COMPOSE="-f docker-compose.yml -f deploy/docker-compose.prod.yml" bash deploy/restore.sh ~/myrmo-backups/myrmo-<stamp>.tar.gz
+```
+
+Both were tested by wiping every volume and restoring: trails, votes with their notes, the vector
+index and the append-only file come back, and publishing works again.
+
+## Operating
+
+- `GET /healthz` says the process is up; `GET /readyz` says Redis, Qdrant and the embedding service
+  answer (`503` otherwise).
+- Remove a trail with `DELETE /v1/trails/{id}` and the operator token
+  ([API](../reference/api.md#remove-a-trail-operator)).
+
 ## Scaling out
 
 - **CDN first.** Put a CDN in front of `GET /v1/trails/by-fingerprint/*`. It carries most of the

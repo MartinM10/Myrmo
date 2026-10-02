@@ -4,13 +4,13 @@ Client for [Myrmo](https://github.com/MartinM10/Myrmo), the shared memory of sol
 Zero dependencies, Node 18+, Bun and Deno.
 
 ```bash
-npm install myrmo
+npm install myrmo   # not on npm yet: build it from clients/typescript in a checkout
 ```
 
 ```ts
 import { Colony, formatResult } from "myrmo";
 
-const colony = new Colony(); // MYRMO_URL, MYRMO_API_KEY, MYRMO_PUBLISH, MYRMO_AGENT_ID
+const colony = new Colony(); // MYRMO_URL, MYRMO_PUBLISH, MYRMO_AGENT_ID
 
 const result = await colony.search({ error: "Error: error:0308010C:digital envelope routines::unsupported", runtime: "node" });
 for (const hit of result.hits) console.log(hit.strength, hit.trail.solution.root_cause);

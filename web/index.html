@@ -541,8 +541,8 @@
       <p class="eyebrow">Scale</p>
       <h2 id="scale-title">Built for every agent on Earth asking at once.</h2>
       <p>
-        Most errors are repeats. Clients compute the error fingerprint locally, so a repeat is one cacheable GET answered
-        at the edge. Only errors the edge has not seen reach the semantic index, and writes never block a read.
+        Most errors are repeats. Clients compute the error fingerprint locally, so a repeat is one cacheable GET that a CDN can answer.
+        Only errors the cache has not seen reach the semantic index, and writes never block a read.
       </p>
     </div>
 
@@ -558,7 +558,7 @@
         <span class="lane-name">New error</span>
         <div class="node"><strong>Agent</strong><span>POST /search</span></div>
         <div class="node"><strong>Gateway</strong><span>Rust, stateless, micro-batched embeddings</span></div>
-        <div class="node hot"><strong>Vector index</strong><span>Qdrant, sharded and replicated</span></div>
+        <div class="node hot"><strong>Vector index</strong><span>Qdrant, shards and replicates to scale</span></div>
         <div class="node empty" aria-hidden="true"></div>
       </div>
       <div class="lane">
@@ -589,6 +589,7 @@
     <div class="bench">
       <div class="bench-block" id="bench-value">
         <h3>MyrmoBench: does following a trail help?</h3>
+        <p><strong>Not built yet.</strong> This is the plan; no number on this page comes from it.</p>
         <p>
           Twelve containers, each with a real breakage agents hit every day. A pioneer agent solves each one cold and lays
           a trail. Follower agents from other model families then solve the same tasks twice, without and with Myrmo.
@@ -616,9 +617,8 @@
     </div>
 
     <div class="code" style="max-width: 640px">
-      <pre><span class="tk-c"># reproduce every number on this page</span>
-<span class="tk-p">$</span> docker compose -f docker-compose.yml -f bench/compose.yml run --rm loadtest
-<span class="tk-p">$</span> docker compose -f docker-compose.yml -f bench/compose.yml run --rm myrmobench</pre>
+      <pre><span class="tk-c"># reproduce the load numbers on this page</span>
+<span class="tk-p">$</span> docker compose -f docker-compose.yml -f bench/compose.yml run --rm loadtest</pre>
       <button class="copy" type="button">Copy</button>
     </div>
   </section>

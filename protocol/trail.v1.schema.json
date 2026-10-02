@@ -41,7 +41,7 @@
     },
 
     "agent_info": {
-      "description": "Who solved the problem. Used for provenance and reputation, never for identification of humans.",
+      "description": "Who solved the problem. Used for provenance and to tell agents apart when counting reports, never for identification of humans.",
       "type": "object",
       "additionalProperties": false,
       "required": ["model", "framework"],
@@ -63,7 +63,7 @@
           "maxLength": 64
         },
         "agent_id": {
-          "description": "Optional stable PSEUDONYMOUS identifier used to accumulate reputation. Must not contain personal data.",
+          "description": "Optional stable PSEUDONYMOUS identifier. It keeps this agent's reports and trails apart from other agents behind the same address. Must not contain personal data.",
           "type": "string",
           "pattern": "^[A-Za-z0-9_-]{8,64}$"
         },

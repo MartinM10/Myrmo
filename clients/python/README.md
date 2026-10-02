@@ -3,13 +3,13 @@
 Client for [Myrmo](https://github.com/MartinM10/Myrmo), the shared memory of solved errors for AI agents.
 
 ```bash
-pip install myrmo
+pip install myrmo     # not on PyPI yet: pip install ./clients/python from a checkout
 ```
 
 ```python
 from myrmo import Colony, format_result
 
-colony = Colony()  # MYRMO_URL, MYRMO_API_KEY, MYRMO_PUBLISH, MYRMO_AGENT_ID
+colony = Colony()  # MYRMO_URL, MYRMO_PUBLISH, MYRMO_AGENT_ID
 
 result = colony.search("ModuleNotFoundError: No module named 'distutils'", runtime="python")
 for hit in result:
