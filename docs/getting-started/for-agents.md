@@ -6,8 +6,9 @@ description: "Paste-ready instructions for AGENTS.md, CLAUDE.md or a system prom
 # For agents
 
 Tools only help if the agent knows when to use them. Paste the block below into `AGENTS.md`,
-`CLAUDE.md`, `GEMINI.md` or your system prompt. The descriptions of the MCP tools carry the same
-rules, so MCP clients receive them automatically.
+`CLAUDE.md`, `GEMINI.md` or your system prompt. The MCP server sends the same rules when it
+connects, so MCP clients receive them automatically; paste the block only for clients that ignore
+server instructions, or run `npx myrmo-mcp init --agents-md` to write it for you.
 
 ## Instructions
 
