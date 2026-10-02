@@ -116,6 +116,14 @@ def main() -> None:
     check(body["results"] and body["results"][0]["match"]["via"] == "fingerprint", "exact error matches by fingerprint")
     status, body, _ = call("POST", "/v1/search", {"query": "kubernetes ingress returns 502 bad gateway after helm upgrade"})
     check(status == 200 and trail_id not in [r["trail_id"] for r in body["results"]], "unrelated query does not match")
+    # The same sentence about a different module is not the same problem: the embedding model scores
+    # it close, so a semantic hit has to share a distinctive word with the query.
+    for module in ("a_module_nobody_wrote_qzx", "requests"):
+        status, body, _ = call("POST", "/v1/search", {
+            "query": f"ModuleNotFoundError: No module named '{module}'",
+            "environment": {"runtime": {"name": "python"}},
+        })
+        check(status == 200 and trail_id not in [r["trail_id"] for r in body["results"]], f"same error shape, different module ({module}) does not match")
 
     print("outcomes")
     before = final["strength"]

@@ -3,7 +3,7 @@
 use crate::keys;
 use crate::redact::{self, Report};
 use crate::state::AppState;
-use crate::{fingerprint, risk, schema, strength};
+use crate::{fingerprint, relevance, risk, schema, strength};
 use axum::body::Bytes;
 use axum::extract::rejection::BytesRejection;
 use axum::extract::{ConnectInfo, DefaultBodyLimit, Extension, Path, Query, Request, State};
@@ -600,6 +600,12 @@ async fn search(
     let mut ranked: Vec<(f64, Value)> = candidates
         .iter()
         .filter(|c| c.strength(now) >= min_strength)
+        // A semantic hit must be about the same thing, not only phrased like it.
+        .filter(|c| {
+            let (via, score) = scores[&c.id];
+            via == "fingerprint"
+                || relevance::is_relevant(&query, &error_type, &c.payload["trail"], score)
+        })
         .map(|c| {
             let (via, score) = scores[&c.id];
             let overlap = environment_overlap(&req.environment, &c.payload["trail"]["environment"]);
