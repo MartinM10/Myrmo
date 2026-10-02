@@ -4,7 +4,10 @@
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
+import { mkdtempSync, readFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
@@ -148,10 +151,13 @@ test("report records the outcome", async () => {
   await client.close();
 });
 
-test("publish refuses easy fixes", async () => {
+test("publish refuses fixes that took no failed attempt, but accepts one", async () => {
   const client = await stdioClient("ask", { answer: async () => ({ action: "accept", content: { publish: true } }) });
-  const easy = textOf(await client.callTool({ name: "myrmo_publish", arguments: { trail: { ...trail, effort: { failed_attempts: 1 } } } }));
-  assert.match(easy, /Not published/);
+  const none = textOf(await client.callTool({ name: "myrmo_publish", arguments: { trail: { ...trail, effort: { failed_attempts: 0 } } } }));
+  assert.match(none, /Not published/);
+  const before = published();
+  await client.callTool({ name: "myrmo_publish", arguments: { trail: { ...trail, effort: { failed_attempts: 1 } } } });
+  assert.equal(published(), before + 1, "the default threshold is one failed attempt");
   await client.close();
 });
 
@@ -224,8 +230,81 @@ test("the model cannot switch on high-risk commands; the user can", async () => 
 test("publishing stays off unless enabled", async () => {
   const client = await stdioClient("off");
   const out = textOf(await client.callTool({ name: "myrmo_publish", arguments: { trail } }));
-  assert.match(out, /Publishing is disabled/);
+  assert.match(out, /chosen not to publish/);
   await client.close();
+});
+
+// ---- First-use consent: nobody has chosen yet, so the first publish asks the user once ----
+
+function freshConfig() {
+  const dir = mkdtempSync(join(tmpdir(), "myrmo-config-"));
+  return join(dir, "config.json");
+}
+const unchosen = (config) => ({ env: { MYRMO_PUBLISH: "", MYRMO_CONFIG: config } });
+
+test("with no choice made and a client that cannot ask, nothing is sent and the user is told how to choose", async () => {
+  const config = freshConfig();
+  const client = await stdioClient("", unchosen(config));
+  const before = published();
+  const out = textOf(await client.callTool({ name: "myrmo_publish", arguments: { trail } }));
+  assert.match(out, /has not yet chosen/);
+  assert.match(out, /npx myrmo-mcp config publish auto/);
+  assert.match(out, /Do not run it yourself/);
+  assert.equal(published(), before);
+  await client.close();
+});
+
+test("the user's one-time choice is saved, applied at once, and remembered by the next session", async () => {
+  const config = freshConfig();
+  const shown = [];
+  const first = await stdioClient("", { ...unchosen(config), answer: async (params) => (shown.push(params.message), { action: "accept", content: { choice: "auto" } }) });
+  const before = published();
+  const out = textOf(await first.callTool({ name: "myrmo_publish", arguments: { trail } }));
+  assert.match(out, /Published|Accepted|indexed|queued/i);
+  assert.equal(published(), before + 1);
+  assert.match(shown[0], /CC BY-SA/);
+  assert.match(shown[0], /config publish auto\|ask\|off/);
+  assert.equal(JSON.parse(readFileSync(config, "utf8")).publish, "auto");
+  await first.close();
+
+  // A new session with no elicitation at all: it publishes, because the user already chose.
+  const second = await stdioClient("", unchosen(config));
+  await second.callTool({ name: "myrmo_publish", arguments: { trail } });
+  assert.equal(published(), before + 2);
+  await second.close();
+});
+
+test("choosing 'never' sends nothing and is remembered", async () => {
+  const config = freshConfig();
+  const client = await stdioClient("", { ...unchosen(config), answer: async () => ({ action: "accept", content: { choice: "off" } }) });
+  const before = published();
+  const out = textOf(await client.callTool({ name: "myrmo_publish", arguments: { trail } }));
+  assert.match(out, /chosen not to publish/);
+  assert.equal(published(), before);
+  assert.equal(JSON.parse(readFileSync(config, "utf8")).publish, "off");
+  await client.close();
+});
+
+test("cancelling the question publishes nothing and saves nothing", async () => {
+  const config = freshConfig();
+  const client = await stdioClient("", { ...unchosen(config), answer: async () => ({ action: "cancel" }) });
+  const before = published();
+  await client.callTool({ name: "myrmo_publish", arguments: { trail } });
+  assert.equal(published(), before);
+  assert.throws(() => readFileSync(config, "utf8"));
+  await client.close();
+});
+
+test("myrmo-mcp config saves the user's choice and rejects nonsense", () => {
+  const config = freshConfig();
+  const env = { ...process.env, MYRMO_CONFIG: config, MYRMO_PUBLISH: "" };
+  const ok = spawnSync(process.execPath, [ENTRY, "config", "publish", "ask"], { env, encoding: "utf8" });
+  assert.equal(ok.status, 0);
+  assert.equal(JSON.parse(readFileSync(config, "utf8")).publish, "ask");
+  const shown = spawnSync(process.execPath, [ENTRY, "config"], { env, encoding: "utf8" });
+  assert.match(shown.stdout, /publish: ask/);
+  const bad = spawnSync(process.execPath, [ENTRY, "config", "publish", "sometimes"], { env, encoding: "utf8" });
+  assert.equal(bad.status, 2);
 });
 
 test("the agent learns when the colony rejects what it published", async () => {

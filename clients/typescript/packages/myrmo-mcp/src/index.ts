@@ -7,7 +7,7 @@
 import { createServer as createHttpServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-import { Colony, type PublishMode } from "myrmo";
+import { Colony, configPath, publishChoice, readConfig, writeConfig, type PublishMode } from "myrmo";
 import { createServer, VERSION } from "./server.js";
 
 const args = process.argv.slice(2);
@@ -17,8 +17,11 @@ const option = (name: string, fallback: string) => {
   return i >= 0 && args[i + 1] ? args[i + 1] : fallback;
 };
 
-const publishMode = (process.env.MYRMO_PUBLISH ?? "off") as PublishMode;
-const minFailedAttempts = Number(process.env.MYRMO_MIN_FAILED_ATTEMPTS ?? 3);
+// MYRMO_PUBLISH wins, then ~/.myrmo/config.json, then "nobody has chosen yet" (nothing is published).
+const choice = publishChoice();
+const publishMode: PublishMode = choice.mode;
+const publishChosen = choice.source !== "default";
+const minFailedAttempts = Number(process.env.MYRMO_MIN_FAILED_ATTEMPTS ?? 1);
 const allowHighRisk = process.env.MYRMO_ALLOW_HIGH_RISK === "1";
 
 if (flag("--version")) {
@@ -26,10 +29,27 @@ if (flag("--version")) {
   process.exit(0);
 }
 
+// `myrmo-mcp config` shows the user's settings; `myrmo-mcp config publish auto|ask|off` changes them.
+// This is for the person, not the agent: whether agents may publish on their behalf is their call.
+if (args[0] === "config") {
+  if (args[1] === "publish") {
+    if (!["auto", "ask", "off"].includes(args[2] ?? "")) {
+      console.error("Usage: myrmo-mcp config publish auto|ask|off");
+      process.exit(2);
+    }
+    writeConfig({ publish: args[2] as PublishMode });
+    console.log(`Saved to ${configPath()}: agents publish with publish=${args[2]}.`);
+  } else {
+    console.log(`Settings file: ${configPath()}`);
+    console.log(`publish: ${readConfig().publish ?? "(not chosen yet: agents publish nothing)"}${process.env.MYRMO_PUBLISH ? `   (MYRMO_PUBLISH=${process.env.MYRMO_PUBLISH} overrides it)` : ""}`);
+  }
+  process.exit(0);
+}
+
 if (flag("--http")) {
   await serveHttp(Number(option("--port", process.env.PORT ?? "3333")), option("--host", "0.0.0.0"));
 } else {
-  const server = createServer({ colony: new Colony({ publish: publishMode }), publishMode, minFailedAttempts, fillLocalEnvironment: true, allowHighRisk });
+  const server = createServer({ colony: new Colony({ publish: publishMode }), publishMode, publishChosen, minFailedAttempts, fillLocalEnvironment: true, allowHighRisk });
   await server.connect(new StdioServerTransport());
 }
 
