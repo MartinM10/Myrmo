@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-// PostToolUseFailure hook for Bash: when a command fails, remind the agent to search Myrmo before
+// PostToolUseFailure hook for Bash and PowerShell (Claude Code on Windows runs commands with PowerShell
+// unless Git Bash is installed): when a command fails, remind the agent to search Myrmo before
 // it tries a fix. It sends nothing anywhere and never blocks: it only adds one short note to the
 // model's context, and stays quiet when the failure is probably not worth a search.
 //
@@ -12,16 +13,18 @@ import { join } from "node:path";
 
 // Commands that fail as part of normal work: a probe that found nothing, a diff that differs.
 const PROBES = /^\s*(?:sudo\s+)?(?:grep|egrep|fgrep|rg|ag|diff|cmp|test|\[|\[\[|which|where|type|command\s+-v|ls|cat|head|tail|echo|printf|find|stat|file|wc|git\s+(?:diff|status|log|show|grep|rev-parse|ls-files))\b/;
+const PS_PROBES = /^\s*(?:select-string|sls|get-childitem|gci|dir|get-content|gc|type|test-path|where-object|get-command|gcm|get-item|get-process|get-location|write-host|write-output|compare-object|diff)\b/i;
+const SHELLS = new Set(["Bash", "PowerShell"]);
 // Exit codes that mean a person or the system stopped the command: interrupt, timeout, kill, terminate.
 const STOPPED = new Set([124, 130, 137, 143]);
 
 export function decide(input, { now = Date.now(), state = {}, env = process.env } = {}) {
   if (env.MYRMO_HOOK === "off") return { note: null, state };
-  if (input?.tool_name !== "Bash") return { note: null, state };
+  if (!SHELLS.has(input?.tool_name)) return { note: null, state };
   const code = Number(input.exit_code);
   if (STOPPED.has(code)) return { note: null, state };
   const command = String(input.tool_input?.command ?? "");
-  if (PROBES.test(command)) return { note: null, state };
+  if (PROBES.test(command) || PS_PROBES.test(command)) return { note: null, state };
   if (/\bmyrmo\b/i.test(command)) return { note: null, state };
 
   const minMs = Number(env.MYRMO_HOOK_MIN_SECONDS ?? 45) * 1000;
