@@ -1,0 +1,18 @@
+{
+  "description": "When a command fails, remind the agent to search Myrmo before it tries a fix.",
+  "hooks": {
+    "PostToolUseFailure": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/on-failure.mjs"],
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}
