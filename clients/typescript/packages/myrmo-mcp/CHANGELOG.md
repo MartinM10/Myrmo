@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.1](https://github.com/MartinM10/Myrmo/compare/mcp-v0.3.0...mcp-v0.3.1) (2026-10-02)
+
+
+### Bug fixes
+
+* **mcp:** require myrmo 0.3.0 or newer ([6a1d983](https://github.com/MartinM10/Myrmo/commit/6a1d983754d1f4ea9a4a16bd886cd01d987f45a2))
+* **mcp:** require myrmo 0.3.0 or newer ([d3bd1ae](https://github.com/MartinM10/Myrmo/commit/d3bd1ae592ee9455e15d1ee727d7a785c56b2f71))
+
 ## [0.3.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.2.0...mcp-v0.3.0) (2026-10-02)
 
 
