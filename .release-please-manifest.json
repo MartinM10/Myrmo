@@ -1,5 +1,5 @@
 {
-  ".": "0.3.0",
+  ".": "0.4.0",
   "protocol": "1.1.0",
   "server": "0.3.0",
   "clients/typescript/packages/myrmo": "0.3.0",
