@@ -1,0 +1,33 @@
+services:
+  gateway:
+    deploy:
+      resources:
+        limits: {cpus: "1.0", memory: 512M}
+  enricher:
+    deploy:
+      resources:
+        limits: {cpus: "1.0", memory: 768M}
+  mcp:
+    deploy:
+      resources:
+        limits: {cpus: "1.0", memory: 512M}
+  web:
+    deploy:
+      resources:
+        limits: {cpus: "1.0", memory: 256M}
+  valkey:
+    deploy:
+      resources:
+        limits: {cpus: "1.0", memory: 512M}
+  qdrant:
+    deploy:
+      resources:
+        limits: {cpus: "1.0", memory: 1G}
+  embed:
+    deploy:
+      resources:
+        limits: {cpus: "1.0", memory: 2G}
+  laya:
+    deploy:
+      resources:
+        limits: {cpus: "1.0", memory: 2G}
