@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.4.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.3.0...platform-v0.4.0) (2026-10-04)
+
+
+### Features
+
+* **seed-factory:** add guarded trail seeding factory ([61d4d83](https://github.com/MartinM10/Myrmo/commit/61d4d837533a8a460f2a92062bc9d00198348993))
+* **seed-factory:** add guarded trail seeding factory ([8d54248](https://github.com/MartinM10/Myrmo/commit/8d54248037da51a99420aa3fbeaf81a90023e994))
+
+
+### Bug fixes
+
+* **docs:** override vulnerable Vite toolchain dependencies ([9f17ec9](https://github.com/MartinM10/Myrmo/commit/9f17ec97a55732ec0ed9de254f16399dae7c0ef3))
+* **docs:** override vulnerable Vite toolchain dependencies ([c19d936](https://github.com/MartinM10/Myrmo/commit/c19d9361e67a53a05a409bee486438a608ce5c7e))
+
 ## [0.3.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.2.1...platform-v0.3.0) (2026-10-02)
 
 
