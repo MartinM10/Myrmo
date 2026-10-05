@@ -18,14 +18,14 @@ import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import type { PublishMode } from "./types.js";
 
-export type HookMode = "on" | "off";
+export type HookMode = "on" | "failures" | "off";
 
 export interface MyrmoConfig {
   publish?: PublishMode;
   agent_id?: string;
   /** Failed attempts before a fix is worth publishing. */
   min_failed_attempts?: number;
-  /** The Claude Code plugin's reminder to search when a command fails. */
+  /** The Claude Code plugin's reminders: on (failures, errors hidden by a pipe, publishing a fix Myrmo lacked), failures only, or off. */
   hook?: HookMode;
   /** Send no agent id at all. */
   anonymous?: boolean;
@@ -51,7 +51,7 @@ export function readConfig(): MyrmoConfig {
     if (typeof raw.agent_id === "string" && AGENT_ID.test(raw.agent_id)) config.agent_id = raw.agent_id;
     const attempts = parseAttempts(raw.min_failed_attempts);
     if (attempts !== undefined) config.min_failed_attempts = attempts;
-    if (raw.hook === "on" || raw.hook === "off") config.hook = raw.hook;
+    if (raw.hook === "on" || raw.hook === "failures" || raw.hook === "off") config.hook = raw.hook;
     if (typeof raw.anonymous === "boolean") config.anonymous = raw.anonymous;
     return config;
   } catch {
@@ -104,7 +104,7 @@ export function minFailedAttempts(explicit?: number): { value: number; source: S
 export const SETTINGS = [
   { key: "publish", file: "publish", values: "ask | auto | off", default: "ask (asked the first time an agent wants to publish)", about: "Whether agents may publish fixes for you. ask shows you each one first." },
   { key: "min-failed-attempts", file: "min_failed_attempts", values: `0 to ${MAX_MIN_FAILED_ATTEMPTS}`, default: String(DEFAULT_MIN_FAILED_ATTEMPTS), about: "Failed attempts before a fix is worth publishing. Higher means fewer, more selective trails." },
-  { key: "hook", file: "hook", values: "on | off", default: "on", about: "Claude Code plugin: remind the agent to search when a command fails." },
+  { key: "hook", file: "hook", values: "on | failures | off", default: "on", about: "Claude Code plugin reminders. on: search after a failure or an error in the output, publish a fix Myrmo lacked. failures: only after a failed command." },
   { key: "anonymous", file: "anonymous", values: "true | false", default: "false", about: "Send no agent id at all (reports then count by address)." },
 ] as const;
 
@@ -127,7 +127,7 @@ export function settingsReport(): SettingRow[] {
   const rows: Record<string, { value: string; source: SettingSource }> = {
     publish: { value: publish.source === "default" ? "ask" : publish.mode, source: publish.source },
     "min-failed-attempts": { value: String(attempts.value), source: attempts.source },
-    hook: hookEnv === "on" || hookEnv === "off" ? { value: hookEnv, source: "env" } : file.hook ? { value: file.hook, source: "file" } : { value: "on", source: "default" },
+    hook: hookEnv === "on" || hookEnv === "failures" || hookEnv === "off" ? { value: hookEnv, source: "env" } : file.hook ? { value: file.hook, source: "file" } : { value: "on", source: "default" },
     anonymous: anonEnv ? { value: String(["1", "true"].includes(anonEnv)), source: "env" } : file.anonymous !== undefined ? { value: String(file.anonymous), source: "file" } : { value: "false", source: "default" },
   };
   return SETTINGS.map((s) => ({ key: s.key, ...rows[s.key], about: s.about, values: s.values, default: s.default }));
@@ -150,7 +150,7 @@ export function setSetting(key: string, value: string): { ok: true; message: str
     if (n === undefined) return { ok: false, error: `min-failed-attempts takes a whole number from 0 to ${MAX_MIN_FAILED_ATTEMPTS}.` };
     patch = { min_failed_attempts: n };
   } else if (key === "hook") {
-    if (value !== "on" && value !== "off") return { ok: false, error: "hook takes on or off." };
+    if (value !== "on" && value !== "failures" && value !== "off") return { ok: false, error: "hook takes on, failures or off." };
     patch = { hook: value };
   } else {
     if (!["true", "false"].includes(value)) return { ok: false, error: "anonymous takes true or false." };

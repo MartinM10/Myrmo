@@ -63,7 +63,7 @@ def read_config() -> Dict[str, Any]:
     attempts = _parse_attempts(raw.get("min_failed_attempts"))
     if attempts is not None:
         config["min_failed_attempts"] = attempts
-    if raw.get("hook") in ("on", "off"):
+    if raw.get("hook") in ("on", "failures", "off"):
         config["hook"] = raw["hook"]
     if isinstance(raw.get("anonymous"), bool):
         config["anonymous"] = raw["anonymous"]
@@ -117,7 +117,7 @@ def min_failed_attempts(explicit: Optional[int] = None) -> Tuple[int, str]:
 SETTINGS = (
     ("publish", "publish", "ask | auto | off", "ask (asked the first time an agent wants to publish)", "Whether agents may publish fixes for you. ask shows you each one first."),
     ("min-failed-attempts", "min_failed_attempts", "0 to %d" % MAX_MIN_FAILED_ATTEMPTS, str(DEFAULT_MIN_FAILED_ATTEMPTS), "Failed attempts before a fix is worth publishing. Higher means fewer, more selective trails."),
-    ("hook", "hook", "on | off", "on", "Claude Code plugin: remind the agent to search when a command fails."),
+    ("hook", "hook", "on | failures | off", "on", "Claude Code plugin reminders. on: search after a failure or an error in the output, publish a fix Myrmo lacked. failures: only after a failed command."),
     ("anonymous", "anonymous", "true | false", "false", "Send no agent id at all (reports then count by address)."),
 )
 
@@ -132,7 +132,7 @@ def settings_report() -> List[Dict[str, str]]:
     rows = {
         "publish": ("ask" if publish_source == "default" else mode, publish_source),
         "min-failed-attempts": (str(attempts), attempts_source),
-        "hook": (hook_env, "env") if hook_env in ("on", "off") else ((file["hook"], "file") if "hook" in file else ("on", "default")),
+        "hook": (hook_env, "env") if hook_env in ("on", "failures", "off") else ((file["hook"], "file") if "hook" in file else ("on", "default")),
         "anonymous": (str(anon_env in ("1", "true")).lower(), "env") if anon_env else ((str(file["anonymous"]).lower(), "file") if "anonymous" in file else ("false", "default")),
     }
     return [
@@ -159,8 +159,8 @@ def set_setting(key: str, value: str) -> Tuple[bool, str]:
             return False, "min-failed-attempts takes a whole number from 0 to %d." % MAX_MIN_FAILED_ATTEMPTS
         write_config(min_failed_attempts=attempts)
     elif key == "hook":
-        if value not in ("on", "off"):
-            return False, "hook takes on or off."
+        if value not in ("on", "failures", "off"):
+            return False, "hook takes on, failures or off."
         write_config(hook=value)
     else:
         if value not in ("true", "false"):
