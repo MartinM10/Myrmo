@@ -1,9 +1,33 @@
 {
-  "description": "When a command fails, remind the agent to search Myrmo before it tries a fix.",
+  "description": "Remind the agent to search Myrmo when a command fails or its output looks like an error, and to publish a fix Myrmo did not have.",
   "hooks": {
     "PostToolUseFailure": [
       {
         "matcher": "Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/on-failure.mjs"],
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/on-failure.mjs"],
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "mcp__.*myrmo_search",
         "hooks": [
           {
             "type": "command",

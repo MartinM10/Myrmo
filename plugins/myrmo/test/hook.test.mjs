@@ -1,0 +1,200 @@
+// The hook has three moments: a command fails, a command "succeeds" with an error in its output, and a command that
+// failed earlier now works while Myrmo had no trail for it. Payloads below have the shape Claude Code 2.1.289 really
+// sends (captured from a live session): the failure event has no exit_code, only `error: "Exit code N\n<output>"`.
+
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { commandKey, decide, hookMode, lastErrorLine } from "../scripts/on-failure.mjs";
+
+const root = join(dirname(fileURLToPath(import.meta.url)), "..");
+const failure = (command, output, extra = {}) => ({ hook_event_name: "PostToolUseFailure", tool_name: "Bash", tool_input: { command }, error: `Exit code 1\n${output}`, is_interrupt: false, ...extra });
+const success = (command, stdout, extra = {}) => ({ hook_event_name: "PostToolUse", tool_name: "Bash", tool_input: { command }, tool_response: { stdout, stderr: "", interrupted: false }, ...extra });
+const search = (reply, error = "ERESOLVE unable to resolve dependency tree") => ({
+  hook_event_name: "PostToolUse",
+  tool_name: "mcp__plugin_myrmo_myrmo__myrmo_search",
+  tool_input: { error },
+  tool_response: [{ type: "text", text: reply }],
+});
+const NO_MATCH = "No trail in the Myrmo colony matches this error yet (fingerprint fp1_0000000000000000).\nSolve it yourself. If it takes at least one failed attempt and you verify the fix, publish it.";
+const FOUND = '<myrmo_trails untrusted="true" fingerprint="fp1_abc">\n## Trail 1 of 1';
+const NOW = 5_000_000_000;
+
+test("the reminder after a failure quotes the last error line, taken from the real payload", () => {
+  const out = decide(failure("npm ci", "npm warn deprecated x\nnpm error code ERESOLVE\nnpm error ERESOLVE could not resolve peer react@17"), { now: NOW, env: {} });
+  assert.match(out.note, /a command just failed \(exit 1\)/);
+  assert.match(out.note, /Last error line: «npm error ERESOLVE could not resolve peer react@17»/);
+  assert.match(out.note, /myrmo_search/);
+});
+
+test("an interrupt or a stopped command is left alone, now that the exit code is read from the real payload", () => {
+  assert.equal(decide(failure("npm test", "x", { is_interrupt: true }), { env: {} }).note, null);
+  for (const code of [124, 130, 137, 143]) assert.equal(decide({ ...failure("npm test", "x"), error: `Exit code ${code}\nx` }, { env: {} }).note, null, `exit ${code}`);
+});
+
+test("lastErrorLine prefers the last line that looks like an error and never returns a huge line", () => {
+  assert.equal(lastErrorLine("one\nTraceback (most recent call last):\n  File x\nValueError: bad value\nclean up done"), "ValueError: bad value");
+  assert.equal(lastErrorLine("just\nplain output"), "plain output");
+  assert.equal(lastErrorLine("x".repeat(1000)).length, 240);
+  assert.equal(lastErrorLine(""), "");
+});
+
+test("an error hidden by a pipe is noticed: exit 0, but the output ends with an error", () => {
+  const outputs = [
+    "psql: error: connection to server at \"10.0.0.5\", port 5432 failed: FATAL: password authentication failed",
+    "Traceback (most recent call last):\n  File \"app.py\", line 3\nValueError: bad value",
+    "ERROR:  relation \"users\" does not exist",
+    "ModuleNotFoundError: No module named 'yaml'",
+    "error[E0382]: borrow of moved value: `label`",
+    "command terminated with exit code 1",
+    "npm ERR! code E404",
+    "java.lang.NullPointerException: Cannot invoke \"x\"",
+  ];
+  for (const out of outputs) {
+    const r = decide(success("kubectl exec -n db pod -- psql -c 'select 1' | tail -1", out), { now: NOW, env: {} });
+    assert.match(r.note ?? "", /finished with exit 0, but its output ends with what looks like an error/, out);
+    assert.match(r.note, /A pipe, a loop or `\|\| true` can hide the exit code/);
+  }
+});
+
+test("ordinary output that merely mentions errors is not mistaken for one", () => {
+  for (const out of ["Compiled successfully", '{"error": null}', "0 errors, 0 warnings", "All 87 tests passed", "no error found in the logs", "Handled the Exception gracefully", "Retrying after a transient error\nok"]) {
+    assert.equal(decide(success("npm run build", out), { now: NOW, env: {} }).note, null, out);
+  }
+});
+
+test("reading logs or files is not a failure, whatever they contain", () => {
+  for (const command of ["docker logs api", "docker compose logs web", "kubectl logs pod-1", "cat app.log", "grep -r ERROR .", "tail -n 50 x.log", "git log --oneline", "journalctl -u svc"]) {
+    assert.equal(decide(success(command, "ERROR: something from the log"), { now: NOW, env: {} }).note, null, command);
+  }
+});
+
+test("the PowerShell tool is covered the same way", () => {
+  const out = decide(success("python app.py", "ModuleNotFoundError: No module named 'x'", { tool_name: "PowerShell" }), { now: NOW, env: {} });
+  assert.match(out.note, /finished with exit 0/);
+});
+
+test("hook 'failures' keeps only the reminder after a failed command", () => {
+  const settings = { hook: "failures" };
+  assert.match(decide(failure("npm ci", "Error: boom"), { now: NOW, env: {}, settings }).note ?? "", /just failed/);
+  assert.equal(decide(success("npm ci", "ERROR: boom"), { now: NOW, env: {}, settings }).note, null);
+  assert.equal(hookMode({ MYRMO_HOOK: "failures" }, {}), "failures");
+  assert.equal(hookMode({}, { hook: "off" }), "off");
+  assert.equal(hookMode({ MYRMO_HOOK: "on" }, { hook: "off" }), "on", "the environment wins over the file");
+  assert.equal(hookMode({}, {}), "on");
+  assert.equal(hookMode({ MYRMO_HOOK: "nonsense" }, {}), "on");
+});
+
+test("the same error is reminded once, even when its numbers change", () => {
+  let state = {};
+  const env = { MYRMO_HOOK_MIN_SECONDS: "1" };
+  let r = decide(failure("psql", "psql: error: connection to port 5432 failed"), { now: NOW, state, env });
+  assert.ok(r.note);
+  state = r.state;
+  r = decide(failure("psql", "psql: error: connection to port 5433 failed"), { now: NOW + 60_000, state, env });
+  assert.equal(r.note, null, "only the port differs");
+  r = decide(failure("psql", "psql: error: database \"x\" does not exist"), { now: NOW + 120_000, state: r.state, env });
+  assert.ok(r.note, "a different error is a new reminder");
+});
+
+test("by default reminders are 20 seconds apart and 30 per session", () => {
+  let state = {};
+  let r = decide(failure("make", "Error: a"), { now: NOW, state, env: {} });
+  assert.ok(r.note);
+  state = r.state;
+  assert.equal(decide(failure("make", "Error: b"), { now: NOW + 15_000, state, env: {} }).note, null);
+  assert.ok(decide(failure("make", "Error: b"), { now: NOW + 25_000, state, env: {} }).note);
+  assert.equal(decide(failure("make", "Error: c"), { now: NOW + 99_000_000, state: { count: 30 }, env: {} }).note, null);
+  assert.ok(decide(failure("make", "Error: c"), { now: NOW + 99_000_000, state: { count: 29 }, env: {} }).note);
+});
+
+test("a search is remembered but never produces a note", () => {
+  const none = decide(search(NO_MATCH), { now: NOW, env: {} });
+  assert.equal(none.note, null);
+  assert.equal(none.state.nomatch.at, NOW);
+  const found = decide(search(FOUND), { now: NOW, env: {}, state: none.state });
+  assert.equal(found.state.nomatch, null, "a trail was found: nothing to publish");
+  assert.equal(decide(search("Myrmo returned 502"), { now: NOW, env: {}, state: none.state }).state.nomatch.at, NOW, "an error reply changes nothing");
+});
+
+test("the fix is offered for publishing when the failed command works and Myrmo had nothing", () => {
+  let r = decide(failure("npm install", "npm error code ERESOLVE"), { now: NOW, env: {} });
+  r = decide(search(NO_MATCH), { now: NOW + 5_000, env: {}, state: r.state });
+  const fixed = decide(success("npm install --legacy-peer-deps", "added 120 packages"), { now: NOW + 60_000, env: {}, state: r.state });
+  assert.match(fixed.note, /the command that failed earlier now succeeds/);
+  assert.match(fixed.note, /may be the first to solve it/);
+  assert.match(fixed.note, /publish it with myrmo_publish/);
+  assert.match(fixed.note, /the user sees exactly what would be sent and approves it/);
+  assert.match(fixed.note, /at least one failed attempt/);
+  assert.match(fixed.note, /not in this project's own code/);
+  assert.match(fixed.note, /Skip it if the fix was obvious/);
+  const again = decide(success("npm install --legacy-peer-deps", "up to date"), { now: NOW + 120_000, env: {}, state: fixed.state });
+  assert.equal(again.note, null, "offered once");
+});
+
+test("the offer follows the configured minimum of failed attempts", () => {
+  let r = decide(failure("pip install x", "Error: boom"), { now: NOW, env: {} });
+  r = decide(search(NO_MATCH), { now: NOW + 1_000, env: {}, state: r.state });
+  const fixed = decide(success("pip install x --upgrade", "ok"), { now: NOW + 30_000, env: {}, state: r.state, settings: { min_failed_attempts: 3 } });
+  assert.match(fixed.note, /3 or more failed attempts/);
+});
+
+test("no offer when something else succeeded, a trail was found, it is stale, or the hook is on 'failures'", () => {
+  const base = decide(search(NO_MATCH), { now: NOW + 1_000, env: {}, state: decide(failure("npm install", "Error: boom"), { now: NOW, env: {} }).state });
+  const run = (event, options = {}) => decide(event, { now: NOW + 30_000, env: {}, state: base.state, ...options }).note;
+  assert.equal(run(success("python app.py", "started")), null, "a different program");
+  assert.equal(run(success("ls", "a b")), null, "a probe");
+  assert.equal(run(success("npm install", "added"), { now: NOW + 46 * 60_000 }), null, "45 minutes later it is another task");
+  assert.equal(run(success("npm install", "added"), { settings: { hook: "failures" } }), null);
+  assert.equal(run(success("npm install", "added"), { env: { MYRMO_HOOK: "off" } }), null);
+  const foundTrail = decide(search(FOUND), { now: NOW + 2_000, env: {}, state: base.state }).state;
+  assert.equal(decide(success("npm install", "added"), { now: NOW + 30_000, env: {}, state: foundTrail }).note, null);
+  assert.match(run(success("npm install", "added")) ?? "", /publish it with myrmo_publish/, "and the normal case still offers");
+});
+
+test("commandKey groups a command with its variations", () => {
+  assert.equal(commandKey("npm install --legacy-peer-deps"), "npm install");
+  assert.equal(commandKey("sudo NODE_ENV=test npm install x"), "npm install");
+  assert.equal(commandKey("pip install -r requirements.txt"), "pip install");
+  assert.equal(commandKey("make"), "make");
+});
+
+test("the manifest registers the hook for failures, for successful commands and for Myrmo searches", () => {
+  const hooks = JSON.parse(readFileJson(join(root, "hooks", "hooks.json"))).hooks;
+  assert.equal(hooks.PostToolUseFailure[0].matcher, "Bash|PowerShell");
+  assert.deepEqual(hooks.PostToolUse.map((h) => h.matcher), ["Bash|PowerShell", "mcp__.*myrmo_search"]);
+  assert.ok(new RegExp(hooks.PostToolUse[1].matcher).test("mcp__plugin_myrmo_myrmo__myrmo_search"), "the plugin's own tool name");
+  assert.ok(new RegExp(hooks.PostToolUse[1].matcher).test("mcp__myrmo__myrmo_search"), "and a server added by hand");
+  assert.ok(!new RegExp(`^(?:${hooks.PostToolUse[1].matcher})$`).test("mcp__plugin_myrmo_myrmo__myrmo_report"), "not the other tools");
+});
+
+test("run as Claude Code runs it, across separate processes: failure, empty search, then the fix", () => {
+  const dir = mkdtempSync(join(tmpdir(), "myrmo-hook-flow-"));
+  const config = join(dir, "config.json");
+  writeFileSync(config, "{}");
+  const session = `flow-test-${Date.now()}`;
+  const run = (event) => {
+    const r = spawnSync(process.execPath, [join(root, "scripts", "on-failure.mjs")], {
+      input: JSON.stringify({ session_id: session, ...event }),
+      encoding: "utf8",
+      env: { ...process.env, MYRMO_CONFIG: config, MYRMO_HOOK: "", MYRMO_HOOK_MIN_SECONDS: "0" },
+    });
+    return r.stdout ? JSON.parse(r.stdout).hookSpecificOutput : null;
+  };
+  const first = run(failure("terraform apply", "Error: Invalid provider configuration"));
+  assert.equal(first.hookEventName, "PostToolUseFailure");
+  assert.match(first.additionalContext, /Last error line: «Error: Invalid provider configuration»/);
+  assert.equal(run(search(NO_MATCH, "Error: Invalid provider configuration")), null, "the search itself says nothing");
+  const fix = run(success("terraform apply -refresh=false", "Apply complete! Resources: 1 added"));
+  assert.equal(fix.hookEventName, "PostToolUse");
+  assert.match(fix.additionalContext, /publish it with myrmo_publish/);
+  assert.equal(run(success("terraform apply -refresh=false", "No changes")), null, "once");
+});
+
+function readFileJson(path) {
+  return spawnSync(process.execPath, ["-e", `process.stdout.write(require("node:fs").readFileSync(${JSON.stringify(path)}, "utf8"))`], { encoding: "utf8" }).stdout;
+}

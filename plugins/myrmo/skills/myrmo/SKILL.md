@@ -22,6 +22,9 @@ are free.
 
 ## When to publish
 
+The colony is still small: when Myrmo had no answer and you solved the problem, publishing is how it grows. The user
+sees exactly what would be sent and approves it.
+
 Only when all hold: you verified the fix, it took at least one failed attempt, and no existing trail
 gave you the fix (if trails matched but failed, report them first, then publish yours as an
 alternative). Publishing is the user's decision: follow what the tool tells you and wait.

@@ -42,15 +42,18 @@ test("probes, interruptions and other tools are left alone", () => {
 test("reminders are spaced out and capped per session", () => {
   let state = {};
   const env = { MYRMO_HOOK_MIN_SECONDS: "45", MYRMO_HOOK_MAX: "2" };
-  let r = decide(fail("npm test"), { now: 1_000_000, state, env });
+  // Each failure is a different error: the same one is only ever reminded once (see hook.test.mjs).
+  const failing = (n) => fail("npm test", 1, { error: `Exit code 1
+Error: problem number ${"abcdef"[n]} happened` });
+  let r = decide(failing(0), { now: 1_000_000, state, env });
   assert.ok(r.note);
   state = r.state;
-  r = decide(fail("npm test"), { now: 1_000_000 + 10_000, state, env });
+  r = decide(failing(1), { now: 1_000_000 + 10_000, state, env });
   assert.equal(r.note, null, "ten seconds later is too soon");
-  r = decide(fail("npm test"), { now: 1_000_000 + 60_000, state, env });
+  r = decide(failing(2), { now: 1_000_000 + 60_000, state, env });
   assert.ok(r.note, "a minute later is fine");
   state = r.state;
-  r = decide(fail("npm test"), { now: 1_000_000 + 600_000, state, env });
+  r = decide(failing(3), { now: 1_000_000 + 600_000, state, env });
   assert.equal(r.note, null, "the cap of two per session is reached");
 });
 
