@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.7.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.6.0...mcp-v0.7.0) (2026-10-05)
+
+
+### Features
+
+* **server:** POST /v1/validate checks a trail without publishing it ([9877f66](https://github.com/MartinM10/Myrmo/commit/9877f66f3b2900a826724f3aa83f19bfa5d81a90))
+
+
+### Bug fixes
+
+* **mcp:** require myrmo 0.5.0, ask for [@latest](https://github.com/latest), validate previews, and never leave a client that cannot ask without a way to publish ([4face3a](https://github.com/MartinM10/Myrmo/commit/4face3a2f10334e369bdc1bcc66d0bc4013b1f04))
+
 ## [0.6.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.5.0...mcp-v0.6.0) (2026-10-05)
 
 

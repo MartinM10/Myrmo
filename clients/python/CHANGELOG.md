@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.6.0](https://github.com/MartinM10/Myrmo/compare/sdk-python-v0.5.0...sdk-python-v0.6.0) (2026-10-05)
+
+
+### Features
+
+* **sdk-python:** validate() asks the colony whether it would accept a trail ([6f2cbe4](https://github.com/MartinM10/Myrmo/commit/6f2cbe4da05d1b813628469d8555f12488130774))
+* **server:** POST /v1/validate checks a trail without publishing it ([9877f66](https://github.com/MartinM10/Myrmo/commit/9877f66f3b2900a826724f3aa83f19bfa5d81a90))
+
 ## [0.5.0](https://github.com/MartinM10/Myrmo/compare/sdk-python-v0.4.0...sdk-python-v0.5.0) (2026-10-05)
 
 
