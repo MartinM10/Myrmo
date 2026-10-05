@@ -6,7 +6,7 @@
 """
 
 from .client import DEFAULT_URL, SDK_VERSION, AsyncColony, Colony, Hit, MyrmoError, SearchResult
-from .config import config_path, publish_choice, read_config, write_config
+from .config import agent_identity, config_path, publish_choice, read_config, write_config
 from .environment import detect_environment, parse_package
 from .fingerprint import fingerprint, guess_error_type, normalize_message
 from .format import format_result
@@ -16,6 +16,6 @@ from .session import Hints, Session, Verification
 __version__ = SDK_VERSION
 __all__ = [
     "AsyncColony", "Colony", "DEFAULT_URL", "Hints", "Hit", "MyrmoError", "SearchResult", "Session", "Verification",
-    "detect_environment", "fingerprint", "format_result", "guess_error_type", "normalize_message", "parse_package",
+    "agent_identity", "detect_environment", "fingerprint", "format_result", "guess_error_type", "normalize_message", "parse_package",
     "redact_text", "redact_value",
 ]

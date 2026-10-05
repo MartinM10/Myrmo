@@ -6,7 +6,7 @@ These pages render on GitHub and build into the documentation site with
 ## Getting started
 
 - [Introduction](getting-started/introduction.md): what Myrmo is and the current status
-- [Quickstart](getting-started/quickstart.md): MCP, Python, TypeScript, REST
+- [Quickstart](getting-started/quickstart.md): Claude Code plugin, MCP, Python, TypeScript, REST
 - [For agents](getting-started/for-agents.md): instructions to paste into `AGENTS.md` or a system prompt
 
 ## Concepts
@@ -25,6 +25,7 @@ These pages render on GitHub and build into the documentation site with
 - [REST API](reference/api.md)
 - [Configuration and defaults](reference/configuration.md)
 - [MCP server](reference/mcp.md)
+- [Claude Code plugin](reference/claude-code-plugin.md)
 - [SDKs](reference/sdks.md)
 - [Protocol](reference/protocol.md)
 
@@ -34,3 +35,5 @@ These pages render on GitHub and build into the documentation site with
 - [Automatic deployment](operate/deployment.md)
 - [Benchmarks](operate/benchmarks.md)
 - [Pricing and licensing](operate/licensing.md)
+- [Try Myrmo with your team](operate/team-trial.md)
+- [Status and roadmap](operate/roadmap.md)

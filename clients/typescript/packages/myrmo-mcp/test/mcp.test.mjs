@@ -15,6 +15,8 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
 import { ElicitRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 import { fingerprint } from "myrmo";
 
+/** Every test gets its own settings file: the client now creates an agent id by itself and must not touch the real home. */
+const sandbox = mkdtempSync(join(tmpdir(), "myrmo-mcp-agent-"));
 const ENTRY = fileURLToPath(new URL("../dist/index.js", import.meta.url));
 const KNOWN_FP = fingerprint("python", "ModuleNotFoundError", "ModuleNotFoundError: No module named 'distutils'");
 const TRAIL_ID = "3f2b8c1e-9a4d-4e2f-8b1a-2c3d4e5f6a7b";
@@ -97,7 +99,7 @@ async function stdioClient(publish = "ask", { answer, env = {} } = {}) {
   const client = new Client({ name: "test-client", version: "1.0.0" }, answer ? { capabilities: { elicitation: {} } } : undefined);
   if (answer) client.setRequestHandler(ElicitRequestSchema, async (req) => answer(req.params));
   await client.connect(
-    new StdioClientTransport({ command: process.execPath, args: [ENTRY], env: { ...process.env, MYRMO_URL: colonyUrl, MYRMO_PUBLISH: publish, ...env } }),
+    new StdioClientTransport({ command: process.execPath, args: [ENTRY], env: { ...process.env, MYRMO_URL: colonyUrl, MYRMO_PUBLISH: publish, MYRMO_CONFIG: join(sandbox, "default.json"), ...env } }),
   );
   return client;
 }
@@ -326,7 +328,8 @@ test("cancelling the question publishes nothing and saves nothing", async () => 
   const before = published();
   await client.callTool({ name: "myrmo_publish", arguments: { trail } });
   assert.equal(published(), before);
-  assert.throws(() => readFileSync(config, "utf8"));
+  // The client may have created its pseudonymous agent id, but the user's choice about publishing is not saved.
+  assert.equal(JSON.parse(readFileSync(config, "utf8")).publish, undefined);
   await client.close();
 });
 
@@ -381,6 +384,41 @@ test("publish status answers for drafts and trails", async () => {
   await client.close();
 });
 
+test("the client creates its own agent id once and sends it on every request", async () => {
+  const config = join(sandbox, "auto-id.json");
+  const first = await stdioClient("ask", { env: { MYRMO_CONFIG: config, MYRMO_AGENT_ID: "", MYRMO_ANONYMOUS: "" } });
+  await first.callTool({ name: "myrmo_search", arguments: { error: "ModuleNotFoundError: No module named 'distutils'", runtime: "python" } });
+  await first.close();
+  const stored = JSON.parse(readFileSync(config, "utf8")).agent_id;
+  assert.match(stored, /^[A-Za-z0-9_-]{8,64}$/, "a random pseudonym, nothing personal");
+  assert.equal(requests.at(-1).headers["x-myrmo-agent"], stored);
+  const second = await stdioClient("ask", { env: { MYRMO_CONFIG: config, MYRMO_AGENT_ID: "", MYRMO_ANONYMOUS: "" } });
+  await second.callTool({ name: "myrmo_search", arguments: { error: "ModuleNotFoundError: No module named 'distutils'", runtime: "python" } });
+  await second.close();
+  assert.equal(requests.at(-1).headers["x-myrmo-agent"], stored, "the next session is the same agent");
+  assert.equal(JSON.parse(readFileSync(config, "utf8")).publish, undefined, "creating an id never decides whether agents may publish");
+});
+
+test("MYRMO_AGENT_ID overrides it, and MYRMO_ANONYMOUS sends none", async () => {
+  const config = join(sandbox, "override.json");
+  const named = await stdioClient("ask", { env: { MYRMO_CONFIG: config, MYRMO_AGENT_ID: "my-chosen-agent-id" } });
+  await named.callTool({ name: "myrmo_search", arguments: { error: "ModuleNotFoundError: No module named 'distutils'", runtime: "python" } });
+  await named.close();
+  assert.equal(requests.at(-1).headers["x-myrmo-agent"], "my-chosen-agent-id");
+  const anonymous = await stdioClient("ask", { env: { MYRMO_CONFIG: join(sandbox, "anon.json"), MYRMO_AGENT_ID: "", MYRMO_ANONYMOUS: "1" } });
+  await anonymous.callTool({ name: "myrmo_search", arguments: { error: "ModuleNotFoundError: No module named 'distutils'", runtime: "python" } });
+  await anonymous.close();
+  assert.equal(requests.at(-1).headers["x-myrmo-agent"], undefined);
+});
+
+test("the model the agent names reaches the colony on searches and in the instructions", async () => {
+  const client = await stdioClient();
+  assert.match(client.getInstructions() ?? "", /pass your own model id/i);
+  await client.callTool({ name: "myrmo_search", arguments: { error: "ModuleNotFoundError: No module named 'distutils'", runtime: "python", model: "claude-opus-5-5" } });
+  assert.equal(requests.at(-1).headers["x-myrmo-model"], "claude-opus-5-5");
+  await client.close();
+});
+
 test("the hosted HTTP transport serves the same tools statelessly", async () => {
   const port = 30000 + Math.floor(Math.random() * 20000);
   const proc = spawn(process.execPath, [ENTRY, "--http", "--port", String(port), "--host", "127.0.0.1"], {
@@ -396,6 +434,7 @@ test("the hosted HTTP transport serves the same tools statelessly", async () => 
     assert.match(out, new RegExp(TRAIL_ID));
     const last = requests.filter((r) => r.url.startsWith("/v1/trails/by-fingerprint/")).at(-1);
     assert.equal(last.headers["x-forwarded-for"], "127.0.0.1", "the caller's address is forwarded for per-client rate limits");
+    assert.equal(last.headers["x-myrmo-agent"], undefined, "the hosted server has no identity of its own");
     const before = published();
     const drafts = () => requests.filter((r) => r.method === "POST" && r.url === "/v1/drafts").length;
     const draftsBefore = drafts();

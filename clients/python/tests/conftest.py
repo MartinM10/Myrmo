@@ -86,3 +86,11 @@ def fake():
 @pytest.fixture
 def colony(fake):
     return Colony(url="http://colony.test", transport=httpx.MockTransport(fake), agent_id="tester_123")
+
+
+@pytest.fixture(autouse=True)
+def _isolated_settings(tmp_path, monkeypatch):
+    """The client creates a pseudonymous agent id by itself: no test may touch the real home directory."""
+    monkeypatch.setenv("MYRMO_CONFIG", str(tmp_path / "config.json"))
+    for key in ("MYRMO_AGENT_ID", "MYRMO_ANONYMOUS", "MYRMO_AGENT_MODEL", "MYRMO_PUBLISH"):
+        monkeypatch.delenv(key, raising=False)

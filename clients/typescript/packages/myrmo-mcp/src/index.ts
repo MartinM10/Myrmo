@@ -43,6 +43,7 @@ if (args[0] === "config") {
   } else {
     console.log(`Settings file: ${configPath()}`);
     console.log(`publish: ${readConfig().publish ?? "(not chosen yet: agents publish nothing)"}${process.env.MYRMO_PUBLISH ? `   (MYRMO_PUBLISH=${process.env.MYRMO_PUBLISH} overrides it)` : ""}`);
+    console.log(`agent id: ${readConfig().agent_id ?? "(created on first use)"}   (a random pseudonym; delete it from the file to get a new one, MYRMO_ANONYMOUS=1 sends none)`);
   }
   process.exit(0);
 }
@@ -99,6 +100,8 @@ async function serveHttp(port: number, host: string) {
       apiKey: auth?.startsWith("Bearer ") ? auth.slice(7) : undefined,
       publish: "off",
       cacheTtlMs: 0,
+      // The hosted server has no identity of its own: it forwards the header of whoever is calling.
+      agentId: false,
     });
     const server = createServer({ colony, publishMode: "off", minFailedAttempts, fillLocalEnvironment: false, hosted: true });
     const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });

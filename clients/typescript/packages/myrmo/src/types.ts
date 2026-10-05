@@ -109,6 +109,8 @@ export interface SearchQuery {
   packages?: (string | Package)[];
   limit?: number;
   minStrength?: number;
+  /** The model asking, for aggregate counters. Overrides the client's own `model` for this search. */
+  model?: string;
 }
 
 /** A trail held by the colony until a person approves it in a browser. */

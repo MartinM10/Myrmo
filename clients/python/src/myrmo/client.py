@@ -17,7 +17,7 @@ from typing import Any, Dict, List, Optional, Sequence, Union
 
 import httpx
 
-from .config import publish_choice
+from .config import agent_identity, publish_choice
 from .environment import detect_environment, parse_package
 from .fingerprint import fingerprint, guess_error_type
 from .redact import Report, redact_text, redact_value
@@ -86,17 +86,25 @@ def _draft_result(data: Dict[str, Any], redactions: Dict[str, int]) -> Dict[str,
     return {**data, "redactions": merged}
 
 
+def _model_header(model: Optional[str]) -> Optional[Dict[str, str]]:
+    return {"x-myrmo-model": model} if model else None
+
+
 class _Base:
     def __init__(
         self,
         url: Optional[str] = None,
         api_key: Optional[str] = None,
-        agent_id: Optional[str] = None,
+        agent_id: Union[str, bool, None] = None,
         publish: Optional[str] = None,
         timeout: float = 10.0,
         headers: Optional[Dict[str, str]] = None,
         cache_ttl: float = 60.0,
+        model: Optional[str] = None,
     ):
+        """`agent_id` is created by itself on first use and kept in ~/.myrmo/config.json; pass False to send
+        none (a server forwarding its callers' own header). `model` (default MYRMO_AGENT_MODEL) is the model
+        this client runs for, sent as X-Myrmo-Model for aggregate counters."""
         self.url = (url or _env("MYRMO_URL") or DEFAULT_URL).rstrip("/")
         #: "off", "ask" or "auto"; `publish_source` says where it came from. "default" means nobody
         #: has chosen yet, so nothing is published (see `python -m myrmo config`).
@@ -106,11 +114,16 @@ class _Base:
         self._cache: Dict[str, tuple] = {}
         self.headers = {"accept": "application/json", "user-agent": f"myrmo-python/{SDK_VERSION}", **(headers or {})}
         key = api_key or _env("MYRMO_API_KEY")
-        agent = agent_id or _env("MYRMO_AGENT_ID")
+        agent, _ = agent_identity(agent_id)
+        model = (model or _env("MYRMO_AGENT_MODEL") or "").strip()
         if key:
             self.headers["authorization"] = f"Bearer {key}"
-        if agent:
+        # A header the caller passed (a hosted server forwarding its users' ids) wins over this client's own.
+        names = {k.lower() for k in self.headers}
+        if agent and "x-myrmo-agent" not in names:
             self.headers["x-myrmo-agent"] = agent
+        if model and model.lower() != "unknown" and "x-myrmo-model" not in names:
+            self.headers["x-myrmo-model"] = model
 
     # -- cache -------------------------------------------------------------------------
     def _cached(self, key: str):
@@ -201,12 +214,12 @@ class Colony(_Base):
     def __exit__(self, *exc):
         self.close()
 
-    def lookup(self, fp: str) -> Optional[SearchResult]:
+    def lookup(self, fp: str, model: Optional[str] = None) -> Optional[SearchResult]:
         """Trails for a fingerprint, or None when the colony has none."""
         cached = self._cached(fp)
         if cached is not ...:
             return cached
-        res = self._http.get(f"/v1/trails/by-fingerprint/{fp}")
+        res = self._http.get(f"/v1/trails/by-fingerprint/{fp}", headers=_model_header(model))
         data = self._check(res)
         value = None if res.status_code == 404 else SearchResult(data["fingerprint"], _hits(data["results"]), data["notice"], "fingerprint", data)
         self._remember(fp, value)
@@ -221,12 +234,14 @@ class Colony(_Base):
         packages: Sequence[Union[str, Dict[str, str]]] = (),
         limit: int = 3,
         min_strength: float = 0.0,
+        model: Optional[str] = None,
     ) -> SearchResult:
-        """Find trails for an error: fingerprint first, semantic search when there is no exact match."""
+        """Find trails for an error: fingerprint first, semantic search when there is no exact match.
+        `model` says which model asks, for aggregate counters (it overrides the client's own)."""
         error = redact_text(error)
         error_type = error_type or guess_error_type(error)
         fp = fingerprint(runtime or "", error_type, error)
-        exact = self.lookup(fp)
+        exact = self.lookup(fp, model)
         if exact and exact.hits:
             return exact
         body = self._search_body(error, error_type, runtime, runtime_version, packages, limit, min_strength)
@@ -234,7 +249,7 @@ class Colony(_Base):
         cached = self._cached(key)
         if cached is not ... and cached is not None:
             return cached
-        data = self._check(self._http.post("/v1/search", json=body))
+        data = self._check(self._http.post("/v1/search", json=body, headers=_model_header(model)))
         value = SearchResult(data["fingerprint"], _hits(data["results"]), data["notice"], "search", data)
         self._remember(key, value)
         return value
@@ -309,21 +324,21 @@ class AsyncColony(_Base):
     async def __aexit__(self, *exc):
         await self.aclose()
 
-    async def lookup(self, fp: str) -> Optional[SearchResult]:
+    async def lookup(self, fp: str, model: Optional[str] = None) -> Optional[SearchResult]:
         cached = self._cached(fp)
         if cached is not ...:
             return cached
-        res = await self._http.get(f"/v1/trails/by-fingerprint/{fp}")
+        res = await self._http.get(f"/v1/trails/by-fingerprint/{fp}", headers=_model_header(model))
         data = self._check(res)
         value = None if res.status_code == 404 else SearchResult(data["fingerprint"], _hits(data["results"]), data["notice"], "fingerprint", data)
         self._remember(fp, value)
         return value
 
-    async def search(self, error: str, error_type=None, runtime=None, runtime_version=None, packages=(), limit: int = 3, min_strength: float = 0.0) -> SearchResult:
+    async def search(self, error: str, error_type=None, runtime=None, runtime_version=None, packages=(), limit: int = 3, min_strength: float = 0.0, model: Optional[str] = None) -> SearchResult:
         error = redact_text(error)
         error_type = error_type or guess_error_type(error)
         fp = fingerprint(runtime or "", error_type, error)
-        exact = await self.lookup(fp)
+        exact = await self.lookup(fp, model)
         if exact and exact.hits:
             return exact
         body = self._search_body(error, error_type, runtime, runtime_version, packages, limit, min_strength)
@@ -331,7 +346,7 @@ class AsyncColony(_Base):
         cached = self._cached(key)
         if cached is not ... and cached is not None:
             return cached
-        data = self._check(await self._http.post("/v1/search", json=body))
+        data = self._check(await self._http.post("/v1/search", json=body, headers=_model_header(model)))
         value = SearchResult(data["fingerprint"], _hits(data["results"]), data["notice"], "search", data)
         self._remember(key, value)
         return value

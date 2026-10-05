@@ -26,7 +26,7 @@ version of every changed component, and tags and releases them when it is merged
 | `feat!:` or a `BREAKING CHANGE:` footer | major version |
 
 Scopes name the component: `server`, `mcp`, `sdk-js`, `sdk-python`, `protocol`, `web`, `docs`,
-`deploy`, `bench`. Each component has its own `CHANGELOG.md` and tags such as `server-v0.2.0`.
+`deploy`, `bench`, `plugin`, `seed-factory`. Each component has its own `CHANGELOG.md` and tags such as `server-v0.2.0`.
 
 ## Protocol changes
 
