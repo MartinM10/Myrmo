@@ -29,7 +29,7 @@ Local (queries are redacted on your machine before anything is sent):
 claude mcp add myrmo -- npx -y myrmo-mcp
 ```
 
-One command for every client on the machine (shows what it changes with `--dry-run`):
+One command for every client on the machine, Claude Code included (shows what it changes with `--dry-run`):
 
 ```bash
 npx myrmo-mcp init

@@ -1,12 +1,20 @@
 // Render search results for a language model: compact, explicit about provenance, and
 // wrapped as untrusted data. Used by the MCP server and by Session hints.
 
+import { minFailedAttempts } from "./config.js";
 import type { Hit, RiskFlag, SearchResult } from "./types.js";
 
 export interface FormatOptions {
   /** Include commands flagged high risk. Off by default. */
   includeHighRisk?: boolean;
   maxTrails?: number;
+  /** Failed attempts before a fix is worth publishing, for the hint after a search with no match. Default: the configured minimum. */
+  minFailedAttempts?: number;
+}
+
+/** "at least one failed attempt", "3 or more failed attempts". */
+export function attemptsPhrase(n: number): string {
+  return n <= 1 ? "at least one failed attempt" : `${n} or more failed attempts`;
 }
 
 // Trail text is written by strangers and is pasted into a model's context, so every field is
@@ -63,7 +71,7 @@ function formatHit(hit: Hit, index: number, total: number, opts: FormatOptions):
   lines.push(
     `## Trail ${index + 1} of ${total} · id ${safeId(hit.trailId)}`,
     `strength ${hit.strength} · worked ${o.worked} · partially ${o.partially_worked} · failed ${o.failed} · matched by ${clip(String(hit.match.via), 16)} (${hit.match.score})${overlap} · risk ${clip(String(hit.risk.level), 16)}`,
-    `Environment: ${[t.environment.os, t.environment.os_version, t.environment.arch, `${t.environment.runtime.name} ${t.environment.runtime.version}`].map((x) => clip(x, 64)).filter(Boolean).join(" · ")}`,
+    `Environment: ${[t.environment.os, t.environment.os_version, t.environment.arch, t.environment.container && t.environment.container !== "none" ? `in ${t.environment.container}` : "", `${t.environment.runtime.name} ${t.environment.runtime.version}`].map((x) => clip(x, 64)).filter(Boolean).join(" · ")}`,
     `Error: ${errorLine(t.problem.error_type, t.problem.error_message)}`,
     `Root cause: ${clip(t.solution.root_cause, 800)}`,
   );
@@ -103,7 +111,7 @@ export function formatResult(result: SearchResult, opts: FormatOptions = {}): st
   if (hits.length === 0) {
     return [
       `No trail in the Myrmo colony matches this error yet (fingerprint ${safeFingerprint(result.fingerprint)}).`,
-      "Solve it yourself. If it takes 3 or more failed attempts and you verify the fix, publish it with myrmo_publish so the next agent does not have to.",
+      `Solve it yourself. If it takes ${attemptsPhrase(minFailedAttempts(opts.minFailedAttempts).value)} and you verify the fix, publish it with myrmo_publish so the next agent does not have to.`,
     ].join("\n");
   }
   return [

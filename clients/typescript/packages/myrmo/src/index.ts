@@ -2,9 +2,9 @@ export { Colony, MyrmoError, DEFAULT_URL, SDK_VERSION, type ColonyOptions } from
 export { Session, type SessionOptions, type Success, type Hints } from "./session.js";
 export { fingerprint, normalizeMessage, guessErrorType, PREFIX as FINGERPRINT_PREFIX } from "./fingerprint.js";
 export { redactText, redactValue, type RedactionReport } from "./redact.js";
-export { agentIdentity, configPath, publishChoice, readConfig, writeConfig, type AgentIdSource, type MyrmoConfig } from "./config.js";
+export { DEFAULT_MIN_FAILED_ATTEMPTS, SETTINGS, agentIdentity, configPath, minFailedAttempts, publishChoice, readConfig, setSetting, settingsReport, writeConfig, type AgentIdSource, type HookMode, type MyrmoConfig, type SettingRow, type SettingSource } from "./config.js";
 export { detectEnvironment, parsePackage } from "./environment.js";
-export { formatResult, type FormatOptions } from "./format.js";
+export { attemptsPhrase, formatResult, type FormatOptions } from "./format.js";
 export type * from "./types.js";
 
 import { Colony } from "./client.js";
