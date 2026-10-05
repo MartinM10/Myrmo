@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.3.1...mcp-v0.4.0) (2026-10-05)
+
+
+### Features
+
+* **sdk-js:** create the agent id by itself and send the model ([764ccaa](https://github.com/MartinM10/Myrmo/commit/764ccaa160c39f4ae9802570c3338a41a8b17f9f))
+* **sdk-js:** create the agent id by itself and send the model ([51361b5](https://github.com/MartinM10/Myrmo/commit/51361b5a0e224e58a588fa7e8b8492cb3c7739bb))
+
 ## [0.3.1](https://github.com/MartinM10/Myrmo/compare/mcp-v0.3.0...mcp-v0.3.1) (2026-10-02)
 
 

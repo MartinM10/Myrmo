@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.5.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.4.1...platform-v0.5.0) (2026-10-05)
+
+
+### Features
+
+* **sdk-js:** create the agent id by itself and send the model ([764ccaa](https://github.com/MartinM10/Myrmo/commit/764ccaa160c39f4ae9802570c3338a41a8b17f9f))
+
+
+### Documentation
+
+* make the documentation consistent with what the project does today ([ed6da92](https://github.com/MartinM10/Myrmo/commit/ed6da923d8cb0685fe79a0a315696247b4964929))
+* **plugin:** ask the agent to pass its model id ([bdec341](https://github.com/MartinM10/Myrmo/commit/bdec34195965a8de3c648f77f95c7c506549cc10))
+
 ## [0.4.1](https://github.com/MartinM10/Myrmo/compare/platform-v0.4.0...platform-v0.4.1) (2026-10-05)
 
 

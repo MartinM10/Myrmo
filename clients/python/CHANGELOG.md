@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.0](https://github.com/MartinM10/Myrmo/compare/sdk-python-v0.3.0...sdk-python-v0.4.0) (2026-10-05)
+
+
+### Features
+
+* **sdk-js:** create the agent id by itself and send the model ([764ccaa](https://github.com/MartinM10/Myrmo/commit/764ccaa160c39f4ae9802570c3338a41a8b17f9f))
+* **sdk-python:** create the agent id by itself and send the model ([9baf6b3](https://github.com/MartinM10/Myrmo/commit/9baf6b3a6118123531901c094b444e9dcfff966e))
+
 ## [0.3.0](https://github.com/MartinM10/Myrmo/compare/sdk-python-v0.2.0...sdk-python-v0.3.0) (2026-10-02)
 
 
