@@ -66,7 +66,8 @@ export interface Entry {
 
 export function serverEntry(platform: NodeJS.Platform = process.platform): Entry {
   // Windows clients start commands without a shell, and npx is a .cmd file there.
-  return platform === "win32" ? { command: "cmd", args: ["/c", "npx", "-y", "myrmo-mcp"] } : { command: "npx", args: ["-y", "myrmo-mcp"] };
+  // @latest, because a bare name reuses whatever version the npx cache already holds, however old.
+  return platform === "win32" ? { command: "cmd", args: ["/c", "npx", "-y", "myrmo-mcp@latest"] } : { command: "npx", args: ["-y", "myrmo-mcp@latest"] };
 }
 
 /** Add the myrmo entry to a settings file's text. Returns null when the text is not valid JSON. */

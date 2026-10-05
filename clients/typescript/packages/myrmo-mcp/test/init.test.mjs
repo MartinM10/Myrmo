@@ -36,7 +36,7 @@ test("a file that is not a JSON object is refused, never overwritten", () => {
 });
 
 test("Windows clients start npx through cmd", () => {
-  assert.deepEqual(serverEntry("win32"), { command: "cmd", args: ["/c", "npx", "-y", "myrmo-mcp"] });
+  assert.deepEqual(serverEntry("win32"), { command: "cmd", args: ["/c", "npx", "-y", "myrmo-mcp@latest"] });
 });
 
 test("init configures only the clients that are installed, and leaves the rest of their files alone", () => {

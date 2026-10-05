@@ -141,3 +141,10 @@ export interface PublishResult {
   status: string;
   redactions: Record<string, number>;
 }
+
+/** What the colony says about a trail it has not been asked to publish. */
+export type Validation =
+  | { valid: true; fingerprint: string; redactions: Record<string, number> }
+  | { valid: false; errors: { path: string; message: string }[] }
+  /** The colony could not say: unreachable, or an older one without the endpoint. Publishing then reports. */
+  | { valid: null; reason: string };
