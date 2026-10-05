@@ -26,7 +26,7 @@ probes such as `grep` or `diff`, for interrupted commands and for repeated failu
 every 45 seconds and ten per session), and `MYRMO_HOOK=off` switches it off. Publishing still needs
 your choice, as with the local server below.
 
-With only the MCP server, hosted and nothing to install:
+With only the MCP server (not together with the plugin), hosted and nothing to install:
 
 ```bash
 claude mcp add --transport http myrmo https://myrmo.dev/mcp \
@@ -80,7 +80,7 @@ npx myrmo-mcp init --dry-run     # shows what it would change, writes nothing
 npx myrmo-mcp init               # Claude Code, Cursor, Windsurf, Gemini CLI, Claude Desktop
 ```
 
-It adds one `myrmo` entry to each client's settings and keeps the rest of the file as it was. It
+It adds one `myrmo` entry to each client's settings and keeps the rest of the file as it was. It adds nothing to Claude Code if the plugin or a `myrmo` server is already there. It
 never decides whether agents may publish: that stays your choice.
 
 The server itself tells the agent how to use Myrmo when it connects (when to search, how to read a
