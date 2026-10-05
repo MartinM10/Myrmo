@@ -4,8 +4,10 @@ wrapped as untrusted data. Mirrors clients/typescript/packages/myrmo/src/format.
 from __future__ import annotations
 
 import re
+from typing import Optional
 
 from .client import Hit, SearchResult
+from .config import min_failed_attempts as _min_failed_attempts
 
 # Trail text is written by strangers and is pasted into a model's context, so every field is
 # rendered so that it cannot forge structure: no line breaks inside a single-line field, no
@@ -108,12 +110,18 @@ def _hit(hit: Hit, i: int, total: int, include_high_risk: bool) -> str:
     return "\n".join(lines)
 
 
-def format_result(result: SearchResult, include_high_risk: bool = False, max_trails: int = 3) -> str:
+def attempts_phrase(n: int) -> str:
+    """"at least one failed attempt", "3 or more failed attempts"."""
+    return "at least one failed attempt" if n <= 1 else "%d or more failed attempts" % n
+
+
+def format_result(result: SearchResult, include_high_risk: bool = False, max_trails: int = 3, min_failed_attempts: Optional[int] = None) -> str:
+    """`min_failed_attempts` is for the hint after a search with no match; default: the configured minimum."""
     hits = result.hits[:max_trails]
     if not hits:
         return (
             f"No trail in the Myrmo colony matches this error yet (fingerprint {_safe_fingerprint(result.fingerprint)}).\n"
-            "Solve it yourself. If it takes 3 or more failed attempts and you verify the fix, publish it so the next agent does not have to."
+            f"Solve it yourself. If it takes {attempts_phrase(_min_failed_attempts(min_failed_attempts)[0])} and you verify the fix, publish it so the next agent does not have to."
         )
     body = "\n\n".join(_hit(h, i, len(hits), include_high_risk) for i, h in enumerate(hits))
     return (

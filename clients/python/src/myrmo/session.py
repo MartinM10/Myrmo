@@ -12,6 +12,7 @@ from typing import Any, Dict, List, Optional, Sequence, Union
 
 from .client import Colony, SearchResult
 from .environment import detect_environment
+from .config import min_failed_attempts as _min_failed_attempts
 from .format import format_result
 
 
@@ -60,7 +61,7 @@ class Session:
         self.runtime_version = runtime_version or (platform.python_version() if runtime == "python" else "unknown")
         self.packages = list(packages)
         self.agent = agent or {"model": "unknown", "framework": "myrmo-python"}
-        self.min_failed_attempts = min_failed_attempts or int(os.environ.get("MYRMO_MIN_FAILED_ATTEMPTS", "1"))
+        self.min_failed_attempts = _min_failed_attempts(min_failed_attempts)[0]
         self.failures: List[Dict[str, str]] = []
         self.matched_existing = False
         #: Trails the agent followed that did not (fully) work: its own fix may be a better alternative.
