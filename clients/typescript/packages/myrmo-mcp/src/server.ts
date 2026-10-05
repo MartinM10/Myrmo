@@ -91,6 +91,9 @@ function errorText(err: unknown): string {
     const issues = (err.details as { path?: string; message?: string }[]).map((d) => ({ path: String(d.path ?? ""), message: String(d.message ?? "") }));
     return `The colony would not accept this trail (invalid_trail). Fix these and try again:\n${describeIssues(issues)}`;
   }
+  if (err instanceof MyrmoError && err.code === "unavailable") {
+    return `${err.message} The request was already repeated a few times. Continue without Myrmo for now and search again in a minute.`;
+  }
   if (err instanceof MyrmoError) {
     const details = err.details ? `\nDetails: ${JSON.stringify(err.details).slice(0, 1500)}` : "";
     return `Myrmo returned ${err.status} ${err.code}: ${err.message}${details}`;

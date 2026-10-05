@@ -31,7 +31,20 @@ export interface ColonyOptions {
   headers?: Record<string, string>;
   /** How long lookups stay in the in-process cache. 0 disables it. */
   cacheTtlMs?: number;
+  /**
+   * How many times a read (a lookup or a search) is tried again when the colony answers 502, 503 or 504 or
+   * refuses the connection, which is what a restart looks like from outside. Default 3, 0 disables. Publishing and
+   * reporting are never repeated.
+   */
+  retries?: number;
+  /** Pause before each retry, in milliseconds, with a little jitter. Default 500, 1500, 3000. */
+  retryDelaysMs?: number[];
 }
+
+/** What a colony that is restarting or overloaded answers with. */
+const UNAVAILABLE = new Set([502, 503, 504]);
+const DEFAULT_RETRY_DELAYS_MS = [500, 1500, 3000];
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export class MyrmoError extends Error {
   constructor(
@@ -76,6 +89,8 @@ export class Colony {
   private readonly timeoutMs: number;
   private readonly headers: Record<string, string>;
   private readonly cacheTtlMs: number;
+  private readonly retries: number;
+  private readonly retryDelaysMs: number[];
   private readonly cache = new Map<string, { at: number; value: SearchResult | null }>();
 
   constructor(options: ColonyOptions = {}) {
@@ -90,9 +105,15 @@ export class Colony {
     this.timeoutMs = options.timeoutMs ?? 10_000;
     this.headers = options.headers ?? {};
     this.cacheTtlMs = options.cacheTtlMs ?? 60_000;
+    this.retries = Math.max(0, options.retries ?? 3);
+    this.retryDelaysMs = options.retryDelaysMs?.length ? options.retryDelaysMs : DEFAULT_RETRY_DELAYS_MS;
   }
 
-  private async request<T>(method: string, path: string, body?: unknown, extra?: Record<string, string>): Promise<{ status: number; data: T }> {
+  /**
+   * One call to the colony. `idempotent` says it may be repeated without harm (a lookup, a search, a check): only
+   * those are tried again when the colony is briefly unavailable.
+   */
+  private async request<T>(method: string, path: string, body?: unknown, extra?: Record<string, string>, idempotent = false): Promise<{ status: number; data: T }> {
     const headers: Record<string, string> = { accept: "application/json", "user-agent": `myrmo-js/${SDK_VERSION}`, ...this.headers };
     if (body !== undefined) headers["content-type"] = "application/json";
     if (this.apiKey) headers.authorization = `Bearer ${this.apiKey}`;
@@ -100,18 +121,42 @@ export class Colony {
     if (this.agentId && !Object.keys(headers).some((k) => k.toLowerCase() === "x-myrmo-agent")) headers["x-myrmo-agent"] = this.agentId;
     if (this.model && !Object.keys(headers).some((k) => k.toLowerCase() === "x-myrmo-model")) headers["x-myrmo-model"] = this.model;
     Object.assign(headers, extra);
-    const res = await fetch(this.url + path, {
-      method,
-      headers,
-      body: body === undefined ? undefined : JSON.stringify(body),
-      signal: AbortSignal.timeout(this.timeoutMs),
-    });
-    const data = (await res.json().catch(() => null)) as T & { error?: { code: string; message: string; details?: unknown } };
-    if (!res.ok && res.status !== 404) {
-      const err = data?.error;
-      throw new MyrmoError(res.status, err?.code ?? "http_error", err?.message ?? `HTTP ${res.status}`, err?.details);
+    const attempts = idempotent ? this.retries + 1 : 1;
+    const pause = (attempt: number) => sleep(this.retryDelaysMs[Math.min(attempt, this.retryDelaysMs.length - 1)] * (1 + Math.random() * 0.25));
+    for (let attempt = 0; ; attempt++) {
+      const last = attempt + 1 >= attempts;
+      let res: Response;
+      try {
+        res = await fetch(this.url + path, {
+          method,
+          headers,
+          body: body === undefined ? undefined : JSON.stringify(body),
+          signal: AbortSignal.timeout(this.timeoutMs),
+        });
+      } catch (err) {
+        // A refused or reset connection is what a restart looks like. A timeout is not retried: a colony that
+        // hangs will not answer faster the second time, and the caller would wait several times as long.
+        const timedOut = err instanceof Error && (err.name === "TimeoutError" || err.name === "AbortError");
+        if (!timedOut && !last) {
+          await pause(attempt);
+          continue;
+        }
+        throw err;
+      }
+      if (UNAVAILABLE.has(res.status) && !last) {
+        await pause(attempt);
+        continue;
+      }
+      const data = (await res.json().catch(() => null)) as T & { error?: { code: string; message: string; details?: unknown } };
+      if (UNAVAILABLE.has(res.status)) {
+        throw new MyrmoError(res.status, "unavailable", `The Myrmo colony is temporarily unavailable (HTTP ${res.status}). It is probably restarting: try again in a few seconds.`);
+      }
+      if (!res.ok && res.status !== 404) {
+        const err = data?.error;
+        throw new MyrmoError(res.status, err?.code ?? "http_error", err?.message ?? `HTTP ${res.status}`, err?.details);
+      }
+      return { status: res.status, data };
     }
-    return { status: res.status, data };
   }
 
   private cached(key: string): SearchResult | null | undefined {
@@ -139,6 +184,7 @@ export class Colony {
       `/v1/trails/by-fingerprint/${encodeURIComponent(fp)}`,
       undefined,
       model ? { "x-myrmo-model": model } : undefined,
+      true,
     );
     const value = status === 404 ? null : { fingerprint: data.fingerprint, hits: data.results.map(toHit), notice: data.notice, source: "fingerprint" as const };
     this.remember(fp, value);
@@ -170,7 +216,7 @@ export class Colony {
       environment,
       limit: query.limit ?? 3,
       min_strength: query.minStrength ?? 0,
-    }, query.model ? { "x-myrmo-model": query.model } : undefined);
+    }, query.model ? { "x-myrmo-model": query.model } : undefined, true);
     const value: SearchResult = { fingerprint: data.fingerprint, hits: data.results.map(toHit), notice: data.notice, source: "search" };
     this.remember(key, value);
     return value;
@@ -215,7 +261,7 @@ export class Colony {
   async validate(trail: Trail): Promise<Validation> {
     const { trail: redacted } = this.preview(trail);
     try {
-      const { status, data } = await this.request<{ valid: boolean; fingerprint: string; redactions: Record<string, number> }>("POST", "/v1/validate", redacted);
+      const { status, data } = await this.request<{ valid: boolean; fingerprint: string; redactions: Record<string, number> }>("POST", "/v1/validate", redacted, undefined, true);
       if (status === 404) return { valid: null, reason: "this colony does not offer validation" };
       return { valid: true, fingerprint: data.fingerprint, redactions: data.redactions ?? {} };
     } catch (err) {
@@ -287,7 +333,7 @@ export class Colony {
 
   /** Status and content of one trail. */
   async trail(trailId: string): Promise<Record<string, unknown> | null> {
-    const { status, data } = await this.request<Record<string, unknown>>("GET", `/v1/trails/${encodeURIComponent(trailId)}`);
+    const { status, data } = await this.request<Record<string, unknown>>("GET", `/v1/trails/${encodeURIComponent(trailId)}`, undefined, undefined, true);
     return status === 404 ? null : data;
   }
 }
