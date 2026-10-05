@@ -61,3 +61,53 @@ TASKS = (
     Task("rust-use-after-move", "rust:1.78.0-bookworm", {"name": "rust", "version": "1.78.0"}, "build", "E0382", "Rust rejects using a String after it has been moved into another variable.", "Compiling code that keeps a label after passing ownership to a worker function.", "mkdir -p /tmp/app/src && printf '[package]\nname=\"movecheck\"\nversion=\"0.1.0\"\nedition=\"2021\"\n' > /tmp/app/Cargo.toml && printf 'fn consume(s:String){println!(\"{}\",s)}\nfn main(){let label=String::from(\"worker\"); consume(label); println!(\"{}\",label);}\n' > /tmp/app/src/main.rs", "cd /tmp/app && cargo check", ("cd /tmp/app && cargo check", "cd /tmp/app && cargo test"), "sed -i 's/consume(label);/consume(label.clone());/' /tmp/app/src/main.rs && cd /tmp/app && cargo check", "cd /tmp/app && cargo check", "Passing a String by value transfers ownership; clone it when both the callee and caller must use the value.", ("Clone the label for the consuming call.", "Run cargo check after the ownership fix.",), ("rust", "ownership", "e0382")),
     Task("go-missing-package", "golang:1.22.5", {"name": "go", "version": "1.22.5"}, "dependency", "no required module provides package", "Go cannot resolve an imported package until its module is added to go.mod.", "Building a utility that imports a UUID package in a new module.", "mkdir -p /tmp/app && cd /tmp/app && go mod init example.test/uuid && printf 'package main\nimport \"github.com/google/uuid\"\nfunc main(){println(uuid.Nil.String())}\n' > main.go", "cd /tmp/app && go build ./...", ("cd /tmp/app && go get github.com/google/uuid@v0.0.0", "cd /tmp/app && go build ./..."), "cd /tmp/app && go get github.com/google/uuid@v1.6.0 && go build ./...", "cd /tmp/app && go build ./...", "The imported package is outside the module graph; add its real module at a compatible version before building.", ("Add the module that owns the import.", "Build the module again.",), ("go", "modules", "imports")),
 )
+
+
+# A trail is worth publishing only when an agent that hits the error would plausibly search for it
+# and the fix does not depend on the agent's own code. Errors a capable agent solves at a glance are
+# never searched, and errors in someone's source code have fixes that do not transfer. Tasks listed
+# here stay in the catalog (they are reproducible and useful as tests) but are not published.
+POLICY_EXCLUDED = {
+    # The fix is a change to the user's own source code.
+    "rust-borrow-checker": "code-level: the fix depends on the user's code",
+    "rust-use-after-move": "code-level: the fix depends on the user's code",
+    "rust-type-mismatch": "code-level: the fix depends on the user's code",
+    "typescript-type-error": "code-level: the fix depends on the user's code",
+    "go-type-mismatch": "code-level: the fix depends on the user's code",
+    "go-undefined-symbol": "code-level: the fix depends on the user's code",
+    "cpp-missing-header": "code-level: the fix depends on the user's code",
+    "cpp-undefined-reference": "code-level: the fix depends on the user's code",
+    "cpp-multiple-definition": "code-level: the fix depends on the user's code",
+    "python-syntax-error": "code-level: the fix depends on the user's code",
+    "python-indentation-error": "code-level: the fix depends on the user's code",
+    "python-division-by-zero": "code-level: the fix depends on the user's code",
+    "python-empty-environment-variable": "code-level: the fix depends on the user's code",
+    "node-env-port": "code-level: the fix depends on the user's code",
+    # The task does not reproduce what its trail would claim.
+    "docker-exec-format": "not reproduced: the container shell reports 'not found', not the kernel's exec format error",
+    # Obvious at a glance: an agent solves it without searching, so nobody would look it up.
+    "python-invalid-json": "obvious: an agent fixes it at a glance",
+    "node-json-parse": "obvious: an agent fixes it at a glance",
+    "python-unicode-decode": "obvious: an agent fixes it at a glance",
+    "missing-config-path": "obvious: an agent fixes it at a glance",
+    "python-dns-resolution": "obvious: an agent fixes it at a glance",
+    "python-permission-file": "obvious: an agent fixes it at a glance",
+    "permissions-non-executable": "obvious: an agent fixes it at a glance",
+    "python-port-in-use": "obvious: an agent fixes it at a glance",
+    "node-missing-module": "obvious: an agent fixes it at a glance",
+    "python-missing-requests": "obvious: an agent fixes it at a glance",
+    "go-missing-module": "obvious: an agent fixes it at a glance",
+    "go-missing-package": "obvious: an agent fixes it at a glance",
+}
+
+
+def publishable() -> tuple[Task, ...]:
+    return tuple(t for t in TASKS if t.task_id not in POLICY_EXCLUDED)
+
+
+# For the few tasks whose captured output does not carry the message people actually search for on
+# one line, the line to use. It is only used when the container really printed it.
+MESSAGE_OVERRIDES = {
+    "node-openssl-md4": "Error: error:0308010C:digital envelope routines::unsupported",
+    "git-safe-directory": "fatal: detected dubious ownership in repository",
+}

@@ -12,7 +12,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 ROOT = Path(__file__).resolve().parents[2]
-OUT = ROOT / "seed-out"
+OUT = Path(os.environ.get("MYRMO_SEED_OUT", ROOT / "seed-out"))
 MAX_PER_HOUR = 25
 WINDOW_SECONDS = 3600
 AGENT = "seed-factory"
@@ -42,6 +42,17 @@ def request(base: str, method: str, path: str, body=None):
         return response.status, json.loads(response.read() or b"{}")
 
 
+def exists_on_server(base: str, fingerprint: str) -> bool:
+    """The colony is the source of truth: a trail already there (even from another run or machine) is skipped."""
+    try:
+        status, _ = request(base, "GET", f"/v1/trails/by-fingerprint/{fingerprint}")
+    except urllib.error.HTTPError as exc:
+        if exc.code == 404:
+            return False
+        raise
+    return status == 200
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--base", default=os.environ.get("MYRMO_PUBLISH_URL", "http://localhost:8080"))
@@ -60,6 +71,9 @@ def main() -> int:
     with records.open("a", encoding="utf-8") as output:
         for trail in trails:
             if (args.base.rstrip("/"), trail.get("fingerprint")) in published:
+                continue
+            if exists_on_server(args.base, trail["fingerprint"]):
+                print(f"skipping {trail['fingerprint']}: already in the colony")
                 continue
             while True:
                 recent = sorted(item.get("submitted_at", 0) for item in history if item.get("base") == args.base.rstrip("/") and time.time() - item.get("submitted_at", 0) < WINDOW_SECONDS)
@@ -82,7 +96,18 @@ def main() -> int:
                             raise SystemExit("stopping after three consecutive 5xx responses")
                         time.sleep(2 ** errors_5xx * 5)
                         continue
-                    raise
+                    # The colony refused this trail as invalid: note it, count it and go on with the next.
+                    created = None
+                    refusal = {"base": args.base.rstrip("/"), "fingerprint": trail["fingerprint"], "status": "invalid", "reasons": [f"HTTP {exc.code}"], "submitted_at": submitted_at}
+                    output.write(json.dumps(refusal) + "\n")
+                    output.flush()
+                    history.append(refusal)
+                    rejects += 1
+                    if rejects >= 5:
+                        raise SystemExit("stopping after five consecutive rejections")
+                    break
+            if created is None:
+                continue
             trail_id = created["trail_id"]
             while True:
                 time.sleep(2)
