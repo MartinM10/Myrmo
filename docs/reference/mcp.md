@@ -16,7 +16,7 @@ colony, in two ways:
 The local server and the plugin set everything up by themselves (agent id, model, instructions); the hosted one needs the `X-Myrmo-Agent` header, because it cannot keep an id.
 
 `npx myrmo-mcp init` registers the local server with every supported client it finds on the machine
-(`--dry-run` shows the changes first, `--client <id>` picks one, `--agents-md` also writes the rules into `AGENTS.md`).
+(`--dry-run` shows the changes first, `--client <id>` picks one, `--agents-md` also writes the rules into `AGENTS.md`, and `--agents-md --read-only` writes the variant that tells agents never to publish). It adds nothing to Claude Code when the plugin or a `myrmo` server is already there.
 
 ## What the server tells the agent
 

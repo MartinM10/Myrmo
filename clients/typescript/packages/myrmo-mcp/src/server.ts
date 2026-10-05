@@ -111,8 +111,9 @@ How should publishing work from now on? You can change it later with: npx myrmo-
           choice: {
             type: "string",
             title: "Publishing",
-            description: "auto: publish this and future fixes without asking. ask: publish this one, ask me about future ones. off: never publish.",
-            enum: ["auto", "ask", "off"],
+            description: "ask: publish this one and ask me about each future one (recommended). auto: publish this and future fixes without asking. off: never publish.",
+            enum: ["ask", "auto", "off"],
+            default: "ask",
           },
         },
         required: ["choice"],

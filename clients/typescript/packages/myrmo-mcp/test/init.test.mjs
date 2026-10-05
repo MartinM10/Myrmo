@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { AGENTS_BLOCK, mergeServer, parseInitArgs, runInit, serverEntry, upsertBlock } from "../dist/init.js";
+import { AGENTS_BLOCK, AGENTS_BLOCK_READ_ONLY, claudeCodeSetUp, mergeServer, parseInitArgs, runInit, serverEntry, upsertBlock } from "../dist/init.js";
 
 const entry = serverEntry("linux");
 const quiet = () => {};
@@ -100,4 +100,58 @@ test("arguments are validated", () => {
   assert.equal(typeof parseInitArgs(["--client", "emacs"]), "string");
   assert.equal(typeof parseInitArgs(["--nope"]), "string");
   assert.deepEqual(parseInitArgs(["--client", "cursor", "--dry-run", "--agents-md"]), { clients: ["cursor"], dryRun: true, agentsMd: "AGENTS.md" });
+});
+
+test("Claude Code is not given the server twice when the plugin or a server is already there", () => {
+  const home = newHome();
+  assert.equal(claudeCodeSetUp(home), null);
+
+  mkdirSync(join(home, ".claude", "plugins"), { recursive: true });
+  writeFileSync(join(home, ".claude", "plugins", "installed_plugins.json"), JSON.stringify({ version: 2, plugins: { "myrmo@myrmo": [{}] } }));
+  assert.match(claudeCodeSetUp(home), /plugin/);
+
+  const other = newHome();
+  writeFileSync(join(other, ".claude.json"), JSON.stringify({ mcpServers: { myrmo: { command: "cmd" } } }));
+  assert.match(claudeCodeSetUp(other), /already registered/);
+
+  const project = newHome();
+  writeFileSync(join(project, ".claude.json"), JSON.stringify({ projects: { "/some/dir": { mcpServers: { myrmo: {} } } } }));
+  assert.match(claudeCodeSetUp(project), /already registered/);
+
+  const unrelated = newHome();
+  writeFileSync(join(unrelated, ".claude.json"), JSON.stringify({ mcpServers: { github: {} } }));
+  assert.equal(claudeCodeSetUp(unrelated), null);
+});
+
+test("init says so and adds nothing when the plugin is installed", () => {
+  const home = newHome();
+  mkdirSync(join(home, ".claude", "plugins"), { recursive: true });
+  writeFileSync(join(home, ".claude", "plugins", "installed_plugins.json"), JSON.stringify({ plugins: { "myrmo@myrmo": [{}] } }));
+  const lines = [];
+  const res = runInit({ clients: [], dryRun: false, home, log: (l) => lines.push(l) });
+  assert.ok(res.configured.includes("Claude Code"));
+  const said = lines.join("\n");
+  assert.match(said, /already set up \(the Myrmo plugin is installed\)/);
+  assert.doesNotMatch(said, /claude mcp add --scope/);
+});
+
+test("the search-and-report block tells agents not to publish, and is written on request", () => {
+  assert.match(AGENTS_BLOCK_READ_ONLY, /do NOT publish/);
+  assert.match(AGENTS_BLOCK_READ_ONLY, /never call myrmo_publish/);
+  assert.doesNotMatch(AGENTS_BLOCK_READ_ONLY, /If you fixed an error/, "no step explains how to publish");
+  assert.match(AGENTS_BLOCK_READ_ONLY, /myrmo_search/);
+  assert.match(AGENTS_BLOCK_READ_ONLY, /myrmo_report/);
+  const dir = newHome();
+  const file = join(dir, "AGENTS.md");
+  runInit({ clients: ["cursor"], dryRun: false, home: dir, agentsMd: file, readOnly: true, log: quiet });
+  assert.match(readFileSync(file, "utf8"), /do NOT publish/);
+  runInit({ clients: ["cursor"], dryRun: false, home: dir, agentsMd: file, log: quiet });
+  const text = readFileSync(file, "utf8");
+  assert.doesNotMatch(text, /do NOT publish/, "the full block replaces it in place");
+  assert.equal((text.match(/myrmo:start/g) ?? []).length, 1);
+});
+
+test("--read-only needs --agents-md", () => {
+  assert.equal(typeof parseInitArgs(["--read-only"]), "string");
+  assert.deepEqual(parseInitArgs(["--agents-md", "--read-only"]), { clients: [], dryRun: false, agentsMd: "AGENTS.md", readOnly: true });
 });

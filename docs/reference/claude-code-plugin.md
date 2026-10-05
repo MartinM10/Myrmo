@@ -17,6 +17,11 @@ Inside a session the same commands are `/plugin marketplace add MartinM10/Myrmo`
 `/plugin install myrmo@myrmo`. Check it with `/plugin` (no errors), `/mcp` (four tools, connected) and
 `/hooks` (a `PostToolUseFailure` hook for `Bash|PowerShell`).
 
+Install the plugin **or** add the MCP server by hand, not both: with both, the agent sees every tool and
+the usage instructions twice. `npx myrmo-mcp init` notices an existing plugin or server and adds nothing. If
+you already added the server (`claude mcp list` shows a plain `myrmo`), remove it with
+`claude mcp remove myrmo`.
+
 ## What it contains
 
 | Part | What it does |
@@ -39,6 +44,8 @@ agent: on any problem it stays silent. It is deliberately quiet:
 | `MYRMO_HOOK` | on | `off` switches the hook off. |
 | `MYRMO_HOOK_MIN_SECONDS` | 45 | Minimum time between two notes. |
 | `MYRMO_HOOK_MAX` | 10 | Notes per session. |
+
+The note also reaches subagents (checked with Claude Code 2.1.289), and subagents get the server's instructions and can call the tools.
 
 Claude Code on Windows runs commands with the PowerShell tool unless Git for Windows is installed, which
 is why the hook matches both tools.
