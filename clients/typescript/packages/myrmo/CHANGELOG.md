@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.7.0](https://github.com/MartinM10/Myrmo/compare/sdk-js-v0.6.0...sdk-js-v0.7.0) (2026-10-05)
+
+
+### Features
+
+* **sdk-js,mcp:** repeat reads while the colony restarts, and say so in words ([5f8cd71](https://github.com/MartinM10/Myrmo/commit/5f8cd71bc19c8b81b1942281eef2e73a0ab07955))
+* **sdk-js,mcp:** repeat reads while the colony restarts, and say so in words ([479a760](https://github.com/MartinM10/Myrmo/commit/479a760946678ea7aee1431c157e108798e414a8))
+
 ## [0.6.0](https://github.com/MartinM10/Myrmo/compare/sdk-js-v0.5.0...sdk-js-v0.6.0) (2026-10-05)
 
 
