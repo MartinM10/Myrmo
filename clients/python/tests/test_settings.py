@@ -99,3 +99,14 @@ def test_the_hint_after_a_search_with_no_match_follows_the_configured_minimum():
     assert "3 or more failed attempts" in format_result(none)
     assert "5 or more failed attempts" in format_result(none, min_failed_attempts=5)
     assert attempts_phrase(0) == "at least one failed attempt"
+
+
+def test_the_hook_setting_takes_on_failures_or_off(monkeypatch):
+    assert set_setting("hook", "failures")[0] is True
+    assert read_config()["hook"] == "failures"
+    assert rows()["hook"]["value"] == "failures"
+    monkeypatch.setenv("MYRMO_HOOK", "off")
+    assert (rows()["hook"]["value"], rows()["hook"]["source"]) == ("off", "env")
+    monkeypatch.delenv("MYRMO_HOOK")
+    ok, message = set_setting("hook", "sometimes")
+    assert ok is False and "on, failures or off" in message

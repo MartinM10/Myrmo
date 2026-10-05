@@ -114,3 +114,14 @@ test("the hint after a search with no match follows the configured minimum", () 
   assert.match(formatResult(none, { minFailedAttempts: 5 }), /5 or more failed attempts/);
   assert.equal(attemptsPhrase(0), "at least one failed attempt");
 });
+
+test("the hook setting takes on, failures or off", () => {
+  assert.equal(setSetting("hook", "failures").ok, true);
+  assert.equal(readConfig().hook, "failures");
+  assert.equal(settingsReport().find((r) => r.key === "hook").value, "failures");
+  process.env.MYRMO_HOOK = "off";
+  assert.deepEqual(settingsReport().filter((r) => r.key === "hook").map((r) => [r.value, r.source]), [["off", "env"]]);
+  delete process.env.MYRMO_HOOK;
+  assert.equal(setSetting("hook", "sometimes").ok, false);
+  assert.match(setSetting("hook", "sometimes").error, /on, failures or off/);
+});
