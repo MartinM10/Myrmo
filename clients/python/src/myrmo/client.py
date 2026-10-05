@@ -25,7 +25,7 @@ from .redact import Report, redact_text, redact_value
 
 #: The public colony. Override with MYRMO_URL or the `url` argument.
 DEFAULT_URL = "https://myrmo.dev"
-SDK_VERSION = "0.7.0"  # x-release-please-version
+SDK_VERSION = "0.8.0"  # x-release-please-version
 #: What a colony that is restarting or overloaded answers with.
 UNAVAILABLE = (502, 503, 504)
 DEFAULT_RETRY_DELAYS = (0.5, 1.5, 3.0)

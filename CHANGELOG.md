@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.10.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.9.0...platform-v0.10.0) (2026-10-05)
+
+
+### Features
+
+* **plugin:** the hook also offers to publish a fix the colony lacked, and notices errors hidden behind exit 0 ([d66ace0](https://github.com/MartinM10/Myrmo/commit/d66ace00adf39b16a29e8e684a872ec40f05dee1))
+* **plugin:** the hook also offers to publish a fix the colony lacked, and notices errors hidden behind exit 0 ([f15a50f](https://github.com/MartinM10/Myrmo/commit/f15a50fb9659cc4f708631b36094ebc573948b21))
+
+
+### Documentation
+
+* the hook's three moments, the hook modes and the SDK floor rule ([b2b22b3](https://github.com/MartinM10/Myrmo/commit/b2b22b37e6a470255066a735ac8633af993958bc))
+
 ## [0.9.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.8.0...platform-v0.9.0) (2026-10-05)
 
 

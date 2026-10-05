@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.9.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.8.0...mcp-v0.9.0) (2026-10-05)
+
+
+### Features
+
+* **mcp,sdk:** hook 'failures' mode, a warmer hint when Myrmo has nothing, and an SDK floor that follows behaviour ([0f63c1b](https://github.com/MartinM10/Myrmo/commit/0f63c1b2e058358942819c02b59641fa853f79d7))
+* **plugin:** the hook also offers to publish a fix the colony lacked, and notices errors hidden behind exit 0 ([d66ace0](https://github.com/MartinM10/Myrmo/commit/d66ace00adf39b16a29e8e684a872ec40f05dee1))
+
 ## [0.8.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.7.0...mcp-v0.8.0) (2026-10-05)
 
 
