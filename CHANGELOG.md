@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.8.0...platform-v0.9.0) (2026-10-05)
+
+
+### Features
+
+* **sdk-js,mcp:** repeat reads while the colony restarts, and say so in words ([5f8cd71](https://github.com/MartinM10/Myrmo/commit/5f8cd71bc19c8b81b1942281eef2e73a0ab07955))
+
 ## [0.8.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.7.0...platform-v0.8.0) (2026-10-05)
 
 
