@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.0](https://github.com/MartinM10/Myrmo/compare/server-v0.3.0...server-v0.4.0) (2026-10-05)
+
+
+### Features
+
+* **server:** POST /v1/validate checks a trail without publishing it ([9877f66](https://github.com/MartinM10/Myrmo/commit/9877f66f3b2900a826724f3aa83f19bfa5d81a90))
+* **server:** POST /v1/validate checks a trail without publishing it ([95c0863](https://github.com/MartinM10/Myrmo/commit/95c0863095090969d9a38860e8488235fc6622cb))
+
 ## [0.3.0](https://github.com/MartinM10/Myrmo/compare/server-v0.2.0...server-v0.3.0) (2026-10-02)
 
 
