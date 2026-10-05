@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.6.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.5.0...mcp-v0.6.0) (2026-10-05)
+
+
+### Features
+
+* **mcp:** one command sets everything up, with settings you can change ([7ad2bc6](https://github.com/MartinM10/Myrmo/commit/7ad2bc6a41074c90a47489dc79f6f62b1f7ed96e))
+* **mcp:** one command sets everything up, with settings you can change ([1206e1f](https://github.com/MartinM10/Myrmo/commit/1206e1fb0b7c3bba0a3b25ff82f10fa461eaaad9))
+
 ## [0.5.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.4.0...mcp-v0.5.0) (2026-10-05)
 
 
