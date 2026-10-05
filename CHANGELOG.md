@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.6.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.5.0...platform-v0.6.0) (2026-10-05)
+
+
+### Features
+
+* **mcp:** ask first in the consent question, do not duplicate the Claude Code server, add a read-only AGENTS.md block ([2b428ca](https://github.com/MartinM10/Myrmo/commit/2b428ca47a5c680759584b2742db50a9fb45d68b))
+
+
+### Documentation
+
+* how several agents, subagents and disposable environments behave, and which publish mode to choose ([11dafce](https://github.com/MartinM10/Myrmo/commit/11dafced4babcd5e822288d20d79a80d42fe7287))
+
 ## [0.5.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.4.1...platform-v0.5.0) (2026-10-05)
 
 

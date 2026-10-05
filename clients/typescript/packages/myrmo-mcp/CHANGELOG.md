@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.5.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.4.0...mcp-v0.5.0) (2026-10-05)
+
+
+### Features
+
+* **mcp:** ask first in the consent question, do not duplicate the Claude Code server, add a read-only AGENTS.md block ([2b428ca](https://github.com/MartinM10/Myrmo/commit/2b428ca47a5c680759584b2742db50a9fb45d68b))
+* **mcp:** ask first in the consent question, do not duplicate the Claude Code server, add a read-only AGENTS.md block ([d87a823](https://github.com/MartinM10/Myrmo/commit/d87a823c85c0d74f336c8a46cfc283bd8cc0b8f5))
+
 ## [0.4.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.3.1...mcp-v0.4.0) (2026-10-05)
 
 
