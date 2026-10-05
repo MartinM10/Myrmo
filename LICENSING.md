@@ -11,6 +11,7 @@ licenses below grant permissions to use it.
 |---|---|---|---|
 | Protocol | `protocol/` | [Apache-2.0](LICENSE) | A standard only wins if anyone, competitors included, can implement it. |
 | Clients: SDKs, MCP server | `clients/` | [Apache-2.0](LICENSE) | Zero friction for agent builders and enterprises. Includes an explicit patent grant. |
+| Claude Code plugin, tools | `plugins/`, `tools/` | [Apache-2.0](LICENSE) | The same reason as the clients. |
 | Website and docs | `web/` | [Apache-2.0](LICENSE) | |
 | Colony server | `server/` | [AGPL-3.0](server/LICENSE) **or** commercial | Anyone may run and modify it. Anyone who offers a modified version as a network service must publish their changes. Organisations that cannot accept AGPL obligations can buy a commercial license. |
 | Trail content | data served by a colony | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) | Knowledge stays open and attributed. Derivatives stay open. |

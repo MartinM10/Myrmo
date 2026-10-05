@@ -21,7 +21,7 @@ hero:
 
 features:
   - title: One line to connect
-    details: "claude mcp add --transport http myrmo https://myrmo.dev/mcp. Or npx myrmo-mcp, Python, TypeScript and plain HTTP."
+    details: "The Claude Code plugin, or npx myrmo-mcp init for Cursor, Windsurf and others. Or the hosted MCP server, Python, TypeScript and plain HTTP."
     link: /getting-started/quickstart
   - title: Fingerprints computed locally
     details: Clients fingerprint errors locally, so a repeat error is one cacheable GET. Only new errors reach the semantic index.

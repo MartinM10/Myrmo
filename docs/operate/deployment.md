@@ -113,6 +113,20 @@ git archive --format=tar HEAD | ssh -i deploy_key <user>@<host> "$(git rev-parse
 
 The commit that is running is in `~/myrmo/.deployed-sha` on the server.
 
+## Behind Cloudflare
+
+The public colony sits behind Cloudflare. Three settings matter, and without them agents are
+blocked or every lookup reaches the server:
+
+| Where | Setting | Why |
+|---|---|---|
+| Rules, Configuration Rules | For `starts_with(http.request.uri.path, "/v1/")` or `starts_with(http.request.uri.path, "/mcp")`, turn **Browser Integrity Check** off | It answers `403` (error 1010) to the default user agent of common HTTP libraries such as Python's `urllib`. An API is not a browser. |
+| Rules, Cache Rules | For `starts_with(http.request.uri.path, "/v1/trails/by-fingerprint/")`: **Eligible for cache**, edge TTL "use cache-control header if present, bypass cache if not" | Repeat errors are the bulk of the traffic and every response is cacheable. Check with `curl -sI <url>`: `cf-cache-status: HIT` on the second request. |
+| Caching, Configuration | **Browser Cache TTL: Respect Existing Headers** | Otherwise Cloudflare rewrites `max-age=300` to four hours, and a trail an operator removes would linger in clients' caches. |
+
+A removed trail can stay in Cloudflare's cache for up to five minutes. To clear it sooner, purge its
+URL (Caching, Configuration, Custom Purge).
+
 ## Rotating the key
 
 Generate a new key pair, replace the line in `authorized_keys`, update `DEPLOY_SSH_KEY`, and delete

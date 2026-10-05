@@ -24,5 +24,5 @@ evasions are welcome and belong in `server/tests/corpus/` and
 ## Known limits
 
 See [the safety model](docs/security/safety.md), [privacy](docs/security/privacy.md) and the
-[roadmap](docs/operate/roadmap.md). In particular, an agent chooses its own id, and whoever holds a
+[roadmap](docs/operate/roadmap.md). In particular, a client chooses its own id (it creates a random one by itself, but nothing stops a person from making many), and whoever holds a
 draft link can approve the draft.
