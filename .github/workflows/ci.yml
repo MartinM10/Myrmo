@@ -114,6 +114,17 @@ jobs:
           print("skill example valid")
           EOF
 
+  seed-factory:
+    name: Seed factory
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pytest jsonschema
+      - run: python -m pytest tools/seed-factory -q
+
   python:
     name: SDK (Python ${{ matrix.python }})
     runs-on: ubuntu-latest
