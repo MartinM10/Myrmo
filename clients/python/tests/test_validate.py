@@ -19,7 +19,7 @@ def colony_answering(status, body=None):
         seen.append((request.method, request.url.path))
         return httpx.Response(status, json=body if body is not None else {})
 
-    return Colony(url="http://colony.test", transport=httpx.MockTransport(handler), cache_ttl=0), seen
+    return Colony(url="http://colony.test", transport=httpx.MockTransport(handler), cache_ttl=0, retry_delays=(0.001,)), seen
 
 
 def test_a_trail_the_colony_accepts():
@@ -46,5 +46,5 @@ def test_an_older_colony_or_one_that_is_down_is_not_a_verdict():
     def refuse(request):
         raise httpx.ConnectError("unreachable")
 
-    unreachable = Colony(url="http://colony.test", transport=httpx.MockTransport(refuse), cache_ttl=0)
+    unreachable = Colony(url="http://colony.test", transport=httpx.MockTransport(refuse), cache_ttl=0, retry_delays=(0.001,))
     assert unreachable.validate(TRAIL)["valid"] is None
