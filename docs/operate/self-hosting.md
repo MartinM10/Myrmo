@@ -77,7 +77,11 @@ colony.example.com {
 	encode gzip zstd
 	@api path /v1/* /healthz /readyz
 	handle @api {
-		reverse_proxy myrmo-gateway:8080
+		reverse_proxy myrmo-gateway:8080 {
+			# During a deploy, wait for the gateway instead of answering 502 at once.
+			lb_try_duration 20s
+			lb_try_interval 500ms
+		}
 	}
 	handle {
 		reverse_proxy myrmo-web:80

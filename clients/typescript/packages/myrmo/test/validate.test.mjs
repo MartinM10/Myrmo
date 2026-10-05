@@ -34,7 +34,7 @@ after(() => server.close());
 
 test("a trail the colony accepts", async () => {
   mode = "valid";
-  const v = await new Colony({ url }).validate(trail);
+  const v = await new Colony({ url, retryDelaysMs: [1] }).validate(trail);
   assert.deepEqual(v, { valid: true, fingerprint: "fp1_abc", redactions: { api_key: 1 } });
   assert.equal(seen.at(-1).url, "/v1/validate");
   assert.equal(seen.filter((r) => r.url === "/v1/trails").length, 0, "validating never publishes");
@@ -42,18 +42,18 @@ test("a trail the colony accepts", async () => {
 
 test("a trail the colony would refuse says what is wrong", async () => {
   mode = "invalid";
-  const v = await new Colony({ url }).validate(trail);
+  const v = await new Colony({ url, retryDelaysMs: [1] }).validate(trail);
   assert.equal(v.valid, false);
   assert.deepEqual(v.errors, [{ path: "/solution/verification_method/type", message: '"manual" is not one of [...]' }]);
 });
 
 test("an older colony without the endpoint, or one that is down, is not a verdict", async () => {
   mode = "old";
-  const old = await new Colony({ url }).validate(trail);
+  const old = await new Colony({ url, retryDelaysMs: [1] }).validate(trail);
   assert.equal(old.valid, null);
   assert.match(old.reason, /does not offer validation/);
   mode = "down";
-  assert.equal((await new Colony({ url }).validate(trail)).valid, null);
-  const unreachable = await new Colony({ url: "http://127.0.0.1:1", timeoutMs: 500 }).validate(trail);
+  assert.equal((await new Colony({ url, retryDelaysMs: [1] }).validate(trail)).valid, null);
+  const unreachable = await new Colony({ url: "http://127.0.0.1:1", timeoutMs: 500, retryDelaysMs: [1] }).validate(trail);
   assert.equal(unreachable.valid, null);
 });

@@ -25,6 +25,10 @@
 	handle @api {
 		header X-Robots-Tag "noindex, nofollow"
 		reverse_proxy myrmo-gateway:8080 {
+			# While a deploy recreates the gateway, hold the request and keep trying for a few seconds
+			# instead of answering 502 at once: the restart then costs a short wait, not an error.
+			lb_try_duration 20s
+			lb_try_interval 500ms
 			# The gateway rate-limits on the first X-Forwarded-For entry: make it the real client,
 			# never a value the caller sent.
 			header_up X-Forwarded-For {client_ip}
@@ -35,6 +39,8 @@
 	handle /mcp {
 		header X-Robots-Tag "noindex, nofollow"
 		reverse_proxy myrmo-mcp:3333 {
+			lb_try_duration 20s
+			lb_try_interval 500ms
 			header_up X-Forwarded-For {client_ip}
 		}
 	}
@@ -47,7 +53,10 @@ myrmo.dev {
 
 	# Website, colony view and docs
 	handle {
-		reverse_proxy myrmo-web:80
+		reverse_proxy myrmo-web:80 {
+			lb_try_duration 20s
+			lb_try_interval 500ms
+		}
 	}
 }
 

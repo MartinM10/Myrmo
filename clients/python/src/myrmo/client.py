@@ -11,6 +11,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import random
 import time
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Sequence, Union
@@ -25,6 +26,9 @@ from .redact import Report, redact_text, redact_value
 #: The public colony. Override with MYRMO_URL or the `url` argument.
 DEFAULT_URL = "https://myrmo.dev"
 SDK_VERSION = "0.6.0"  # x-release-please-version
+#: What a colony that is restarting or overloaded answers with.
+UNAVAILABLE = (502, 503, 504)
+DEFAULT_RETRY_DELAYS = (0.5, 1.5, 3.0)
 OUTCOMES = ("worked", "partially_worked", "failed", "not_applicable")
 
 
@@ -101,10 +105,17 @@ class _Base:
         headers: Optional[Dict[str, str]] = None,
         cache_ttl: float = 60.0,
         model: Optional[str] = None,
+        retries: int = 3,
+        retry_delays: Sequence[float] = DEFAULT_RETRY_DELAYS,
     ):
         """`agent_id` is created by itself on first use and kept in ~/.myrmo/config.json; pass False to send
         none (a server forwarding its callers' own header). `model` (default MYRMO_AGENT_MODEL) is the model
-        this client runs for, sent as X-Myrmo-Model for aggregate counters."""
+        this client runs for, sent as X-Myrmo-Model for aggregate counters. `retries` is how many times a read (a
+        lookup or a search) is tried again when the colony answers 502, 503 or 504 or refuses the connection, which
+        is what a restart looks like from outside (default 3, 0 disables); publishing and reporting are never
+        repeated. `retry_delays` are the pauses in seconds, with a little jitter."""
+        self.retries = max(0, retries)
+        self.retry_delays = tuple(retry_delays) or DEFAULT_RETRY_DELAYS
         self.url = (url or _env("MYRMO_URL") or DEFAULT_URL).rstrip("/")
         #: "off", "ask" or "auto"; `publish_source` says where it came from. "default" means nobody
         #: has chosen yet, so nothing is published (see `python -m myrmo config`).
@@ -146,12 +157,17 @@ class _Base:
         self._cache[key] = (time.monotonic(), value)
 
     # -- request building ----------------------------------------------------------------
+    def _pause(self, attempt: int) -> float:
+        return self.retry_delays[min(attempt, len(self.retry_delays) - 1)] * (1 + random.random() * 0.25)
+
     @staticmethod
     def _check(res: httpx.Response) -> Dict[str, Any]:
         try:
             data = res.json()
         except json.JSONDecodeError:
             data = {}
+        if res.status_code in UNAVAILABLE:
+            raise MyrmoError(res.status_code, "unavailable", "The Myrmo colony is temporarily unavailable (HTTP %d). It is probably restarting: try again in a few seconds." % res.status_code)
         if res.status_code >= 400 and res.status_code != 404:
             err = (data or {}).get("error", {})
             raise MyrmoError(res.status_code, err.get("code", "http_error"), err.get("message", res.reason_phrase), err.get("details"))
@@ -214,12 +230,30 @@ class Colony(_Base):
     def __exit__(self, *exc):
         self.close()
 
+    def _read(self, method: str, url: str, **kwargs) -> httpx.Response:
+        """A call that may be repeated without harm (a lookup, a search, a check): tried again while the colony is briefly unavailable."""
+        for attempt in range(self.retries + 1):
+            last = attempt >= self.retries
+            try:
+                res = self._http.request(method, url, **kwargs)
+            except (httpx.ConnectError, httpx.RemoteProtocolError, httpx.ReadError):
+                # A refused or reset connection is what a restart looks like. A timeout is not retried.
+                if last:
+                    raise
+                time.sleep(self._pause(attempt))
+                continue
+            if res.status_code in UNAVAILABLE and not last:
+                time.sleep(self._pause(attempt))
+                continue
+            return res
+        raise AssertionError("unreachable")
+
     def lookup(self, fp: str, model: Optional[str] = None) -> Optional[SearchResult]:
         """Trails for a fingerprint, or None when the colony has none."""
         cached = self._cached(fp)
         if cached is not ...:
             return cached
-        res = self._http.get(f"/v1/trails/by-fingerprint/{fp}", headers=_model_header(model))
+        res = self._read("GET", f"/v1/trails/by-fingerprint/{fp}", headers=_model_header(model))
         data = self._check(res)
         value = None if res.status_code == 404 else SearchResult(data["fingerprint"], _hits(data["results"]), data["notice"], "fingerprint", data)
         self._remember(fp, value)
@@ -249,7 +283,7 @@ class Colony(_Base):
         cached = self._cached(key)
         if cached is not ... and cached is not None:
             return cached
-        data = self._check(self._http.post("/v1/search", json=body, headers=_model_header(model)))
+        data = self._check(self._read("POST", "/v1/search", json=body, headers=_model_header(model)))
         value = SearchResult(data["fingerprint"], _hits(data["results"]), data["notice"], "search", data)
         self._remember(key, value)
         return value
@@ -270,7 +304,7 @@ class Colony(_Base):
         or `{"valid": None, "reason": ...}` when the colony cannot say (unreachable, or an older one)."""
         redacted, _ = self.preview(trail)
         try:
-            res = self._http.post("/v1/validate", json=redacted)
+            res = self._read("POST", "/v1/validate", json=redacted)
         except httpx.HTTPError as exc:
             return {"valid": None, "reason": str(exc)}
         if res.status_code == 404:
@@ -303,12 +337,12 @@ class Colony(_Base):
 
     def draft(self, draft_id: str) -> Optional[Dict[str, Any]]:
         """State of a draft (`pending`, `published` or `discarded`), or None when it expired."""
-        res = self._http.get(f"/v1/drafts/{draft_id}")
+        res = self._read("GET", f"/v1/drafts/{draft_id}")
         data = self._check(res)
         return None if res.status_code == 404 else data
 
     def trail(self, trail_id: str) -> Optional[Dict[str, Any]]:
-        res = self._http.get(f"/v1/trails/{trail_id}")
+        res = self._read("GET", f"/v1/trails/{trail_id}")
         data = self._check(res)
         return None if res.status_code == 404 else data
 
@@ -345,11 +379,28 @@ class AsyncColony(_Base):
     async def __aexit__(self, *exc):
         await self.aclose()
 
+    async def _read(self, method: str, url: str, **kwargs) -> httpx.Response:
+        """Like Colony._read: a call that may be repeated without harm, tried again while the colony is briefly unavailable."""
+        for attempt in range(self.retries + 1):
+            last = attempt >= self.retries
+            try:
+                res = await self._http.request(method, url, **kwargs)
+            except (httpx.ConnectError, httpx.RemoteProtocolError, httpx.ReadError):
+                if last:
+                    raise
+                await asyncio.sleep(self._pause(attempt))
+                continue
+            if res.status_code in UNAVAILABLE and not last:
+                await asyncio.sleep(self._pause(attempt))
+                continue
+            return res
+        raise AssertionError("unreachable")
+
     async def lookup(self, fp: str, model: Optional[str] = None) -> Optional[SearchResult]:
         cached = self._cached(fp)
         if cached is not ...:
             return cached
-        res = await self._http.get(f"/v1/trails/by-fingerprint/{fp}", headers=_model_header(model))
+        res = await self._read("GET", f"/v1/trails/by-fingerprint/{fp}", headers=_model_header(model))
         data = self._check(res)
         value = None if res.status_code == 404 else SearchResult(data["fingerprint"], _hits(data["results"]), data["notice"], "fingerprint", data)
         self._remember(fp, value)
@@ -367,7 +418,7 @@ class AsyncColony(_Base):
         cached = self._cached(key)
         if cached is not ... and cached is not None:
             return cached
-        data = self._check(await self._http.post("/v1/search", json=body, headers=_model_header(model)))
+        data = self._check(await self._read("POST", "/v1/search", json=body, headers=_model_header(model)))
         value = SearchResult(data["fingerprint"], _hits(data["results"]), data["notice"], "search", data)
         self._remember(key, value)
         return value
@@ -393,12 +444,12 @@ class AsyncColony(_Base):
         return _draft_result(self._check(await self._http.post("/v1/drafts", json=redacted)), report)
 
     async def draft(self, draft_id: str) -> Optional[Dict[str, Any]]:
-        res = await self._http.get(f"/v1/drafts/{draft_id}")
+        res = await self._read("GET", f"/v1/drafts/{draft_id}")
         data = self._check(res)
         return None if res.status_code == 404 else data
 
     async def trail(self, trail_id: str) -> Optional[Dict[str, Any]]:
-        res = await self._http.get(f"/v1/trails/{trail_id}")
+        res = await self._read("GET", f"/v1/trails/{trail_id}")
         data = self._check(res)
         return None if res.status_code == 404 else data
 

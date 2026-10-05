@@ -31,8 +31,11 @@ The workflow then checks production from outside: `/healthz`, `/readyz`, the sit
 the docs, `/v1/stats` and the hosted MCP tool list.
 
 > [!NOTE]
-> Recreating a container takes a few seconds, so there is a short blip per deploy. It is not a
-> zero-downtime deployment. That needs more than one server.
+> Recreating a container takes a few seconds, so there is a short blip per deploy (about 10 to 20 seconds
+> for the gateway, which waits for the embedding service). It is not a zero-downtime deployment: that needs
+> more than one server. Two things keep the blip from reaching an agent as an error: the SDKs and the MCP
+> server repeat reads that get a 502, 503 or 504 ([API errors](../reference/api.md#errors)), and the reverse
+> proxy can hold requests while the gateway comes back (below).
 
 ## Why the deploy key is safe to keep in GitHub
 
@@ -112,6 +115,27 @@ git archive --format=tar HEAD | ssh -i deploy_key <user>@<host> "$(git rev-parse
 | You need to stop deploys | Disable the **Deploy** workflow in the Actions tab, or remove the key's line from `authorized_keys`. |
 
 The commit that is running is in `~/myrmo/.deployed-sha` on the server.
+
+## Riding out a deploy at the proxy
+
+By default Caddy answers `502` at once when the gateway container does not exist yet, which is the first seconds of
+every deploy. `deploy/Caddyfile.myrmo` therefore asks it to keep trying for a while, so a request waits instead of
+failing:
+
+```text
+reverse_proxy myrmo-gateway:8080 {
+	lb_try_duration 20s
+	lb_try_interval 500ms
+}
+```
+
+It is set on the gateway, the hosted MCP server and the website. Copy the same two lines into the live Caddyfile's
+`reverse_proxy` blocks and reload (`docker exec <proxy> caddy reload --config /etc/caddy/Caddyfile`). Without it
+nothing breaks: clients repeat their reads, but a publish or a report that lands in the blip is refused with a 502.
+
+To see what a deploy looked like from the proxy, read its log around the time in `~/myrmo-deploys.log`: `lookup
+myrmo-gateway ... server misbehaving` and `connection refused` mean the gateway was being recreated, and the last
+line `deploy <sha>: healthy` says when it was back.
 
 ## Behind Cloudflare
 

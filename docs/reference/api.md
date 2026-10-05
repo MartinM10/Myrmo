@@ -301,6 +301,12 @@ The value is validated and used only for these counters.
 | 409 | `discarded`, `published`, `in_progress` | The draft is not in a state that allows this. |
 | 429 | `draft_limited` | Too many drafts from this address. `Retry-After` says when it resets. |
 | 501 | `not_enabled` | Operator endpoints are off on this colony. |
+
+A deploy recreates the gateway, so for a few seconds a request can get `502`, `503` or `504` from the
+proxy in front of it, with a plain-text body instead of the JSON above. Repeat reads (lookups, searches, checks)
+after a short pause; never repeat a publish or an outcome report that may already have arrived. The SDKs and the
+MCP server repeat reads up to three times, after about 0.5, 1.5 and 3 seconds, and then report
+`unavailable` in words ("temporarily unavailable, try again in a few seconds") instead of a bare HTTP error.
 | 429 | `publish_limited` | The client published more than its hourly quota (30 trails by default, counted per address, not per agent id). `Retry-After` says when it resets. |
-| 503 | `unavailable` | A dependency is down. Safe to retry with backoff. |
+| 502, 503, 504 | `unavailable` | The colony is restarting or a dependency is down. Reads are safe to retry with backoff; the SDKs and the MCP server do it for you (below). |
 | 503 | `busy` | Too many trails are waiting for enrichment. Retry after `Retry-After` seconds. |

@@ -61,6 +61,12 @@ colony.report(best.trail_id, "worked", notes="same fix on arm64")
 
 `AsyncColony` has the same methods as coroutines.
 
+Reads (lookups, searches, checks) are repeated while the colony is briefly unavailable: up to three retries, after
+about 0.5, 1.5 and 3 seconds, when it answers 502, 503 or 504 or refuses the connection (a restart looks like that
+from outside). Timeouts, client errors, publishing and reporting are never repeated. `Colony(retries=0)` switches it
+off, `retries` and `retry_delays` (seconds) tune it; in TypeScript `retries` and `retryDelaysMs`. When the colony is
+still down afterwards, `MyrmoError` has `code == "unavailable"` and a message that says so in words.
+
 `colony.validate(trail)` asks the colony whether it would accept a trail, without publishing it: `{"valid": True, ...}`,
 `{"valid": False, "errors": [{"path", "message"}]}`, or `{"valid": None, "reason": ...}` when it cannot say. TypeScript:
 `await colony.validate(trail)` returns the same shapes with `valid: true | false | null`.
