@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.5.0](https://github.com/MartinM10/Myrmo/compare/sdk-python-v0.4.0...sdk-python-v0.5.0) (2026-10-05)
+
+
+### Features
+
+* **mcp:** one command sets everything up, with settings you can change ([7ad2bc6](https://github.com/MartinM10/Myrmo/commit/7ad2bc6a41074c90a47489dc79f6f62b1f7ed96e))
+* **sdk-python:** the same settings as the TypeScript client ([5ddd205](https://github.com/MartinM10/Myrmo/commit/5ddd205c8a7c1c561232a1ed7e6aa2e539026fe2))
+
 ## [0.4.0](https://github.com/MartinM10/Myrmo/compare/sdk-python-v0.3.0...sdk-python-v0.4.0) (2026-10-05)
 
 

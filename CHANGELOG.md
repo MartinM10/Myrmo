@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.7.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.6.0...platform-v0.7.0) (2026-10-05)
+
+
+### Features
+
+* **mcp:** one command sets everything up, with settings you can change ([7ad2bc6](https://github.com/MartinM10/Myrmo/commit/7ad2bc6a41074c90a47489dc79f6f62b1f7ed96e))
+* **plugin:** the failure hook reads the settings file; the skill carries the privacy rules ([2227fb4](https://github.com/MartinM10/Myrmo/commit/2227fb4acabdcff74960574ae5ee5ea569bba297))
+
+
+### Documentation
+
+* install is one command, and every default is listed ([f9c9ffa](https://github.com/MartinM10/Myrmo/commit/f9c9ffa0b25c0d8eb9f7c9c9399de04720d0371c))
+
 ## [0.6.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.5.0...platform-v0.6.0) (2026-10-05)
 
 
