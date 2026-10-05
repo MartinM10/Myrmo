@@ -18,7 +18,7 @@ npx myrmo-mcp init
 ```
 
 Sets Myrmo up on this machine and asks nothing: it installs the Claude Code plugin (the MCP server, a skill
-and a hook that reminds the agent to search when a command fails), registers the server with Cursor, Windsurf,
+and a hook that reminds the agent to search when something fails and to publish a fix the colony lacked), registers the server with Cursor, Windsurf,
 Gemini CLI and Claude Desktop where they are installed, and writes the usage rules where Gemini CLI and Windsurf
 read global instructions. `--dry-run` shows what it would do first. It also works on a remote machine over
 VS Code Remote-SSH: it finds the `claude` command the Claude Code extension carries.
@@ -40,9 +40,10 @@ claude plugin marketplace add MartinM10/Myrmo
 claude plugin install myrmo@myrmo
 ```
 
-The hook only adds one short note to the model's context. It sends nothing anywhere, stays quiet for
-probes such as `grep` or `diff`, for interrupted commands and for repeated failures (at most one note
-every 45 seconds and ten per session), and `npx myrmo-mcp config hook off` switches it off. Nobody publishes
+The hook only adds one short note to the model's context, at three moments: a command fails (or hides an error
+behind exit 0), and a failed command now works while Myrmo had no trail for it, which is when it reminds the agent to
+publish. It sends nothing anywhere, stays quiet for probes such as `grep` or `diff`, for interrupted commands and for
+repeated errors, and `npx myrmo-mcp config hook failures` or `off` quietens or switches it off. Nobody publishes
 anything without being asked, as with the local server below.
 
 With only the MCP server (not together with the plugin), hosted and nothing to install:
