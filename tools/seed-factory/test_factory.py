@@ -75,7 +75,8 @@ def test_container_paths_are_left_alone_because_they_are_not_private():
 def test_what_belongs_to_the_host_is_replaced():
     assert factory.clean(f"error in {factory.ROOT}/tools/x.py") == "error in <project>/tools/x.py"
     if factory.HOST_USER:
-        assert factory.clean(f"/home/{factory.HOST_USER}/x") == "/home/<user>/x"
+        assert factory.clean(f"{factory.Path.home()}/x") == "<home>/x"
+        assert factory.clean(f"/mnt/{factory.HOST_USER}/x") == "/mnt/<user>/x"
         assert factory.clean(f"{factory.HOST_USER}@laptop") == "<user>@laptop"
         # The bare word is not a path or an address: a user called "ubuntu" must not rewrite "ubuntu:24.04".
         assert factory.clean(f"image {factory.HOST_USER}:24.04") == f"image {factory.HOST_USER}:24.04"

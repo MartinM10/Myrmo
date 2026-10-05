@@ -28,7 +28,16 @@ BATCH = "pilot-001"
 # The tasks run in disposable containers, so paths like /tmp/app are not private and the commands of a
 # trail must stay runnable. Only what belongs to this host is replaced (the checkout, the home directory
 # and the account name); the colony redacts the rest again on arrival.
-HOST_PRIVATE = [p for p in {str(ROOT), str(Path.home()), str(Path.home()).replace("\\", "/")} if len(p) > 3]
+def _both_slashes(path: Path) -> set[str]:
+    return {str(path), str(path).replace("\\", "/")}
+
+
+# (text, replacement), longest first: the checkout usually lives inside the home directory.
+HOST_PRIVATE = sorted(
+    [(p, "<project>") for p in _both_slashes(ROOT) if len(p) > 3] + [(p, "<home>") for p in _both_slashes(Path.home()) if len(p) > 3],
+    key=lambda pair: len(pair[0]),
+    reverse=True,
+)
 HOST_USER = getpass.getuser() if len(getpass.getuser()) >= 4 else ""
 MIN_ERROR_MESSAGE = 20
 # What Docker prints while it fetches an image. It is not output of the task and must not become its error.
@@ -71,8 +80,8 @@ def run(task: Task, command: str) -> dict:
 
 def clean(value):
     if isinstance(value, str):
-        for private in sorted(HOST_PRIVATE, key=len, reverse=True):
-            value = value.replace(private, "<project>")
+        for private, label in HOST_PRIVATE:
+            value = value.replace(private, label)
         if HOST_USER:
             # Only where the name is part of a path or an address, never the bare word (a user called "ubuntu").
             value = re.sub(rf"(?<=[/\\]){re.escape(HOST_USER)}\b|\b{re.escape(HOST_USER)}(?=@)", "<user>", value)
