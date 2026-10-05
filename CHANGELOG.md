@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.4.1](https://github.com/MartinM10/Myrmo/compare/platform-v0.4.0...platform-v0.4.1) (2026-10-05)
+
+
+### Bug fixes
+
+* **seed-factory:** name the home directory and the checkout separately when redacting ([a3d3b9e](https://github.com/MartinM10/Myrmo/commit/a3d3b9e0ad1e35e7b3fa6d1f5f7c07b12d3fc7a4))
+* **seed-factory:** publish only trails worth finding, with runnable commands and real output ([5bda442](https://github.com/MartinM10/Myrmo/commit/5bda4424bb5ef7987ae5e9cab9d813f695c476b2))
+* **seed-factory:** publish only trails worth finding, with runnable commands and real output ([85a744d](https://github.com/MartinM10/Myrmo/commit/85a744db96b4f6491ad2822c8e343661abb06022))
+
 ## [0.4.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.3.0...platform-v0.4.0) (2026-10-04)
 
 
