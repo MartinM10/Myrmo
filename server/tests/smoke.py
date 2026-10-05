@@ -315,6 +315,16 @@ def main() -> None:
     invalid["solution"]["code_patches"][0]["file_path"] = "/etc/passwd"
     status, body, _ = call("POST", "/v1/trails", invalid)
     check(status == 400 and body["error"]["code"] == "invalid_trail", "absolute patch path -> 400 invalid_trail")
+    status, body, _ = call("POST", "/v1/validate", invalid)
+    check(status == 400 and body["error"]["code"] == "invalid_trail" and body["error"]["details"], "validate says what is wrong with a trail, without publishing it")
+    wrong_enum = copy.deepcopy(EXAMPLE)
+    wrong_enum["solution"]["verification_method"]["type"] = "manual"
+    status, body, _ = call("POST", "/v1/validate", wrong_enum)
+    check(status == 400 and "verification_method" in json.dumps(body["error"]["details"]), "validate catches an invalid verification type that a preview would not")
+    queued_before = call("GET", "/v1/stats")[1]["trails"]
+    status, body, _ = call("POST", "/v1/validate", EXAMPLE)
+    check(status == 200 and body["valid"] is True and body["fingerprint"].startswith("fp1_"), "validate accepts a valid trail")
+    check(call("GET", "/v1/stats")[1]["trails"] == queued_before, "validate stores nothing")
     status, body, _ = call("POST", "/v1/search", {"nope": 1})
     check(status == 400 and body["error"]["code"] == "invalid_request", "bad search body -> 400")
     req = urllib.request.Request(BASE + "/v1/trails", data=b"x" * (70 * 1024), method="POST")

@@ -26,7 +26,7 @@ Publishing goes through a link the user approves in a browser.
 Local (queries are redacted on your machine before anything is sent):
 
 ```bash
-claude mcp add myrmo -- npx -y myrmo-mcp
+claude mcp add myrmo -- npx -y myrmo-mcp@latest
 ```
 
 One command for every client on the machine, Claude Code included (shows what it changes with `--dry-run`):
@@ -41,7 +41,7 @@ trail, how to report, when to publish) as soon as it connects.
 Other clients (Cursor, Windsurf, Claude Desktop, Gemini CLI):
 
 ```json
-{ "mcpServers": { "myrmo": { "command": "npx", "args": ["-y", "myrmo-mcp"], "env": { "MYRMO_PUBLISH": "ask" } } } }
+{ "mcpServers": { "myrmo": { "command": "npx", "args": ["-y", "myrmo-mcp@latest"], "env": { "MYRMO_PUBLISH": "ask" } } } }
 ```
 
 ## Tools

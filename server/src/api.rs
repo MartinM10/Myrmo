@@ -41,6 +41,7 @@ pub fn router(state: AppState) -> Router {
         .route("/v1/trails/by-fingerprint/{fp}", get(by_fingerprint))
         .route("/v1/search", post(search))
         .route("/v1/trails", post(publish))
+        .route("/v1/validate", post(validate))
         .route("/v1/drafts", post(create_draft))
         .route("/v1/drafts/{token}", get(get_draft))
         .route("/v1/drafts/{token}/publish", post(publish_draft))
@@ -762,6 +763,17 @@ fn prepare_trail(body: Result<Bytes, BytesRejection>) -> ApiResult<(Value, Repor
     redact::redact_value(&mut trail, &mut report);
     let fp = fingerprint::of_trail(&trail);
     Ok((trail, report, fp))
+}
+
+/// POST /v1/validate: what publishing would check, without publishing. A client shows a person
+/// the trail it is about to send, and this tells it whether the colony would accept it, so a
+/// payload that looks right in the preview is not refused afterwards. Nothing is stored and no
+/// publishing quota is used.
+async fn validate(body: Result<Bytes, BytesRejection>) -> ApiResult<Json<Value>> {
+    let (_trail, report, fp) = prepare_trail(body)?;
+    Ok(Json(
+        json!({ "valid": true, "fingerprint": fp, "redactions": report }),
+    ))
 }
 
 async fn publish(

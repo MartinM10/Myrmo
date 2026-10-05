@@ -83,6 +83,8 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npm test
+      - name: myrmo-mcp starts with the lowest myrmo it accepts
+        run: node scripts/check-sdk-floor.mjs
 
   plugin:
     name: Claude Code plugin

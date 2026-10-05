@@ -81,7 +81,16 @@ export function describeVerdict(status: string | undefined, id: string, reasons:
 
 const text = (t: string, isError = false) => ({ content: [{ type: "text" as const, text: t }], ...(isError ? { isError: true } : {}) });
 
+/** `- /path: what is wrong`, one per line, so the agent can fix exactly that. */
+export function describeIssues(errors: { path: string; message: string }[]): string {
+  return errors.slice(0, 12).map((e) => `- ${e.path || "(whole trail)"}: ${e.message}`).join("\n");
+}
+
 function errorText(err: unknown): string {
+  if (err instanceof MyrmoError && err.code === "invalid_trail" && Array.isArray(err.details)) {
+    const issues = (err.details as { path?: string; message?: string }[]).map((d) => ({ path: String(d.path ?? ""), message: String(d.message ?? "") }));
+    return `The colony would not accept this trail (invalid_trail). Fix these and try again:\n${describeIssues(issues)}`;
+  }
   if (err instanceof MyrmoError) {
     const details = err.details ? `\nDetails: ${JSON.stringify(err.details).slice(0, 1500)}` : "";
     return `Myrmo returned ${err.status} ${err.code}: ${err.message}${details}`;
@@ -141,6 +150,27 @@ async function askUser(server: McpServer, preview: string): Promise<"approved" |
     return answer.action === "accept" && answer.content?.publish === true ? "approved" : "declined";
   } catch {
     return "declined";
+  }
+}
+
+/**
+ * Hold a trail until a person approves it in a browser: the colony keeps it for half an hour under an
+ * unguessable link and nothing is published before they press Publish. For a server that cannot ask
+ * its user (the hosted one, or a client without elicitation), the model cannot approve for them.
+ */
+async function heldForApproval(opts: ServerOptions, trail: Trail, why = ""): Promise<ReturnType<typeof text>> {
+  try {
+    const draft = await opts.colony.createDraft(trail);
+    const removed = Object.entries(draft.redactions).map(([k, v]) => `${v} ${k}`).join(", ") || "nothing";
+    const risk = draft.risk.level === "low" ? "" : ` Some commands carry ${draft.risk.level} risk flags; the page shows them.`;
+    return text(
+      `${why ? `${why} ` : ""}Draft created. NOTHING IS PUBLISHED YET.\n` +
+        `Ask the user to open this link, read the exact payload and press Publish (valid ${Math.round(draft.expiresIn / 60)} minutes):\n${draft.approveUrl}\n` +
+        `Redacted before sending: ${removed}.${risk} You cannot approve it for them. ` +
+        `Afterwards, myrmo_publish_status with id ${draft.draftId} tells you what the colony decided.`,
+    );
+  } catch (err) {
+    return text(errorText(err), true);
   }
 }
 
@@ -255,35 +285,27 @@ export function createServer(opts: ServerOptions): McpServer {
       const removed = Object.entries(redactions).map(([k, v]) => `${v} ${k}`).join(", ") || "nothing";
       const preview = `Payload that would be sent (redacted locally: ${removed}):\n${JSON.stringify(redacted, null, 2)}`;
 
-      if (args.preview) return text(preview);
-      if (opts.hosted) {
-        // This server is stateless and cannot ask the user, so the user approves through a link.
-        try {
-          const draft = await opts.colony.createDraft(trail);
-          const removed = Object.entries(draft.redactions).map(([k, v]) => `${v} ${k}`).join(", ") || "nothing";
-          const risk = draft.risk.level === "low" ? "" : ` Some commands carry ${draft.risk.level} risk flags; the page shows them.`;
-          return text(
-            `Draft created. NOTHING IS PUBLISHED YET.\n` +
-              `Ask the user to open this link, read the exact payload and press Publish (valid ${Math.round(draft.expiresIn / 60)} minutes):\n${draft.approveUrl}\n` +
-              `Redacted before sending: ${removed}.${risk} You cannot approve it for them. ` +
-              `Afterwards, myrmo_publish_status with id ${draft.draftId} tells you what the colony decided.`,
-          );
-        } catch (err) {
-          return text(errorText(err), true);
-        }
+      // What publishing would check first, so that a payload that looks right is one the colony takes.
+      const check = await opts.colony.validate(trail);
+      if (args.preview) {
+        const verdict =
+          check.valid === true
+            ? "The colony accepts this trail."
+            : check.valid === false
+              ? `The colony would REJECT this trail (invalid_trail). Fix these before publishing:\n${describeIssues(check.errors)}`
+              : `Not checked against the colony (${check.reason}); publishing will report any problem.`;
+        return text(`${preview}\n\n${verdict}`);
       }
+      if (check.valid === false) {
+        return text(`Not published: the colony would reject this trail (invalid_trail), so the user was not asked. Fix these and try again:\n${describeIssues(check.errors)}`);
+      }
+      if (opts.hosted) return heldForApproval(opts, trail);  // stateless: it cannot ask the user, so they approve through a link
       let approvedByChoice = false;
       if (opts.publishMode === "off" && opts.publishChosen === false) {
         const chosen = await askConsent(server, preview);
         if (chosen === "unsupported") {
-          return text(
-            `${preview}
-
-Nothing was sent: the user has not yet chosen whether agents may publish for them, and this MCP client cannot ask them. ` +
-              `Tell the user that they can choose with one of: npx myrmo-mcp config publish auto (publish without asking), ` +
-              `npx myrmo-mcp config publish ask (ask each time), npx myrmo-mcp config publish off (never). ` +
-              `Do not run it yourself: it has to be their decision.`,
-          );
+          // This client cannot ask, so the user approves through a link instead. Nothing is sent until they do.
+          return heldForApproval(opts, trail, "This MCP client cannot ask the user a question, so the trail is held for their approval by link.");
         }
         if (chosen === "declined") return text("Not published: the user did not choose. Nothing was sent.");
         writeConfig({ publish: chosen });
@@ -301,9 +323,7 @@ Nothing was sent: the user has not yet chosen whether agents may publish for the
         // The approval comes from the user through the MCP client, never from a tool argument.
         const decision = await askUser(server, preview);
         if (decision === "unsupported") {
-          return text(
-            `${preview}\n\nNothing was sent. This MCP client cannot ask the user for approval, and approval cannot come from the model. The user can set MYRMO_PUBLISH=auto to publish without asking, or publish through an SDK.`,
-          );
+          return heldForApproval(opts, trail, "This MCP client cannot ask the user a question, so the trail is held for their approval by link.");
         }
         if (decision === "declined") return text("Not published: the user did not approve the payload.");
       }

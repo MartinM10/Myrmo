@@ -9,7 +9,7 @@ import { agentIdentity, publishChoice } from "./config.js";
 import { detectEnvironment, parsePackage } from "./environment.js";
 import { fingerprint, guessErrorType } from "./fingerprint.js";
 import { redactText, redactValue, type RedactionReport } from "./redact.js";
-import type { AgentInfo, DraftResult, DraftState, Environment, Hit, Outcome, PublishMode, PublishResult, SearchQuery, SearchResult, Trail } from "./types.js";
+import type { AgentInfo, DraftResult, DraftState, Environment, Hit, Outcome, PublishMode, PublishResult, SearchQuery, SearchResult, Trail, Validation } from "./types.js";
 
 /** The public colony. Override with MYRMO_URL or the `url` option. */
 export const DEFAULT_URL = "https://myrmo.dev";
@@ -205,6 +205,26 @@ export class Colony {
   preview(trail: Trail): { trail: Trail; redactions: RedactionReport } {
     const redactions: RedactionReport = {};
     return { trail: redactValue(trail, redactions), redactions };
+  }
+
+  /**
+   * Ask the colony whether it would accept this trail, without publishing it: the schema check publishing
+   * runs first. Nothing is stored and no publishing quota is used. A person who approves a preview should
+   * be approving something the colony will take.
+   */
+  async validate(trail: Trail): Promise<Validation> {
+    const { trail: redacted } = this.preview(trail);
+    try {
+      const { status, data } = await this.request<{ valid: boolean; fingerprint: string; redactions: Record<string, number> }>("POST", "/v1/validate", redacted);
+      if (status === 404) return { valid: null, reason: "this colony does not offer validation" };
+      return { valid: true, fingerprint: data.fingerprint, redactions: data.redactions ?? {} };
+    } catch (err) {
+      if (err instanceof MyrmoError && err.code === "invalid_trail") {
+        const errors = Array.isArray(err.details) ? (err.details as { path?: string; message?: string }[]).map((d) => ({ path: String(d.path ?? ""), message: String(d.message ?? "") })) : [];
+        return { valid: false, errors };
+      }
+      return { valid: null, reason: err instanceof Error ? err.message : String(err) };
+    }
   }
 
   /** Publish a trail. Redacts locally first; the colony redacts again. */

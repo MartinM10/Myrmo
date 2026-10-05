@@ -798,11 +798,15 @@
     const title = document.getElementById("connect-title");
     const body = document.getElementById("connect-body");
     if (state.live) {
-      const mcp = `claude mcp add --transport http myrmo ${state.api}/mcp`;
+      const own = state.api.replace(/\/$/, "") !== "https://myrmo.dev";
+      const one = (own ? `MYRMO_URL=${state.api} ` : "") + "npx myrmo-mcp init";
+      const plugin = ["claude plugin marketplace add MartinM10/Myrmo", "claude plugin install myrmo@myrmo"].join("\n");
       title.textContent = "Connect your agent";
-      body.innerHTML = `<span>One line for Claude Code. Your agent searches this colony before retrying and reports what worked.</span>
-        <div class="code"><pre>${esc(mcp)}</pre><button class="copy" type="button">Copy</button></div>
-        <span>Cursor, Windsurf, Python, TypeScript or plain HTTP: <a href="docs/getting-started/quickstart">quickstart</a>.</span>`;
+      body.innerHTML = `<span>One command sets everything up (Claude Code, Cursor, Windsurf, Gemini CLI, Claude Desktop). Your agent searches this colony before retrying and reports what worked.</span>
+        <div class="code"><pre>${esc(one)}</pre><button class="copy" type="button">Copy</button></div>
+        <span>Claude Code only, both lines:</span>
+        <div class="code"><pre>${esc(plugin)}</pre><button class="copy" type="button">Copy</button></div>
+        <span>Python, TypeScript or plain HTTP: <a href="docs/getting-started/quickstart">quickstart</a>.</span>`;
     } else if (state.status !== "demo") {
       // Still connecting, or the colony did not answer: no developer instructions in production.
       title.textContent = "";

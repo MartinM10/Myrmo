@@ -74,6 +74,13 @@ before(async () => {
     if (req.method === "GET" && req.url.startsWith("/v1/trails/by-fingerprint/")) return send(404, { error: { code: "not_found", message: "none" } });
     if (req.method === "POST" && req.url === "/v1/search") return send(200, { fingerprint: "fp1_0000000000000000", results: [], notice: "untrusted" });
     if (req.method === "POST" && req.url === `/v1/trails/${TRAIL_ID}/outcomes`) return send(202, { trail_id: TRAIL_ID, counted: true, strength: 0.91 });
+    if (req.method === "POST" && req.url === "/v1/validate") {
+      const sent = JSON.parse(body || "{}");
+      if (sent.solution?.verification_method?.type === "manual") {
+        return send(400, { error: { code: "invalid_trail", message: "The trail does not validate against protocol v1.", details: [{ path: "/solution/verification_method/type", message: '"manual" is not one of ["test_suite","command_exit_zero"]' }] } });
+      }
+      return send(200, { valid: true, fingerprint: KNOWN_FP, redactions: {} });
+    }
     if (req.method === "POST" && req.url === "/v1/drafts") return send(201, { draft_id: PENDING, approve_url: `http://colony.example/approve.html#${PENDING}`, expires_in: 1800, fingerprint: KNOWN_FP, redactions: { api_key: 1 }, risk: { level: "low", flags: [] } });
     if (req.method === "GET" && req.url === `/v1/drafts/${PENDING}`) return send(200, { draft_id: PENDING, state: "pending", expires_in: 600 });
     if (req.method === "GET" && req.url === `/v1/drafts/${PUBLISHED}`) return send(200, { draft_id: PUBLISHED, state: "published", trail_id: NEW_TRAIL, trail_status: "rejected", reasons: ["prompt_injection"] });
@@ -212,13 +219,18 @@ test("nothing is sent when the user declines, cancels or says no", async () => {
   }
 });
 
-test("the model cannot approve on the user's behalf", async () => {
-  // A client that cannot ask the user: a model-supplied `confirmed: true` must not publish.
+test("the model cannot approve on the user's behalf: a client that cannot ask gets an approval link instead", async () => {
+  // A model-supplied `confirmed: true` must not publish. The user approves through a link, or not at all.
   const client = await stdioClient("ask");
   const before = published();
+  const draftsBefore = requests.filter((r) => r.method === "POST" && r.url === "/v1/drafts").length;
   const out = textOf(await client.callTool({ name: "myrmo_publish", arguments: { trail, confirmed: true } }));
-  assert.match(out, /cannot ask the user for approval/);
-  assert.equal(published(), before);
+  assert.match(out, /cannot ask the user a question/);
+  assert.match(out, /NOTHING IS PUBLISHED YET/);
+  assert.match(out, new RegExp(`http://colony.example/approve.html#${PENDING}`));
+  assert.match(out, /You cannot approve it for them/);
+  assert.equal(published(), before, "nothing was published");
+  assert.equal(requests.filter((r) => r.method === "POST" && r.url === "/v1/drafts").length, draftsBefore + 1, "a draft is held for the user");
   await client.close();
 });
 
@@ -290,15 +302,40 @@ function freshConfig() {
 }
 const unchosen = (config) => ({ env: { MYRMO_PUBLISH: "", MYRMO_CONFIG: config } });
 
-test("with no choice made and a client that cannot ask, nothing is sent and the user is told how to choose", async () => {
+test("with no choice made and a client that cannot ask, the trail is held for approval by link and no choice is saved", async () => {
   const config = freshConfig();
   const client = await stdioClient("", unchosen(config));
   const before = published();
   const out = textOf(await client.callTool({ name: "myrmo_publish", arguments: { trail } }));
-  assert.match(out, /has not yet chosen/);
-  assert.match(out, /npx myrmo-mcp config publish auto/);
-  assert.match(out, /Do not run it yourself/);
+  assert.match(out, /NOTHING IS PUBLISHED YET/);
+  assert.match(out, new RegExp(`approve.html#${PENDING}`));
   assert.equal(published(), before);
+  assert.equal(JSON.parse(readFileSync(config, "utf8")).publish, undefined, "no publishing choice is written: choosing stays the user's");
+  await client.close();
+});
+
+test("a preview says whether the colony would accept the trail, and an invalid one is never put to the user", async () => {
+  let asked = 0;
+  const client = await stdioClient("ask", { answer: async () => (asked++, { action: "accept", content: { publish: true } }) });
+  const bad = structuredClone(trail);
+  bad.solution.verification_method.type = "manual";
+
+  const preview = textOf(await client.callTool({ name: "myrmo_publish", arguments: { trail: bad, preview: true } }));
+  assert.match(preview, /Payload that would be sent/);
+  assert.match(preview, /would REJECT this trail/);
+  assert.match(preview, /\/solution\/verification_method\/type/);
+
+  const good = textOf(await client.callTool({ name: "myrmo_publish", arguments: { trail, preview: true } }));
+  assert.match(good, /The colony accepts this trail/);
+  assert.doesNotMatch(good, /REJECT/);
+
+  const before = published();
+  const out = textOf(await client.callTool({ name: "myrmo_publish", arguments: { trail: bad } }));
+  assert.match(out, /Not published: the colony would reject this trail/);
+  assert.match(out, /the user was not asked/);
+  assert.match(out, /verification_method\/type/);
+  assert.equal(published(), before);
+  assert.equal(asked, 0, "the user is not asked to approve a payload the colony would refuse");
   await client.close();
 });
 
