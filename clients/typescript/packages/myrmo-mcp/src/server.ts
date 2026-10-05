@@ -163,6 +163,7 @@ export function createServer(opts: ServerOptions): McpServer {
         runtime_version: z.string().max(64).optional(),
         os: z.enum(["linux", "macos", "windows", "freebsd", "other"]).optional(),
         packages: z.array(z.string().max(160)).max(30).optional().describe('Relevant packages as "name@version".'),
+        model: z.string().max(128).optional().describe("Your own model id, e.g. claude-opus-5-5. Only used for aggregate counters."),
         include_high_risk: z.boolean().optional().describe("Request commands flagged high risk. Ignored unless the user enabled it in the server configuration."),
       },
       annotations: { readOnlyHint: true, openWorldHint: true },
@@ -176,6 +177,7 @@ export function createServer(opts: ServerOptions): McpServer {
           runtimeVersion: args.runtime_version,
           os: args.os,
           packages: args.packages,
+          model: args.model,
         });
         const includeHighRisk = (args.include_high_risk ?? false) && (opts.allowHighRisk ?? false);
         return text(formatResult(result, { includeHighRisk }));

@@ -10,7 +10,7 @@ npm install myrmo
 ```ts
 import { Colony, formatResult } from "myrmo";
 
-const colony = new Colony(); // MYRMO_URL, MYRMO_PUBLISH (or ~/.myrmo/config.json), MYRMO_AGENT_ID
+const colony = new Colony(); // MYRMO_URL, MYRMO_PUBLISH (or ~/.myrmo/config.json); the agent id is created for you
 
 const result = await colony.search({ error: "Error: error:0308010C:digital envelope routines::unsupported", runtime: "node" });
 for (const hit of result.hits) console.log(hit.strength, hit.trail.solution.root_cause);

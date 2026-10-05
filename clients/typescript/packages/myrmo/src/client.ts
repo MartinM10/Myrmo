@@ -5,7 +5,7 @@
 //   2. GET /v1/trails/by-fingerprint/{fp} (cacheable by any CDN; most traffic ends here)
 //   3. POST /v1/search (embedding + vector search; only for errors the colony has not fingerprinted)
 
-import { publishChoice } from "./config.js";
+import { agentIdentity, publishChoice } from "./config.js";
 import { detectEnvironment, parsePackage } from "./environment.js";
 import { fingerprint, guessErrorType } from "./fingerprint.js";
 import { redactText, redactValue, type RedactionReport } from "./redact.js";
@@ -18,8 +18,13 @@ export const SDK_VERSION = "0.3.0"; // x-release-please-version
 export interface ColonyOptions {
   url?: string;
   apiKey?: string;
-  /** Pseudonymous id, 8–64 chars of [A-Za-z0-9_-]. */
-  agentId?: string;
+  /**
+   * Pseudonymous id, 8–64 chars of [A-Za-z0-9_-]. By default one is created on first use and kept in
+   * `~/.myrmo/config.json`; `false` sends none (a server that forwards its callers' own header).
+   */
+  agentId?: string | false;
+  /** The model this client runs for; sent as X-Myrmo-Model for aggregate counters. Default: MYRMO_AGENT_MODEL. */
+  model?: string;
   publish?: PublishMode;
   timeoutMs?: number;
   /** Extra headers on every request, e.g. X-Forwarded-For from a trusted proxy. */
@@ -67,6 +72,7 @@ export class Colony {
   readonly publishSource: "option" | "env" | "file" | "default";
   private readonly apiKey?: string;
   private readonly agentId?: string;
+  private readonly model?: string;
   private readonly timeoutMs: number;
   private readonly headers: Record<string, string>;
   private readonly cacheTtlMs: number;
@@ -75,7 +81,9 @@ export class Colony {
   constructor(options: ColonyOptions = {}) {
     this.url = (options.url ?? env("MYRMO_URL") ?? DEFAULT_URL).replace(/\/+$/, "");
     this.apiKey = options.apiKey ?? env("MYRMO_API_KEY");
-    this.agentId = options.agentId ?? env("MYRMO_AGENT_ID");
+    this.agentId = agentIdentity(options.agentId).id;
+    const model = (options.model ?? env("MYRMO_AGENT_MODEL"))?.trim();
+    this.model = model && model.toLowerCase() !== "unknown" ? model : undefined;
     const choice = publishChoice(options.publish);
     this.publishMode = choice.mode;
     this.publishSource = choice.source;
@@ -84,11 +92,14 @@ export class Colony {
     this.cacheTtlMs = options.cacheTtlMs ?? 60_000;
   }
 
-  private async request<T>(method: string, path: string, body?: unknown): Promise<{ status: number; data: T }> {
+  private async request<T>(method: string, path: string, body?: unknown, extra?: Record<string, string>): Promise<{ status: number; data: T }> {
     const headers: Record<string, string> = { accept: "application/json", "user-agent": `myrmo-js/${SDK_VERSION}`, ...this.headers };
     if (body !== undefined) headers["content-type"] = "application/json";
     if (this.apiKey) headers.authorization = `Bearer ${this.apiKey}`;
-    if (this.agentId) headers["x-myrmo-agent"] = this.agentId;
+    // A header the caller passed (a hosted server forwarding its users' ids) wins over this client's own.
+    if (this.agentId && !Object.keys(headers).some((k) => k.toLowerCase() === "x-myrmo-agent")) headers["x-myrmo-agent"] = this.agentId;
+    if (this.model && !Object.keys(headers).some((k) => k.toLowerCase() === "x-myrmo-model")) headers["x-myrmo-model"] = this.model;
+    Object.assign(headers, extra);
     const res = await fetch(this.url + path, {
       method,
       headers,
@@ -120,12 +131,14 @@ export class Colony {
   }
 
   /** Trails for a fingerprint, or `null` when the colony has none. */
-  async lookup(fp: string): Promise<SearchResult | null> {
+  async lookup(fp: string, model?: string): Promise<SearchResult | null> {
     const hit = this.cached(fp);
     if (hit !== undefined) return hit;
     const { status, data } = await this.request<{ fingerprint: string; results: RawHit[]; notice: string }>(
       "GET",
       `/v1/trails/by-fingerprint/${encodeURIComponent(fp)}`,
+      undefined,
+      model ? { "x-myrmo-model": model } : undefined,
     );
     const value = status === 404 ? null : { fingerprint: data.fingerprint, hits: data.results.map(toHit), notice: data.notice, source: "fingerprint" as const };
     this.remember(fp, value);
@@ -138,7 +151,7 @@ export class Colony {
     const errorType = query.errorType ?? guessErrorType(error);
     const fp = fingerprint(query.runtime ?? "", errorType, error);
 
-    const exact = await this.lookup(fp);
+    const exact = await this.lookup(fp, query.model);
     if (exact && exact.hits.length > 0) return exact;
 
     const environment: Environment = {
@@ -157,7 +170,7 @@ export class Colony {
       environment,
       limit: query.limit ?? 3,
       min_strength: query.minStrength ?? 0,
-    });
+    }, query.model ? { "x-myrmo-model": query.model } : undefined);
     const value: SearchResult = { fingerprint: data.fingerprint, hits: data.results.map(toHit), notice: data.notice, source: "search" };
     this.remember(key, value);
     return value;
