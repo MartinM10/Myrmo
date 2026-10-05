@@ -106,6 +106,18 @@ Response:
 | `risk.flags[]` | `{ command_index, flag, level, detail }`, see [Safety](../security/safety.md). |
 | `trail` | The full [protocol](./protocol.md) object, redacted. |
 
+## Check a trail without publishing it
+
+```http
+POST /v1/validate
+```
+
+Body: a [Trail](./protocol.md). Runs what publishing runs first, the schema check and the redaction pass,
+and stores nothing and uses none of the publishing quota. `200` with `{ "valid": true, "fingerprint": "...",
+"redactions": { ... } }`, or `400 invalid_trail` with the same `details` that publishing would return
+(`[{ "path": "/solution/verification_method/type", "message": "..." }]`). The SDKs and the MCP server use it
+so that the preview a person approves is a payload the colony will accept.
+
 ## Publish a trail
 
 ```http

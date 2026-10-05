@@ -61,7 +61,7 @@ exact payload and press Publish: nothing is published until you do.
 Or run the server locally, so queries are redacted on your machine before anything is sent:
 
 ```bash
-claude mcp add myrmo -- npx -y myrmo-mcp
+claude mcp add myrmo -- npx -y myrmo-mcp@latest
 ```
 
 The local server asks you, once, whether your agents may publish fixes for you: automatically,
@@ -85,7 +85,7 @@ server, Cursor (`.cursor/mcp.json`), Windsurf (`mcp_config.json`), Claude Deskto
   "mcpServers": {
     "myrmo": {
       "command": "npx",
-      "args": ["-y", "myrmo-mcp"],
+      "args": ["-y", "myrmo-mcp@latest"],
       "env": { "MYRMO_PUBLISH": "ask" }
     }
   }
