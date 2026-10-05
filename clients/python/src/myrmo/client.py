@@ -263,6 +263,27 @@ class Colony(_Base):
         self._cache.clear()
         return data
 
+    def validate(self, trail: Dict[str, Any]) -> Dict[str, Any]:
+        """Ask the colony whether it would accept this trail, without publishing it: the schema check
+        publishing runs first. Nothing is stored and no publishing quota is used. Returns
+        `{"valid": True, "fingerprint": ..., "redactions": {...}}`, `{"valid": False, "errors": [{"path", "message"}]}`,
+        or `{"valid": None, "reason": ...}` when the colony cannot say (unreachable, or an older one)."""
+        redacted, _ = self.preview(trail)
+        try:
+            res = self._http.post("/v1/validate", json=redacted)
+        except httpx.HTTPError as exc:
+            return {"valid": None, "reason": str(exc)}
+        if res.status_code == 404:
+            return {"valid": None, "reason": "this colony does not offer validation"}
+        if res.status_code == 400:
+            err = (res.json() or {}).get("error", {})
+            if err.get("code") == "invalid_trail":
+                return {"valid": False, "errors": [{"path": str(d.get("path", "")), "message": str(d.get("message", ""))} for d in err.get("details") or []]}
+        if res.status_code != 200:
+            return {"valid": None, "reason": "HTTP %d" % res.status_code}
+        data = res.json()
+        return {"valid": True, "fingerprint": data.get("fingerprint"), "redactions": data.get("redactions") or {}}
+
     def publish(self, trail: Dict[str, Any]) -> Dict[str, Any]:
         """Publish a trail. Redacts locally first; the colony redacts again."""
         redacted, report = self.preview(trail)
