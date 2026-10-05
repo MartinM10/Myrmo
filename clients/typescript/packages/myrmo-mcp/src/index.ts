@@ -7,7 +7,7 @@
 import { createServer as createHttpServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-import { Colony, configPath, publishChoice, readConfig, writeConfig, type PublishMode } from "myrmo";
+import { Colony, configPath, minFailedAttempts as resolveMinFailedAttempts, publishChoice, readConfig, setSetting, settingsReport, type PublishMode } from "myrmo";
 import { parseInitArgs, runInit } from "./init.js";
 import { createServer, VERSION } from "./server.js";
 
@@ -18,11 +18,12 @@ const option = (name: string, fallback: string) => {
   return i >= 0 && args[i + 1] ? args[i + 1] : fallback;
 };
 
-// MYRMO_PUBLISH wins, then ~/.myrmo/config.json, then "nobody has chosen yet" (nothing is published).
+// MYRMO_PUBLISH wins, then ~/.myrmo/config.json, then "nobody has chosen yet": the first time an agent wants to
+// publish, the user is asked (with "ask" preselected) and nothing is sent until they answer.
 const choice = publishChoice();
 const publishMode: PublishMode = choice.mode;
 const publishChosen = choice.source !== "default";
-const minFailedAttempts = Number(process.env.MYRMO_MIN_FAILED_ATTEMPTS ?? 1);
+const minFailedAttempts = resolveMinFailedAttempts().value;
 const allowHighRisk = process.env.MYRMO_ALLOW_HIGH_RISK === "1";
 
 if (flag("--version")) {
@@ -30,20 +31,28 @@ if (flag("--version")) {
   process.exit(0);
 }
 
-// `myrmo-mcp config` shows the user's settings; `myrmo-mcp config publish auto|ask|off` changes them.
+// `myrmo-mcp config` shows every setting, where its value comes from and what it does;
+// `myrmo-mcp config <setting> <value>` changes one (`reset` restores the default).
 // This is for the person, not the agent: whether agents may publish on their behalf is their call.
 if (args[0] === "config") {
-  if (args[1] === "publish") {
-    if (!["auto", "ask", "off"].includes(args[2] ?? "")) {
-      console.error("Usage: myrmo-mcp config publish auto|ask|off");
+  const [, key, value] = args;
+  if (key === undefined) {
+    console.log(`Settings file: ${configPath()}   (nothing here is required: every setting has a default)`);
+    for (const row of settingsReport()) {
+      console.log(`  ${row.key.padEnd(20)} ${row.value.padEnd(7)} (${row.source}) ${row.about}  [${row.values}]`);
+    }
+    console.log(`  ${"agent id".padEnd(20)} ${readConfig().agent_id ?? "(created on first use)"}   a random pseudonym; delete it from the file for a new one`);
+    console.log("\nChange one with: npx myrmo-mcp config <setting> <value>      (<value> = reset restores the default)");
+  } else if (value === undefined) {
+    console.error("Usage: myrmo-mcp config [<setting> <value>]");
+    process.exit(2);
+  } else {
+    const result = setSetting(key, value);
+    if (!result.ok) {
+      console.error(result.error);
       process.exit(2);
     }
-    writeConfig({ publish: args[2] as PublishMode });
-    console.log(`Saved to ${configPath()}: agents publish with publish=${args[2]}.`);
-  } else {
-    console.log(`Settings file: ${configPath()}`);
-    console.log(`publish: ${readConfig().publish ?? "(not chosen yet: agents publish nothing)"}${process.env.MYRMO_PUBLISH ? `   (MYRMO_PUBLISH=${process.env.MYRMO_PUBLISH} overrides it)` : ""}`);
-    console.log(`agent id: ${readConfig().agent_id ?? "(created on first use)"}   (a random pseudonym; delete it from the file to get a new one, MYRMO_ANONYMOUS=1 sends none)`);
+    console.log(result.message);
   }
   process.exit(0);
 }

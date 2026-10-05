@@ -1,3 +1,4 @@
+import re
 import json
 
 import httpx
@@ -84,4 +85,6 @@ def test_config_command_saves_and_rejects(config, capsys):
     assert read_config() == {"publish": "ask"}
     assert cli(["config", "publish", "sometimes"]) == 2
     assert cli(["config"]) == 0
-    assert "publish: ask" in capsys.readouterr().out
+    shown = capsys.readouterr().out
+    assert re.search(r"publish\s+ask\s+\(file\)", shown)
+    assert re.search(r"min-failed-attempts\s+1\s+\(default\)", shown), "every setting is listed with where its value comes from"

@@ -2,6 +2,7 @@
 // approaches, and drafts a trail when the task finally succeeds after enough failures.
 
 import type { Colony } from "./client.js";
+import { minFailedAttempts } from "./config.js";
 import { detectEnvironment, parsePackage } from "./environment.js";
 import { formatResult } from "./format.js";
 import { fingerprint, guessErrorType } from "./fingerprint.js";
@@ -14,7 +15,7 @@ export interface SessionOptions {
   runtimeVersion: string;
   packages?: (string | Package)[];
   agent?: { model: string; framework: string };
-  /** Failed attempts before a fix is worth publishing. Default: MYRMO_MIN_FAILED_ATTEMPTS or 1. */
+  /** Failed attempts before a fix is worth publishing. Default: MYRMO_MIN_FAILED_ATTEMPTS, the settings file, or 1. */
   minFailedAttempts?: number;
 }
 
@@ -89,7 +90,7 @@ export class Session {
    * (see `colony.preview`) and calls `colony.publish` after approval.
    */
   async succeeded(success: Success): Promise<{ draft: Trail | null; published?: PublishResult }> {
-    const min = this.options.minFailedAttempts ?? Number(process.env.MYRMO_MIN_FAILED_ATTEMPTS ?? 1);
+    const min = minFailedAttempts(this.options.minFailedAttempts).value;
     const last = this.failures.at(-1);
     // Nothing new when an existing trail already solved it, or when one matched and was never tried.
     const covered = this.solvedByTrail || (this.matchedExisting && this.triedFailed.length === 0);

@@ -5,7 +5,7 @@ import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import { spawn, spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -351,9 +351,75 @@ test("myrmo-mcp config saves the user's choice and rejects nonsense", () => {
   assert.equal(ok.status, 0);
   assert.equal(JSON.parse(readFileSync(config, "utf8")).publish, "ask");
   const shown = spawnSync(process.execPath, [ENTRY, "config"], { env, encoding: "utf8" });
-  assert.match(shown.stdout, /publish: ask/);
+  assert.match(shown.stdout, /publish\s+ask\s+\(file\)/);
+  assert.match(shown.stdout, /min-failed-attempts\s+1\s+\(default\)/, "every setting is listed with where its value comes from");
+  assert.match(shown.stdout, /hook\s+on/);
   const bad = spawnSync(process.execPath, [ENTRY, "config", "publish", "sometimes"], { env, encoding: "utf8" });
   assert.equal(bad.status, 2);
+});
+
+test("myrmo-mcp config changes any setting, and 'reset' puts the default back", () => {
+  const config = freshConfig();
+  const env = { ...process.env, MYRMO_CONFIG: config, MYRMO_PUBLISH: "", MYRMO_MIN_FAILED_ATTEMPTS: "", MYRMO_HOOK: "" };
+  const run = (...args) => spawnSync(process.execPath, [ENTRY, "config", ...args], { env, encoding: "utf8" });
+  assert.equal(run("min-failed-attempts", "3").status, 0);
+  assert.equal(run("hook", "off").status, 0);
+  assert.deepEqual(JSON.parse(readFileSync(config, "utf8")), { min_failed_attempts: 3, hook: "off" });
+  assert.match(run().stdout, /min-failed-attempts\s+3\s+\(file\)/);
+  assert.equal(run("min-failed-attempts", "reset").status, 0);
+  assert.deepEqual(JSON.parse(readFileSync(config, "utf8")), { hook: "off" });
+  assert.equal(run("min-failed-attempts", "lots").status, 2);
+  assert.equal(run("colour", "blue").status, 2);
+  assert.equal(run("hook").status, 2, "a setting without a value is a usage error, not a silent change");
+});
+
+test("the instructions carry the privacy rules and the minimum from the settings file, so nothing has to be pasted anywhere", async () => {
+  const config = freshConfig();
+  writeFileSync(config, JSON.stringify({ min_failed_attempts: 4 }));
+  const client = await stdioClient("ask", { env: { MYRMO_CONFIG: config, MYRMO_MIN_FAILED_ATTEMPTS: "" } });
+  const text = client.getInstructions() ?? "";
+  assert.match(text, /at least 4 failed attempts/);
+  assert.match(text, /PRIVACY/);
+  assert.match(text, /everything published is public/i);
+  assert.match(text, /generic part of an error/);
+  assert.match(text, /never include patches from proprietary source/);
+  assert.match(text, /environment where the error happened/);
+  assert.match(text, /environment\.container/);
+  assert.ok(text.length < 5200, `instructions cost tokens in every session (${text.length} characters)`);
+  await client.close();
+});
+
+test("the hint after an empty search says the same minimum as the instructions", async () => {
+  const miss = { error: "ModuleNotFoundError: No module named 'nothing_here_at_all'", runtime: "python" };
+  const byDefault = await stdioClient("ask", { env: { MYRMO_MIN_FAILED_ATTEMPTS: "", MYRMO_CONFIG: freshConfig() } });
+  const one = textOf(await byDefault.callTool({ name: "myrmo_search", arguments: miss }));
+  assert.match(one, /at least one failed attempt/);
+  assert.doesNotMatch(one, /3 or more/, "the old fixed text contradicted the instructions");
+  await byDefault.close();
+  const strict = await stdioClient("ask", { env: { MYRMO_MIN_FAILED_ATTEMPTS: "3", MYRMO_CONFIG: freshConfig() } });
+  assert.match(textOf(await strict.callTool({ name: "myrmo_search", arguments: miss })), /3 or more failed attempts/);
+  await strict.close();
+});
+
+test("the environment is the one the agent describes: no container or architecture is guessed from this machine", async () => {
+  const client = await stdioClient("auto");
+  const lean = structuredClone(trail);
+  delete lean.environment.arch;
+  delete lean.environment.container;
+  delete lean.environment.os;
+  await client.callTool({ name: "myrmo_publish", arguments: { trail: lean } });
+  const env = requests.filter((r) => r.url === "/v1/trails").at(-1).body.environment;
+  assert.ok(env.os, "os is required by the protocol, so it falls back to this machine");
+  assert.equal(env.container, undefined, "a container is only recorded when the agent says the error happened in one");
+  assert.equal(env.arch, undefined);
+  const stated = structuredClone(trail);
+  stated.environment.container = "docker";
+  stated.environment.arch = "arm64";
+  await client.callTool({ name: "myrmo_publish", arguments: { trail: stated } });
+  const sent = requests.filter((r) => r.url === "/v1/trails").at(-1).body.environment;
+  assert.equal(sent.container, "docker");
+  assert.equal(sent.arch, "arm64");
+  await client.close();
 });
 
 test("the agent learns when the colony rejects what it published", async () => {

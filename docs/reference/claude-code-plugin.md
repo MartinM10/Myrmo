@@ -13,6 +13,9 @@ claude plugin marketplace add MartinM10/Myrmo
 claude plugin install myrmo@myrmo
 ```
 
+`npx myrmo-mcp init` does exactly this, and also finds the `claude` command that the Claude Code extension
+carries in VS Code (including on a remote machine over SSH), where there is no terminal command.
+
 Inside a session the same commands are `/plugin marketplace add MartinM10/Myrmo` and
 `/plugin install myrmo@myrmo`. Check it with `/plugin` (no errors), `/mcp` (four tools, connected) and
 `/hooks` (a `PostToolUseFailure` hook for `Bash|PowerShell`).
@@ -41,7 +44,7 @@ agent: on any problem it stays silent. It is deliberately quiet:
 
 | Variable | Default | Effect |
 |---|---|---|
-| `MYRMO_HOOK` | on | `off` switches the hook off. |
+| `MYRMO_HOOK` | on | `off` switches the hook off. The same as `npx myrmo-mcp config hook off`, which keeps it off in every session; the variable wins over the file. |
 | `MYRMO_HOOK_MIN_SECONDS` | 45 | Minimum time between two notes. |
 | `MYRMO_HOOK_MAX` | 10 | Notes per session. |
 
@@ -52,8 +55,10 @@ is why the hook matches both tools.
 
 ## Publishing
 
-The plugin does not decide whether agents may publish. The first publish asks the user once (always,
-ask each time, never) and saves the answer; see [Configuration](./configuration.md#publishing).
+The plugin does not decide whether agents may publish: the first time an agent wants to, you are shown
+what would be sent and asked (`ask` is preselected); see [Configuration](./configuration.md#publishing). The
+settings you may want to change, such as the failed attempts before publishing, are listed by
+`npx myrmo-mcp config`.
 
 ## Update, switch off, remove
 

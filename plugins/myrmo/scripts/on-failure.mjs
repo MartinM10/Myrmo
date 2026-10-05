@@ -4,11 +4,11 @@
 // it tries a fix. It sends nothing anywhere and never blocks: it only adds one short note to the
 // model's context, and stays quiet when the failure is probably not worth a search.
 //
-// Opt out with MYRMO_HOOK=off. Tunables: MYRMO_HOOK_MIN_SECONDS (default 45) between two notes,
+// Opt out with `npx myrmo-mcp config hook off` or MYRMO_HOOK=off. Tunables: MYRMO_HOOK_MIN_SECONDS (default 45) between two notes,
 // MYRMO_HOOK_MAX (default 10) notes per session.
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 
 // Commands that fail as part of normal work: a probe that found nothing, a diff that differs.
@@ -18,8 +18,19 @@ const SHELLS = new Set(["Bash", "PowerShell"]);
 // Exit codes that mean a person or the system stopped the command: interrupt, timeout, kill, terminate.
 const STOPPED = new Set([124, 130, 137, 143]);
 
-export function decide(input, { now = Date.now(), state = {}, env = process.env } = {}) {
-  if (env.MYRMO_HOOK === "off") return { note: null, state };
+/** The user's settings file (the same one the SDKs and the MCP server read). Missing or damaged means defaults. */
+export function readSettings(env = process.env) {
+  try {
+    return JSON.parse(readFileSync(env.MYRMO_CONFIG?.trim() || join(homedir(), ".myrmo", "config.json"), "utf8")) ?? {};
+  } catch {
+    return {};
+  }
+}
+
+export function decide(input, { now = Date.now(), state = {}, env = process.env, settings = {} } = {}) {
+  // The environment variable wins over the settings file.
+  const hook = env.MYRMO_HOOK?.trim() ? env.MYRMO_HOOK.trim().toLowerCase() : settings.hook;
+  if (hook === "off") return { note: null, state };
   if (!SHELLS.has(input?.tool_name)) return { note: null, state };
   const code = Number(input.exit_code);
   if (STOPPED.has(code)) return { note: null, state };
@@ -57,7 +68,7 @@ async function main() {
   } catch {
     state = {};
   }
-  const out = decide(input, { state });
+  const out = decide(input, { state, settings: readSettings() });
   if (!out.note) return;
   try {
     mkdirSync(join(tmpdir(), "myrmo-hook"), { recursive: true });

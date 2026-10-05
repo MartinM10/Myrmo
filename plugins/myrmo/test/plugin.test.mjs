@@ -4,10 +4,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { decide } from "../scripts/on-failure.mjs";
+import { decide, readSettings } from "../scripts/on-failure.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const repo = join(root, "..", "..");
@@ -98,4 +99,34 @@ test("the skill has the front matter Claude Code needs", () => {
   const front = /^---\n([\s\S]*?)\n---/.exec(text)?.[1] ?? "";
   assert.match(front, /^name: myrmo$/m);
   assert.match(front, /^description: .{40,}/m);
+});
+
+test("the settings file can switch the hook off, and the environment variable still wins", () => {
+  const off = { settings: { hook: "off" } };
+  assert.equal(decide(fail("npm test"), { env: {}, ...off }).note, null);
+  assert.match(decide(fail("npm test"), { env: { MYRMO_HOOK: "on" }, ...off }).note, /myrmo_search/, "MYRMO_HOOK=on beats hook: off in the file");
+  assert.equal(decide(fail("npm test"), { env: { MYRMO_HOOK: "off" }, settings: { hook: "on" } }).note, null);
+  assert.match(decide(fail("npm test"), { env: {}, settings: { hook: "on" } }).note, /myrmo_search/);
+  assert.match(decide(fail("npm test"), { env: {} }).note, /myrmo_search/, "no settings at all means on");
+});
+
+test("readSettings reads the shared file, and a missing or damaged one means the defaults", () => {
+  const dir = mkdtempSync(join(tmpdir(), "myrmo-hook-settings-"));
+  const file = join(dir, "config.json");
+  assert.deepEqual(readSettings({ MYRMO_CONFIG: file }), {});
+  writeFileSync(file, JSON.stringify({ hook: "off", agent_id: "x".repeat(20) }));
+  assert.equal(readSettings({ MYRMO_CONFIG: file }).hook, "off");
+  writeFileSync(file, "{ not json");
+  assert.deepEqual(readSettings({ MYRMO_CONFIG: file }), {});
+});
+
+test("the hook script, run like Claude Code runs it, honours the settings file", () => {
+  const dir = mkdtempSync(join(tmpdir(), "myrmo-hook-run-"));
+  const file = join(dir, "config.json");
+  const input = JSON.stringify({ session_id: "settings-test-" + Date.now(), ...fail("npm test") });
+  const run = () => spawnSync(process.execPath, [join(root, "scripts", "on-failure.mjs")], { input, encoding: "utf8", env: { ...process.env, MYRMO_CONFIG: file, MYRMO_HOOK: "" } });
+  writeFileSync(file, JSON.stringify({ hook: "off" }));
+  assert.equal(run().stdout, "");
+  writeFileSync(file, JSON.stringify({ hook: "on" }));
+  assert.match(run().stdout, /myrmo_search/);
 });

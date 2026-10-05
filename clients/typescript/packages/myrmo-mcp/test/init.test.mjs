@@ -43,7 +43,7 @@ test("init configures only the clients that are installed, and leaves the rest o
   const home = newHome();
   mkdirSync(join(home, ".cursor"));
   writeFileSync(join(home, ".cursor", "mcp.json"), JSON.stringify({ mcpServers: { keep: { command: "k" } } }));
-  const res = runInit({ clients: ["cursor", "windsurf", "gemini"], dryRun: false, home, log: quiet });
+  const res = runInit({ env: { PATH: "" }, clients: ["cursor", "windsurf", "gemini"], dryRun: false, home, log: quiet });
   assert.deepEqual(res.skipped, []);
   const cursor = JSON.parse(readFileSync(join(home, ".cursor", "mcp.json"), "utf8"));
   assert.ok(cursor.mcpServers.keep && cursor.mcpServers.myrmo);
@@ -53,7 +53,7 @@ test("init configures only the clients that are installed, and leaves the rest o
 test("without --client, a client that is not installed is not touched", () => {
   const home = newHome();
   mkdirSync(join(home, ".cursor"));
-  const res = runInit({ clients: [], dryRun: false, home, log: quiet });
+  const res = runInit({ env: { PATH: "" }, clients: [], dryRun: false, home, log: quiet });
   assert.ok(res.configured.includes("Cursor"));
   assert.ok(!existsSync(join(home, ".gemini")), "Gemini CLI is not installed here, so nothing is created");
   assert.ok(!existsSync(join(home, ".codeium")));
@@ -62,7 +62,7 @@ test("without --client, a client that is not installed is not touched", () => {
 test("a dry run writes nothing", () => {
   const home = newHome();
   const lines = [];
-  runInit({ clients: ["cursor"], dryRun: true, home, log: (l) => lines.push(l) });
+  runInit({ env: { PATH: "" }, clients: ["cursor"], dryRun: true, home, log: (l) => lines.push(l) });
   assert.ok(!existsSync(join(home, ".cursor")));
   assert.match(lines.join("\n"), /would add/);
 });
@@ -72,7 +72,7 @@ test("an unreadable settings file is reported and left as it was", () => {
   mkdirSync(join(home, ".cursor"));
   writeFileSync(join(home, ".cursor", "mcp.json"), "{ // comments are not JSON");
   const lines = [];
-  const res = runInit({ clients: ["cursor"], dryRun: false, home, log: (l) => lines.push(l) });
+  const res = runInit({ env: { PATH: "" }, clients: ["cursor"], dryRun: false, home, log: (l) => lines.push(l) });
   assert.deepEqual(res.skipped, ["Cursor"]);
   assert.equal(readFileSync(join(home, ".cursor", "mcp.json"), "utf8"), "{ // comments are not JSON");
   assert.match(lines.join("\n"), /by hand/);
@@ -80,7 +80,7 @@ test("an unreadable settings file is reported and left as it was", () => {
 
 test("init never decides whether agents may publish", () => {
   const home = newHome();
-  runInit({ clients: ["cursor"], dryRun: false, home, log: quiet });
+  runInit({ env: { PATH: "" }, clients: ["cursor"], dryRun: false, home, log: quiet });
   assert.ok(!existsSync(join(home, ".myrmo")), "the publishing choice file is not created");
 });
 
@@ -128,7 +128,7 @@ test("init says so and adds nothing when the plugin is installed", () => {
   mkdirSync(join(home, ".claude", "plugins"), { recursive: true });
   writeFileSync(join(home, ".claude", "plugins", "installed_plugins.json"), JSON.stringify({ plugins: { "myrmo@myrmo": [{}] } }));
   const lines = [];
-  const res = runInit({ clients: [], dryRun: false, home, log: (l) => lines.push(l) });
+  const res = runInit({ env: { PATH: "" }, clients: [], dryRun: false, home, log: (l) => lines.push(l) });
   assert.ok(res.configured.includes("Claude Code"));
   const said = lines.join("\n");
   assert.match(said, /already set up \(the Myrmo plugin is installed\)/);
@@ -143,9 +143,9 @@ test("the search-and-report block tells agents not to publish, and is written on
   assert.match(AGENTS_BLOCK_READ_ONLY, /myrmo_report/);
   const dir = newHome();
   const file = join(dir, "AGENTS.md");
-  runInit({ clients: ["cursor"], dryRun: false, home: dir, agentsMd: file, readOnly: true, log: quiet });
+  runInit({ env: { PATH: "" }, clients: ["cursor"], dryRun: false, home: dir, agentsMd: file, readOnly: true, log: quiet });
   assert.match(readFileSync(file, "utf8"), /do NOT publish/);
-  runInit({ clients: ["cursor"], dryRun: false, home: dir, agentsMd: file, log: quiet });
+  runInit({ env: { PATH: "" }, clients: ["cursor"], dryRun: false, home: dir, agentsMd: file, log: quiet });
   const text = readFileSync(file, "utf8");
   assert.doesNotMatch(text, /do NOT publish/, "the full block replaces it in place");
   assert.equal((text.match(/myrmo:start/g) ?? []).length, 1);

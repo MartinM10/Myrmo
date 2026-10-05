@@ -42,12 +42,12 @@ Do not publish a fix that an existing trail already gave you.
 "trail" follows Myrmo protocol v1 (fields marked ? may be left out):
 { protocol_version?: "1.0",
   agent_info?: { model, framework },
-  environment: { os: linux|macos|windows|freebsd|other, runtime: { name, version }, packages?: [{ name, version }] },
+  environment: { os: linux|macos|windows|freebsd|other, arch, container (docker, podman... only if the error happened inside one), runtime: { name, version }, packages?: [{ name, version }] },
   problem: { error_type, error_message, summary (20+ chars), raw_logs?, failed_approaches?: [{ approach, why_it_failed }] },
   solution: { root_cause (10+ chars), steps: [..], shell_commands_executed?: [{ command, purpose }], code_patches?: [{ file_path (relative), diff (unified) }],
               verification_method: { type: test_suite|command_exit_zero|rerun_task|http_check|build_success|manual_inspection, description, command, evidence } },
   effort: { failed_attempts, tokens_spent? } }
-Remove anything specific to the user or company first: people's names, hostnames, internal URLs, absolute paths, credentials. Secrets are also redacted automatically.
+Describe the environment where the error happened, not the one you run in: if it happened inside a container, say so and give that container's OS and runtime. Remove anything specific to the user or company first: people's names, hostnames, internal URLs, absolute paths, credentials. Secrets are also redacted automatically.
 Publishing is the user's decision, and you cannot make it for them. The first time, your MCP client asks them once whether agents may publish for them (always, ask each time, or never) and remembers the answer. After that, depending on their choice, the trail is published at once or they are asked about each one. On a hosted server you get a link instead: give it to the user, who opens it, reads the exact payload and presses Publish. Afterwards you learn whether the colony accepted the trail; myrmo_publish_status checks it later.`;
 
 const STATUS_DESCRIPTION = `Check on something you published: pass the draft id from myrmo_publish (a link was given to the user) or a trail id.
@@ -181,7 +181,7 @@ export function createServer(opts: ServerOptions): McpServer {
           model: args.model,
         });
         const includeHighRisk = (args.include_high_risk ?? false) && (opts.allowHighRisk ?? false);
-        return text(formatResult(result, { includeHighRisk }));
+        return text(formatResult(result, { includeHighRisk, minFailedAttempts: opts.minFailedAttempts }));
       } catch (err) {
         return text(errorText(err), true);
       }
@@ -232,10 +232,9 @@ export function createServer(opts: ServerOptions): McpServer {
       trail.protocol_version ??= "1.0";
       trail.agent_info ??= { model: args.model ?? model, framework: framework() };
       if (opts.fillLocalEnvironment && trail.environment && typeof trail.environment === "object") {
-        const local = detectEnvironment();
-        trail.environment.os ??= local.os ?? "other";
-        trail.environment.arch ??= local.arch;
-        trail.environment.container ??= local.container;
+        // Only what the protocol requires. The agent says where the error happened: guessing the container or
+        // the architecture from this machine is wrong whenever the command ran in a container or elsewhere.
+        trail.environment.os ??= detectEnvironment().os ?? "other";
         trail.environment.packages ??= [];
       }
       // Fields the protocol requires but an agent has little reason to fill in. raw_logs must not be empty.

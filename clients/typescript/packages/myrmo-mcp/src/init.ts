@@ -1,12 +1,18 @@
-// `myrmo-mcp init`: registers the server with the MCP clients found on this machine.
+// `myrmo-mcp init`: sets Myrmo up on this machine with one command.
 //
-// It is for the person, not the agent, and it only does what it prints: it adds one "myrmo" entry
-// to each client's own settings file (everything else in the file stays as it is), or runs
-// `claude mcp add`. It never chooses whether agents may publish: that stays the user's decision.
-// Nothing is touched when a settings file is not valid JSON.
+// For Claude Code it installs the plugin (the MCP server, a skill and a failure hook), using the
+// `claude` command from the PATH or the one the VS Code extension carries. For Cursor, Windsurf,
+// Gemini CLI and Claude Desktop it adds one "myrmo" entry to each client's own settings file
+// (everything else in the file stays as it is), and for Gemini CLI and Windsurf it also writes the
+// usage rules to their global instructions file, between markers, so it can be replaced or removed.
+// The server itself sends the usage rules to every client that passes MCP instructions on to the model.
+//
+// It is for the person, not the agent, and it only does what it prints. It never chooses whether
+// agents may publish: that stays the user's decision. Nothing is touched when a settings file is not
+// valid JSON.
 
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 
@@ -24,8 +30,14 @@ You can call myrmo_search, myrmo_report and myrmo_publish.
 4. After trying a trail, call myrmo_report (worked, partially_worked, failed or not_applicable) with
    one line on what was different in your environment. Report failures too.
 5. If you fixed an error after at least one failed attempt, verified the fix, and no trail gave it to
-   you, call myrmo_publish. Remove anything specific to this user or company first. Publishing is the
-   user's decision: if a tool tells you to hand something to them, do that and wait.
+   you, call myrmo_publish. Describe the environment where the error happened (say so if it was inside a
+   container). Publishing is the user's decision: if a tool tells you to hand something to them, do that
+   and wait.
+6. Everything published is public and automatic redaction cannot recognise names or meaning. Remove
+   people, company, customer and internal system names, hostnames, internal URLs, package scopes
+   (@company/...), repository and ticket names and business data, and search with the generic part of an
+   error. Publish only problems of tooling, environment, versions, configuration or third-party libraries,
+   never patches from proprietary source.
 <!-- myrmo:end -->
 `;
 
@@ -42,8 +54,8 @@ You can call myrmo_search and myrmo_report. In this repository do NOT publish: n
 3. Never run a command flagged high risk. Show medium-risk commands to the user and wait.
 4. After trying a trail, call myrmo_report (worked, partially_worked, failed or not_applicable) with
    one line on what was different in your environment. Report failures too.
-5. If an error line contains names of internal systems, customers, hostnames or URLs, search with the
-   generic part of the message only.
+5. Everything you search for or report may leave this machine. If an error line contains names of internal
+   systems, customers, hostnames, URLs or package scopes, search with the generic part of the message only.
 <!-- myrmo:end -->
 `;
 
@@ -115,12 +127,69 @@ export interface InitOptions {
   dryRun: boolean;
   agentsMd?: string; // a markdown file to put the block in
   readOnly?: boolean; // the block for repositories where agents must not publish
+  env?: NodeJS.ProcessEnv; // where to look for the claude command (default: the process environment)
+  rules?: boolean; // write the usage rules to Gemini CLI's and Windsurf's global instructions (default true)
   home?: string;
   log?: (line: string) => void;
 }
 
 const CLAUDE_CODE = "claude-code";
 export const CLIENT_IDS = [CLAUDE_CODE, "cursor", "windsurf", "gemini", "claude-desktop"];
+export const MARKETPLACE = "MartinM10/Myrmo";
+export const PLUGIN = "myrmo@myrmo";
+
+/** Where to look for the `claude` command: the PATH, the native installer's folder and the VS Code family's extension. */
+export function findClaudeCli(home: string, env: NodeJS.ProcessEnv = process.env, platform: NodeJS.Platform = process.platform): string | null {
+  const exe = platform === "win32" ? "claude.exe" : "claude";
+  const candidates: string[] = [];
+  if (env.MYRMO_CLAUDE_BIN?.trim()) candidates.push(env.MYRMO_CLAUDE_BIN.trim());
+  for (const dir of (env.PATH ?? env.Path ?? "").split(platform === "win32" ? ";" : ":")) {
+    if (!dir) continue;
+    candidates.push(join(dir, exe));
+    if (platform === "win32") candidates.push(join(dir, "claude.cmd"));
+  }
+  candidates.push(join(home, ".local", "bin", exe));
+  // The extension carries its own copy, which is the only one on a remote machine that has never had a terminal install.
+  for (const root of [".vscode-server", ".vscode", ".vscode-insiders", ".cursor-server", ".cursor"]) {
+    const dir = join(home, root, "extensions");
+    let names: string[] = [];
+    try {
+      names = readdirSync(dir).filter((n) => n.startsWith("anthropic.claude-code-"));
+    } catch {
+      continue;
+    }
+    names.sort((a, b) => b.localeCompare(a, undefined, { numeric: true }));
+    for (const name of names) candidates.push(join(dir, name, "resources", "native-binary", exe));
+  }
+  return candidates.find((c) => existsSync(c)) ?? null;
+}
+
+function runClaude(bin: string, args: string[]) {
+  const script = /\.(mjs|cjs|js)$/i.test(bin);
+  const shell = !script && process.platform === "win32" && /\.(cmd|bat)$/i.test(bin);
+  return spawnSync(script ? process.execPath : bin, script ? [bin, ...args] : args, { encoding: "utf8", shell, timeout: 120_000 });
+}
+
+/** Add the marketplace and install the plugin with the `claude` command. Both steps are fine if already done. */
+export function installPlugin(bin: string): { ok: boolean; said: string } {
+  const steps = [["plugin", "marketplace", "add", MARKETPLACE], ["plugin", "install", PLUGIN]];
+  let said = "";
+  for (const step of steps) {
+    const r = runClaude(bin, step);
+    const out = `${r.stdout ?? ""}${r.stderr ?? ""}`;
+    said += out;
+    if (r.status !== 0 && !/already/i.test(out)) return { ok: false, said: out.trim().split("\n").slice(-2).join(" ") };
+  }
+  return { ok: true, said };
+}
+
+/** Where Gemini CLI and Windsurf read global instructions from, for the clients that do not show an MCP server's own. */
+export function rulesFiles(home: string): { id: string; name: string; file: string; marker: string }[] {
+  return [
+    { id: "gemini", name: "Gemini CLI", file: join(home, ".gemini", "GEMINI.md"), marker: join(home, ".gemini") },
+    { id: "windsurf", name: "Windsurf", file: join(home, ".codeium", "windsurf", "memories", "global_rules.md"), marker: join(home, ".codeium", "windsurf") },
+  ];
+}
 
 /**
  * Why Claude Code does not need the server added again: the plugin or a "myrmo" server is already there.
@@ -157,31 +226,27 @@ export function runInit(opts: InitOptions): { configured: string[]; skipped: str
   const verb = opts.dryRun ? "would" : "did";
 
   const alreadyThere = wanted(CLAUDE_CODE) ? claudeCodeSetUp(home) : null;
+  const slash = `In Claude Code's chat run: /plugin marketplace add ${MARKETPLACE}   then   /plugin install ${PLUGIN}`;
   if (alreadyThere) {
     configured.push("Claude Code");
     log(`Claude Code: already set up (${alreadyThere}); adding the server as well would give the agent every tool twice`);
   } else if (wanted(CLAUDE_CODE)) {
-    const cmd = `claude mcp add --scope user myrmo -- ${entry.command === "cmd" ? "cmd /c " : ""}npx -y myrmo-mcp`;
-    const available = opts.clients.includes(CLAUDE_CODE) && opts.dryRun ? true : claudeCliAvailable();
+    const bin = findClaudeCli(home, opts.env ?? process.env);
+    const cmd = `claude plugin marketplace add ${MARKETPLACE} && claude plugin install ${PLUGIN}`;
     if (opts.dryRun) {
-      if (available) log(`Claude Code: ${verb} run: ${cmd}`);
-    } else if (available) {
-      const r = spawnSync("claude", ["mcp", "add", "--scope", "user", "myrmo", "--", ...(entry.command === "cmd" ? ["cmd", "/c"] : []), "npx", "-y", "myrmo-mcp"], {
-        encoding: "utf8",
-        shell: process.platform === "win32",
-        timeout: 30_000,
-      });
-      const said = `${r.stdout ?? ""}${r.stderr ?? ""}`;
-      if (r.status === 0 || /already exists/i.test(said)) {
+      if (bin || opts.clients.includes(CLAUDE_CODE)) log(`Claude Code: ${verb} run: ${cmd}`);
+    } else if (bin) {
+      const done = installPlugin(bin);
+      if (done.ok) {
         configured.push("Claude Code");
-        log(`Claude Code: registered (${cmd})`);
+        log(`Claude Code: plugin installed (${cmd}); it carries the MCP server, a skill and the failure hook`);
       } else {
         skipped.push("Claude Code");
-        log(`Claude Code: the command failed. Run it yourself: ${cmd}`);
+        log(`Claude Code: the plugin could not be installed (${done.said || "no output"}). ${slash}`);
       }
-    } else if (opts.clients.includes(CLAUDE_CODE)) {
+    } else if (opts.clients.includes(CLAUDE_CODE) || existsSync(join(home, ".claude"))) {
       skipped.push("Claude Code");
-      log(`Claude Code: the "claude" command was not found. Run it yourself: ${cmd}`);
+      log(`Claude Code: no "claude" command found (not on the PATH, and not in the VS Code extension). ${slash}`);
     }
   }
 
@@ -208,6 +273,23 @@ export function runInit(opts: InitOptions): { configured: string[]; skipped: str
     log(`${t.name}: ${verb} add the "myrmo" server to ${t.file}`);
   }
 
+  if (opts.rules !== false) {
+    for (const r of rulesFiles(home)) {
+      if (!wanted(r.id) || (opts.clients.length === 0 && !existsSync(r.marker))) continue;
+      const current = existsSync(r.file) ? readFileSync(r.file, "utf8") : undefined;
+      const next = upsertBlock(current, opts.readOnly ? AGENTS_BLOCK_READ_ONLY : AGENTS_BLOCK);
+      if (next === current) {
+        log(`${r.name}: the usage rules are already in ${r.file}`);
+        continue;
+      }
+      if (!opts.dryRun) {
+        mkdirSync(dirname(r.file), { recursive: true });
+        writeFileSync(r.file, next);
+      }
+      log(`${r.name}: ${verb} write the usage rules to ${r.file}, between <!-- myrmo:start --> and <!-- myrmo:end -->`);
+    }
+  }
+
   if (opts.agentsMd) {
     const current = existsSync(opts.agentsMd) ? readFileSync(opts.agentsMd, "utf8") : undefined;
     const next = upsertBlock(current, opts.readOnly ? AGENTS_BLOCK_READ_ONLY : AGENTS_BLOCK);
@@ -223,7 +305,8 @@ export function runInit(opts: InitOptions): { configured: string[]; skipped: str
   }
   log("");
   log("Restart your client to load it. Agents learn how to use Myrmo from the server itself: no more setup is needed.");
-  log("Publishing stays off until you choose: npx myrmo-mcp config publish auto|ask|off");
+  log("Nothing else to configure. The first time an agent wants to publish, you are shown what would be sent and asked (\"ask\" is preselected).");
+  log("To change a default: npx myrmo-mcp config   (publishing, failed attempts before publishing, the Claude Code hook, anonymity)");
   return { configured, skipped };
 }
 
@@ -240,7 +323,8 @@ export function parseInitArgs(args: string[]): InitOptions | string {
       const next = args[i + 1];
       opts.agentsMd = next && !next.startsWith("--") ? (i++, next) : "AGENTS.md";
     } else if (a === "--read-only") opts.readOnly = true;
-    else return `Unknown option ${a}. Usage: myrmo-mcp init [--client <id>]... [--agents-md [file] [--read-only]] [--dry-run]`;
+    else if (a === "--no-rules") opts.rules = false;
+    else return `Unknown option ${a}. Usage: myrmo-mcp init [--client <id>]... [--agents-md [file] [--read-only]] [--no-rules] [--dry-run]`;
   }
   if (opts.readOnly && !opts.agentsMd) return "--read-only goes with --agents-md";
   return opts;

@@ -35,7 +35,7 @@ def myrmo_tools(colony: Colony) -> List[object]:
 
     @tool("myrmo_publish")
     def myrmo_publish(trail_json: str) -> str:
-        """Publish a verified fix (Myrmo protocol v1 JSON) that took 3 or more failed attempts."""
+        """Publish a verified fix (Myrmo protocol v1 JSON) that took at least the configured number of failed attempts (default one)."""
         if colony.publish_mode == "off":
             preview, report = colony.preview(json.loads(trail_json))
             return f"Publishing is disabled (MYRMO_PUBLISH=off). Redactions: {report}. Nothing was sent."
