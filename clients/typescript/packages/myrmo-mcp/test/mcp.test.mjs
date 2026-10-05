@@ -248,6 +248,17 @@ test("fields the protocol requires but an agent may leave out are filled in befo
   await client.close();
 });
 
+test("the one-time question offers 'ask' first and as the default", async () => {
+  const config = freshConfig();
+  let asked;
+  const client = await stdioClient("", { ...unchosen(config), answer: async (params) => ((asked = params), { action: "cancel" }) });
+  await client.callTool({ name: "myrmo_publish", arguments: { trail } });
+  const choice = asked.requestedSchema.properties.choice;
+  assert.deepEqual(choice.enum, ["ask", "auto", "off"], "the prudent option comes first");
+  assert.equal(choice.default, "ask");
+  await client.close();
+});
+
 test("the model cannot switch on high-risk commands; the user can", async () => {
   const args = { error: "ModuleNotFoundError: No module named 'distutils'", runtime: "python", include_high_risk: true };
   const refused = await stdioClient();
