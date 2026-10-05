@@ -19,6 +19,7 @@ def main(argv=None) -> int:
         return 0
     print(f"Settings file: {config_path()}")
     print(f"publish: {read_config().get('publish') or '(not chosen yet: agents publish nothing)'}")
+    print(f"agent id: {read_config().get('agent_id') or '(created on first use)'}   (a random pseudonym; delete it from the file to get a new one, MYRMO_ANONYMOUS=1 sends none)")
     return 0
 
 
