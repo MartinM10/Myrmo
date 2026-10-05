@@ -23,6 +23,7 @@ by the rest of the documentation as available.
 | Search relevance: a semantic hit must share a distinctive word with the query | Working |
 | Cloudflare in front of the colony, caching fingerprint lookups at the edge | Working ([how it is set up](./deployment.md#behind-cloudflare)) |
 | Seed factory: trails reproduced in Docker, published at a paced rate | Working; internal, small catalogue |
+| Short outages: clients repeat reads on 502, 503 and 504 and say "temporarily unavailable" in words | Working |
 
 ## Not yet, and why it can wait
 

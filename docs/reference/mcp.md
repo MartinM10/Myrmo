@@ -104,6 +104,10 @@ server runs and on what the user has chosen (full details in
 | Local, `ask` | The MCP client shows the user the exact payload (MCP elicitation) and the trail is sent only if they accept. A client without elicitation gets an approval link, as the hosted server does, and nothing is sent until the user presses Publish. |
 | Local, `off` | Returns the redacted preview and sends nothing. |
 
+If the colony is restarting, a search is repeated a few times by itself; when it is still down the tool says "Myrmo is
+temporarily unavailable" and tells the agent to continue without it and search again in a minute, instead of
+returning a bare HTTP error. Publishing and reporting are not repeated.
+
 After a local publish the tool waits (up to 25 s) for the colony's verdict and reports it:
 published, already known (merged), or rejected with the reason.
 
