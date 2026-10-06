@@ -44,6 +44,21 @@ const ERROR_LINE = new RegExp(
   "m",
 );
 
+// For a command that really failed (non-zero exit) the output is known to be about a failure, so shapes that would be
+// too noisy to trust on an exit 0 are fine: Maven's [ERROR], test runners' FAILED, make's ***. Lines that only point
+// at more help ("Re-run Maven with -X") are skipped, since they say nothing about what went wrong.
+const FAILURE_LINE = new RegExp(
+  [
+    String.raw`^\s*\[(?:ERROR|FATAL)\]`,
+    String.raw`^\s*(?:FAILED|FAIL)\b`,
+    String.raw`^\s*BUILD (?:FAILURE|FAILED)`,
+    String.raw`^\s*make(?:\[\d+\])?:\s+\*\*\*`,
+    String.raw`^\s*Caused by:`,
+    String.raw`\bcannot find symbol\b`,
+  ].join("|"),
+);
+const HELP_LINE = /\[Help \d+\]|re-run maven|for more information about the errors|to see the full stack trace|^\[(?:ERROR|FATAL)\]\s*$/i;
+
 /** The user's settings file (the same one the SDKs and the MCP server read). Missing or damaged means defaults. */
 export function readSettings(env = process.env) {
   try {
@@ -59,10 +74,64 @@ export function hookMode(env, settings) {
   return value === "off" || value === "failures" ? value : "on";
 }
 
-/** What the program and sub-command are, so that "npm install" failing and "npm install --legacy-peer-deps" working are one task. */
+const WRAPPERS = /^(?:sudo|env|time|nohup|exec|command)$/;
+// Words that move around or set things up and say nothing about what the command is for.
+const NEUTRAL = /^(?:cd|pushd|popd|export|set|unset|source|\.|true|false|:|do|then|else|elif|done|fi|esac|for|case|select|function|\{|\}|set-location|sl|push-location|pop-location)$/i;
+const KEYWORDS = /^(?:do|then|else|elif|if|while|until|!|\{)$/;
+
+/** A command line split into its simple commands (on && || ; | and newlines, outside quotes), each as a list of words. */
+export function segments(command) {
+  const out = [];
+  let words = [];
+  let word = "";
+  let quote = "";
+  const endWord = () => {
+    if (word) words.push(word);
+    word = "";
+  };
+  const endSegment = () => {
+    endWord();
+    if (words.length) out.push(words);
+    words = [];
+  };
+  const text = String(command);
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (quote) {
+      if (c === quote) quote = "";
+      else word += c;
+    } else if (c === '"' || c === "'") quote = c;
+    else if (c === "\\" && i + 1 < text.length) word += text[++i];
+    else if (/\s/.test(c) && c !== "\n") endWord();
+    else if (c === "&" && (text[i - 1] === ">" || text[i - 1] === "<" || text[i + 1] === ">")) word += c; // 2>&1, &>
+    else if (c === "(" && text[i - 1] === "$") word += c;
+    else if (c === "\n" || c === ";" || c === "|" || c === "&" || c === "(" || c === ")") endSegment();
+    else word += c;
+  }
+  endSegment();
+  return out;
+}
+
+/** The words of a simple command without what wraps it: `sudo`, `time`, `FOO=1`, and the keywords of loops and conditions. */
+function core(words) {
+  const rest = [...words];
+  while (rest.length && (WRAPPERS.test(rest[0]) || /^\w+=/.test(rest[0]) || KEYWORDS.test(rest[0]))) rest.shift();
+  return rest;
+}
+
+/** The simple commands that do the work: not `cd`, `export`, loop keywords. */
+function work(command) {
+  return segments(command).map(core).filter((w) => w.length && !NEUTRAL.test(w[0]));
+}
+
+/** What the program and sub-command are, so that "npm install" failing and "npm install --legacy-peer-deps" working are one task.
+ *  It looks at the first command that does work, so `cd app && mvn -q test | tail` is `mvn test`, not `cd app`. */
 export function commandKey(command) {
-  const words = String(command).trim().split(/\s+/).filter((w) => !/^(?:sudo|env|time|nohup)$/.test(w) && !/^\w+=/.test(w));
-  return words.slice(0, 2).join(" ").toLowerCase().slice(0, 60);
+  const first = work(command)[0] ?? [];
+  const [program, ...args] = first;
+  if (!program) return "";
+  const sub = args.find((a, i) => !/^(?:-|\d*[<>&])/.test(a) && !/^\d*(?:>>?|<)$/.test(args[i - 1] ?? "")); // not a flag, a redirection or its target
+  return [program, sub].filter(Boolean).join(" ").toLowerCase().slice(0, 60);
 }
 
 /** Digits and long hex ids vary between runs of the same error. */
@@ -78,15 +147,21 @@ function textOf(response) {
   return "";
 }
 
-/** The most informative error line of some output: the last line that looks like an error, else the last line. */
-export function lastErrorLine(text) {
+/** The last line of some output that looks like an error, or "" when none does (a lone `0` or a file path is not one).
+ *  `loose` is for output known to come from a failed command. */
+export function lastErrorLine(text, { loose = false } = {}) {
   const lines = String(text).split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
-  const found = [...lines].reverse().find((l) => ERROR_LINE.test(l));
-  const line = found ?? lines.at(-1) ?? "";
-  return line.replace(/\s+/g, " ").slice(0, 240);
+  const looksLikeError = (l) => ERROR_LINE.test(l) || (loose && FAILURE_LINE.test(l) && !HELP_LINE.test(l));
+  const found = [...lines].reverse().find(looksLikeError);
+  return (found ?? "").replace(/\s+/g, " ").slice(0, 240);
 }
 
-const isProbe = (command) => PROBES.test(command) || PS_PROBES.test(command) || /\bmyrmo\b/i.test(command);
+/** Reading, searching or listing: every command that does work is a probe, so `cd app && grep -c x f` is one but `cd app && mvn test | grep x` is not. */
+const isProbe = (command) => {
+  if (/\bmyrmo\b/i.test(command)) return true;
+  const steps = work(command);
+  return steps.length > 0 && steps.every((words) => PROBES.test(words.join(" ")) || PS_PROBES.test(words.join(" ")));
+};
 const attempts = (n) => (n <= 1 ? "at least one failed attempt" : `${n} or more failed attempts`);
 
 function quiet(state) {
@@ -126,7 +201,7 @@ export function decide(input, { now = Date.now(), state = {}, env = process.env,
   // 1. A command failed.
   if (failed) {
     if (input.is_interrupt === true || STOPPED.has(code) || isProbe(command)) return quiet(state);
-    const line = lastErrorLine(errorText.replace(/^Exit code \d+\r?\n?/, ""));
+    const line = lastErrorLine(errorText.replace(/^Exit code \d+\r?\n?/, ""), { loose: true });
     const next = { ...state, failed: { key: commandKey(command), at: now, line } };
     const sig = signature(line);
     if (spent || tooSoon || (sig && seen.includes(sig))) return quiet(next);

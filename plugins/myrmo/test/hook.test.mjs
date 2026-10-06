@@ -9,7 +9,7 @@ import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { commandKey, decide, hookMode, lastErrorLine } from "../scripts/on-failure.mjs";
+import { commandKey, decide, hookMode, lastErrorLine, segments } from "../scripts/on-failure.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const failure = (command, output, extra = {}) => ({ hook_event_name: "PostToolUseFailure", tool_name: "Bash", tool_input: { command }, error: `Exit code 1\n${output}`, is_interrupt: false, ...extra });
@@ -38,9 +38,27 @@ test("an interrupt or a stopped command is left alone, now that the exit code is
 
 test("lastErrorLine prefers the last line that looks like an error and never returns a huge line", () => {
   assert.equal(lastErrorLine("one\nTraceback (most recent call last):\n  File x\nValueError: bad value\nclean up done"), "ValueError: bad value");
-  assert.equal(lastErrorLine("just\nplain output"), "plain output");
-  assert.equal(lastErrorLine("x".repeat(1000)).length, 240);
+  assert.equal(lastErrorLine("just\nplain output"), "", "no error-shaped line, no line: a lone number or a path is not an error");
+  assert.equal(lastErrorLine(`Error: ${"x".repeat(1000)}`).length, 240);
   assert.equal(lastErrorLine(""), "");
+});
+
+test("a command that fails without an error-shaped line is reminded without quoting rubbish", () => {
+  for (const output of ["0", "src/main/java/org/x/RdfAdapterExtension.java 0", "3\nsrc/a.java 1"]) {
+    const out = decide(failure("cd /srv/app && ./check.sh", output), { now: NOW, env: {} });
+    assert.match(out.note, /a command just failed \(exit 1\)/, output);
+    assert.doesNotMatch(out.note, /Last error line/, output);
+  }
+});
+
+test("for a failed command, the shapes of build tools are errors too, and 'more help' lines are not", () => {
+  const maven = "[INFO] BUILD FAILURE\n[ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.11.0:compile on project app: Compilation failure\n[ERROR] -> [Help 1]\n[ERROR]\n[ERROR] Re-run Maven using the -X switch to enable full debug logging.\n[ERROR] For more information about the errors and possible solutions, please read the following articles:";
+  assert.match(lastErrorLine(maven, { loose: true }), /^\[ERROR\] Failed to execute goal/);
+  assert.equal(lastErrorLine("make[1]: *** [all] Error 2\nmake: Leaving directory", { loose: true }), "make[1]: *** [all] Error 2");
+  assert.equal(lastErrorLine("FAILED tests/test_a.py::test_x - assert 1 == 2\n1 failed in 0.3s", { loose: true }), "FAILED tests/test_a.py::test_x - assert 1 == 2");
+  assert.equal(lastErrorLine(maven), "", "on exit 0 these shapes are not trusted");
+  const out = decide(failure("cd app && mvn -q test", maven), { now: NOW, env: {} });
+  assert.match(out.note, /Last error line: «\[ERROR\] Failed to execute goal/);
 });
 
 test("an error hidden by a pipe is noticed: exit 0, but the output ends with an error", () => {
@@ -70,6 +88,17 @@ test("ordinary output that merely mentions errors is not mistaken for one", () =
 test("reading logs or files is not a failure, whatever they contain", () => {
   for (const command of ["docker logs api", "docker compose logs web", "kubectl logs pod-1", "cat app.log", "grep -r ERROR .", "tail -n 50 x.log", "git log --oneline", "journalctl -u svc"]) {
     assert.equal(decide(success(command, "ERROR: something from the log"), { now: NOW, env: {} }).note, null, command);
+  }
+});
+
+test("a probe stays a probe behind cd, env, loops and pipes, but a real command next to it does not", () => {
+  const quiet = ["cd /srv/app && grep -c Foo src/*.java", "cd app; grep -rn Bar . | wc -l", "for f in a b; do grep -c x $f; done", "export X=1 && cat app.log | tail -5", "FOO=1 git show HEAD:README.md", "cd 'my dir' && git diff --stat 2>&1"];
+  for (const command of quiet) {
+    assert.equal(decide(failure(command, "0"), { now: NOW, env: {} }).note, null, `failure: ${command}`);
+    assert.equal(decide(success(command, "ERROR: from a log"), { now: NOW, env: {} }).note, null, `exit 0: ${command}`);
+  }
+  for (const command of ["cd /srv/app && grep -q x f && mvn test", "cd app && mvn test | grep FAIL", "grep x f; npm ci"]) {
+    assert.ok(decide(failure(command, "Error: boom"), { now: NOW, env: {} }).note, command);
   }
 });
 
@@ -161,6 +190,25 @@ test("commandKey groups a command with its variations", () => {
   assert.equal(commandKey("sudo NODE_ENV=test npm install x"), "npm install");
   assert.equal(commandKey("pip install -r requirements.txt"), "pip install");
   assert.equal(commandKey("make"), "make");
+});
+
+test("commandKey looks at the command that does the work, not at cd, flags or redirections", () => {
+  assert.equal(commandKey("cd /srv/app && mvn -q test 2>&1 | tail -20"), "mvn test");
+  assert.equal(commandKey("cd /srv/app && git show HEAD:x"), "git show");
+  assert.equal(commandKey("export JAVA_HOME=/jdk; ./gradlew --no-daemon build"), "./gradlew build");
+  assert.equal(commandKey("make > build.log 2>&1"), "make");
+  assert.equal(commandKey("cd /srv/app"), "");
+  assert.deepEqual(segments("a 'b && c' && d 2>&1 | e"), [["a", "b && c"], ["d", "2>&1"], ["e"]]);
+});
+
+test("a later command in the same directory is not taken for the one that failed", () => {
+  let r = decide(failure("cd /srv/app && mvn -q test", "[ERROR] Failed to execute goal"), { now: NOW, env: {} });
+  r = decide(search(NO_MATCH), { now: NOW + 5_000, env: {}, state: r.state });
+  for (const command of ["cd /srv/app && git show HEAD~1 --stat", "cd /srv/app && git add -A", "cd /srv/app && python3 tools/x.py"]) {
+    assert.equal(decide(success(command, "done"), { now: NOW + 60_000, env: {}, state: r.state }).note, null, command);
+  }
+  const fixed = decide(success("cd /srv/app && mvn -q -DskipITs test", "BUILD SUCCESS"), { now: NOW + 90_000, env: {}, state: r.state });
+  assert.match(fixed.note, /the command that failed earlier now succeeds/, "the same task, with another flag, is the fix");
 });
 
 test("the manifest registers the hook for failures, for successful commands and for Myrmo searches", () => {
