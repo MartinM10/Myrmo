@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.9.1](https://github.com/MartinM10/Myrmo/compare/mcp-v0.9.0...mcp-v0.9.1) (2026-10-06)
+
+
+### Bug fixes
+
+* **mcp:** say what a publish looks like when the trail is missing, and keep the safety rules inside the first 2000 characters ([05aad90](https://github.com/MartinM10/Myrmo/commit/05aad90e48e2337b41366c7780ccdebbd4754280))
+* **mcp:** say what a publish looks like when the trail is missing, and keep the safety rules inside the first 2000 characters ([a53586c](https://github.com/MartinM10/Myrmo/commit/a53586c1349ad70a8ab9fac2a34274b8d4051c07))
+
 ## [0.9.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.8.0...mcp-v0.9.0) (2026-10-05)
 
 

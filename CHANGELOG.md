@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.10.1](https://github.com/MartinM10/Myrmo/compare/platform-v0.10.0...platform-v0.10.1) (2026-10-06)
+
+
+### Bug fixes
+
+* **plugin:** the hook reads compound commands and stops quoting lines that are not errors ([fe34e16](https://github.com/MartinM10/Myrmo/commit/fe34e16bf3eb20c944ed2946467d2993ae74811b))
+* **plugin:** the hook reads compound commands and stops quoting lines that are not errors ([060e05e](https://github.com/MartinM10/Myrmo/commit/060e05e8f81ba3fa43c53060791b6f9c035fe859))
+
 ## [0.10.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.9.0...platform-v0.10.0) (2026-10-05)
 
 
