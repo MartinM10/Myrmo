@@ -7,16 +7,26 @@ name: Release
 on:
   push:
     branches: [main]
-  # Build the server image of a release that already exists, for example after fixing this job.
+  # Publish something of a release that already exists, for example after fixing this job. Fill in one of the two.
   workflow_dispatch:
     inputs:
       version:
         description: Server version to build and push, without the v (for example 0.2.0)
-        required: true
+        required: false
+      npm_tag:
+        description: Release tag whose npm package to publish (for example mcp-v0.9.1 or sdk-js-v0.8.0)
+        required: false
 
 permissions:
   contents: write
   pull-requests: write
+
+# Two merges in a row start two runs. If they ran at the same time, release-please would open two release
+# pull requests from the same branch and then fail trying to release both. One at a time, the second run
+# sees the first one's pull request and updates it.
+concurrency:
+  group: release
+  cancel-in-progress: false
 
 jobs:
   release-please:
@@ -37,7 +47,7 @@ jobs:
   server-image:
     name: Server image (GHCR)
     needs: release-please
-    if: needs.release-please.outputs.server == 'true' || github.event_name == 'workflow_dispatch'
+    if: needs.release-please.outputs.server == 'true' || (github.event_name == 'workflow_dispatch' && inputs.version != '')
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -67,7 +77,7 @@ jobs:
   npm:
     name: npm packages
     needs: release-please
-    if: needs.release-please.outputs.sdk_js == 'true' || needs.release-please.outputs.mcp == 'true'
+    if: needs.release-please.outputs.sdk_js == 'true' || needs.release-please.outputs.mcp == 'true' || (github.event_name == 'workflow_dispatch' && inputs.npm_tag != '')
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -76,6 +86,9 @@ jobs:
       NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          # A manual run publishes the tagged release, not whatever main is now.
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.npm_tag != '' && inputs.npm_tag || github.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -83,9 +96,19 @@ jobs:
       - run: npm ci && npm run build && npm test
       - name: Publish (skipped until the NPM_TOKEN secret exists)
         if: env.NODE_AUTH_TOKEN != ''
+        env:
+          NPM_TAG: ${{ inputs.npm_tag }}
+          SDK_JS: ${{ needs.release-please.outputs.sdk_js }}
+          MCP: ${{ needs.release-please.outputs.mcp }}
         run: |
-          if [ "${{ needs.release-please.outputs.sdk_js }}" = "true" ]; then npm publish -w packages/myrmo --access public; fi
-          if [ "${{ needs.release-please.outputs.mcp }}" = "true" ]; then npm publish -w packages/myrmo-mcp --access public; fi
+          case "$NPM_TAG" in
+            sdk-js-v*) SDK_JS=true ;;
+            mcp-v*) MCP=true ;;
+            "") ;;
+            *) echo "npm_tag must start with sdk-js-v or mcp-v, got: $NPM_TAG"; exit 1 ;;
+          esac
+          if [ "$SDK_JS" = "true" ]; then npm publish -w packages/myrmo --access public; fi
+          if [ "$MCP" = "true" ]; then npm publish -w packages/myrmo-mcp --access public; fi
 
   pypi:
     name: PyPI package
