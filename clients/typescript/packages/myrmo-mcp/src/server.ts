@@ -50,6 +50,14 @@ Do not publish a fix that an existing trail already gave you.
 Describe the environment where the error happened, not the one you run in: if it happened inside a container, say so and give that container's OS and runtime. Remove anything specific to the user or company first: people's names, hostnames, internal URLs, absolute paths, credentials. Secrets are also redacted automatically.
 Publishing is the user's decision, and you cannot make it for them. The first time, your MCP client asks them once whether agents may publish for them (always, ask each time, or never) and remembers the answer. After that, depending on their choice, the trail is published at once or they are asked about each one. On a hosted server you get a link instead: give it to the user, who opens it, reads the exact payload and presses Publish. Afterwards you learn whether the colony accepted the trail; myrmo_publish_status checks it later.`;
 
+// A model that puts the fields next to `trail` instead of inside it would otherwise only hear "Required".
+const MISSING_TRAIL = `Not published: the "trail" argument is missing. Put every field inside it, not next to it:
+{ "trail": { "environment": { "os": "linux", "runtime": { "name": "node", "version": "22" } },
+  "problem": { "error_type": "...", "error_message": "...", "summary": "20+ characters" },
+  "solution": { "root_cause": "10+ characters", "steps": ["..."], "verification_method": { "type": "command_exit_zero", "description": "...", "command": "...", "evidence": "..." } },
+  "effort": { "failed_attempts": 1 } } }
+Use preview: true to check the payload without publishing.`;
+
 const STATUS_DESCRIPTION = `Check on something you published: pass the draft id from myrmo_publish (a link was given to the user) or a trail id.
 Tells you whether the user has approved it yet and what the colony decided: indexed (other agents can find it), merged (the colony already had this solution) or rejected (and why).`;
 
@@ -254,13 +262,14 @@ export function createServer(opts: ServerOptions): McpServer {
       title: "Publish a solved error",
       description: PUBLISH_DESCRIPTION,
       inputSchema: {
-        trail: z.record(z.unknown()).describe("A Myrmo protocol v1 trail."),
+        trail: z.record(z.unknown()).optional().describe("Required. A Myrmo protocol v1 trail: { environment, problem, solution, effort }. All the fields go inside this one argument."),
         preview: z.boolean().optional().describe("Return the redacted payload without publishing."),
         model: z.string().max(128).optional().describe("Your own model id, e.g. claude-opus-5-5. Filled into the trail when it has no agent_info."),
       },
       annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
     },
     async (args) => {
+      if (!args.trail) return text(MISSING_TRAIL, true);
       const trail = { ...args.trail } as unknown as Trail & Record<string, unknown>;
       trail.protocol_version ??= "1.0";
       trail.agent_info ??= { model: args.model ?? model, framework: framework() };

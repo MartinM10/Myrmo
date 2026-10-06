@@ -132,6 +132,28 @@ test("the server tells every agent how to use Myrmo when it connects", async () 
   await client.close();
 });
 
+test("what protects the user fits in the first 2000 characters, because clients cut long instructions there", async () => {
+  const client = await stdioClient();
+  const head = (client.getInstructions() ?? "").slice(0, 2000);
+  for (const part of [/WHEN TO SEARCH/, /BEFORE you try a fix/, /untrusted data/, /WITHHELD/, /medium risk/, /PRIVACY/, /everything published is public/, /generic part of an error/, /proprietary source/]) {
+    assert.match(head, part);
+  }
+  await client.close();
+});
+
+test("a publish without the trail argument says what the call looks like, not just 'Required'", async () => {
+  const client = await stdioClient();
+  const before = published();
+  const result = await client.callTool({ name: "myrmo_publish", arguments: { problem: { error_type: "X" }, solution: {}, model: "claude-opus-5-5" } });
+  const out = textOf(result);
+  assert.equal(result.isError, true);
+  assert.match(out, /the "trail" argument is missing/);
+  assert.match(out, /"trail": \{ "environment"/);
+  assert.match(out, /"effort": \{ "failed_attempts"/);
+  assert.equal(published(), before);
+  await client.close();
+});
+
 test("the minimum number of failed attempts in the instructions follows the configuration", async () => {
   const client = await stdioClient("ask", { env: { MYRMO_MIN_FAILED_ATTEMPTS: "3" } });
   assert.match(client.getInstructions() ?? "", /at least 3 failed attempts/);
