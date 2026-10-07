@@ -104,7 +104,7 @@ Response:
 |---|---|
 | `match.via` | `fingerprint` for exact matches, `semantic` for vector matches. |
 | `match.score` | 1.0 for fingerprint matches, cosine similarity otherwise. |
-| `match.environment_overlap` | 0 to 1: OS, architecture, runtime major version and shared packages. |
+| `match.environment_overlap` | 0 to 1: OS, architecture, runtime and its major version, and shared packages. Spellings of a runtime (`java` and `jvm`, `node` and `nodejs`, `python` and `python3`) count as the same. |
 | `risk.flags[]` | `{ command_index, flag, level, detail }`, see [Safety](../security/safety.md). |
 | `trail` | The full [protocol](./protocol.md) object, redacted. |
 
@@ -212,7 +212,11 @@ identifies the trail.
 }
 ```
 
-Returns `202` with the trail's current `strength`.
+Returns `202` with the trail's current `strength` and `counted`, which says whether the report changed it.
+A report does not count when the same agent already reported that trail in the last 24 hours, or when the
+reporter is the trail's own author and the outcome would raise it (`worked`, `partially_worked`): an author cannot
+reinforce their own trail. An author's `failed` report does count, so an author can take down a trail that no longer
+applies.
 
 ## Feed
 
