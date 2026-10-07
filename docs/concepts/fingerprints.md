@@ -90,9 +90,16 @@ fp2 = "fp2_" + hex(sha256(normalize(message)))[0:16]
 
 Two different exception classes with the same text share a key: `ValueError: invalid value for
 the setting` and `TypeError: invalid value for the setting` are one error to fp2. That is the
-price of not needing the class, and it is rare, because real messages say what they are about.
-Very short generic messages (`permission denied`) are the weak spot: they can collide across
-tools. The lookup returns the trails with their own runtime and error type, so the agent can see
+price of not needing the class.
+
+The larger case is a message whose identifying name is a path, a URL or a long number, which the
+normalisation replaces by a placeholder (and fp1 did the same): every `no required module provides
+package github.com/x/y`, every `pull access denied for x/y`, every git or registry URL is one key,
+whatever the package. Measured with thousands of trails under one key
+([Benchmarks](../operate/benchmarks.md#keys-that-gather-many-trails)): a search about a name nobody
+published is answered with trails about others, and a lookup of such a key takes 0.5 to 0.8 seconds
+when it is not cached. Very short generic messages (`permission denied`) can collide across tools in
+the same way. The lookup returns the trails with their own runtime and error type, so the agent can see
 whether the environment fits, and a semantic search ranks by environment overlap.
 
 ## Conformance

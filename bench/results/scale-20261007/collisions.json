@@ -1,0 +1,126 @@
+{
+ "smaller": [
+  {
+   "family": "no required module provides package",
+   "status": 200,
+   "first_request_ms": 481.93944498780183,
+   "cached_ms": 0.974973983829841,
+   "response_kb": 8.9521484375,
+   "strangers": 91,
+   "wrong": 91,
+   "p50_ms": 1.375306019326672,
+   "trails_under_the_key": 2018,
+   "fingerprint": "fp2_cf0e2de18c7d3d2d"
+  },
+  {
+   "family": "pull access denied",
+   "status": 200,
+   "first_request_ms": 303.8035709760152,
+   "cached_ms": 0.9211069846060127,
+   "response_kb": 9.2236328125,
+   "strangers": 106,
+   "wrong": 106,
+   "p50_ms": 1.293733497732319,
+   "trails_under_the_key": 1359,
+   "fingerprint": "fp2_52e85b907b0f49e9"
+  },
+  {
+   "family": "unable to access",
+   "status": 200,
+   "first_request_ms": 256.3475299975835,
+   "cached_ms": 0.9743280243128538,
+   "response_kb": 9.8759765625,
+   "strangers": 102,
+   "wrong": 102,
+   "p50_ms": 1.3823229965055361,
+   "trails_under_the_key": 1292,
+   "fingerprint": "fp2_d6eb179328e8d392"
+  },
+  {
+   "family": "E404",
+   "status": 200,
+   "first_request_ms": 261.4535310131032,
+   "cached_ms": 0.843559013446793,
+   "response_kb": 8.8212890625,
+   "strangers": 102,
+   "wrong": 102,
+   "p50_ms": 1.271559507586062,
+   "trails_under_the_key": 1336,
+   "fingerprint": "fp2_6b4ad49eccf79f30"
+  },
+  {
+   "family": "FileNotFoundError",
+   "status": 200,
+   "first_request_ms": 412.4233770126011,
+   "cached_ms": 0.7474140147678554,
+   "response_kb": 8.572265625,
+   "strangers": 99,
+   "wrong": 99,
+   "p50_ms": 1.3051300193183124,
+   "trails_under_the_key": 2009,
+   "fingerprint": "fp2_1dcc683d73d2b876"
+  }
+ ],
+ "larger": [
+  {
+   "family": "no required module provides package",
+   "status": 200,
+   "first_request_ms": 758.9914000127465,
+   "cached_ms": 0.9714699990581721,
+   "response_kb": 8.953125,
+   "strangers": 91,
+   "wrong": 91,
+   "p50_ms": 1.5497529821004719,
+   "trails_under_the_key": 5988,
+   "fingerprint": "fp2_cf0e2de18c7d3d2d"
+  },
+  {
+   "family": "pull access denied",
+   "status": 200,
+   "first_request_ms": 618.1629420025274,
+   "cached_ms": 0.9171410056296736,
+   "response_kb": 9.2236328125,
+   "strangers": 106,
+   "wrong": 106,
+   "p50_ms": 1.2983415217604488,
+   "trails_under_the_key": 5489,
+   "fingerprint": "fp2_52e85b907b0f49e9"
+  },
+  {
+   "family": "unable to access",
+   "status": 200,
+   "first_request_ms": 571.7078570160083,
+   "cached_ms": 1.0128380090463907,
+   "response_kb": 9.8759765625,
+   "strangers": 102,
+   "wrong": 102,
+   "p50_ms": 1.490626993472688,
+   "trails_under_the_key": 5289,
+   "fingerprint": "fp2_d6eb179328e8d392"
+  },
+  {
+   "family": "E404",
+   "status": 200,
+   "first_request_ms": 528.3628600009251,
+   "cached_ms": 1.0050320124719292,
+   "response_kb": 8.8212890625,
+   "strangers": 102,
+   "wrong": 102,
+   "p50_ms": 1.3471145066432655,
+   "trails_under_the_key": 5215,
+   "fingerprint": "fp2_6b4ad49eccf79f30"
+  },
+  {
+   "family": "FileNotFoundError",
+   "status": 200,
+   "first_request_ms": 651.5323430066928,
+   "cached_ms": 1.0434410069137812,
+   "response_kb": 8.4677734375,
+   "strangers": 99,
+   "wrong": 99,
+   "p50_ms": 1.3026230153627694,
+   "trails_under_the_key": 6033,
+   "fingerprint": "fp2_1dcc683d73d2b876"
+  }
+ ]
+}

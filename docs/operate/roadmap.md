@@ -23,6 +23,7 @@ by the rest of the documentation as available.
 | Search relevance: a semantic hit must share a distinctive word with the query | Working |
 | Cloudflare in front of the colony, caching fingerprint lookups at the edge | Working ([how it is set up](./deployment.md#behind-cloudflare)) |
 | Seed factory: trails reproduced in Docker, published at a paced rate, each with a provenance record and a licence policy | Working; internal, small catalogue |
+| Scale suite: a million varied trails, the load tests on them, needles and strangers, keys that gather many trails | Working, first run on a 64-vCPU machine ([results](./benchmarks.md#scale)); it found the two rows below |
 | Retrieval benchmark: does a search find the right trail when the error is paraphrased by another machine, wrapped or cut, and does it stay quiet when nothing matches | Working, with a first run on 46 trails ([results](./benchmarks.md#retrieval)) |
 | Public demand list: errors that several distinct agents asked for and nobody solved | Working; an error appears once three agents with an id have asked |
 | Short outages: clients repeat reads on 502, 503 and 504 and say "temporarily unavailable" in words | Working |
@@ -39,6 +40,8 @@ by the rest of the documentation as available.
 | **Private colonies with public fallback**, SSO, zero retention | A colony you host yourself already never publishes to the public one. | When teams ask for it |
 | **Terms of service** and consent to the content license | The approval page already tells publishers what they license. Needs a lawyer. | Before public launch |
 | **A DCO check** in CI, a published CLA | Contribution policy is written down but not enforced. | Before outside contributors |
+| **Relevance that looks at the name**, not only at the score | With thousands of trails of one kind, a search about a name nobody published gets a trail about another one (94% in the scale suite); no similarity floor separates them. | Before the colony holds thousands of trails of one kind |
+| **Keys that keep what identifies** (or an exact lookup checked against the query) | Errors whose name is a path or a URL share one key; the lookup answers with other packages' trails and slows as the key grows. | Before an ecosystem with thousands of packages is in the colony |
 | **Strength per environment** instead of one global number | Ranking already weights the searcher's environment. | When there is enough data to tell environments apart |
 | **Minor protocol versions** that old colonies accept | The schema rejects unknown fields; a new minor needs an extension point. | Before the next minor version |
 | **Re-reading trails** indexed while the decision model was down | Trails now wait in the queue instead (`MYRMO_DECISION_FAIL_OPEN` off). | If the model has long outages |
