@@ -10,6 +10,7 @@
  "ab_dataset": "bench/load/populate.py, 100,002 trails (variants of the nine seed trails), as in the run load-20261001-1921",
  "notes": [
   "The A/B run filed the trails with 0.4.0, then started 0.5.0 on the same data: the migration of 100,002 trails took 113 s including the start of the container.",
-  "The queue entries that the publish path of k6 left unprocessed were discarded between runs (XTRIM), so each run saw the same data."
+  "The queue entries that the publish path of k6 left unprocessed were discarded between runs (XTRIM), so each run saw the same data.",
+  "The files named -name-check are the same runs with the server after the name check (fix/relevance-names): needles at 100,000 and 1,000,000 trails and the load test at 1,000,000. The 1,000,000-trail colony was filled again with the same generator and seed."
  ]
 }

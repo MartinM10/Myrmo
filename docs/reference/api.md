@@ -81,6 +81,15 @@ POST /v1/search
 | `limit` | integer | no | 1 to 10, default 5. |
 | `min_strength` | number | no | 0 to 1, default 0. |
 
+A semantic match is returned only if it is close enough (`MYRMO_MIN_SIMILARITY`), shares a distinctive word with the
+query unless it is nearly identical, and **does not name something else than the query**. The embedding scores `No
+module named 'kodavuri'` and `No module named 'kodavuro'` almost as high as two copies of the same line, and among
+thousands of trails of one kind there is always one such sibling, so a query that looks like an error line (it has a
+colon, a quote or a backtick) is compared with each candidate: if they share most of their words and each has a name
+the other lacks, the candidate is dropped. A query with nothing to compare (a sentence you wrote, a cut line, one
+that only adds a wrapper or a stack) is not affected. Searching for a name nobody published therefore returns nothing
+instead of a trail about another name.
+
 Response:
 
 ```json
