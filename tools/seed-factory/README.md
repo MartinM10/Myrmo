@@ -28,6 +28,30 @@ task, so package-manager output never becomes the "error" and a broken setup is 
 failure the task is meant to show. Paths inside the container are kept as they are, because the commands
 of a trail have to stay runnable; only what belongs to the host is replaced.
 
+## Provenance
+
+Trails are published under CC BY-SA 4.0 and the project keeps the right to sublicense them
+([LICENSING.md](../../LICENSING.md)). That only holds if nothing in a seeded trail carries an obligation the project
+cannot pass on, so every trail records where it comes from when it is made (`provenance.py`).
+
+Each trail carries a `_provenance` record: the task, the batch, the image and its content digest, the commit of the
+factory that ran it, whether a model made it (and under which licence), the sources it was built from, and a SHA-256
+of the exact trail. The publisher never sends it (it drops every key that starts with an underscore); it writes it to
+`seed-out/provenance.jsonl` next to the colony's verdict, so each trail in a colony can be traced later.
+
+**No provenance, no publication.** The factory refuses a trail whose record breaks the policy, and the publisher skips
+one without a record or whose content changed after it was recorded.
+
+| Policy | |
+|---|---|
+| Sources (repositories, datasets, documents) | Only permissive licences: MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, 0BSD, Unlicense, CC0-1.0. SPDX expressions are understood (`A AND B` needs both, `A OR B` either). GPL, AGPL, MPL, CC BY-SA, CC BY-NC, no licence and unknown licences are out. |
+| How a source is used | Only as `discovery` (it told us an error exists) or `environment` (an image or pinned repository that the factory runs itself). Copying its text or code is never accepted, whatever its licence. |
+| Models | A model that produced a trail is named, with a licence the project can pass on (an open-weights model under Apache-2.0, for example) or with its terms marked as reviewed for this use. |
+| Catalog tasks | Written by the project, scripted commands, no model and no outside source. |
+
+Stack Overflow content is CC BY-SA and so stays reference only. A source that is not on the list can be added to the
+policy deliberately (`ALLOWED_LICENCES`), never case by case.
+
 ## Run
 
 From the repository root, with Docker:

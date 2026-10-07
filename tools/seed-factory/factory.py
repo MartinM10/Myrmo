@@ -19,12 +19,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(ROOT / "protocol"))
 from fingerprint_v1 import fingerprint
 from catalog import MESSAGE_OVERRIDES, TASKS, Task, publishable
+import provenance
 
 SCHEMA = json.loads((ROOT / "protocol/trail.v1.schema.json").read_text())
 OUT = Path(os.environ.get("MYRMO_SEED_OUT", ROOT / "seed-out"))
 TIMEOUT = 300
 MAX_WORKERS = max(1, min((os.cpu_count() or 1) // 2, 32))
 BATCH = "pilot-001"
+FACTORY_VERSION: dict | None = None  # the commit this run was made from, read once
 # The tasks run in disposable containers, so paths like /tmp/app are not private and the commands of a
 # trail must stay runnable. Only what belongs to this host is replaced (the checkout, the home directory
 # and the account name); the colony redacts the rest again on arrival.
@@ -144,7 +146,14 @@ def trail(task: Task) -> dict:
         "tags": ["seed-factory", BATCH, *task.tags],
         "_factory": {"task_id": task.task_id, "failed": failed, "fixed": fixed},
     }
-    return clean(candidate)
+    cleaned = clean(candidate)
+    global FACTORY_VERSION
+    FACTORY_VERSION = FACTORY_VERSION or provenance.factory_version()
+    cleaned["_provenance"] = provenance.record(
+        task_id=task.task_id, batch=BATCH, image=task.image, digest=provenance.image_digest(task.image), version=FACTORY_VERSION,
+        public_trail={k: v for k, v in cleaned.items() if not k.startswith("_")},
+    )
+    return cleaned
 
 
 def validate(candidate: dict) -> None:
@@ -161,6 +170,9 @@ def validate(candidate: dict) -> None:
         raise ValueError("the fix and verification did not exit successfully")
     if any(attempt["exit_code"] == 0 for attempt in candidate["_factory"]["failed"]):
         raise ValueError("a failed approach exited successfully")
+    problems = provenance.check(candidate.get("_provenance"))
+    if problems:
+        raise ValueError(f"{candidate['_factory']['task_id']}: {'; '.join(problems)}")
     candidate["fingerprint"] = fingerprint(candidate["environment"]["runtime"]["name"], candidate["problem"]["error_type"], candidate["problem"]["error_message"])
 
 

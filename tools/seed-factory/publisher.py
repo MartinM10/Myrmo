@@ -11,6 +11,11 @@ import urllib.request
 from pathlib import Path
 from urllib.parse import urlparse
 
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import provenance  # noqa: E402
+
 ROOT = Path(__file__).resolve().parents[2]
 OUT = Path(os.environ.get("MYRMO_SEED_OUT", ROOT / "seed-out"))
 MAX_PER_HOUR = 25
@@ -40,6 +45,19 @@ def request(base: str, method: str, path: str, body=None):
     req = urllib.request.Request(base.rstrip("/") + path, data=data, method=method, headers={"content-type": "application/json", "accept": "application/json", "x-myrmo-agent": AGENT, "user-agent": UA})
     with urllib.request.urlopen(req, timeout=30) as response:
         return response.status, json.loads(response.read() or b"{}")
+
+
+def payload(trail: dict) -> dict:
+    """What is sent: protocol v1 only. The factory's bookkeeping (keys that start with an underscore, the fingerprint) stays here."""
+    return {k: v for k, v in trail.items() if not k.startswith("_") and k != "fingerprint"}
+
+
+def provenance_problems(trail: dict) -> list[str]:
+    """No provenance, no publication: the record must pass the licence policy and describe exactly what would be sent."""
+    found = provenance.check(trail.get("_provenance"))
+    if not found and provenance.content_hash(payload(trail)) != trail["_provenance"]["content_sha256"]:
+        found.append("the trail changed after its provenance was recorded")
+    return found
 
 
 def exists_on_server(base: str, fingerprint: str) -> bool:
@@ -72,6 +90,10 @@ def main() -> int:
         for trail in trails:
             if (args.base.rstrip("/"), trail.get("fingerprint")) in published:
                 continue
+            problems = provenance_problems(trail)
+            if problems:
+                print(f"skipping {trail.get('fingerprint')}: {'; '.join(problems)}")
+                continue
             if exists_on_server(args.base, trail["fingerprint"]):
                 print(f"skipping {trail['fingerprint']}: already in the colony")
                 continue
@@ -83,7 +105,7 @@ def main() -> int:
             submitted_at = time.time()
             while True:
                 try:
-                    status, created = request(args.base, "POST", "/v1/trails", {k: v for k, v in trail.items() if not k.startswith("_") and k != "fingerprint"})
+                    status, created = request(args.base, "POST", "/v1/trails", payload(trail))
                     errors_5xx = 0
                     break
                 except urllib.error.HTTPError as exc:
@@ -126,6 +148,9 @@ def main() -> int:
             output.flush()
             published.add((args.base.rstrip("/"), trail["fingerprint"]))
             history.append(record)
+            # The ledger ties each trail in the colony to where it came from. It is append-only and never leaves this machine.
+            with (OUT / "provenance.jsonl").open("a", encoding="utf-8") as ledger:
+                ledger.write(json.dumps({"base": record["base"], "fingerprint": record["fingerprint"], "trail_id": trail_id, "status": record["status"], "provenance": trail["_provenance"]}, sort_keys=True) + "\n")
     return 0
 
 
