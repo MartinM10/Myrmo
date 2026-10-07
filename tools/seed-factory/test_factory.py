@@ -19,6 +19,7 @@ def load(name):
 factory = load("factory")
 publisher = load("publisher")
 retire = load("retire")
+provenance = load("provenance")
 catalog = load("catalog")
 EXAMPLE = json.loads((ROOT.parents[1] / "protocol/examples/trail.distutils.json").read_text(encoding="utf-8"))
 
@@ -29,7 +30,14 @@ def candidate():
     c["problem"]["error_message"] = "ModuleNotFoundError: No module named 'distutils'"
     c["effort"]["failed_attempts"] = 2
     c["_factory"] = {"task_id": "t", "failed": [{"exit_code": 1}, {"exit_code": 1}], "fixed": {"exit_code": 0}}
+    c["_provenance"] = provenance_for(c)
     return c
+
+
+def provenance_for(c, **kwargs):
+    """The record the factory would attach to this trail."""
+    return provenance.record(task_id="t", batch="b", image="python:3.12.4", digest="python@sha256:" + "a" * 64,
+                             version={"commit": "abc123", "dirty": False}, public_trail={k: v for k, v in c.items() if not k.startswith("_")}, **kwargs)
 
 
 def test_url_guard():
@@ -199,3 +207,97 @@ def test_a_matching_line_is_returned_whole():
     logs = "debconf: delaying package configuration\nfatal: detected dubious ownership in repository at '/tmp/repo'\n"
     line = factory.error_line(logs, "git dubious ownership", catalog.MESSAGE_OVERRIDES["git-safe-directory"])
     assert line == "fatal: detected dubious ownership in repository at '/tmp/repo'"
+
+
+# -- provenance ---------------------------------------------------------------------------
+
+
+def test_licences_the_project_can_pass_on():
+    # The strings are the ones SetupBench puts in its `license_spdx` field.
+    for ok in ("MIT", "Apache-2.0", "BSD-3-Clause", "BSD-2-Clause", "ISC", "BSD-3-Clause AND MIT", "BSD-2-Clause OR Apache-2.0", "GPL-2.0-only OR MIT", "(MIT OR GPL-3.0) AND Apache-2.0", "mit"):
+        assert provenance.licence_allowed(ok), ok
+    for refused in ("AGPL-3.0", "GPL-2.0-only", "MPL-2.0", "MIT AND GPL-3.0", "(GPL-3.0 OR MPL-2.0) AND MIT", "CC-BY-SA-4.0", "CC-BY-NC-SA-4.0",
+                    "NOASSERTION", "", None, "MIT AND", "(MIT", "MIT)", "Apache-2.0 WITH LLVM-exception", "Apache-2.0+"):
+        assert not provenance.licence_allowed(refused), refused
+
+
+def test_a_trail_without_provenance_is_refused():
+    c = candidate()
+    del c["_provenance"]
+    with pytest.raises(ValueError, match="no provenance record"):
+        factory.validate(c)
+    c = candidate()
+    del c["_provenance"]["content_sha256"]
+    with pytest.raises(ValueError, match="content_sha256"):
+        factory.validate(c)
+
+
+def test_a_source_must_be_permissive_and_never_copied():
+    ok = {"kind": "repository", "ref": "https://github.com/microsoft/SetupBench", "licence": "MIT", "used_as": "environment"}
+    assert provenance.check(provenance_for(candidate(), sources=[ok])) == []
+    copyleft = {**ok, "ref": "https://example.test/gpl-project", "licence": "GPL-2.0-only"}
+    assert "not one the project can pass on" in provenance.check(provenance_for(candidate(), sources=[ok, copyleft]))[0]
+    sharealike = {"kind": "document", "ref": "https://stackoverflow.com/q/1", "licence": "CC-BY-SA-4.0", "used_as": "discovery"}
+    assert provenance.check(provenance_for(candidate(), sources=[sharealike]))
+    copied = {**ok, "used_as": "copied-text"}
+    assert "never copied text or code" in provenance.check(provenance_for(candidate(), sources=[copied]))[0]
+    unlicensed = {**ok, "licence": None}
+    assert provenance.check(provenance_for(candidate(), sources=[unlicensed]))
+
+
+def test_a_model_needs_a_licence_the_project_can_pass_on_or_reviewed_terms():
+    assert provenance.check(provenance_for(candidate(), model="qwen3-coder", model_licence="Apache-2.0")) == []
+    assert provenance.check(provenance_for(candidate(), model="some-api-model", model_terms_reviewed=True)) == []
+    problems = provenance.check(provenance_for(candidate(), model="some-api-model"))
+    assert problems and "terms were not reviewed" in problems[0]
+    assert provenance.check(provenance_for(candidate(), model="llama-like", model_licence="Llama-Community"))
+
+
+def test_the_publisher_sends_protocol_v1_only_and_notices_a_trail_that_changed():
+    c = candidate()
+    c["fingerprint"] = "fp1_0000000000000000"
+    sent = publisher.payload(c)
+    assert "_factory" not in sent and "_provenance" not in sent and "fingerprint" not in sent
+    assert publisher.provenance_problems(c) == []
+    c["problem"]["error_message"] += " (edited by hand)"
+    assert publisher.provenance_problems(c) == ["the trail changed after its provenance was recorded"]
+    del c["_provenance"]
+    assert publisher.provenance_problems(c) == ["no provenance record"]
+
+
+def test_the_record_keeps_what_is_needed_to_audit_a_trail_later():
+    rec = candidate()["_provenance"]
+    assert rec["origin"] == "seed-factory" and rec["authored_by"] == "project"
+    assert rec["generated_by"] == {"kind": "scripted-commands", "model": None, "model_licence": None, "model_terms_reviewed": False}
+    assert rec["image"] == {"ref": "python:3.12.4", "digest": "python@sha256:" + "a" * 64}
+    assert rec["tool"] == {"commit": "abc123", "dirty": False}
+    assert len(rec["content_sha256"]) == 64 and rec["sources"] == []
+
+
+def test_the_publisher_keeps_a_ledger_and_sends_nothing_without_provenance(monkeypatch, tmp_path):
+    good, bare = candidate(), candidate()
+    good["fingerprint"], bare["fingerprint"] = "fp1_aaaaaaaaaaaaaaaa", "fp1_bbbbbbbbbbbbbbbb"
+    bare["problem"]["error_message"] = "ModuleNotFoundError: No module named 'other_thing'"
+    del bare["_provenance"]
+    source = tmp_path / "lot.jsonl"
+    source.write_text("\n".join(json.dumps(t) for t in (good, bare)) + "\n", encoding="utf-8")
+    sent = []
+
+    def fake(base, method, path, body=None):
+        if method == "GET" and "by-fingerprint" in path:
+            raise urllib.error.HTTPError("u", 404, "nf", {}, None)
+        if method == "POST":
+            sent.append(body)
+            return 202, {"trail_id": "11111111-1111-4111-8111-111111111111"}
+        return 200, {"status": "indexed", "reasons": []}
+
+    monkeypatch.setattr(publisher, "request", fake)
+    monkeypatch.setattr(publisher, "OUT", tmp_path)
+    monkeypatch.setattr(publisher.time, "sleep", lambda s: None)
+    monkeypatch.setattr("sys.argv", ["publisher", "--base", "http://localhost:8080", "--input", str(source), "--max", "5"])
+    assert publisher.main() == 0
+    assert len(sent) == 1 and "_provenance" not in sent[0], "only the trail with provenance went out, and without its bookkeeping"
+    ledger = [json.loads(line) for line in (tmp_path / "provenance.jsonl").read_text(encoding="utf-8").splitlines()]
+    assert len(ledger) == 1
+    assert ledger[0]["trail_id"] == "11111111-1111-4111-8111-111111111111" and ledger[0]["status"] == "indexed"
+    assert ledger[0]["provenance"]["content_sha256"] == good["_provenance"]["content_sha256"]

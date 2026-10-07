@@ -139,7 +139,7 @@ local colony, never production: the runner publishes the corpus and refuses a co
 ### Latest results
 
 Run `retrieval-20261007-0711`: 46 published trails (38 made by the seed factory from commands run in containers, 8 hand-made
-seeds), a virtual machine with 64 vCPUs, embeddings on CPU, heuristic enrichment, similarity floor 0.72.
+seeds; they include trails of tasks the publication policy excludes, which make good tests but are not published), a virtual machine with 64 vCPUs, embeddings on CPU, heuristic enrichment, similarity floor 0.72.
 
 | Variant | Searches | Top 1 | Top 3 | Wrong trail on top | Answered by |
 |---|---|---|---|---|---|
