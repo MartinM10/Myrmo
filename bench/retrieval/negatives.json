@@ -1,0 +1,221 @@
+{
+  "_comment": "Errors no trail in bench/retrieval/corpus.jsonl solves. `queries` are unrelated to every trail: a trail returned is a wrong answer unless its error type is in `related` (judged by hand: a port already in use is the same problem as the corpus trail about it). `lookalikes` name a different module or key than a published trail, where the name decides the fix: a trail whose error type is in `avoid` is a wrong answer. Queries only: nothing here is ever published.",
+  "queries": [
+    {
+      "error": "Error from server (Forbidden): pods is forbidden: User \"system:serviceaccount:default:ci\" cannot list resource \"pods\" in API group \"\" in the namespace \"prod\"",
+      "runtime": "kubectl"
+    },
+    {
+      "error": "Error: Failed to query available provider packages: could not retrieve the list of available versions for provider hashicorp/aws",
+      "runtime": "terraform"
+    },
+    {
+      "error": "docker: Error response from daemon: driver failed programming external connectivity on endpoint web: Bind for 0.0.0.0:80 failed: port is already allocated.",
+      "runtime": "docker",
+      "related": [
+        "OSError"
+      ]
+    },
+    {
+      "error": "java.lang.OutOfMemoryError: Java heap space",
+      "runtime": "java"
+    },
+    {
+      "error": "[ERROR] Failed to execute goal org.apache.maven.plugins:maven-surefire-plugin:3.2.5:test (default-test) on project api: There are test failures.",
+      "runtime": "java"
+    },
+    {
+      "error": "FAILURE: Build failed with an exception. * What went wrong: Could not resolve all files for configuration ':app:debugRuntimeClasspath'.",
+      "runtime": "java"
+    },
+    {
+      "error": "Gem::Ext::BuildError: ERROR: Failed to build gem native extension.",
+      "runtime": "ruby"
+    },
+    {
+      "error": "PHP Fatal error: Allowed memory size of 134217728 bytes exhausted (tried to allocate 20480 bytes)",
+      "runtime": "php"
+    },
+    {
+      "error": "error NU1101: Unable to find package Newtonsoft.Json. No packages exist with this id in source(s): nuget.org",
+      "runtime": "dotnet"
+    },
+    {
+      "error": "CondaHTTPError: HTTP 000 CONNECTION FAILED for url <https://repo.anaconda.com/pkgs/main/linux-64/repodata.json>",
+      "runtime": "python"
+    },
+    {
+      "error": "torch.cuda.OutOfMemoryError: CUDA out of memory. Tried to allocate 2.00 GiB",
+      "runtime": "python"
+    },
+    {
+      "error": "ssh: connect to host github.com port 22: Connection timed out",
+      "runtime": "git"
+    },
+    {
+      "error": "Permission denied (publickey). fatal: Could not read from remote repository.",
+      "runtime": "git"
+    },
+    {
+      "error": "ImportError: cannot import name 'soft_unicode' from 'markupsafe'",
+      "runtime": "python"
+    },
+    {
+      "error": "sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) database is locked",
+      "runtime": "python"
+    },
+    {
+      "error": "django.db.migrations.exceptions.InconsistentMigrationHistory: Migration admin.0001_initial is applied before its dependency",
+      "runtime": "python"
+    },
+    {
+      "error": "RecursionError: maximum recursion depth exceeded while calling a Python object",
+      "runtime": "python"
+    },
+    {
+      "error": "TypeError: Cannot read properties of undefined (reading 'map')",
+      "runtime": "node"
+    },
+    {
+      "error": "Error: listen EADDRINUSE: address already in use :::3000",
+      "runtime": "node",
+      "related": [
+        "OSError"
+      ]
+    },
+    {
+      "error": "FATAL ERROR: Reached heap limit Allocation failed - JavaScript heap out of memory",
+      "runtime": "node"
+    },
+    {
+      "error": "Error: ENOSPC: System limit for number of file watchers reached, watch '/app/src'",
+      "runtime": "node"
+    },
+    {
+      "error": "error: failed to push some refs to 'origin'. hint: Updates were rejected because the tip of your current branch is behind",
+      "runtime": "git"
+    },
+    {
+      "error": "CONFLICT (content): Merge conflict in package-lock.json. Automatic merge failed",
+      "runtime": "git"
+    },
+    {
+      "error": "thread 'main' panicked at 'called `Option::unwrap()` on a `None` value'",
+      "runtime": "rust"
+    },
+    {
+      "error": "error: linking with `cc` failed: exit status: 1 = note: /usr/bin/ld: cannot find -lssl",
+      "runtime": "rust"
+    },
+    {
+      "error": "ld: library not found for -lSystem",
+      "runtime": "clang"
+    },
+    {
+      "error": "panic: runtime error: invalid memory address or nil pointer dereference",
+      "runtime": "go"
+    },
+    {
+      "error": "FATAL: password authentication failed for user \"postgres\"",
+      "runtime": "postgres"
+    },
+    {
+      "error": "ERROR 2002 (HY000): Can't connect to local MySQL server through socket '/var/run/mysqld/mysqld.sock'",
+      "runtime": "mysql"
+    },
+    {
+      "error": "redis.exceptions.ConnectionError: Error 111 connecting to localhost:6379. Connection refused.",
+      "runtime": "python"
+    },
+    {
+      "error": "nginx: [emerg] bind() to 0.0.0.0:443 failed (98: Address already in use)",
+      "runtime": "nginx",
+      "related": [
+        "OSError"
+      ]
+    },
+    {
+      "error": "systemd[1]: app.service: Failed with result 'exit-code'.",
+      "runtime": "systemd"
+    },
+    {
+      "error": "E: Unable to locate package libfoo-dev",
+      "runtime": "apt"
+    },
+    {
+      "error": "E: Could not get lock /var/lib/dpkg/lock-frontend. It is held by process 1234",
+      "runtime": "apt"
+    },
+    {
+      "error": "pytest: error: unrecognized arguments: --cov=src",
+      "runtime": "python"
+    },
+    {
+      "error": "ERROR: Could not build wheels for cryptography, which is required to install pyproject.toml-based projects",
+      "runtime": "python"
+    },
+    {
+      "error": "UnicodeEncodeError: 'charmap' codec can't encode character '\\u2713' in position 0: character maps to <undefined>",
+      "runtime": "python"
+    },
+    {
+      "error": "Uncaught SyntaxError: Cannot use import statement outside a module",
+      "runtime": "node"
+    },
+    {
+      "error": "AccessDenied: User is not authorized to perform: s3:PutObject on resource: arn:aws:s3:::bucket/key",
+      "runtime": "aws"
+    }
+  ],
+  "lookalikes": [
+    {
+      "error": "ModuleNotFoundError: No module named 'flask'",
+      "runtime": "python",
+      "avoid": [
+        "ModuleNotFoundError"
+      ]
+    },
+    {
+      "error": "ModuleNotFoundError: No module named 'torch'",
+      "runtime": "python",
+      "avoid": [
+        "ModuleNotFoundError"
+      ]
+    },
+    {
+      "error": "ModuleNotFoundError: No module named 'cv2'",
+      "runtime": "python",
+      "avoid": [
+        "ModuleNotFoundError"
+      ]
+    },
+    {
+      "error": "ModuleNotFoundError: No module named 'pandas'",
+      "runtime": "python",
+      "avoid": [
+        "ModuleNotFoundError"
+      ]
+    },
+    {
+      "error": "KeyError: 'AWS_REGION'",
+      "runtime": "python",
+      "avoid": [
+        "KeyError"
+      ]
+    },
+    {
+      "error": "Error: Cannot find module 'express'",
+      "runtime": "node",
+      "avoid": [
+        "MODULE_NOT_FOUND"
+      ]
+    },
+    {
+      "error": "Error: Cannot find module './config'",
+      "runtime": "node",
+      "avoid": [
+        "MODULE_NOT_FOUND"
+      ]
+    }
+  ]
+}

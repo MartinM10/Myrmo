@@ -1,12 +1,11 @@
 ---
-title: "Benchmarks: MyrmoBench and load tests"
-description: "MyrmoBench measures whether following a trail helps agents; the load suite measures what one colony node sustains. Reproducible with one command."
+title: "Benchmarks: MyrmoBench, retrieval and load tests"
+description: "MyrmoBench measures whether following a trail helps agents; the retrieval suite measures whether a search finds the right trail; the load suite measures what one colony node sustains. Reproducible with one command."
 ---
 
 # Benchmarks
 
-Two suites in `bench/`. Both publish raw results, and the website only shows numbers from published
-runs.
+Suites in `bench/`: MyrmoBench, load, retrieval and the leak tests. Each publishes its raw results, and the website only shows numbers from published runs.
 
 > [!IMPORTANT]
 > No run, no number. Until the first public run, the website shows these benchmarks as pending.
@@ -114,6 +113,77 @@ What this says:
   single-digit milliseconds.
 
 Raw output: `bench/results/load-20261001-1921/`.
+
+## Retrieval
+
+When an agent searches for an error, does Myrmo return the trail that solves it? No agent and no model is
+involved, so a run takes about a minute and costs nothing. `bench/retrieval/run.py` publishes a corpus to an
+empty colony and searches the way an agent does (the Python SDK: exact fingerprint first, semantic search when
+that finds nothing).
+
+| Searches | What they are |
+|---|---|
+| Positives | The error of a published trail as it would look on another machine: paths, versions, ports and line numbers changed; wrapped in another exception; with a stack header; cut to 60%; without its type prefix. Scored by whether the trail comes back and where. |
+| Negatives | Errors no trail solves, and look-alikes that name another module or key than a published trail, where the name decides the fix. The right answer is nothing: a trail returned is a wrong answer. |
+| Floor sweep | The colony returns every semantic match above its similarity floor (0.72). The stored scores show what a stricter floor would have found and stopped. |
+
+```bash
+docker compose -p myrmo-retrieval -f docker-compose.yml -f bench/compose.yml up -d gateway enricher valkey qdrant embed
+python bench/retrieval/run.py http://localhost:8080 --out bench/results/retrieval-YYYYMMDD
+```
+
+The corpus (`bench/retrieval/corpus.jsonl`) is a snapshot built by `build_corpus.py`; every line records where
+the trail came from. `negatives.json` says which trails are fair answers to a negative, judged by hand. Use a
+local colony, never production: the runner publishes the corpus and refuses a colony that already holds trails.
+
+### Latest results
+
+Run `retrieval-20261007-0711`: 46 published trails (38 made by the seed factory from commands run in containers, 8 hand-made
+seeds), a virtual machine with 64 vCPUs, embeddings on CPU, heuristic enrichment, similarity floor 0.72.
+
+| Variant | Searches | Top 1 | Top 3 | Wrong trail on top | Answered by |
+|---|---|---|---|---|---|
+| Error line as published | 37 | 100% | 100% | 0% | fingerprint 11, search 26 |
+| Paths, versions, ports, lines changed | 37 | 97% | 97% | 0% | fingerprint 11, search 26 |
+| Wrapped in another exception | 37 | 97% | 97% | 0% | search 37 |
+| With a stack header | 37 | 86% | 86% | 8% | search 37 |
+| Cut to 60% | 16 | 100% | 100% | 0% | search 16 |
+| Without its type prefix | 29 | 97% | 97% | 0% | search 29 |
+
+| Should find nothing | Searches | Wrong answers |
+|---|---|---|
+| Errors no trail covers | 39 | 5 (13%) |
+| Look-alikes (another module or key) | 7 | 0 |
+
+| Similarity floor | Found on top | Wrong on top, positives | Wrong on top, negatives |
+|---|---|---|---|
+| 0.72 (default) | 163 of 171 | 3 | 5 of 46 |
+| 0.75 | 158 of 171 | 1 | 1 of 46 |
+| 0.78 | 146 of 171 | 1 | 0 of 46 |
+| 0.85 | 103 of 171 | 0 | 0 of 46 |
+
+What this says, and what it does not:
+
+- **The search tolerates what changes between machines.** Another path, version, port or line number, or the error
+  inside another exception, still finds the trail 97% of the time. Pasting a whole stack header is where it starts
+  to fail (86%, and in 8% the first trail is the wrong one), which is why the instructions ask for the exact error
+  line only.
+- **The exact-match path is used less than it could be.** Only 11 of 37 repeats of a published error were answered
+  by the fingerprint, the cheap, cacheable lookup. The fingerprint includes the error type, and the type a client
+  guesses from the line often differs from the one the trail declared (`error[E0308]` against `E0308`, `Error`
+  against `ERR_OSSL_EVP_UNSUPPORTED`). All 11 hits are the cases where both agree. The semantic search caught the
+  other 26, so the agent still got its answer, but at the cost of an embedding. Changing what the fingerprint
+  covers is a protocol change; this measures the cost, it does not fix it.
+- **The similarity floor trades finding for being wrong.** At 0.72, 5 of 39 unrelated errors got a trail (a Postgres
+  password failure got the SCRAM trail, a git `Permission denied (publickey)` got the shell one). At 0.78 none
+  did, and 17 of 171 searches that were answered lost their answer. Nothing is tuned on these numbers: with more
+  trails in the colony there are more near neighbours, so the right floor has to be measured again as it grows.
+- **Short messages are weak trails.** Nine corpus trails have an error message of fewer than three words (for example
+  `EACCES`). Their searches found the trail in 21 of 36, against 97% or more for the rest. They come from older
+  seed batches; a trail needs a message with something to match.
+- **The corpus is small and made by us.** 46 trails say little about recall at a million, and the variants are
+  generated, not written by agents. This measures the robustness of search to the changes between machines, not
+  how often a real agent finds a real answer. That is what MyrmoBench is for.
 
 ## Leak test bank
 

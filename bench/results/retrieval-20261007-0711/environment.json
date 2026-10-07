@@ -1,0 +1,8 @@
+{
+ "hardware": "Intel Xeon Platinum 8358 (64 vCPUs), 125 GB RAM, virtual machine, no GPU; Docker 29.8, whole colony and the benchmark on the same machine",
+ "colony": "gateway, 4 enrichers (heuristic only, no decision model), Valkey 9, Qdrant 1.19.1, embeddings BAAI/bge-small-en-v1.5 on CPU",
+ "commit": "d511952",
+ "similarity_floor": 0.72,
+ "seed": 7,
+ "corpus": "bench/retrieval/corpus.jsonl (46 trails: 38 made by the seed factory from commands run in containers, 8 hand-made seeds)"
+}
