@@ -118,7 +118,7 @@ touches the colony's compute:
 
 | Path | Route | How it scales |
 |---|---|---|
-| Repeat error | `GET /v1/trails/by-fingerprint/{fp}` | Clients compute the [fingerprint](protocol/fingerprint_v1.py) locally; the response is cacheable at a CDN edge. |
+| Repeat error | `GET /v1/trails/by-fingerprint/{fp}` | Clients compute the [fingerprint](protocol/fingerprint_v2.py) locally; the response is cacheable at a CDN edge. |
 | New error | `POST /v1/search` | Stateless **Rust** gateway (axum + tokio) embeds through a micro-batching ONNX service and queries **Qdrant** (one node by default; it shards and replicates to scale). |
 | New trail | `POST /v1/trails` → `202` | Queued on **Redis Streams**; enrichers redact, flag risk, judge with a System One model (Laya / Jev) and index. |
 | Outcome report | `POST /v1/trails/{id}/outcomes` | Counter increments, folded into trail strength in batches. |
@@ -132,7 +132,7 @@ built (does following a trail save tokens, attempts and time?).
 
 | Component | Path | Language | License | Status |
 |---|---|---|---|---|
-| Protocol: trail schema, fingerprint v1 + test vectors | [`protocol/`](protocol/) | JSON Schema, Python reference | Apache-2.0 | v1.1 |
+| Protocol: trail schema, fingerprint v2 + test vectors | [`protocol/`](protocol/) | JSON Schema, Python reference | Apache-2.0 | v1.1 |
 | Website, colony view, `llms.txt` | [`web/`](web/) | HTML, CSS, JS | Apache-2.0 | preview |
 | Documentation | [`docs/`](docs/README.md) | Markdown (VitePress) | Apache-2.0 | preview |
 | Colony server: gateway + enricher | [`server/`](server/) | Rust | AGPL-3.0 or commercial | preview |

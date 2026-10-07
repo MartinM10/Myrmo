@@ -1,0 +1,296 @@
+[
+  {
+    "group": "distutils",
+    "note": "the line as printed",
+    "message": "ModuleNotFoundError: No module named 'distutils'",
+    "normalized": "no module named 'distutils'",
+    "fingerprint": "fp2_101fa6b91aa4f019"
+  },
+  {
+    "group": "distutils",
+    "note": "without its class",
+    "message": "No module named 'distutils'",
+    "normalized": "no module named 'distutils'",
+    "fingerprint": "fp2_101fa6b91aa4f019"
+  },
+  {
+    "group": "distutils",
+    "note": "extra whitespace",
+    "message": "  ModuleNotFoundError:   No module named 'distutils'  ",
+    "normalized": "no module named 'distutils'",
+    "fingerprint": "fp2_101fa6b91aa4f019"
+  },
+  {
+    "group": "distutils",
+    "note": "Uncaught before the class",
+    "message": "Uncaught ModuleNotFoundError: No module named 'distutils'",
+    "normalized": "no module named 'distutils'",
+    "fingerprint": "fp2_101fa6b91aa4f019"
+  },
+  {
+    "group": "numpy",
+    "note": "another module is another error",
+    "message": "ModuleNotFoundError: No module named 'numpy'",
+    "normalized": "no module named 'numpy'",
+    "fingerprint": "fp2_263692a9b5e1c0e4"
+  },
+  {
+    "group": "recursive-update",
+    "note": "wrapped twice",
+    "message": "java.util.concurrent.CompletionException: java.lang.IllegalStateException: Recursive update",
+    "normalized": "recursive update",
+    "fingerprint": "fp2_beff0c024ac12106"
+  },
+  {
+    "group": "recursive-update",
+    "note": "qualified class",
+    "message": "java.lang.IllegalStateException: Recursive update",
+    "normalized": "recursive update",
+    "fingerprint": "fp2_beff0c024ac12106"
+  },
+  {
+    "group": "recursive-update",
+    "note": "simple class",
+    "message": "IllegalStateException: Recursive update",
+    "normalized": "recursive update",
+    "fingerprint": "fp2_beff0c024ac12106"
+  },
+  {
+    "group": "recursive-update",
+    "note": "a cause line",
+    "message": "Caused by: java.lang.IllegalStateException: Recursive update",
+    "normalized": "recursive update",
+    "fingerprint": "fp2_beff0c024ac12106"
+  },
+  {
+    "group": "recursive-update",
+    "note": "the message alone",
+    "message": "Recursive update",
+    "normalized": "recursive update",
+    "fingerprint": "fp2_beff0c024ac12106"
+  },
+  {
+    "group": "npe",
+    "note": "qualified class",
+    "message": "java.lang.NullPointerException: Cannot invoke \"javax.sql.DataSource.getConnection()\"",
+    "normalized": "cannot invoke \"javax.sql.datasource.getconnection()\"",
+    "fingerprint": "fp2_316e3ccf30ed0808"
+  },
+  {
+    "group": "npe",
+    "note": "simple class",
+    "message": "NullPointerException: Cannot invoke \"javax.sql.DataSource.getConnection()\"",
+    "normalized": "cannot invoke \"javax.sql.datasource.getconnection()\"",
+    "fingerprint": "fp2_316e3ccf30ed0808"
+  },
+  {
+    "group": "e0502",
+    "note": "rustc, one file",
+    "message": "error[E0502]: cannot borrow `*self` as mutable because it is also borrowed as immutable --> src/lib.rs:42:9",
+    "normalized": "cannot borrow `*self` as mutable because it is also borrowed as immutable --> <path>:<n>",
+    "fingerprint": "fp2_58af1c3894896539"
+  },
+  {
+    "group": "e0502",
+    "note": "rustc, another file",
+    "message": "error[E0502]: cannot borrow `*self` as mutable because it is also borrowed as immutable --> src/main.rs:7:13",
+    "normalized": "cannot borrow `*self` as mutable because it is also borrowed as immutable --> <path>:<n>",
+    "fingerprint": "fp2_58af1c3894896539"
+  },
+  {
+    "group": "e0502",
+    "note": "without the error code",
+    "message": "cannot borrow `*self` as mutable because it is also borrowed as immutable --> src/main.rs:7:13",
+    "normalized": "cannot borrow `*self` as mutable because it is also borrowed as immutable --> <path>:<n>",
+    "fingerprint": "fp2_58af1c3894896539"
+  },
+  {
+    "group": "ts2322",
+    "note": "tsc code",
+    "message": "error TS2322: Type 'string' is not assignable to type 'number'.",
+    "normalized": "type 'string' is not assignable to type 'number'.",
+    "fingerprint": "fp2_73ba18fb38d3614e"
+  },
+  {
+    "group": "ts2322",
+    "note": "without the tool code",
+    "message": "Type 'string' is not assignable to type 'number'.",
+    "normalized": "type 'string' is not assignable to type 'number'.",
+    "fingerprint": "fp2_73ba18fb38d3614e"
+  },
+  {
+    "group": "cannot-find-playwright",
+    "note": "node",
+    "message": "Error: Cannot find module 'playwright'",
+    "normalized": "cannot find module 'playwright'",
+    "fingerprint": "fp2_bbe80d7352700bfb"
+  },
+  {
+    "group": "cannot-find-playwright",
+    "note": "without Error",
+    "message": "Cannot find module 'playwright'",
+    "normalized": "cannot find module 'playwright'",
+    "fingerprint": "fp2_bbe80d7352700bfb"
+  },
+  {
+    "group": "cannot-find-express",
+    "note": "another module",
+    "message": "Error: Cannot find module 'express'",
+    "normalized": "cannot find module 'express'",
+    "fingerprint": "fp2_cdd2f69df21f2311"
+  },
+  {
+    "group": "pip-numpy",
+    "note": "pip",
+    "message": "ERROR: No matching distribution found for numpy==1.24.4",
+    "normalized": "no matching distribution found for numpy==1.24.4",
+    "fingerprint": "fp2_2c3bac2f14980426"
+  },
+  {
+    "group": "pip-numpy",
+    "note": "without ERROR",
+    "message": "No matching distribution found for numpy==1.24.4",
+    "normalized": "no matching distribution found for numpy==1.24.4",
+    "fingerprint": "fp2_2c3bac2f14980426"
+  },
+  {
+    "group": "npm-eresolve",
+    "note": "npm 9 and later",
+    "message": "npm error code ERESOLVE",
+    "normalized": "code eresolve",
+    "fingerprint": "fp2_bef61dd28f8573a7"
+  },
+  {
+    "group": "npm-eresolve",
+    "note": "npm 8 and earlier",
+    "message": "npm ERR! code ERESOLVE",
+    "normalized": "code eresolve",
+    "fingerprint": "fp2_bef61dd28f8573a7"
+  },
+  {
+    "group": "address-in-use",
+    "note": "one address",
+    "message": "OSError: [Errno 98] Address already in use: ('10.0.0.12', 8080)",
+    "normalized": "[errno 98] address already in use: ('<ip>', <n>)",
+    "fingerprint": "fp2_af429215554afa1d"
+  },
+  {
+    "group": "address-in-use",
+    "note": "another address",
+    "message": "OSError: [Errno 98] Address already in use: ('192.168.1.5', 8080)",
+    "normalized": "[errno 98] address already in use: ('<ip>', <n>)",
+    "fingerprint": "fp2_af429215554afa1d"
+  },
+  {
+    "group": "no-such-file",
+    "note": "windows path",
+    "message": "FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\ana\\proj\\cfg.yaml'",
+    "normalized": "[errno 2] no such file or directory: '<path>'",
+    "fingerprint": "fp2_1dcc683d73d2b876"
+  },
+  {
+    "group": "no-such-file",
+    "note": "posix path",
+    "message": "FileNotFoundError: [Errno 2] No such file or directory: '/home/bob/proj/cfg.yaml'",
+    "normalized": "[errno 2] no such file or directory: '<path>'",
+    "fingerprint": "fp2_1dcc683d73d2b876"
+  },
+  {
+    "group": "econnrefused",
+    "note": "one request id",
+    "message": "Error: connect ECONNREFUSED 127.0.0.1:5432 (request 3f2b8c1e-9a4d-4e2f-8b1a-2c3d4e5f6a7b)",
+    "normalized": "connect econnrefused <ip> (request <uuid>)",
+    "fingerprint": "fp2_d9c3df11af1edf8f"
+  },
+  {
+    "group": "econnrefused",
+    "note": "another request id",
+    "message": "Error: connect ECONNREFUSED 127.0.0.1:5432 (request 9d1c7a20-1b2c-4d3e-8f4a-5b6c7d8e9f01)",
+    "normalized": "connect econnrefused <ip> (request <uuid>)",
+    "fingerprint": "fp2_d9c3df11af1edf8f"
+  },
+  {
+    "group": "rate-limit",
+    "note": "one request",
+    "message": "anthropic.RateLimitError: Error code: 429 - request req_011CXk2v9mYwq7Zt3 failed",
+    "normalized": "error code: 429 - request <id> failed",
+    "fingerprint": "fp2_f99f0fd8251cc9ef"
+  },
+  {
+    "group": "rate-limit",
+    "note": "another request",
+    "message": "anthropic.RateLimitError: Error code: 429 - request req_7Hq2LmN9xPw4Kd81 failed",
+    "normalized": "error code: 429 - request <id> failed",
+    "fingerprint": "fp2_f99f0fd8251cc9ef"
+  },
+  {
+    "group": "dubious-ownership",
+    "note": "one path",
+    "message": "fatal: detected dubious ownership in repository at '/home/runner/work/x/x'",
+    "normalized": "detected dubious ownership in repository at '<path>'",
+    "fingerprint": "fp2_3cf73a99f440a97d"
+  },
+  {
+    "group": "dubious-ownership",
+    "note": "another path",
+    "message": "fatal: detected dubious ownership in repository at '/__w/app/app'",
+    "normalized": "detected dubious ownership in repository at '<path>'",
+    "fingerprint": "fp2_3cf73a99f440a97d"
+  },
+  {
+    "group": "uv-not-found",
+    "note": "bash names the program, so the program stays",
+    "message": "bash: uv: command not found",
+    "normalized": "bash: uv: command not found",
+    "fingerprint": "fp2_72f35fdba87d4966"
+  },
+  {
+    "group": "node-not-found",
+    "note": "another program is another error",
+    "message": "bash: node: command not found",
+    "normalized": "bash: node: command not found",
+    "fingerprint": "fp2_63d551aee94560a9"
+  },
+  {
+    "group": "eacces",
+    "note": "a bare code",
+    "message": "EACCES",
+    "normalized": "eacces",
+    "fingerprint": "fp2_71801ce2927cbfa7"
+  },
+  {
+    "group": "eacces",
+    "note": "with a severity word",
+    "message": "Error: EACCES",
+    "normalized": "eacces",
+    "fingerprint": "fp2_71801ce2927cbfa7"
+  },
+  {
+    "group": "same-text",
+    "note": "different classes with the same text share a key, by design",
+    "message": "ValueError: invalid value for the setting",
+    "normalized": "invalid value for the setting",
+    "fingerprint": "fp2_f59c6d9fc152f08a"
+  },
+  {
+    "group": "same-text",
+    "note": "different classes with the same text share a key, by design",
+    "message": "TypeError: invalid value for the setting",
+    "normalized": "invalid value for the setting",
+    "fingerprint": "fp2_f59c6d9fc152f08a"
+  },
+  {
+    "group": "unicode",
+    "note": "NFKC folds full-width letters and colon",
+    "message": "Ｅｒｒｏｒ： boom went the thing",
+    "normalized": "boom went the thing",
+    "fingerprint": "fp2_3ae8281d22e9d465"
+  },
+  {
+    "group": "unicode",
+    "note": "plain",
+    "message": "Error: boom went the thing",
+    "normalized": "boom went the thing",
+    "fingerprint": "fp2_3ae8281d22e9d465"
+  }
+]
