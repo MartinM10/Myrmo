@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.10.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.9.1...mcp-v0.10.0) (2026-10-07)
+
+
+### Features
+
+* fingerprint v2, a hash of the error message alone (protocol, server, SDKs) ([bd2a059](https://github.com/MartinM10/Myrmo/commit/bd2a05909c9864f0976b18a70e161689e17b37ee))
+* **sdk-js:** look errors up by fp2 ([36ccf8c](https://github.com/MartinM10/Myrmo/commit/36ccf8c53432d0941122031f824612fabbd0d930))
+
 ## [0.9.1](https://github.com/MartinM10/Myrmo/compare/mcp-v0.9.0...mcp-v0.9.1) (2026-10-06)
 
 

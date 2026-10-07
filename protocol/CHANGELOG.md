@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.2.0](https://github.com/MartinM10/Myrmo/compare/protocol-v1.1.0...protocol-v1.2.0) (2026-10-07)
+
+
+### Features
+
+* fingerprint v2, a hash of the error message alone (protocol, server, SDKs) ([bd2a059](https://github.com/MartinM10/Myrmo/commit/bd2a05909c9864f0976b18a70e161689e17b37ee))
+* **protocol:** fingerprint v2, a hash of the error message alone ([821b338](https://github.com/MartinM10/Myrmo/commit/821b338320ddf9ff67bc4e4d3eab7cdab8c54837))
+
 ## [1.1.0](https://github.com/MartinM10/Myrmo/compare/protocol-v1.0.1...protocol-v1.1.0) (2026-10-02)
 
 

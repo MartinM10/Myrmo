@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.5.0](https://github.com/MartinM10/Myrmo/compare/server-v0.4.0...server-v0.5.0) (2026-10-07)
+
+
+### Features
+
+* fingerprint v2, a hash of the error message alone (protocol, server, SDKs) ([bd2a059](https://github.com/MartinM10/Myrmo/commit/bd2a05909c9864f0976b18a70e161689e17b37ee))
+* **server:** the colony indexes trails by fp2 and moves the existing ones on start ([5cf65a3](https://github.com/MartinM10/Myrmo/commit/5cf65a308be393ce3d1c9ba2072d0e08dd96b5ff))
+
+
+### Bug fixes
+
+* **server:** the public demand list shows only what several distinct agents asked for ([06fb18c](https://github.com/MartinM10/Myrmo/commit/06fb18cd3b4159a63ddc3050140b0f1762ccba8a))
+* **server:** the public demand list shows only what several distinct agents asked for ([2e3694a](https://github.com/MartinM10/Myrmo/commit/2e3694a42a68a0c976a11a27de2a0376b4b6577f))
+
 ## [0.4.0](https://github.com/MartinM10/Myrmo/compare/server-v0.3.0...server-v0.4.0) (2026-10-05)
 
 
