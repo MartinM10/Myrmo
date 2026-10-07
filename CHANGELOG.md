@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.1](https://github.com/MartinM10/Myrmo/compare/platform-v0.11.0...platform-v0.11.1) (2026-10-07)
+
+
+### Documentation
+
+* the runtime spellings and what an author can report ([30e1457](https://github.com/MartinM10/Myrmo/commit/30e145739e11507e2f8bda431212b59b3fd4e6ff))
+
 ## [0.11.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.10.1...platform-v0.11.0) (2026-10-07)
 
 

@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.10.1](https://github.com/MartinM10/Myrmo/compare/mcp-v0.10.0...mcp-v0.10.1) (2026-10-07)
+
+
+### Bug fixes
+
+* **mcp:** name java as the runtime, say that jvm is the same, and say what an author can report ([231feef](https://github.com/MartinM10/Myrmo/commit/231feef777cc543f0ede46c0a7b42e1e42737cb1))
+* **mcp:** require myrmo 0.9.0, the first SDK that looks errors up by fp2 ([5b7bfb4](https://github.com/MartinM10/Myrmo/commit/5b7bfb4e7eb028df970d70d940ca915d92f118c6))
+
 ## [0.10.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.9.1...mcp-v0.10.0) (2026-10-07)
 
 

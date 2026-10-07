@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.1](https://github.com/MartinM10/Myrmo/compare/server-v0.5.0...server-v0.5.1) (2026-10-07)
+
+
+### Bug fixes
+
+* **server:** spellings of a runtime are one runtime, and an author can report their own trail failed ([c0a84cc](https://github.com/MartinM10/Myrmo/commit/c0a84cc0a8183cb1b4c31d6d9b41883268f44c58))
+
 ## [0.5.0](https://github.com/MartinM10/Myrmo/compare/server-v0.4.0...server-v0.5.0) (2026-10-07)
 
 
