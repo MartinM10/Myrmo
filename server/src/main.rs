@@ -3,6 +3,7 @@
 //!   myrmo-server serve    REST gateway (stateless; run as many as needed)
 //!   myrmo-server enrich   enrichment worker (run as many as needed)
 //!   myrmo-server all      both in one process, for small deployments
+//!   myrmo-server migrate-fingerprints   refile every trail under its fp2 (also done once, in the background, at start)
 
 mod analytics;
 mod api;
@@ -12,6 +13,7 @@ mod embed;
 mod enricher;
 mod fingerprint;
 mod keys;
+mod migrate;
 mod norm;
 mod redact;
 mod relevance;
@@ -41,7 +43,18 @@ async fn main() -> Result<()> {
     let cfg = config::Config::from_env();
     let st = state::AppState::connect(cfg.clone()).await?;
 
+    if matches!(mode.as_str(), "serve" | "enrich" | "all") {
+        // Trails filed under the retired fp1 are moved to fp2 once, without holding anything up.
+        let moving = st.clone();
+        tokio::spawn(async move {
+            if let Err(err) = migrate::run_once(moving, false).await {
+                tracing::warn!(error = %err, "fingerprint migration failed; it runs again at the next start");
+            }
+        });
+    }
+
     match mode.as_str() {
+        "migrate-fingerprints" => migrate::run_once(st, true).await,
         "serve" => serve(st).await,
         "enrich" => {
             // On a stop signal, leave unfinished entries pending: they are reclaimed and retried.
@@ -54,7 +67,9 @@ async fn main() -> Result<()> {
             tokio::spawn(enricher::run(st.clone()));
             serve(st).await
         }
-        other => anyhow::bail!("unknown mode {other:?}; expected serve, enrich or all"),
+        other => anyhow::bail!(
+            "unknown mode {other:?}; expected serve, enrich, all or migrate-fingerprints"
+        ),
     }
 }
 

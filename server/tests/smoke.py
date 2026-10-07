@@ -24,6 +24,8 @@ ADMIN = os.environ.get("MYRMO_ADMIN_TOKEN", "")
 CREATED: list = []
 ROOT = Path(__file__).resolve().parents[2]
 EXAMPLE = json.loads((ROOT / "protocol/examples/trail.distutils.json").read_text(encoding="utf-8"))
+sys.path.insert(0, str(ROOT / "protocol"))
+from fingerprint_v2 import fingerprint as fp2_of  # noqa: E402  (the reference implementation)
 
 
 def call(method: str, path: str, body: dict | None = None, agent: str | None = None, token: str | None = None) -> tuple[int, dict, dict]:
@@ -85,7 +87,7 @@ def main() -> None:
     check(all(kinds.get(k) == 1 for k in ("auth_header", "password_assignment", "cookie", "ipv6", "url_secret")), f"headers, JSON passwords, cookies, IPv6 and URL secrets redacted on arrival: {kinds}")
     trail_id, fp = body["trail_id"], body["fingerprint"]
     CREATED.append(trail_id)
-    check(fp == "fp1_3927a18f5b14a126", f"fingerprint matches the reference implementation ({fp})")
+    check(fp == "fp2_101fa6b91aa4f019" and fp == fp2_of(trail["problem"]["error_message"]), f"fingerprint matches the reference implementation ({fp})")
 
     t0 = time.time()
     final = wait_for_status(trail_id)
@@ -100,8 +102,15 @@ def main() -> None:
     status, body, headers = call("GET", f"/v1/trails/by-fingerprint/{fp}")
     check(status == 200 and any(r["trail_id"] == trail_id for r in body["results"]), "trail found by fingerprint")
     check("max-age=300" in headers.get("Cache-Control", headers.get("cache-control", "")), "response is CDN-cacheable")
-    status, _, _ = call("GET", "/v1/trails/by-fingerprint/fp1_0000000000000000")
+    for line in ("No module named 'distutils'", "Uncaught ModuleNotFoundError:   No module named 'distutils'  "):
+        status, body, _ = call("GET", f"/v1/trails/by-fingerprint/{fp2_of(line)}")
+        check(status == 200 and any(r["trail_id"] == trail_id for r in body["results"]), f"the same error without its class or with extra wrapping finds it: {line.strip()!r}")
+    status, _, _ = call("GET", "/v1/trails/by-fingerprint/fp2_0000000000000000")
     check(status == 404, "unknown fingerprint -> 404")
+    status, body, _ = call("GET", "/v1/trails/by-fingerprint/fp1_3927a18f5b14a126")
+    check(status == 404 and "no longer indexed" in body["error"]["message"], "a retired fp1 answers 404, so an older client searches instead")
+    status, _, _ = call("GET", "/v1/trails/by-fingerprint/fp9_0000000000000000")
+    check(status == 400, "a fingerprint of no known version -> 400")
 
     print("semantic search")
     status, body, _ = call("POST", "/v1/search", {
@@ -323,7 +332,7 @@ def main() -> None:
     check(status == 400 and "verification_method" in json.dumps(body["error"]["details"]), "validate catches an invalid verification type that a preview would not")
     queued_before = call("GET", "/v1/stats")[1]["trails"]
     status, body, _ = call("POST", "/v1/validate", EXAMPLE)
-    check(status == 200 and body["valid"] is True and body["fingerprint"].startswith("fp1_"), "validate accepts a valid trail")
+    check(status == 200 and body["valid"] is True and body["fingerprint"].startswith("fp2_"), "validate accepts a valid trail")
     check(call("GET", "/v1/stats")[1]["trails"] == queued_before, "validate stores nothing")
     status, body, _ = call("POST", "/v1/search", {"nope": 1})
     check(status == 400 and body["error"]["code"] == "invalid_request", "bad search body -> 400")

@@ -1,5 +1,7 @@
-//! Error fingerprint v1. A port of `protocol/fingerprint_v1.py`; the shared test vectors
-//! in `protocol/fingerprint.v1.vectors.json` are normative.
+//! Error fingerprints. `fp2` (the one the colony indexes) is a port of `protocol/fingerprint_v2.py`: a hash of the
+//! message alone, with the labels that wrap an error line dropped. `fp1` (runtime, error type and message) is kept
+//! as the reference of the older spec, `protocol/fingerprint_v1.py`, and is only built for its test vectors.
+//! The shared vectors, `protocol/fingerprint.v1.vectors.json` and `protocol/fingerprint.v2.vectors.json`, are normative.
 
 use fancy_regex::Regex;
 use serde_json::Value;
@@ -7,7 +9,10 @@ use sha2::{Digest, Sha256};
 use std::sync::LazyLock;
 use unicode_normalization::UnicodeNormalization;
 
-pub const PREFIX: &str = "fp1_";
+/// The fingerprint the colony indexes.
+pub const PREFIX: &str = "fp2_";
+/// The retired fingerprint: still a valid name, never indexed (see `by_fingerprint`).
+pub const PREFIX_V1: &str = "fp1_";
 /// Prefix of [`solution_fingerprint`]. Server-side only: it is not part of the wire protocol.
 pub const SOLUTION_PREFIX: &str = "sf1_";
 const MAX_NORMALIZED_CHARS: usize = 300;
@@ -47,17 +52,13 @@ static RULES: LazyLock<Vec<(Regex, &'static str)>> = LazyLock::new(|| {
 
 static WHITESPACE: LazyLock<regex::Regex> = LazyLock::new(|| regex::Regex::new(r"\s+").unwrap());
 
+#[cfg(test)]
 fn nfkc_lower(text: &str) -> String {
     text.nfkc().collect::<String>().to_lowercase()
 }
 
-/// Strip everything that varies between machines but not between errors.
-pub fn normalize_message(error_type: &str, message: &str) -> String {
-    let mut text = nfkc_lower(message).trim().to_string();
-    let prefix = format!("{}:", nfkc_lower(error_type).trim());
-    if let Some(rest) = text.strip_prefix(&prefix) {
-        text = rest.to_string();
-    }
+/// The volatile tokens and whitespace of a message, shared by fp1 and fp2.
+fn apply_rules(mut text: String) -> String {
     for (pattern, replacement) in RULES.iter() {
         text = pattern.replace_all(&text, *replacement).into_owned();
     }
@@ -69,6 +70,61 @@ pub fn normalize_message(error_type: &str, message: &str) -> String {
         .collect()
 }
 
+/// fp1: strip everything that varies between machines but not between errors.
+#[cfg(test)]
+pub fn normalize_message(error_type: &str, message: &str) -> String {
+    let mut text = nfkc_lower(message).trim().to_string();
+    let prefix = format!("{}:", nfkc_lower(error_type).trim());
+    if let Some(rest) = text.strip_prefix(&prefix) {
+        text = rest.to_string();
+    }
+    apply_rules(text)
+}
+
+/// Labels that wrap an error line, matched on the text as written: the capital letter is what tells a class name
+/// from a word. Exactly the pattern of `protocol/fingerprint_v2.py`.
+const CLASS: &str =
+    r"(?:[A-Za-z_][A-Za-z0-9_$]*\.)*[A-Z][A-Za-z0-9_$]*(?:Error|Exception|Warning|Failure)";
+const SEVERITY: &str = r"(?:Error|ERROR|error|Fatal|FATAL|fatal|Warning|WARNING|warning|Panic|PANIC|panic|Exception|EXCEPTION|exception|Err|ERR|Caused by)(?:\[[A-Za-z0-9_]+\])?";
+const TOOL_CODE: &str = r"(?:error|warning)\s+[A-Z]{1,5}[0-9]{2,5}";
+/// At most this many labels are dropped from the start of a message.
+const MAX_LABELS: usize = 4;
+
+static LABEL: LazyLock<regex::Regex> = LazyLock::new(|| {
+    regex::Regex::new(&format!(
+        r"^(?:(?:Uncaught\s+)?(?:{CLASS}|{SEVERITY}|{TOOL_CODE})\s*:\s+|npm\s+(?:ERR!|error)\s+)"
+    ))
+    .expect("valid label pattern")
+});
+
+/// Drop the leading exception classes, severity words and tool codes of an error line.
+fn strip_labels(message: &str) -> String {
+    let mut text = message.to_string();
+    for _ in 0..MAX_LABELS {
+        let shorter = LABEL.replace(&text, "").into_owned();
+        if shorter == text {
+            break;
+        }
+        text = shorter;
+    }
+    text
+}
+
+/// fp2: strip what varies between machines or between wrappers, but not between errors.
+pub fn normalize_message_v2(message: &str) -> String {
+    let nfkc: String = message.nfkc().collect();
+    apply_rules(strip_labels(nfkc.trim()).to_lowercase())
+}
+
+/// The fingerprint the colony indexes: the message alone. A searcher knows the error line it holds and nothing
+/// reliable about the error type the trail's author declared, so only the line goes into the key.
+pub fn fingerprint2(message: &str) -> String {
+    let digest = Sha256::digest(normalize_message_v2(message).as_bytes());
+    format!("{PREFIX}{}", &hex::encode(digest)[..16])
+}
+
+/// fp1, the retired fingerprint. Kept for its vectors.
+#[cfg(test)]
 pub fn fingerprint(runtime: &str, error_type: &str, message: &str) -> String {
     let material = [
         runtime.trim().to_lowercase(),
@@ -77,7 +133,7 @@ pub fn fingerprint(runtime: &str, error_type: &str, message: &str) -> String {
     ]
     .join(SEPARATOR);
     let digest = Sha256::digest(material.as_bytes());
-    format!("{PREFIX}{}", &hex::encode(digest)[..16])
+    format!("{PREFIX_V1}{}", &hex::encode(digest)[..16])
 }
 
 /// Trailing whitespace and line endings never change what a command or a patch does.
@@ -156,18 +212,9 @@ pub fn message_for_problem(problem: &Value) -> String {
         .to_string()
 }
 
-/// Fingerprint of a protocol trail.
+/// Fingerprint of a protocol trail: its error message, as a searcher would hold it.
 pub fn of_trail(trail: &Value) -> String {
-    let runtime = trail
-        .pointer("/environment/runtime/name")
-        .and_then(Value::as_str)
-        .unwrap_or_default();
-    let problem = &trail["problem"];
-    let error_type = problem
-        .get("error_type")
-        .and_then(Value::as_str)
-        .unwrap_or_default();
-    fingerprint(runtime, error_type, &message_for_problem(problem))
+    fingerprint2(&message_for_problem(&trail["problem"]))
 }
 
 #[cfg(test)]
@@ -197,6 +244,53 @@ mod tests {
                 "fingerprint: {msg}"
             );
         }
+    }
+
+    #[test]
+    fn matches_the_fp2_reference_vectors() {
+        let vectors: Vec<Value> =
+            serde_json::from_str(include_str!("../../protocol/fingerprint.v2.vectors.json"))
+                .unwrap();
+        assert!(vectors.len() >= 40);
+        for v in &vectors {
+            let msg = v["message"].as_str().unwrap();
+            assert_eq!(
+                normalize_message_v2(msg),
+                v["normalized"].as_str().unwrap(),
+                "normalized: {msg}"
+            );
+            assert_eq!(
+                fingerprint2(msg),
+                v["fingerprint"].as_str().unwrap(),
+                "fingerprint: {msg}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_trail_is_filed_under_the_key_a_searcher_computes_from_its_message() {
+        let trail = serde_json::json!({
+            "environment": { "runtime": { "name": "java" } },
+            "problem": {
+                "error_type": "IllegalStateException",
+                "error_message": "java.util.concurrent.CompletionException: java.lang.IllegalStateException: Recursive update"
+            }
+        });
+        let key = of_trail(&trail);
+        assert!(key.starts_with(PREFIX));
+        for line in [
+            "java.util.concurrent.CompletionException: java.lang.IllegalStateException: Recursive update",
+            "IllegalStateException: Recursive update",
+            "Caused by: java.lang.IllegalStateException: Recursive update",
+        ] {
+            assert_eq!(fingerprint2(line), key, "{line}");
+        }
+        // Neither the runtime nor the declared type is part of the key.
+        let other = serde_json::json!({
+            "environment": { "runtime": { "name": "jvm" } },
+            "problem": { "error_type": "something else", "error_message": "Recursive update" }
+        });
+        assert_eq!(of_trail(&other), key);
     }
 
     fn trail(commands: &[&str], patches: &[(&str, &str)], purpose: &str) -> Value {

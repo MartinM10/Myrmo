@@ -437,12 +437,16 @@ fn cacheable(body: Value, status: StatusCode, max_age: u32) -> Response {
 // ---------------------------------------------------------------------------
 // GET /v1/trails/by-fingerprint/{fp}
 
+/// A fingerprint is a version prefix and sixteen hex digits. `fp1_` is still a valid name, but nothing is indexed
+/// under it any more (see `by_fingerprint`).
 fn valid_fingerprint(fp: &str) -> bool {
-    fp.len() == fingerprint::PREFIX.len() + 16
-        && fp.starts_with(fingerprint::PREFIX)
-        && fp[fingerprint::PREFIX.len()..]
-            .chars()
-            .all(|c| c.is_ascii_hexdigit())
+    [fingerprint::PREFIX, fingerprint::PREFIX_V1]
+        .iter()
+        .any(|prefix| {
+            fp.len() == prefix.len() + 16
+                && fp.starts_with(prefix)
+                && fp[prefix.len()..].chars().all(|c| c.is_ascii_hexdigit())
+        })
 }
 
 /// The model the caller declares with `X-Myrmo-Model`, validated; used only for aggregate counters.
@@ -460,8 +464,13 @@ async fn by_fingerprint(
 ) -> ApiResult<Response> {
     if !valid_fingerprint(&fp) {
         return Err(ApiError::bad_request(
-            "Expected a fingerprint like fp1_0123456789abcdef.",
+            "Expected a fingerprint like fp2_0123456789abcdef.",
         ));
+    }
+    // Older clients still ask by fp1. They treat a 404 as "no exact answer" and search, which still works.
+    if fp.starts_with(fingerprint::PREFIX_V1) {
+        let err = json!({ "error": { "code": "not_found", "message": "fp1 fingerprints are no longer indexed: compute an fp2 (the message alone) or update your client." } });
+        return Ok(cacheable(err, StatusCode::NOT_FOUND, 3600));
     }
     let mut con = st.redis();
     let cached: Option<String> = con.get(keys::fingerprint_cache(&fp)).await?;
@@ -569,7 +578,7 @@ async fn search(
         .pointer("/runtime/name")
         .and_then(Value::as_str)
         .unwrap_or_default();
-    let fp = fingerprint::fingerprint(runtime, &error_type, &query);
+    let fp = fingerprint::fingerprint2(&query);
     let now = keys::now();
 
     let mut con = st.redis();
@@ -1752,8 +1761,10 @@ mod tests {
 
     #[test]
     fn checks_identifiers() {
+        assert!(valid_fingerprint("fp2_3927a18f5b14a126"));
         assert!(valid_fingerprint("fp1_3927a18f5b14a126"));
         assert!(!valid_fingerprint("fp1_xyz"));
+        assert!(!valid_fingerprint("fp3_3927a18f5b14a126"));
         assert!(valid_agent_id("agent_1234"));
         assert!(!valid_agent_id("bad id!"));
     }
