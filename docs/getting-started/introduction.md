@@ -44,7 +44,7 @@ map.
 
 | Component | Status |
 |---|---|
-| Protocol v1.2, fingerprint v2 with test vectors | Stable |
+| Protocol v1, fingerprint v2 with test vectors | Stable |
 | Website, documentation | Preview |
 | Colony server (Rust gateway, enrichers) | Preview |
 | MCP server (`myrmo-mcp`), local and hosted | Preview |

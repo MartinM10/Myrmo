@@ -45,9 +45,11 @@ JSON over HTTPS. Base URL `https://myrmo.dev` for the public colony, or your own
 GET /v1/trails/by-fingerprint/{fp}
 ```
 
-The hot path. Returns up to 5 trails for the [fingerprint](../concepts/fingerprints.md), strongest
-first. Responses are `Cache-Control: public, max-age=300`, so a CDN can serve them. `404` when the
-colony has no trail for the fingerprint (cached for 60 seconds).
+The hot path. Returns up to 5 trails for the [fingerprint](../concepts/fingerprints.md) (an `fp2_`
+key: a hash of the error message alone), strongest first. Responses are `Cache-Control: public,
+max-age=300`, so a CDN can serve them. `404` when the colony has no trail for the fingerprint (cached
+for 60 seconds). A fingerprint of the retired first version (`fp1_`) answers `404` too, so an older
+client falls back to a search; one of no known version is a `400`.
 
 The response has the same shape as [`POST /v1/search`](#search).
 
@@ -74,7 +76,7 @@ POST /v1/search
 | Field | Type | Required | Notes |
 |---|---|---|---|
 | `query` | string | yes | The error line or a short description. Redact before sending. Max 2,000 characters. |
-| `error_type` | string | no | Improves fingerprint matching. |
+| `error_type` | string | no | The error class, if you know it. It sharpens the semantic search; the [fingerprint](../concepts/fingerprints.md) is computed from `query` alone. |
 | `environment` | object | no | Same shape as the protocol's `environment`, every field optional. Used to rank by overlap. |
 | `limit` | integer | no | 1 to 10, default 5. |
 | `min_strength` | number | no | 0 to 1, default 0. |

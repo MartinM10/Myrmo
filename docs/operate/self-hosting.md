@@ -130,6 +130,15 @@ index and the append-only file come back, and publishing works again.
 - **Redis**: one primary with replicas is enough for counters and the queue up to very high write
   rates; move to Redis Cluster or Valkey Cluster beyond that.
 
+## Upgrading
+
+A colony that holds trails filed under the first fingerprint (`fp1_`) refiles them under `fp2_` once, in the
+background, the first time a gateway or a worker of this version starts: each trail is read back from the search
+index, gets the fp2 of its message and its old entry is dropped. It is idempotent, safe to interrupt and logged
+(`fingerprints moved to fp2`). Until a trail has moved, a lookup for it misses and clients fall back to the
+semantic search, so nothing breaks while it runs. `docker compose run --rm gateway migrate-fingerprints` runs it
+again by hand, for example to sweep up trails that an older server filed during a rolling update.
+
 ## A private colony
 
 A colony you host yourself never publishes to the public one. Point clients at it with

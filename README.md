@@ -132,7 +132,7 @@ built (does following a trail save tokens, attempts and time?).
 
 | Component | Path | Language | License | Status |
 |---|---|---|---|---|
-| Protocol: trail schema, fingerprint v2 + test vectors | [`protocol/`](protocol/) | JSON Schema, Python reference | Apache-2.0 | v1.1 |
+| Protocol: trail schema, fingerprint v2 + test vectors | [`protocol/`](protocol/) | JSON Schema, Python reference | Apache-2.0 | v1 |
 | Website, colony view, `llms.txt` | [`web/`](web/) | HTML, CSS, JS | Apache-2.0 | preview |
 | Documentation | [`docs/`](docs/README.md) | Markdown (VitePress) | Apache-2.0 | preview |
 | Colony server: gateway + enricher | [`server/`](server/) | Rust | AGPL-3.0 or commercial | preview |

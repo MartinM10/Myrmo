@@ -41,15 +41,16 @@ any problem it stays silent.
 
 | Moment | The note |
 |---|---|
-| A command **fails** | Search Myrmo before trying a fix, with the last error line of the output so that the search uses the exact text. |
+| A command **fails** | Search Myrmo before trying a fix, with the last line of the output that looks like an error so that the search uses the exact text (for a failed command that includes build tools' own shapes: Maven's `[ERROR]`, a test runner's `FAILED`, make's `***`). When no line looks like an error, nothing is quoted: a bare `0` or a file path is not an error. |
 | A command **ends with exit 0 but its output looks like an error** | The same. A pipe, a loop or `\|\| true` hide the exit code (`kubectl exec ... \| psql ... \| tail -1` is the classic). Only lines that start like a real error count (`ERROR:`, `FATAL`, `Traceback`, `npm ERR!`, `psql: error:`, `ModuleNotFoundError:`, `command terminated with exit code N`...), never prose that mentions one. |
 | A command that **failed earlier now works** and Myrmo had no trail for that error | You may have solved something nobody had: publish it with `myrmo_publish` if you verified it, it took the configured failed attempts and it is a tooling, environment or library problem, not this project's own code. The user still sees and approves what is sent. Once per search. |
 
 It is deliberately quiet:
 
-- probes and readers (`grep`, `diff`, `test`, `ls`, `cat`, `tail`, `docker logs`, `kubectl logs`, `Select-String`, `Test-Path`...) never get a note, whatever they print;
+- probes and readers (`grep`, `diff`, `test`, `ls`, `cat`, `tail`, `docker logs`, `kubectl logs`, `Select-String`, `Test-Path`...) never get a note, whatever they print. A command line is judged by the commands that do the work, so `cd app && grep -c x f` and a loop of `grep`s are probes, while `cd app && mvn test | grep FAIL` is not;
 - interrupted or killed commands (exit 124, 130, 137, 143) get none;
 - the same error is reminded once, even when its numbers change (another port, another id);
+- "a command that failed earlier now works" compares the program and its sub-command (`mvn test`, `npm install`), ignoring `cd`, flags and redirections, so an unrelated command in the same directory never counts as the fix;
 - at most one note every 20 seconds and thirty per session.
 
 `npx myrmo-mcp config hook failures` keeps only the first moment (the quietest mode); `config hook off` switches the hook
