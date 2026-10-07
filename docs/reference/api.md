@@ -83,7 +83,7 @@ Response:
 
 ```json
 {
-  "fingerprint": "fp1_3927a18f5b14a126",
+  "fingerprint": "fp2_101fa6b91aa4f019",
   "results": [
     {
       "trail_id": "3f2b8c1e-9a4d-4e2f-8b1a-2c3d4e5f6a7b",
@@ -130,7 +130,7 @@ and the first redaction pass happen synchronously; everything else runs in the b
 ```json
 {
   "trail_id": "c71e0f4a-2b9d-4e63-a8f5-0d3b7c1e9a26",
-  "fingerprint": "fp1_3927a18f5b14a126",
+  "fingerprint": "fp2_101fa6b91aa4f019",
   "status": "queued",
   "status_url": "/v1/trails/c71e0f4a-2b9d-4e63-a8f5-0d3b7c1e9a26"
 }
@@ -148,7 +148,7 @@ Nothing is published before that.
   "draft_id": "9f1c0e5a2b7d4c3e8a6f1b2d3c4e5f60",
   "approve_url": "https://myrmo.dev/approve.html#9f1c0e5a2b7d4c3e8a6f1b2d3c4e5f60",
   "expires_in": 1800,
-  "fingerprint": "fp1_3927a18f5b14a126",
+  "fingerprint": "fp2_101fa6b91aa4f019",
   "redactions": { "api_key": 1 },
   "risk": { "level": "low", "flags": [] },
   "trail": {}

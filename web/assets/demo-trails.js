@@ -13,7 +13,7 @@
   const items = [
     {
       trail_id: "3f2b8c1e-9a4d-4e2f-8b1a-2c3d4e5f6a7b",
-      fingerprint: "fp1_3927a18f5b14a126",
+      fingerprint: "fp2_101fa6b91aa4f019",
       created_at: iso(41 * D),
       last_success_at: iso(2 * H),
       category: "dependency",
@@ -64,7 +64,7 @@
     },
     {
       trail_id: "8d41a7c2-55e0-4b7a-9f13-0c6b2e9d4a10",
-      fingerprint: "fp1_43defeb700b638db",
+      fingerprint: "fp2_5059d46b9f252cec",
       created_at: iso(12 * D),
       last_success_at: iso(26 * 60e3),
       category: "platform",
@@ -113,7 +113,7 @@
     },
     {
       trail_id: "b7e05f39-1c2d-4a8e-b6f4-7d9a01c3e5b2",
-      fingerprint: "fp1_4111260a8e9b29b2",
+      fingerprint: "fp2_72f35fdba87d4966",
       created_at: iso(6 * D),
       last_success_at: iso(4 * H),
       category: "tooling",
@@ -157,7 +157,7 @@
     },
     {
       trail_id: "2a9c6e14-7b3f-4d05-8e21-f4a6b0d7c9e3",
-      fingerprint: "fp1_bb510f183bfadb13",
+      fingerprint: "fp2_3a2dd00afaca7d6d",
       created_at: iso(88 * D),
       last_success_at: iso(9 * H),
       category: "build",
@@ -204,7 +204,7 @@
     },
     {
       trail_id: "c4d8f2a0-3e6b-4f19-a7c5-91b2e0d6f8a4",
-      fingerprint: "fp1_5ca95897009343bb",
+      fingerprint: "fp2_3cf73a99f440a97d",
       created_at: iso(3 * D),
       last_success_at: iso(55 * 60e3),
       category: "permissions",
@@ -247,7 +247,7 @@
     },
     {
       trail_id: "e5a19b73-6f2c-4d8a-b014-3c7e9f2a6d51",
-      fingerprint: "fp1_eeb9b3cbd18c2748",
+      fingerprint: "fp2_7b9b56b3261e8cde",
       created_at: iso(18 * H),
       last_success_at: iso(40 * 60e3),
       category: "network",
@@ -292,7 +292,7 @@
     },
     {
       trail_id: "71f3c0b8-2d9e-4a65-8c17-e0b4a9d3f625",
-      fingerprint: "fp1_e9c3eca122f3bb75",
+      fingerprint: "fp2_587fd7b18800c32e",
       created_at: iso(24 * D),
       last_success_at: iso(7 * H),
       category: "platform",
@@ -332,7 +332,7 @@
     },
     {
       trail_id: "9b26e4d1-8a7c-4f30-b5e9-2d1c6f0a8e73",
-      fingerprint: "fp1_32efb5fc869e863a",
+      fingerprint: "fp2_d11c81e70bf0e4c9",
       created_at: iso(2 * D),
       last_success_at: iso(2 * D),
       category: "runtime",
@@ -377,7 +377,7 @@
     },
     {
       trail_id: "4e8a0c62-f1b7-4d93-a2e5-6c9d3b7f1a08",
-      fingerprint: "fp1_ef189cdc2bb57969",
+      fingerprint: "fp2_f18c0d7f4bc305d0",
       created_at: iso(140 * D),
       last_success_at: iso(97 * D),
       category: "authentication",

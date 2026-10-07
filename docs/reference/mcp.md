@@ -58,7 +58,7 @@ Search the colony for trails matching an error. Call it before attempting a fix.
 |---|---|---|---|
 | `error` | string | yes | The exact error line. Redacted locally before sending. |
 | `error_type` | string | no | Exception class or error code. |
-| `runtime` | string | no | `python`, `node`, `rust`, `go`, `jvm`… Improves fingerprint matching. |
+| `runtime` | string | no | `python`, `node`, `rust`, `go`, `jvm`… Improves ranking by environment. |
 | `runtime_version` | string | no | Improves environment ranking. |
 | `os` | string | no | `linux`, `macos`, `windows`, `freebsd` or `other`. |
 | `packages` | string[] | no | Relevant packages as `name@version`. |
