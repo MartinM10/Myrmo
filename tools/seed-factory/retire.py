@@ -23,7 +23,9 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
+sys.path.insert(0, str(HERE.parents[1] / "protocol"))
 from catalog import POLICY_EXCLUDED  # noqa: E402
+from fingerprint_v2 import fingerprint  # noqa: E402
 from publisher import allowed  # noqa: E402
 
 OUT = Path(os.environ.get("MYRMO_SEED_OUT", HERE.parents[1] / "seed-out"))
@@ -41,7 +43,10 @@ def task_ids_by_fingerprint(seed_out: Path) -> dict[str, str]:
             if line.strip():
                 item = json.loads(line)
                 if "fingerprint" in item and "_factory" in item:
-                    found[item["fingerprint"]] = item["_factory"]["task_id"]
+                    task_id = item["_factory"]["task_id"]
+                    found[item["fingerprint"]] = task_id
+                    # Lots made before fp2 carry an fp1; the colony files trails under the fp2 of their message.
+                    found[fingerprint(item["problem"]["error_message"])] = task_id
     return found
 
 
