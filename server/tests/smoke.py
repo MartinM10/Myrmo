@@ -228,7 +228,7 @@ def main() -> None:
         candidate = copy.deepcopy(EXAMPLE)
         # The colony treats the same major.minor runtime as the same environment and merges equal
         # solutions, so every fixture gets a minor version of its own.
-        minor = (int(run, 16) % 100000) * 10 + {"anon": 1, "draft": 2, "discard": 3}[label]
+        minor = (int(run, 16) % 100000) * 10 + {"anon": 1, "draft": 2, "discard": 3, "retire": 4, "jvm": 5}[label]
         candidate["environment"]["runtime"]["version"] = f"6.{minor}.0"
         candidate["problem"]["error_message"] = f"ModuleNotFoundError: No module named 'smoke_{run}_{label}'"
         return candidate
@@ -243,6 +243,33 @@ def main() -> None:
         "protocol_version": "1.0", "outcome": "worked", "agent_info": {"model": "m", "framework": "f"},
     })
     check(status == 202 and not report["counted"], "the same address cannot reinforce a trail it published")
+
+    print("an author can take their own trail down, and cannot raise it")
+    mine = unique("retire")
+    status, body, _ = call("POST", "/v1/trails", mine, agent=author)
+    CREATED.append(body["trail_id"])
+    wait_for_status(body["trail_id"])
+    outcome = lambda kind: call("POST", f"/v1/trails/{body['trail_id']}/outcomes", {"protocol_version": "1.0", "outcome": kind, "agent_info": {"model": "claude-opus-5-5", "framework": "claude-code"}}, agent=author)[1]
+    before = call("GET", f"/v1/trails/{body['trail_id']}")[1]["strength"]
+    worked = outcome("worked")
+    check(not worked["counted"] and worked["strength"] == before, "the author cannot reinforce their own trail")
+    failed = outcome("failed")
+    check(failed["counted"] and failed["strength"] < before, f"the author can report it failed, and its strength drops {before} -> {failed['strength']}")
+    check(call("GET", f"/v1/trails/{body['trail_id']}")[1]["outcomes"]["failed"] == 1, "the failed report is on the trail")
+    check(not outcome("failed")["counted"], "and once a day, like everybody")
+
+    print("two spellings of a runtime are one runtime")
+    jv = unique("jvm")
+    jv["environment"]["runtime"] = {"name": "java", "version": "21.0.2"}
+    status, body, _ = call("POST", "/v1/trails", jv, agent=author)
+    CREATED.append(body["trail_id"])
+    wait_for_status(body["trail_id"])
+    def overlap(name):
+        res = call("POST", "/v1/search", {"query": jv["problem"]["error_message"], "environment": {"os": "linux", "runtime": {"name": name, "version": "21.0.5"}}})[1]
+        hit = next(r for r in res["results"] if r["trail_id"] == body["trail_id"])
+        return hit["match"]["environment_overlap"]
+    check(overlap("java") == overlap("jvm") == overlap("OpenJDK") and overlap("java") is not None, "java, jvm and OpenJDK rank the same trail the same")
+    check(overlap("kotlin") < overlap("java"), "another language on the same VM does not")
 
     print("drafts: a person approves in a browser")
     draft_trail = unique("draft")

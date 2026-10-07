@@ -198,7 +198,8 @@ fn same_environment(a: &Value, b: &Value) -> bool {
             .join(".")
     };
     s(a, "/os") == s(b, "/os")
-        && s(a, "/runtime/name") == s(b, "/runtime/name")
+        && crate::runtime::canonical(&s(a, "/runtime/name"))
+            == crate::runtime::canonical(&s(b, "/runtime/name"))
         && minor(a) == minor(b)
 }
 
@@ -564,6 +565,17 @@ async fn flush_once(st: &AppState) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn spellings_of_a_runtime_are_one_environment() {
+        let a =
+            serde_json::json!({"os": "linux", "runtime": {"name": "java", "version": "21.0.2"}});
+        let b = serde_json::json!({"os": "Linux", "runtime": {"name": "JVM", "version": "21.0.5"}});
+        let c =
+            serde_json::json!({"os": "linux", "runtime": {"name": "kotlin", "version": "21.0.5"}});
+        assert!(same_environment(&a, &b));
+        assert!(!same_environment(&a, &c));
+    }
 
     #[test]
     fn authors_cannot_reinforce_their_own_trails() {
