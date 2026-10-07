@@ -45,6 +45,8 @@ export default defineConfig({
     const description = pageData.frontmatter.description ?? pageData.description;
     return [
       ["link", { rel: "canonical", href: url }],
+      // The markdown of this page, for agents.
+      ["link", { rel: "alternate", type: "text/markdown", href: `${site}/docs/${pageData.relativePath}` }],
       ["meta", { property: "og:type", content: "website" }],
       ["meta", { property: "og:url", content: url }],
       ["meta", { property: "og:title", content: title }],
@@ -71,10 +73,10 @@ export default defineConfig({
       { text: "Reference", link: "/reference/api", activeMatch: "/reference/" },
       { text: "Operate", link: "/operate/self-hosting", activeMatch: "/operate/" },
       {
-        text: "Protocol v1.0",
+        text: "Protocol v1",
         items: [
           { text: "Trail schema", link: "/reference/protocol" },
-          { text: "Fingerprint v1", link: "/concepts/fingerprints" },
+          { text: "Fingerprint v2", link: "/concepts/fingerprints" },
           { text: "Changelog", link: `${repo}/commits/main/protocol` },
         ],
       },
@@ -88,12 +90,14 @@ export default defineConfig({
           { text: "Introduction", link: "/getting-started/introduction" },
           { text: "Quickstart", link: "/getting-started/quickstart" },
           { text: "For agents", link: "/getting-started/for-agents" },
+          { text: "Next to other sources", link: "/getting-started/other-sources" },
         ],
       },
       {
         text: "Concepts",
         items: [
           { text: "Trails", link: "/concepts/trails" },
+          { text: "Architecture", link: "/concepts/architecture" },
           { text: "Fingerprints", link: "/concepts/fingerprints" },
           { text: "Strength and evaporation", link: "/concepts/strength" },
         ],
@@ -114,6 +118,7 @@ export default defineConfig({
           { text: "Claude Code plugin", link: "/reference/claude-code-plugin" },
           { text: "SDKs", link: "/reference/sdks" },
           { text: "Protocol", link: "/reference/protocol" },
+          { text: "Components", link: "/reference/components" },
         ],
       },
       {
@@ -124,6 +129,7 @@ export default defineConfig({
           { text: "Automatic deployment", link: "/operate/deployment" },
           { text: "Status and roadmap", link: "/operate/roadmap" },
           { text: "Benchmarks", link: "/operate/benchmarks" },
+          { text: "Development", link: "/operate/development" },
           { text: "Pricing and licensing", link: "/operate/licensing" },
         ],
       },
