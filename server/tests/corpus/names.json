@@ -1,0 +1,218 @@
+[
+ {
+  "query": "ModuleNotFoundError: No module named 'flask'",
+  "message": "ModuleNotFoundError: No module named 'yaml'",
+  "conflict": true,
+  "note": "another module"
+ },
+ {
+  "query": "ModuleNotFoundError: No module named 'kodavuri'",
+  "message": "ModuleNotFoundError: No module named 'kodavuro'",
+  "conflict": true,
+  "note": "a name one letter apart"
+ },
+ {
+  "query": "ModuleNotFoundError: No module named 'yaml'",
+  "message": "ModuleNotFoundError: No module named 'yaml'",
+  "conflict": false,
+  "note": "the same error"
+ },
+ {
+  "query": "No module named 'yaml'",
+  "message": "ModuleNotFoundError: No module named 'yaml'",
+  "conflict": false,
+  "note": "without the class"
+ },
+ {
+  "query": "RuntimeError: Command failed: ModuleNotFoundError: No module named 'yaml'",
+  "message": "ModuleNotFoundError: No module named 'yaml'",
+  "conflict": false,
+  "note": "wrapped"
+ },
+ {
+  "query": "Caused by: ModuleNotFoundError: No module named 'yaml'",
+  "message": "ModuleNotFoundError: No module named 'yaml'",
+  "conflict": false,
+  "note": "a cause line"
+ },
+ {
+  "query": "ModuleNotFoundError: No module named 'yaml'\n  at Object.<anonymous> (/app/index.js:10:5)",
+  "message": "ModuleNotFoundError: No module named 'yaml'",
+  "conflict": false,
+  "note": "with a stack line"
+ },
+ {
+  "query": "ModuleNotFoundError: No module named",
+  "message": "ModuleNotFoundError: No module named 'yaml'",
+  "conflict": false,
+  "note": "cut short: it names nothing"
+ },
+ {
+  "query": "KeyError: 'AWS_REGION'",
+  "message": "KeyError: 'DATABASE_URL'",
+  "conflict": true,
+  "note": "another key, a short message"
+ },
+ {
+  "query": "KeyError: 'DATABASE_URL'",
+  "message": "KeyError: 'DATABASE_URL'",
+  "conflict": false,
+  "note": "the same key"
+ },
+ {
+  "query": "Error: Cannot find module 'express'",
+  "message": "Error: Cannot find module 'playwright'",
+  "conflict": true,
+  "note": "another node module"
+ },
+ {
+  "query": "Error: Cannot find module 'playwright'\nRequire stack:\n- /home/ana/app/index.js",
+  "message": "Error: Cannot find module 'playwright'\nRequire stack:\n- /home/bob/work/app.js",
+  "conflict": false,
+  "note": "the same module on another machine"
+ },
+ {
+  "query": "Error response from daemon: pull access denied for kodavuri, repository does not exist",
+  "message": "Error response from daemon: pull access denied for labegifu, repository does not exist",
+  "conflict": true,
+  "note": "an unquoted name"
+ },
+ {
+  "query": "ERROR: No matching distribution found for numpy==1.24.4",
+  "message": "ERROR: No matching distribution found for scipy==1.11.0",
+  "conflict": true,
+  "note": "another package"
+ },
+ {
+  "query": "ERROR: No matching distribution found for numpy==1.24.4",
+  "message": "ERROR: No matching distribution found for numpy==1.26.1",
+  "conflict": false,
+  "note": "the same package, another version"
+ },
+ {
+  "query": "Error code: 429 - rate limit exceeded",
+  "message": "Error code: 503 - service unavailable",
+  "conflict": false,
+  "note": "different messages are not one template: the usual check decides"
+ },
+ {
+  "query": "FileNotFoundError: [Errno 2] No such file or directory: '/home/bob/proj/cfg.yaml'",
+  "message": "FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\ana\\proj\\cfg.yaml'",
+  "conflict": false,
+  "note": "paths are placeholders"
+ },
+ {
+  "query": "OSError: [Errno 98] Address already in use: ('10.0.0.12', 8080)",
+  "message": "OSError: [Errno 98] Address already in use: ('192.168.1.5', 9090)",
+  "conflict": false,
+  "note": "addresses are placeholders"
+ },
+ {
+  "query": "error[E0502]: cannot borrow `*self` as mutable because it is also borrowed as immutable",
+  "message": "error[E0382]: borrow of moved value: `label`",
+  "conflict": false,
+  "note": "different errors share no template"
+ },
+ {
+  "query": "psycopg2.OperationalError: SCRAM authentication requires libpq version 10 or above",
+  "message": "OperationalError: SCRAM authentication requires libpq version 10 or above",
+  "conflict": false,
+  "note": "qualified class"
+ },
+ {
+  "query": "java.lang.IllegalStateException: Recursive update",
+  "message": "java.util.concurrent.CompletionException: java.lang.IllegalStateException: Recursive update",
+  "conflict": false,
+  "note": "the query is the inner exception"
+ },
+ {
+  "query": "pip fails building the numpy wheel on python 3.12, distutils is missing",
+  "message": "ModuleNotFoundError: No module named 'distutils'",
+  "conflict": false,
+  "note": "a sentence is not an error line"
+ },
+ {
+  "query": "uv command not found in the docker image",
+  "message": "bash: uv: command not found",
+  "conflict": false,
+  "note": "a sentence is not an error line"
+ },
+ {
+  "query": "cannot connect to postgres: SCRAM authentication requires newer libpq",
+  "message": "psycopg2.OperationalError: SCRAM authentication requires libpq version 10 or above",
+  "conflict": false,
+  "note": "a sentence with a colon: its extra words are generic or its own"
+ },
+ {
+  "query": "numpy install fails: no matching distribution for 1.24.4 on python 3.13",
+  "message": "ERROR: No matching distribution found for numpy==1.24.4",
+  "conflict": false,
+  "note": "a sentence with a colon"
+ },
+ {
+  "query": "hydration: the server rendered text did not match the client",
+  "message": "Error: Hydration failed because the server rendered text didn't match the client",
+  "conflict": false,
+  "note": "a sentence with a colon"
+ },
+ {
+  "query": "java: recursive update in computeIfAbsent",
+  "message": "java.lang.IllegalStateException: Recursive update",
+  "conflict": false,
+  "note": "a sentence with a colon"
+ },
+ {
+  "query": "bash: uv: command not found",
+  "message": "bash: pnpm: command not found",
+  "conflict": true,
+  "note": "another program, a two-letter name"
+ },
+ {
+  "query": "exec format error",
+  "message": "exec /usr/local/bin/docker-entrypoint.sh: exec format error",
+  "conflict": false,
+  "note": "no structure: nothing is checked"
+ },
+ {
+  "query": "Permission denied",
+  "message": "sh: <path> Permission denied",
+  "conflict": false,
+  "note": "no structure: nothing is checked"
+ },
+ {
+  "query": "",
+  "message": "ModuleNotFoundError: No module named 'yaml'",
+  "conflict": false,
+  "note": "an empty query"
+ },
+ {
+  "query": "ModuleNotFoundError: No module named 'yaml'",
+  "message": "",
+  "conflict": false,
+  "note": "an empty message"
+ },
+ {
+  "query": "fatal error: iostream: No such file or directory",
+  "message": "fatal error: vector: No such file or directory",
+  "conflict": true,
+  "note": "another header"
+ },
+ {
+  "query": "TypeError: Cannot read properties of undefined (reading 'map')",
+  "message": "TypeError: Cannot read properties of undefined (reading 'length')",
+  "conflict": true,
+  "note": "another property"
+ },
+ {
+  "query": "TypeError: Cannot read properties of undefined (reading 'map')",
+  "message": "TypeError: Cannot read properties of undefined (reading 'map')",
+  "conflict": false,
+  "note": "the same property"
+ },
+ {
+  "query": "Ｅｒｒｏｒ： Cannot find module 'express'",
+  "message": "Error: Cannot find module 'express'",
+  "conflict": false,
+  "note": "NFKC folds full-width letters"
+ }
+]

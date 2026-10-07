@@ -616,14 +616,14 @@ async fn search(
     let ids: Vec<String> = scores.keys().cloned().collect();
     let candidates = load(&st, &ids).await?;
 
+    let asked = relevance::Asked::new(&query, &error_type);
     let mut ranked: Vec<(f64, Value)> = candidates
         .iter()
         .filter(|c| c.strength(now) >= min_strength)
         // A semantic hit must be about the same thing, not only phrased like it.
         .filter(|c| {
             let (via, score) = scores[&c.id];
-            via == "fingerprint"
-                || relevance::is_relevant(&query, &error_type, &c.payload["trail"], score)
+            via == "fingerprint" || asked.is_relevant(&c.payload["trail"], score)
         })
         .map(|c| {
             let (via, score) = scores[&c.id];
