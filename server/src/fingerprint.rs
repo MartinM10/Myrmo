@@ -110,6 +110,19 @@ fn strip_labels(message: &str) -> String {
     text
 }
 
+/// A message as the fingerprint reads it, without dropping its labels: lowercase, with the paths, addresses, ids and
+/// long numbers that vary between machines replaced by placeholders. Used to compare what two messages are about.
+pub fn volatile_free(message: &str) -> String {
+    let nfkc: String = message.nfkc().collect();
+    apply_rules(nfkc.trim().to_lowercase())
+}
+
+/// The same, after dropping the leading exception classes, severity words and tool codes.
+pub fn label_free(message: &str) -> String {
+    let nfkc: String = message.nfkc().collect();
+    apply_rules(strip_labels(nfkc.trim()).to_lowercase())
+}
+
 /// fp2: strip what varies between machines or between wrappers, but not between errors.
 pub fn normalize_message_v2(message: &str) -> String {
     let nfkc: String = message.nfkc().collect();

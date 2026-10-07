@@ -135,6 +135,25 @@ def main() -> None:
             "environment": {"runtime": {"name": "python"}},
         })
         check(status == 200 and trail_id not in [r["trail_id"] for r in body["results"]], f"same error shape, different module ({module}) does not match")
+    # With several trails of one shape in the colony, a name nobody published must not bring any of them back: the
+    # embedding scores a one-word difference about as high as the right answer. The names are made of letters only,
+    # because the fingerprint's normalisation erases an identifier that mixes letters and digits (a request id).
+    word = "".join(chr(97 + int(c, 16)) for c in run)
+    siblings = []
+    for k, name in enumerate((f"sibling{word}one", f"sibling{word}two")):
+        sibling = copy.deepcopy(EXAMPLE)
+        sibling["environment"]["runtime"]["version"] = f"7.{(int(run, 16) % 100000) * 10 + k}.0"
+        sibling["problem"]["error_message"] = f"ModuleNotFoundError: No module named '{name}'"
+        status, created, _ = call("POST", "/v1/trails", sibling, agent=f"author_{run}")
+        CREATED.append(created["trail_id"])
+        wait_for_status(created["trail_id"])
+        siblings.append(created["trail_id"])
+    for name in (f"sibling{word}three", f"another{word}name"):
+        status, body, _ = call("POST", "/v1/search", {"query": f"ModuleNotFoundError: No module named '{name}'", "environment": {"runtime": {"name": "python"}}})
+        brought = [r["trail"]["problem"]["error_message"] for r in body["results"] if r["trail_id"] in siblings]
+        check(status == 200 and not brought, f"a module nobody published ({name}) brings back no trail about another module: {brought}")
+    status, body, _ = call("POST", "/v1/search", {"query": f"ModuleNotFoundError: No module named 'sibling{word}one'", "environment": {"runtime": {"name": "python"}}})
+    check(siblings[0] in [r["trail_id"] for r in body["results"]], "and the module that was published is still found")
 
     print("outcomes")
     before = final["strength"]
