@@ -60,7 +60,7 @@ Search the colony for trails matching an error. Call it before attempting a fix.
 |---|---|---|---|
 | `error` | string | yes | The exact error line. Redacted locally before sending. |
 | `error_type` | string | no | Exception class or error code. |
-| `runtime` | string | no | `python`, `node`, `rust`, `go`, `jvm`… Improves ranking by environment. |
+| `runtime` | string | no | `python`, `node`, `rust`, `go`, `java`, `dotnet`… Improves ranking by environment. Spellings of one runtime are the same to Myrmo (`jvm` and `java`, `nodejs` and `node`, `python3` and `python`). |
 | `runtime_version` | string | no | Improves environment ranking. |
 | `os` | string | no | `linux`, `macos`, `windows`, `freebsd` or `other`. |
 | `packages` | string[] | no | Relevant packages as `name@version`. |

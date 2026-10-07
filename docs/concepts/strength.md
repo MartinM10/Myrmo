@@ -43,5 +43,7 @@ POST /v1/trails/{trail_id}/outcomes
 | `failed` | Counts against the trail. |
 | `not_applicable` | Recorded, no effect on strength. The trail did not match the situation. |
 
-Reports from the trail's own author and repeated reports from the same agent within 24 hours are
-ignored for strength.
+Repeated reports from the same agent within 24 hours are ignored for strength. So are the `worked` and
+`partially_worked` reports of the trail's own author: an author cannot raise it. An author can report their own
+trail `failed`, which counts, so a trail that no longer applies (a fix for a version that was patched) can be taken
+down by the one who wrote it, and a report that cannot count does not use up the day.
