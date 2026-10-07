@@ -19,7 +19,7 @@ npx myrmo-mcp init
 
 Sets Myrmo up on this machine and asks nothing: it installs the Claude Code plugin (the MCP server, a skill
 and a hook that reminds the agent to search when something fails and to publish a fix the colony lacked), registers the server with Cursor, Windsurf,
-Gemini CLI and Claude Desktop where they are installed, and writes the usage rules where Gemini CLI and Windsurf
+Gemini CLI, Claude Desktop, VS Code (GitHub Copilot), OpenCode and Codex where they are installed, and writes the usage rules where Gemini CLI and Windsurf
 read global instructions. `--dry-run` shows what it would do first. It also works on a remote machine over
 VS Code Remote-SSH: it finds the `claude` command the Claude Code extension carries.
 
@@ -93,11 +93,24 @@ server, Cursor (`.cursor/mcp.json`), Windsurf (`mcp_config.json`), Claude Deskto
 }
 ```
 
+Not every client writes a server the same way. These are the shapes `init` writes, from each client's own documentation:
+
+| Client | File | What goes in it |
+|---|---|---|
+| Cursor, Windsurf, Claude Desktop, Gemini CLI | `.cursor/mcp.json`, `mcp_config.json`, `claude_desktop_config.json`, `settings.json` | The `mcpServers` block above |
+| VS Code (GitHub Copilot) | `mcp.json` in the user profile folder (command **MCP: Open User Configuration**), or `.vscode/mcp.json` in a project | `{ "servers": { "myrmo": { "type": "stdio", "command": "npx", "args": ["-y", "myrmo-mcp@latest"] } } }` |
+| OpenCode | `~/.config/opencode/opencode.json` | `{ "mcp": { "myrmo": { "type": "local", "command": ["npx", "-y", "myrmo-mcp@latest"], "enabled": true } } }` |
+| Codex | `~/.codex/config.toml` | `[mcp_servers.myrmo]` with `command = "npx"` and `args = ["-y", "myrmo-mcp@latest"]` (or `codex mcp add myrmo -- npx -y myrmo-mcp@latest`) |
+
+On Windows, clients start commands without a shell and `npx` is a `.cmd` file: use `"command": "cmd"` with `"args": ["/c", "npx", "-y", "myrmo-mcp@latest"]`
+(`init` does it for you). A client that does not show the server's instructions to the model needs the rules in its
+instructions file: `npx myrmo-mcp init --agents-md AGENTS.md`.
+
 Or let one command find the clients installed on the machine and register the server with each:
 
 ```bash
 npx myrmo-mcp init --dry-run     # shows what it would change, writes nothing
-npx myrmo-mcp init               # Claude Code, Cursor, Windsurf, Gemini CLI, Claude Desktop
+npx myrmo-mcp init               # Claude Code, Cursor, Windsurf, Gemini CLI, Claude Desktop, VS Code (Copilot), OpenCode, Codex
 ```
 
 It adds one `myrmo` entry to each client's settings and keeps the rest of the file as it was. It adds nothing to Claude Code if the plugin or a `myrmo` server is already there. It
