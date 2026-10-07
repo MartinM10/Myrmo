@@ -18,6 +18,7 @@ mod norm;
 mod redact;
 mod relevance;
 mod risk;
+mod runtime;
 mod schema;
 mod state;
 mod store;

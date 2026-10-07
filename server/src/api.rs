@@ -397,11 +397,9 @@ fn environment_overlap(query: &Value, trail: &Value) -> Option<f64> {
         s(query, "/arch").as_deref(),
         s(trail, "/arch").as_deref(),
     );
-    compare(
-        0.2,
-        s(query, "/runtime/name").as_deref(),
-        s(trail, "/runtime/name").as_deref(),
-    );
+    // `java` and `jvm` are one runtime.
+    let runtime = |v: &Value| s(v, "/runtime/name").map(|n| crate::runtime::canonical(&n));
+    compare(0.2, runtime(query).as_deref(), runtime(trail).as_deref());
     compare(
         0.2,
         minor(s(query, "/runtime/version")).as_deref(),
@@ -1280,6 +1278,11 @@ fn environment_summary(env: &Value) -> String {
     .join(" · ")
 }
 
+/// Whether a report can count at all: anybody's, except an author's that would raise the strength of their own trail.
+fn author_may_report(is_author: bool, outcome: &str) -> bool {
+    !is_author || outcome == "failed"
+}
+
 async fn report_outcome(
     State(st): State<AppState>,
     Extension(caller): Extension<Caller>,
@@ -1321,18 +1324,22 @@ async fn report_outcome(
     let now = keys::now();
     let hour = keys::hour(now);
 
-    // The author cannot reinforce their own trail, and one agent counts once a day.
+    // The author cannot reinforce their own trail, but may report it failed: that can only lower its strength, and it
+    // is how an obsolete trail is taken down by the one who wrote it. One agent counts once a day, and an author's
+    // report that cannot count does not use up that day.
     let is_author = trail_author(&mut con, &id, &meta).await?.as_deref() == Some(&caller.agent);
-    let first_today: bool = redis::cmd("SET")
-        .arg(keys::seen(&id, &caller.agent))
-        .arg(1)
-        .arg("NX")
-        .arg("EX")
-        .arg(86_400)
-        .query_async::<Option<String>>(&mut con)
-        .await?
-        .is_some();
-    let counted = !is_author && first_today;
+    let eligible = author_may_report(is_author, &outcome);
+    let first_today: bool = eligible
+        && redis::cmd("SET")
+            .arg(keys::seen(&id, &caller.agent))
+            .arg(1)
+            .arg("NX")
+            .arg("EX")
+            .arg(86_400)
+            .query_async::<Option<String>>(&mut con)
+            .await?
+            .is_some();
+    let counted = first_today;
     let mut analytics_outcome: Option<String> = None;
 
     let env = &report["environment"];
@@ -1548,9 +1555,13 @@ async fn feed(State(st): State<AppState>, Query(q): Query<FeedQuery>) -> ApiResu
         .into_iter()
         .filter(|item| q.category.as_deref().is_none_or(|c| item["category"] == c))
         .filter(|item| {
-            q.runtime
-                .as_deref()
-                .is_none_or(|r| item["trail"]["environment"]["runtime"]["name"] == r)
+            q.runtime.as_deref().is_none_or(|r| {
+                item["trail"]["environment"]["runtime"]["name"]
+                    .as_str()
+                    .is_some_and(|name| {
+                        crate::runtime::canonical(name) == crate::runtime::canonical(r)
+                    })
+            })
         })
         .take(limit)
         .collect();
@@ -1785,6 +1796,27 @@ mod tests {
         )
         .unwrap();
         assert!((partial - 0.4).abs() < 1e-9, "{partial}");
+    }
+
+    #[test]
+    fn an_author_may_report_their_trail_failed_and_nothing_else() {
+        assert!(author_may_report(false, "worked"));
+        assert!(author_may_report(false, "failed"));
+        assert!(author_may_report(true, "failed"));
+        for outcome in ["worked", "partially_worked", "not_applicable"] {
+            assert!(!author_may_report(true, outcome), "{outcome}");
+        }
+    }
+
+    #[test]
+    fn two_spellings_of_a_runtime_overlap_fully() {
+        let trail = json!({"os": "linux", "runtime": {"name": "java", "version": "21.0.2"}});
+        for spelling in ["java", "JVM", "openjdk"] {
+            let query = json!({"os": "linux", "runtime": {"name": spelling, "version": "21.0.5"}});
+            assert_eq!(environment_overlap(&query, &trail), Some(1.0), "{spelling}");
+        }
+        let other = json!({"os": "linux", "runtime": {"name": "kotlin", "version": "21.0.5"}});
+        assert!(environment_overlap(&other, &trail).unwrap() < 1.0);
     }
 
     #[test]
