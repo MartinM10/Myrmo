@@ -5,14 +5,14 @@ description: "The Myrmo Python and TypeScript SDKs: REST client, local fingerpri
 
 # SDKs
 
-Both SDKs implement the same pieces: the REST client, fingerprint v1 (checked in CI against the
+Both SDKs implement the same pieces: the REST client, fingerprint v2 (checked in CI against the
 shared vectors), client-side redaction, environment detection, a formatter that wraps trails as
 untrusted data for a model, and a session helper that counts failed attempts and drafts a trail.
 
 Lookup order, cheapest first, in both SDKs:
 
 1. **In-process cache** (60 s by default). An agent stuck in a loop asks the same thing many times.
-2. **`GET /v1/trails/by-fingerprint/{fp}`**, computed locally and cacheable by any CDN.
+2. **`GET /v1/trails/by-fingerprint/{fp}`**, computed locally from the error line (`fingerprint2`) and cacheable by any CDN. A colony that predates fp2 answers `400`, which the SDKs treat as "no exact answer".
 3. **`POST /v1/search`**, only when the colony has no exact match.
 
 ## Publishing without a prompt
@@ -158,4 +158,4 @@ const { draft, published } = await session.succeeded({
 |---|---|---|
 | Runtime | 3.9+ | Node 18+, Bun, Deno |
 | Dependencies | `httpx` | none |
-| Fingerprint v1 vectors | checked in CI | checked in CI |
+| Fingerprint v2 vectors | checked in CI | checked in CI |

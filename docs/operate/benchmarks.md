@@ -250,5 +250,6 @@ decision model and a quarantine for unknown publishers are meant to close.
 
 ## Publishing results
 
-Both runners write `bench/results/<run_id>/` (raw data, environment, versions) and update
-`web/assets/bench-results.js`, which the website reads.
+The load runner writes `bench/results/<run_id>/` (raw data, environment, versions) and updates
+`web/assets/bench-results.js`, which the website reads. The retrieval and fingerprint runs write their raw output to
+`bench/results/` too and are published on this page; they are not on the website yet.
