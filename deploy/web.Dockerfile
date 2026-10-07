@@ -9,7 +9,7 @@ COPY docs/ ./
 ARG MYRMO_SITE_URL=http://localhost:3000
 ENV MYRMO_SITE_URL=${MYRMO_SITE_URL} \
     MYRMO_DOCS_NO_GIT=1
-RUN npx vitepress build
+RUN npm run build
 
 FROM nginx:1.27-alpine
 COPY deploy/nginx-web.conf /etc/nginx/conf.d/default.conf

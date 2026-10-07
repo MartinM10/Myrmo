@@ -162,7 +162,9 @@ jobs:
           cache: npm
           cache-dependency-path: docs/package-lock.json
       - run: npm ci
-      - run: npx vitepress build
+      - run: npm run build
+      - name: llms.txt lists every page
+        run: node scripts/llms.mjs --check
 
   e2e:
     name: End-to-end (Docker)
