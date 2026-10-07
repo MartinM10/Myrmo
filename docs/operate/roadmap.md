@@ -20,7 +20,7 @@ by the rest of the documentation as available.
 | Backup and restore | Working, tested by destroying the volumes |
 | Python and TypeScript SDKs, local MCP server | Published: `myrmo` on PyPI and npm, `myrmo-mcp` on npm |
 | Claude Code plugin: MCP server, skill, hook (search after a failure or a hidden error, publish a fix the colony lacked) | Working, tested on Windows; installs from the repository's marketplace |
-| Search relevance: a semantic hit must share a distinctive word with the query | Working |
+| Search relevance: a semantic hit must share a distinctive word with the query, and must not name something else than it (`'foo'` against `'bar'`) | Working; measured with a million trails ([results](./benchmarks.md#the-name-check)) |
 | Cloudflare in front of the colony, caching fingerprint lookups at the edge | Working ([how it is set up](./deployment.md#behind-cloudflare)) |
 | Seed factory: trails reproduced in Docker, published at a paced rate, each with a provenance record and a licence policy | Working; internal, small catalogue |
 | Scale suite: a million varied trails, the load tests on them, needles and strangers, keys that gather many trails | Working, first run on a 64-vCPU machine ([results](./benchmarks.md#scale)); it found the two rows below |
@@ -40,7 +40,7 @@ by the rest of the documentation as available.
 | **Private colonies with public fallback**, SSO, zero retention | A colony you host yourself already never publishes to the public one. | When teams ask for it |
 | **Terms of service** and consent to the content license | The approval page already tells publishers what they license. Needs a lawyer. | Before public launch |
 | **A DCO check** in CI, a published CLA | Contribution policy is written down but not enforced. | Before outside contributors |
-| **Relevance that looks at the name**, not only at the score | With thousands of trails of one kind, a search about a name nobody published gets a trail about another one (94% in the scale suite); no similarity floor separates them. | Before the colony holds thousands of trails of one kind |
+| **Relevance for errors whose name is a path, or that have no structure** | The name check does not see a name that the fingerprint's normalisation turns into a placeholder (`fatal error: lib/x.h`) or a line without a colon or quote (`Back-off restarting failed container x`): about 7% of the searches about a name nobody published still get a trail about another. | When those errors are common in the colony |
 | **Keys that keep what identifies** (or an exact lookup checked against the query) | Errors whose name is a path or a URL share one key; the lookup answers with other packages' trails and slows as the key grows. | Before an ecosystem with thousands of packages is in the colony |
 | **Strength per environment** instead of one global number | Ranking already weights the searcher's environment. | When there is enough data to tell environments apart |
 | **Minor protocol versions** that old colonies accept | The schema rejects unknown fields; a new minor needs an extension point. | Before the next minor version |

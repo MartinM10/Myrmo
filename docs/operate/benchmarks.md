@@ -294,7 +294,7 @@ What this says, and what it does not:
 - **A repeat of an error is found, at any size.** The error as published or without its class is found every time, by
   the fingerprint lookup. Wrapped in a wrapper that fp2 does not drop (`RuntimeError: Command failed: ...`), the search
   falls to the semantic path and loses a few points as the colony grows.
-- **A search about a name nobody published gets a trail about another one, 94% of the time.** With 46 trails, the 7 look-alike searches of the Retrieval suite got no wrong answer. The cause is in `relevance.rs`: a semantic hit is shown if its similarity is
+- **A search about a name nobody published got a trail about another one, 94% of the time** (server 0.5.0, before the name check below). With 46 trails, the 7 look-alike searches of the Retrieval suite got no wrong answer. The cause is in `relevance.rs`: a semantic hit is shown if its similarity is
   0.92 or more (two messages that differ in one word almost always reach it) or if it shares **any** distinctive word
   with the query, and among thousands of trails of one kind there is always a sibling that does both. A generic
   fix may still help (`pip install <name>` is the same advice for any name), so this is noise and sometimes wrong
@@ -309,11 +309,45 @@ What this says, and what it does not:
 | 0.95 | 45% | 1% |
 | 0.96 | 23% | 0% |
 
-  The relevance check has to look at the identifier (the name in quotes, the package, the class), not only at the score.
-  `needles.py` is the test for it: the strangers' figure is what a fix has to bring down without losing the needles.
+  The relevance check has to look at the names, not only at the score. `needles.py` is the test for it: the strangers'
+  figure is what a fix has to bring down without losing the needles. It does now: see [the name check](#the-name-check).
 - **The haystack is synthetic.** Made-up names in 34 templates make siblings far more alike than real errors are, so 94%
   is the figure for a colony with thousands of trails of one kind, not a forecast. The exact-key results (100%) are
   deterministic by construction: they show that nothing breaks with size, not how often a real agent finds an answer.
+
+### The name check
+
+The fix for the strangers is in the semantic path of the search (`relevance.rs`). A query that looks like an error line (it
+has a colon, a quote or a backtick) is compared with each candidate: if they share most of their words (three fifths of
+the longer one, half when both are very short) and each has a name the other lacks, the candidate is dropped, whatever its
+similarity. Names are the words left once the labels (the exception class, `error:`) are dropped and the generic words
+(`install`, `failed`, `python`...) are ignored. A query that only adds words (a wrapper, a stack), only lacks words (cut
+short), is a sentence, or shows another machine's paths and versions does not conflict. The parameters were chosen on 3,000
+strangers from the same generator (so the synthetic figures below are not an independent test of the parameters) and
+checked on variants of the real trails of the retrieval corpus and of production (295 variants, none dropped) and on 14
+sentences written by hand (none dropped), which are independent of it.
+
+Same haystack, same seed, same searches, server 0.5 without and with the check:
+
+| Colony | Strangers that got a trail | Wrapped needle found on top | Wrapped needle: a wrong trail on top |
+|---|---|---|---|
+| 100,000, before | 94.2% | 96.6% | 3.4% |
+| 100,000, with the check | **7.5%** | **99.6%** | **0.3%** |
+| 1,000,000, before | 94.5% | 92.7% | 7.2% |
+| 1,000,000, with the check | **7.6%** | **98.3%** | **1.1%** |
+
+The needles as published and without their class are found 100% of the time, as before. The check also finds the right
+trail more often, because a sibling about another name no longer takes its place. It costs a little: the semantic search of
+a stranger takes 29.7 ms (p50) against 27.9 ms at a million trails, and under load the semantic search goes from 785 to
+764 requests per second (within the run-to-run noise), with every other path unchanged. The retrieval benchmark of
+real errors gives the same figures as before: no right answer is lost.
+
+What it does not catch (about 7% of the strangers):
+
+- Names that the fingerprint's normalisation turns into a placeholder: a relative path such as `fatal error: lib/x.h`, and
+  an identifier that mixes letters and digits and has 12 characters or more (`smoke_eb8083ea`).
+- Lines without a colon, a quote or a backtick (`Back-off restarting failed container x in pod y`).
+- Names of one letter, two-letter names that are common words (`it`, `no`), and names in the list of generic words (`node`, `python`).
 
 ### Keys that gather many trails
 
