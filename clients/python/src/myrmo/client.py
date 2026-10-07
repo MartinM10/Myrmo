@@ -20,7 +20,7 @@ import httpx
 
 from .config import agent_identity, publish_choice
 from .environment import detect_environment, parse_package
-from .fingerprint import fingerprint, guess_error_type
+from .fingerprint import fingerprint2, guess_error_type
 from .redact import Report, redact_text, redact_value
 
 #: The public colony. Override with MYRMO_URL or the `url` argument.
@@ -161,6 +161,10 @@ class _Base:
         return self.retry_delays[min(attempt, len(self.retry_delays) - 1)] * (1 + random.random() * 0.25)
 
     @staticmethod
+    def _found(data: Dict[str, Any]) -> SearchResult:
+        return SearchResult(data["fingerprint"], _hits(data["results"]), data["notice"], "fingerprint", data)
+
+    @staticmethod
     def _check(res: httpx.Response) -> Dict[str, Any]:
         try:
             data = res.json()
@@ -254,8 +258,8 @@ class Colony(_Base):
         if cached is not ...:
             return cached
         res = self._read("GET", f"/v1/trails/by-fingerprint/{fp}", headers=_model_header(model))
-        data = self._check(res)
-        value = None if res.status_code == 404 else SearchResult(data["fingerprint"], _hits(data["results"]), data["notice"], "fingerprint", data)
+        # 400: a colony that predates fp2 does not know the key. Nothing exact to offer; the search that follows still finds the trail.
+        value = None if res.status_code in (400, 404) else self._found(self._check(res))
         self._remember(fp, value)
         return value
 
@@ -274,7 +278,7 @@ class Colony(_Base):
         `model` says which model asks, for aggregate counters (it overrides the client's own)."""
         error = redact_text(error)
         error_type = error_type or guess_error_type(error)
-        fp = fingerprint(runtime or "", error_type, error)
+        fp = fingerprint2(error)
         exact = self.lookup(fp, model)
         if exact and exact.hits:
             return exact
@@ -401,15 +405,14 @@ class AsyncColony(_Base):
         if cached is not ...:
             return cached
         res = await self._read("GET", f"/v1/trails/by-fingerprint/{fp}", headers=_model_header(model))
-        data = self._check(res)
-        value = None if res.status_code == 404 else SearchResult(data["fingerprint"], _hits(data["results"]), data["notice"], "fingerprint", data)
+        value = None if res.status_code in (400, 404) else self._found(self._check(res))
         self._remember(fp, value)
         return value
 
     async def search(self, error: str, error_type=None, runtime=None, runtime_version=None, packages=(), limit: int = 3, min_strength: float = 0.0, model: Optional[str] = None) -> SearchResult:
         error = redact_text(error)
         error_type = error_type or guess_error_type(error)
-        fp = fingerprint(runtime or "", error_type, error)
+        fp = fingerprint2(error)
         exact = await self.lookup(fp, model)
         if exact and exact.hits:
             return exact

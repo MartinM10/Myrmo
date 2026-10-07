@@ -18,6 +18,27 @@ def test_repeat_errors_resolve_by_fingerprint_without_semantic_search(colony, fa
     assert fake.requests[0][3]["x-myrmo-agent"] == "tester_123"
 
 
+def test_a_repeat_error_is_found_whatever_type_the_trail_declared_and_however_it_is_wrapped(colony, fake):
+    # The trail's own message carries another class (and the key is the message alone), yet the exact lookup answers.
+    for line in (DISTUTILS, "No module named 'distutils'", "Uncaught ModuleNotFoundError: No module named 'distutils'"):
+        assert colony.search(line).source in ("fingerprint", "cache")
+    assert not any(path == "/v1/search" for _, path, _, _ in fake.requests)
+
+
+def test_a_colony_that_predates_fp2_still_answers_through_the_search(colony, fake, monkeypatch):
+    original = fake.__call__
+
+    def old_colony(request):
+        if request.url.path.startswith("/v1/trails/by-fingerprint/"):
+            return httpx.Response(400, json={"error": {"code": "bad_request", "message": "Expected a fingerprint like fp1_0123456789abcdef."}})
+        return original(request)
+
+    colony._http._transport = httpx.MockTransport(old_colony)
+    result = colony.search(DISTUTILS, runtime="python")
+    assert result.source == "search"
+    assert any(path == "/v1/search" for _, path, _, _ in fake.requests)
+
+
 def test_identical_search_is_served_from_the_local_cache(colony, fake):
     colony.search(DISTUTILS, runtime="python")
     assert colony.search(DISTUTILS, runtime="python").source == "cache"
