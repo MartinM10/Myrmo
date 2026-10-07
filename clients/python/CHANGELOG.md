@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.9.0](https://github.com/MartinM10/Myrmo/compare/sdk-python-v0.8.0...sdk-python-v0.9.0) (2026-10-07)
+
+
+### Features
+
+* fingerprint v2, a hash of the error message alone (protocol, server, SDKs) ([bd2a059](https://github.com/MartinM10/Myrmo/commit/bd2a05909c9864f0976b18a70e161689e17b37ee))
+* **sdk-python:** look errors up by fp2 ([800e9a2](https://github.com/MartinM10/Myrmo/commit/800e9a215e63bb2db0d7678b5e93bb2bba6f5b67))
+
 ## [0.8.0](https://github.com/MartinM10/Myrmo/compare/sdk-python-v0.7.0...sdk-python-v0.8.0) (2026-10-05)
 
 

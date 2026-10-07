@@ -13,7 +13,7 @@ import type { AgentInfo, DraftResult, DraftState, Environment, Hit, Outcome, Pub
 
 /** The public colony. Override with MYRMO_URL or the `url` option. */
 export const DEFAULT_URL = "https://myrmo.dev";
-export const SDK_VERSION = "0.8.0"; // x-release-please-version
+export const SDK_VERSION = "0.9.0"; // x-release-please-version
 
 export interface ColonyOptions {
   url?: string;

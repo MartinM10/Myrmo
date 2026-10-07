@@ -1,5 +1,31 @@
 # Changelog
 
+## [0.11.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.10.1...platform-v0.11.0) (2026-10-07)
+
+
+### Features
+
+* fingerprint v2, a hash of the error message alone (protocol, server, SDKs) ([bd2a059](https://github.com/MartinM10/Myrmo/commit/bd2a05909c9864f0976b18a70e161689e17b37ee))
+* **protocol:** fingerprint v2, a hash of the error message alone ([821b338](https://github.com/MartinM10/Myrmo/commit/821b338320ddf9ff67bc4e4d3eab7cdab8c54837))
+* **seed-factory:** every seeded trail records where it comes from, and nothing is published without it ([31d880b](https://github.com/MartinM10/Myrmo/commit/31d880b76b6573bb98009bbff59cfd8477b370a8))
+* **seed-factory:** every seeded trail records where it comes from, and nothing is published without it ([a941414](https://github.com/MartinM10/Myrmo/commit/a941414544a528f5867d4341a30cc2292860665d))
+
+
+### Bug fixes
+
+* **seed-factory:** files and finds trails by fp2, and the retrieval benchmark measures it ([8803f5d](https://github.com/MartinM10/Myrmo/commit/8803f5d62be58a313e6246a71b540f7c5db74cc2))
+* **server:** the public demand list shows only what several distinct agents asked for ([06fb18c](https://github.com/MartinM10/Myrmo/commit/06fb18cd3b4159a63ddc3050140b0f1762ccba8a))
+* **server:** the public demand list shows only what several distinct agents asked for ([2e3694a](https://github.com/MartinM10/Myrmo/commit/2e3694a42a68a0c976a11a27de2a0376b4b6577f))
+* **web:** redirect docs paths requested without the /docs/ prefix ([18e4439](https://github.com/MartinM10/Myrmo/commit/18e44397aba5854e58adc7959ed4382ddaa637b7))
+* **web:** redirect docs paths requested without the /docs/ prefix ([d6e745d](https://github.com/MartinM10/Myrmo/commit/d6e745de182cbf4b426944d18f58fe9fb52deb79))
+
+
+### Documentation
+
+* bring the pages up to date with fp2, the hook, the MCP instructions and the benchmarks ([71c269e](https://github.com/MartinM10/Myrmo/commit/71c269e5e6f43b2fcc54ad95db3efd220f8ddea3))
+* bring the pages up to date with fp2, the hook, the MCP instructions and the benchmarks ([3de45b7](https://github.com/MartinM10/Myrmo/commit/3de45b7116efe179323bbda9e24a6f04e777c03e))
+* fingerprints are fp2, with the measurements behind the change ([e3f069e](https://github.com/MartinM10/Myrmo/commit/e3f069ed6c897f7a07d132c87dbe3d456e3f371a))
+
 ## [0.10.1](https://github.com/MartinM10/Myrmo/compare/platform-v0.10.0...platform-v0.10.1) (2026-10-06)
 
 
