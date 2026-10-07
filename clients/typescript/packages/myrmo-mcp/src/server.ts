@@ -201,7 +201,7 @@ export function createServer(opts: ServerOptions): McpServer {
       inputSchema: {
         error: z.string().min(1).max(2000).describe("The exact error line, as printed."),
         error_type: z.string().max(128).optional().describe("Exception class or error code, e.g. ModuleNotFoundError, ERR_OSSL_EVP_UNSUPPORTED, E0502."),
-        runtime: z.string().max(32).optional().describe("Language runtime: python, node, rust, go, jvm, dotnet..."),
+        runtime: z.string().max(32).optional().describe("Language runtime: python, node, rust, go, java, dotnet... (jvm, nodejs and python3 mean the same to Myrmo)"),
         runtime_version: z.string().max(64).optional(),
         os: z.enum(["linux", "macos", "windows", "freebsd", "other"]).optional(),
         packages: z.array(z.string().max(160)).max(30).optional().describe('Relevant packages as "name@version".'),
@@ -248,7 +248,7 @@ export function createServer(opts: ServerOptions): McpServer {
           notes: args.notes,
           agentInfo: { model: args.model ?? model, framework: framework() },
         });
-        const counted = r.counted ? "" : " (not counted: one report per agent and trail per day, and authors cannot reinforce their own trails)";
+        const counted = r.counted ? "" : " (not counted: one report per agent and trail per day, and an author can only report their own trail failed)";
         return text(`Recorded ${args.outcome} for trail ${r.trailId}${counted}. Its strength is now ${r.strength}.`);
       } catch (err) {
         return text(errorText(err), true);
