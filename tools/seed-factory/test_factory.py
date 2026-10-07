@@ -100,7 +100,7 @@ def test_the_error_line_is_the_one_that_names_the_error():
 def test_a_good_trail_passes_and_gets_a_fingerprint():
     c = candidate()
     factory.validate(c)
-    assert c["fingerprint"].startswith("fp1_")
+    assert c["fingerprint"].startswith("fp2_")
 
 
 def test_a_trail_nobody_could_find_or_use_is_refused():
@@ -136,12 +136,12 @@ def feed_item(task_fp, trail_id, model="seed-factory", **problem):
 
 def test_retire_picks_policy_excluded_and_flawed_factory_trails_only():
     items = [
-        feed_item("fp1_a", "1", error_message="ZeroDivisionError: division by zero"),
-        feed_item("fp1_b", "2", error_message="ModuleNotFoundError: No module named 'distutils'"),
-        feed_item("fp1_c", "3", model="claude-opus-5-5", error_message="ZeroDivisionError: division by zero"),
-        feed_item("fp1_d", "4", error_message="EACCES"),
+        feed_item("fp2_a", "1", error_message="ZeroDivisionError: division by zero"),
+        feed_item("fp2_b", "2", error_message="ModuleNotFoundError: No module named 'distutils'"),
+        feed_item("fp2_c", "3", model="claude-opus-5-5", error_message="ZeroDivisionError: division by zero"),
+        feed_item("fp2_d", "4", error_message="EACCES"),
     ]
-    by_fp = {"fp1_a": "python-division-by-zero", "fp1_b": "python-distutils-312"}
+    by_fp = {"fp2_a": "python-division-by-zero", "fp2_b": "python-distutils-312"}
     chosen = retire.select(items, by_fp, include_flawed=False)
     assert [c[0] for c in chosen] == ["1"], "only the excluded task; others' trails are never touched"
     chosen = retire.select(items, by_fp, include_flawed=True)
@@ -163,9 +163,9 @@ def test_the_colony_decides_whether_a_trail_is_already_there(monkeypatch):
         raise urllib.error.HTTPError("u", 404, "nf", {}, None)
 
     monkeypatch.setattr(publisher, "request", found)
-    assert publisher.exists_on_server("https://myrmo.dev", "fp1_x")
+    assert publisher.exists_on_server("https://myrmo.dev", "fp2_x")
     monkeypatch.setattr(publisher, "request", missing)
-    assert not publisher.exists_on_server("https://myrmo.dev", "fp1_x")
+    assert not publisher.exists_on_server("https://myrmo.dev", "fp2_x")
 
 
 def test_docker_download_chatter_is_not_the_tasks_output():
@@ -255,7 +255,7 @@ def test_a_model_needs_a_licence_the_project_can_pass_on_or_reviewed_terms():
 
 def test_the_publisher_sends_protocol_v1_only_and_notices_a_trail_that_changed():
     c = candidate()
-    c["fingerprint"] = "fp1_0000000000000000"
+    c["fingerprint"] = "fp2_0000000000000000"
     sent = publisher.payload(c)
     assert "_factory" not in sent and "_provenance" not in sent and "fingerprint" not in sent
     assert publisher.provenance_problems(c) == []
@@ -276,7 +276,7 @@ def test_the_record_keeps_what_is_needed_to_audit_a_trail_later():
 
 def test_the_publisher_keeps_a_ledger_and_sends_nothing_without_provenance(monkeypatch, tmp_path):
     good, bare = candidate(), candidate()
-    good["fingerprint"], bare["fingerprint"] = "fp1_aaaaaaaaaaaaaaaa", "fp1_bbbbbbbbbbbbbbbb"
+    good["fingerprint"], bare["fingerprint"] = "fp2_aaaaaaaaaaaaaaaa", "fp2_bbbbbbbbbbbbbbbb"
     bare["problem"]["error_message"] = "ModuleNotFoundError: No module named 'other_thing'"
     del bare["_provenance"]
     source = tmp_path / "lot.jsonl"

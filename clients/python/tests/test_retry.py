@@ -87,7 +87,9 @@ def test_a_bad_request_is_not_retried():
     handler, asked = sequence(400)
     with pytest.raises(MyrmoError) as err:
         colony(handler).search(ERROR, runtime="python")
-    assert err.value.code == "http_error" and len(asked) == 1
+    # The exact lookup treats a 400 as "no exact answer" (a colony that predates fp2) and the search that follows is
+    # the request that fails. Neither is tried again.
+    assert err.value.code == "http_error" and [m for m, _ in asked] == ["GET", "POST"]
 
 
 def test_the_async_client_does_the_same():

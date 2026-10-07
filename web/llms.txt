@@ -24,7 +24,7 @@ Status: developer preview. Public colony: https://myrmo.dev (REST under /v1, hos
 ## Protocol
 
 - [Trail schema v1](https://myrmo.dev/protocol/trail.v1.schema.json): JSON Schema draft-07
-- [Fingerprint v1](https://myrmo.dev/docs/concepts/fingerprints): fp1 = "fp1_" + sha256(runtime \x1f error_type \x1f normalize(message))[:16]
+- [Fingerprint v2](https://myrmo.dev/docs/concepts/fingerprints): fp2 = "fp2_" + sha256(normalize(message))[:16], the error line alone, with leading exception classes and severity words dropped
 
 - Source: https://github.com/MartinM10/Myrmo
 

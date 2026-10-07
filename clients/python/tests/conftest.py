@@ -3,9 +3,9 @@ import json
 import httpx
 import pytest
 
-from myrmo import Colony, fingerprint
+from myrmo import Colony, fingerprint2
 
-KNOWN_FP = fingerprint("python", "ModuleNotFoundError", "ModuleNotFoundError: No module named 'distutils'")
+KNOWN_FP = fingerprint2("ModuleNotFoundError: No module named 'distutils'")
 TRAIL_ID = "3f2b8c1e-9a4d-4e2f-8b1a-2c3d4e5f6a7b"
 
 TRAIL = {
@@ -59,7 +59,7 @@ class FakeColony:
         if request.method == "GET" and path.startswith("/v1/trails/by-fingerprint/"):
             return httpx.Response(404, json={"error": {"code": "not_found", "message": "none"}})
         if path == "/v1/search":
-            return httpx.Response(200, json={"fingerprint": "fp1_0000000000000000", "results": [], "notice": "untrusted"})
+            return httpx.Response(200, json={"fingerprint": "fp2_0000000000000000", "results": [], "notice": "untrusted"})
         if path == f"/v1/trails/{TRAIL_ID}/outcomes":
             return httpx.Response(202, json={"trail_id": TRAIL_ID, "counted": True, "strength": 0.91})
         if path == "/v1/trails":

@@ -17,7 +17,7 @@ from jsonschema import Draft7Validator
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(ROOT / "protocol"))
-from fingerprint_v1 import fingerprint
+from fingerprint_v2 import fingerprint
 from catalog import MESSAGE_OVERRIDES, TASKS, Task, publishable
 import provenance
 
@@ -173,7 +173,7 @@ def validate(candidate: dict) -> None:
     problems = provenance.check(candidate.get("_provenance"))
     if problems:
         raise ValueError(f"{candidate['_factory']['task_id']}: {'; '.join(problems)}")
-    candidate["fingerprint"] = fingerprint(candidate["environment"]["runtime"]["name"], candidate["problem"]["error_type"], candidate["problem"]["error_message"])
+    candidate["fingerprint"] = fingerprint(candidate["problem"]["error_message"])
 
 
 def main() -> int:

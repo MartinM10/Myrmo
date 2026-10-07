@@ -13,12 +13,12 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { ElicitRequestSchema } from "@modelcontextprotocol/sdk/types.js";
-import { fingerprint } from "myrmo";
+import { fingerprint2 } from "myrmo";
 
 /** Every test gets its own settings file: the client now creates an agent id by itself and must not touch the real home. */
 const sandbox = mkdtempSync(join(tmpdir(), "myrmo-mcp-agent-"));
 const ENTRY = fileURLToPath(new URL("../dist/index.js", import.meta.url));
-const KNOWN_FP = fingerprint("python", "ModuleNotFoundError", "ModuleNotFoundError: No module named 'distutils'");
+const KNOWN_FP = fingerprint2("ModuleNotFoundError: No module named 'distutils'");
 const TRAIL_ID = "3f2b8c1e-9a4d-4e2f-8b1a-2c3d4e5f6a7b";
 const requests = [];
 const PENDING = "a".repeat(32);

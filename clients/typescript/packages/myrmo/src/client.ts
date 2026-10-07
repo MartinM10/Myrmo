@@ -7,7 +7,7 @@
 
 import { agentIdentity, publishChoice } from "./config.js";
 import { detectEnvironment, parsePackage } from "./environment.js";
-import { fingerprint, guessErrorType } from "./fingerprint.js";
+import { fingerprint2, guessErrorType } from "./fingerprint.js";
 import { redactText, redactValue, type RedactionReport } from "./redact.js";
 import type { AgentInfo, DraftResult, DraftState, Environment, Hit, Outcome, PublishMode, PublishResult, SearchQuery, SearchResult, Trail, Validation } from "./types.js";
 
@@ -179,14 +179,21 @@ export class Colony {
   async lookup(fp: string, model?: string): Promise<SearchResult | null> {
     const hit = this.cached(fp);
     if (hit !== undefined) return hit;
-    const { status, data } = await this.request<{ fingerprint: string; results: RawHit[]; notice: string }>(
-      "GET",
-      `/v1/trails/by-fingerprint/${encodeURIComponent(fp)}`,
-      undefined,
-      model ? { "x-myrmo-model": model } : undefined,
-      true,
-    );
-    const value = status === 404 ? null : { fingerprint: data.fingerprint, hits: data.results.map(toHit), notice: data.notice, source: "fingerprint" as const };
+    let found: { status: number; data: { fingerprint: string; results: RawHit[]; notice: string } } | null;
+    try {
+      found = await this.request<{ fingerprint: string; results: RawHit[]; notice: string }>(
+        "GET",
+        `/v1/trails/by-fingerprint/${encodeURIComponent(fp)}`,
+        undefined,
+        model ? { "x-myrmo-model": model } : undefined,
+        true,
+      );
+    } catch (err) {
+      // 400: a colony that predates fp2 does not know the key. Nothing exact to offer; the search that follows still finds the trail.
+      if (err instanceof MyrmoError && err.status === 400) found = null;
+      else throw err;
+    }
+    const value = found === null || found.status === 404 ? null : { fingerprint: found.data.fingerprint, hits: found.data.results.map(toHit), notice: found.data.notice, source: "fingerprint" as const };
     this.remember(fp, value);
     return value;
   }
@@ -195,7 +202,7 @@ export class Colony {
   async search(query: SearchQuery): Promise<SearchResult> {
     const error = redactText(query.error);
     const errorType = query.errorType ?? guessErrorType(error);
-    const fp = fingerprint(query.runtime ?? "", errorType, error);
+    const fp = fingerprint2(error);
 
     const exact = await this.lookup(fp, query.model);
     if (exact && exact.hits.length > 0) return exact;

@@ -2,9 +2,10 @@
 
     python bench/fingerprint/compare.py
 
-The fingerprint (fp1) hashes the runtime, the error type and the normalised message. A trail declares its error type
-(what its author chose) and a searcher can only guess one from the error line, so the two often disagree and the cheap,
-cacheable exact lookup misses. This compares fp1 with keys that need only the message, on two sets of trails:
+The first fingerprint (fp1) hashed the runtime, the error type and the normalised message. A trail declares its error
+type (what its author chose) and a searcher can only guess one from the error line, so the two often disagreed and the
+cheap, cacheable exact lookup missed. fp2, which the colony now indexes, hashes the message alone, with the labels that
+wrap an error line dropped. This compares them, and the variants that led to fp2, on two sets of trails:
 
   * the 24 public trails of the production colony written by agents (`production-trails.json`, a snapshot), and
   * the 46 trails of the retrieval benchmark corpus.
@@ -13,8 +14,8 @@ For each trail it builds the searches of bench/retrieval/run.py (the error as pu
 in another exception, without its type prefix) and counts how many produce the key the trail is stored under. It also
 counts collisions (one key for trails with different declared type or runtime) and false hits of unrelated searches.
 
-Nothing here changes the protocol: the message-only keys are candidates for a future fp2, measured before deciding.
-Needs the `myrmo` Python SDK (`pip install -e clients/python`).
+The "fp2" row is the SDK's own `fingerprint2`; the other message-only rows are the variants that were weighed
+(one label only, and the runtime kept in the key). Needs the `myrmo` Python SDK (`pip install -e clients/python`).
 """
 
 from __future__ import annotations
@@ -29,6 +30,7 @@ import sys
 from pathlib import Path
 
 from myrmo.fingerprint import fingerprint as fp1
+from myrmo.fingerprint import _LABEL, fingerprint2
 from myrmo.fingerprint import guess_error_type, normalize_message
 
 HERE = Path(__file__).resolve().parent
@@ -41,15 +43,10 @@ spec.loader.exec_module(run)
 
 # -- candidate keys: what a searcher can compute from the error line alone ----------------------------------------
 
-SEVERITY = r"(?i:error|fatal|warning|panic|err|exception)"
-EXCEPTION_CLASS = r"(?:[a-z_][\w$]*\.)*[A-Z][\w$]*(?:Error|Exception|Warning|Failure)"
-LEADING = re.compile(rf"^\s*(?:{EXCEPTION_CLASS}|{SEVERITY}(?:\[\w+\])?|npm ERR!|npm error)\s*:\s+")
-
-
 def strip_prefixes(message: str, times: int) -> str:
-    """Drop up to `times` leading exception classes or severity words ("java.lang.IllegalStateException: ", "error: ")."""
+    """Drop up to `times` leading labels, with the same pattern as fp2 (which drops up to four)."""
     for _ in range(times):
-        shorter = LEADING.sub("", message, count=1)
+        shorter = _LABEL.sub("", message, count=1)
         if shorter == message:
             break
         message = shorter
@@ -68,19 +65,19 @@ def message_one(runtime: str, _type: str, message: str) -> str:
     return key(normalize_message("", strip_prefixes(message, 1)))
 
 
-def message_wrapped(runtime: str, _type: str, message: str) -> str:
-    return key(normalize_message("", strip_prefixes(message, 3)))
+def adopted(runtime: str, _type: str, message: str) -> str:
+    return fingerprint2(message)  # fp2, as the SDKs and the colony compute it
 
 
 def runtime_message_wrapped(runtime: str, _type: str, message: str) -> str:
-    return key(runtime.lower(), normalize_message("", strip_prefixes(message, 3)))
+    return key(runtime.lower(), normalize_message("", strip_prefixes(message, 4)))
 
 
 SCHEMES = {
-    "fp1 today (runtime + guessed type)": current,
-    "message only, one prefix": message_one,
-    "message only, wrapped exceptions too": message_wrapped,
-    "runtime + message, wrapped too": runtime_message_wrapped,
+    "fp1 (retired: runtime + guessed type)": current,
+    "message only, one label": message_one,
+    "fp2 (message only, up to four labels)": adopted,
+    "runtime + message, up to four labels": runtime_message_wrapped,
 }
 VARIANTS = ["exact", "shifted", "wrapped", "no_type_prefix"]
 

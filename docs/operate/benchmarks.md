@@ -138,17 +138,19 @@ local colony, never production: the runner publishes the corpus and refuses a co
 
 ### Latest results
 
-Run `retrieval-20261007-0711`: 46 published trails (38 made by the seed factory from commands run in containers, 8 hand-made
-seeds; they include trails of tasks the publication policy excludes, which make good tests but are not published), a virtual machine with 64 vCPUs, embeddings on CPU, heuristic enrichment, similarity floor 0.72.
+Run `retrieval-20261007-0811-fp2`: 46 published trails (38 made by the seed factory from commands run in containers, 8
+hand-made seeds; they include trails of tasks the publication policy excludes, which make good tests but are not
+published), a virtual machine with 64 vCPUs, embeddings on CPU, heuristic enrichment, similarity floor 0.72, error
+fingerprint fp2.
 
 | Variant | Searches | Top 1 | Top 3 | Wrong trail on top | Answered by |
 |---|---|---|---|---|---|
-| Error line as published | 37 | 100% | 100% | 0% | fingerprint 11, search 26 |
-| Paths, versions, ports, lines changed | 37 | 97% | 97% | 0% | fingerprint 11, search 26 |
-| Wrapped in another exception | 37 | 97% | 97% | 0% | search 37 |
+| Error line as published | 37 | 100% | 100% | 0% | fingerprint 37 |
+| Paths, versions, ports, lines changed | 37 | 100% | 100% | 0% | fingerprint 36, search 1 |
+| Wrapped in another exception | 37 | 97% | 97% | 0% | fingerprint 28, search 9 |
 | With a stack header | 37 | 86% | 86% | 8% | search 37 |
 | Cut to 60% | 16 | 100% | 100% | 0% | search 16 |
-| Without its type prefix | 29 | 97% | 97% | 0% | search 29 |
+| Without its type prefix | 29 | 100% | 100% | 0% | fingerprint 20, search 9 |
 
 | Should find nothing | Searches | Wrong answers |
 |---|---|---|
@@ -157,59 +159,60 @@ seeds; they include trails of tasks the publication policy excludes, which make 
 
 | Similarity floor | Found on top | Wrong on top, positives | Wrong on top, negatives |
 |---|---|---|---|
-| 0.72 (default) | 163 of 171 | 3 | 5 of 46 |
-| 0.75 | 158 of 171 | 1 | 1 of 46 |
-| 0.78 | 146 of 171 | 1 | 0 of 46 |
-| 0.85 | 103 of 171 | 0 | 0 of 46 |
+| 0.72 (default) | 66 of 72 | 3 | 5 of 46 |
+| 0.75 | 62 of 72 | 1 | 1 of 46 |
+| 0.78 | 59 of 72 | 0 | 0 of 46 |
+| 0.85 | 34 of 72 | 0 | 0 of 46 |
 
-What this says, and what it does not:
+The same corpus and seed with the first fingerprint (fp1) are in `bench/results/retrieval-20261007-0711/`. What changed,
+and what did not:
 
-- **The search tolerates what changes between machines.** Another path, version, port or line number, or the error
-  inside another exception, still finds the trail 97% of the time. Pasting a whole stack header is where it starts
-  to fail (86%, and in 8% the first trail is the wrong one), which is why the instructions ask for the exact error
-  line only.
-- **The exact-match path is used less than it could be.** Only 11 of 37 repeats of a published error were answered
-  by the fingerprint, the cheap, cacheable lookup. The fingerprint includes the error type, and the type a client
-  guesses from the line often differs from the one the trail declared (`error[E0308]` against `E0308`, `Error`
-  against `ERR_OSSL_EVP_UNSUPPORTED`). All 11 hits are the cases where both agree. The semantic search caught the
-  other 26, so the agent still got its answer, but at the cost of an embedding. Changing what the fingerprint
-  covers is a protocol change; this measures the cost, it does not fix it.
-- **The similarity floor trades finding for being wrong.** At 0.72, 5 of 39 unrelated errors got a trail (a Postgres
-  password failure got the SCRAM trail, a git `Permission denied (publickey)` got the shell one). At 0.78 none
-  did, and 17 of 171 searches that were answered lost their answer. Nothing is tuned on these numbers: with more
-  trails in the colony there are more near neighbours, so the right floor has to be measured again as it grows.
-- **Short messages are weak trails.** Nine corpus trails have an error message of fewer than three words (for example
-  `EACCES`). Their searches found the trail in 21 of 36, against 97% or more for the rest. They come from older
-  seed batches; a trail needs a message with something to match.
+- **The cheap path answers most repeats now.** Of the 193 searches that are a repeat of a published error, 121 (63%)
+  were answered by the fingerprint lookup, against 22 (11%) with fp1, and those answers take 1 to 2 ms instead of
+  17 to 25 ms: no embedding, no vector search, cacheable at an edge. The rest go to the semantic search as before.
+- **Finding the trail did not get worse.** Top 1 is 100% for the error as published, on another machine and without its
+  type prefix (it was 100%, 97% and 97%), and 97% wrapped in another exception. Pasting a whole stack header still
+  fails (86%, and in 8% the first trail is the wrong one), which is why the instructions ask for the exact error line only.
+- **No new wrong answers.** Five of 39 unrelated errors get a trail, the same five as before: they come from the semantic
+  search, which fp2 does not touch. At 0.78 none did, and 7 of 72 semantic answers were lost. Nothing is tuned on these
+  numbers: with more trails in the colony there are more near neighbours, so the right floor has to be measured again.
+- **Short messages found more often.** Nine corpus trails have an error message of fewer than three words (for example
+  `EACCES`). Their searches found the trail in 30 of 36, against 21 of 36 with fp1. They are still weak trails; they
+  come from older seed batches.
 - **The corpus is small and made by us.** 46 trails say little about recall at a million, and the variants are
-  generated, not written by agents. This measures the robustness of search to the changes between machines, not
-  how often a real agent finds a real answer. That is what MyrmoBench is for.
+  generated, not written by agents. This measures the robustness of search to the changes between machines, not how
+  often a real agent finds a real answer. That is what MyrmoBench is for.
 
 ### Fingerprint keys
 
 The exact lookup (`GET /v1/trails/by-fingerprint/{fp}`) is what makes a colony cheap to serve: a repeat error is one
-cacheable request, against an embedding and a vector search for every semantic one. `bench/fingerprint/compare.py`
-measures how often it works. The fp1 key includes the error type, which a trail declares (what its author chose) and a
-searcher can only guess from the error line. On the 23 distinct trails that agents wrote in production, the key a client
-computes from the exact message matched the trail's own key in 4 (17%). The usual causes: a qualified class name against a
-simple one (`java.lang.NullPointerException` against `NullPointerException`), a label that is not in the message at all
-(`mojibake`, `HTTP 429`), a leading `Error:` or `ERROR:` against the code the trail declares, and a wrapper exception around
-the one that was declared. The runtime also fragments: `java`, `jvm` and an empty runtime are three keys.
+cacheable request, against an embedding and a vector search for every semantic one. The first key, fp1, included the
+error type, which a trail declares (what its author chose) and a searcher can only guess from the error line. On the 23
+distinct trails that agents wrote in production, the key a client computed from the exact message matched the trail's
+own in 4 (17%): a qualified class name against a simple one (`java.lang.NullPointerException` against
+`NullPointerException`), a label that is not in the message at all (`mojibake`, `HTTP 429`), a leading `Error:` or
+`ERROR:` against the code the trail declares, a wrapper exception around the one that was declared. The runtime also
+fragmented the key: `java`, `jvm` and an empty runtime were three keys.
 
-The comparison tries keys that need only the message (leading exception classes and severity words dropped, then the same
-normalisation as fp1), on production trails and on the 46 trails of the retrieval corpus:
+`bench/fingerprint/compare.py` compares fp1 with fp2, which hashes the message alone after dropping the labels that wrap
+it, on those production trails and on the 46 trails of the retrieval corpus (trails whose own key is matched by the key
+computed from each kind of search):
 
-| Key | Production, exact line | Production, other machine | Corpus, exact line | Corpus, other machine |
-|---|---|---|---|---|
-| fp1 today (runtime and guessed type) | 4 of 23 | 4 of 23 | 12 of 46 | 12 of 46 |
-| Message only, one prefix | 23 of 23 | 22 of 23 | 46 of 46 | 45 of 46 |
-| Message only, wrapped exceptions too | 23 of 23 | 22 of 23 | 46 of 46 | 45 of 46 |
+| Key | Production, exact line | Production, other machine | Production, wrapped | Corpus, exact line | Corpus, wrapped |
+|---|---|---|---|---|---|
+| fp1 (runtime and guessed type) | 4 of 23 | 4 of 23 | 0 of 23 | 12 of 46 | 0 of 46 |
+| fp2 | 23 of 23 | 22 of 23 | 19 of 23 | 46 of 46 | 36 of 46 |
 
-Wrapped in another exception: 0 of 23 today, 11 of 23 with wrapped exceptions dropped (the real case of
-`CompletionException: ...IllegalStateException: Recursive update` is found by all four phrasings of it). No two trails shared
-a key, and none of 46 unrelated or look-alike searches hit one. This is a candidate for a future fp2, measured, not adopted:
-with 70 trails, absence of collisions says little about a colony of thousands, short generic messages (`permission denied`)
-will collide across tools, and a key without the runtime widens that further. Nothing in the protocol or the server changes.
+The real case an agent reported, `CompletionException: ...IllegalStateException: Recursive update`, was found by none of
+its phrasings with fp1, not even the message exactly as stored, and is found by four of five with fp2. No two trails
+shared a key and none of 46 unrelated or look-alike searches hit one.
+
+What fp2 gives up, and what is still unmeasured: two exception classes with the same text share a key (`ValueError:
+invalid value` and `TypeError: invalid value`), very short generic messages (`permission denied`) will collide across
+tools, and the runtime is not in the key, so a message that two runtimes print the same way is one key. With 70 trails the
+absence of collisions says little about a colony of thousands; the lookup returns each trail with its own runtime and error
+type, and the semantic search still ranks by environment overlap. The collision rate has to be measured again as the
+colony grows.
 
 ## Leak test bank
 

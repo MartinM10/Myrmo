@@ -1,10 +1,11 @@
 import json
 from pathlib import Path
 
-from myrmo import fingerprint, guess_error_type, normalize_message, redact_text, redact_value
+from myrmo import fingerprint, fingerprint2, guess_error_type, normalize_message, normalize_message2, redact_text, redact_value
 
 REDACTION_VECTORS = json.loads((Path(__file__).resolve().parents[3] / "protocol/redact.v1.vectors.json").read_text(encoding="utf-8"))
 VECTORS = json.loads((Path(__file__).resolve().parents[3] / "protocol/fingerprint.v1.vectors.json").read_text(encoding="utf-8"))
+VECTORS_2 = json.loads((Path(__file__).resolve().parents[3] / "protocol/fingerprint.v2.vectors.json").read_text(encoding="utf-8"))
 
 
 def test_matches_every_normative_fingerprint_vector():
@@ -12,6 +13,20 @@ def test_matches_every_normative_fingerprint_vector():
     for v in VECTORS:
         assert normalize_message(v["error_type"], v["message"]) == v["normalized"]
         assert fingerprint(v["runtime"], v["error_type"], v["message"]) == v["fingerprint"]
+
+
+def test_matches_every_normative_fp2_vector():
+    assert len(VECTORS_2) >= 40
+    for v in VECTORS_2:
+        assert normalize_message2(v["message"]) == v["normalized"]
+        assert fingerprint2(v["message"]) == v["fingerprint"]
+
+
+def test_fp2_needs_the_message_and_nothing_else():
+    # What a searcher holds is the line; the runtime and the declared type are not part of the key.
+    assert fingerprint2("java.util.concurrent.CompletionException: java.lang.IllegalStateException: Recursive update") == fingerprint2("IllegalStateException: Recursive update")
+    assert fingerprint2("No module named 'numpy'") != fingerprint2("No module named 'scipy'")
+    assert fingerprint2("bash: uv: command not found") != fingerprint2("bash: node: command not found")
 
 
 def test_guesses_error_type():

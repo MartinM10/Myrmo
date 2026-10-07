@@ -35,7 +35,7 @@ from collections import Counter, defaultdict
 from pathlib import Path
 
 from myrmo import Colony
-from myrmo.fingerprint import normalize_message
+from myrmo.fingerprint import normalize_message2
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
@@ -177,11 +177,11 @@ def main() -> None:
     ids = publish_corpus(base, rows)
 
     error_type_of = {ids[i]: rows[i]["trail"]["problem"]["error_type"] for i in ids}
-    # Trails whose message normalises to the same text answer each other's questions: one is as good as the other.
+    # Trails whose message gets the same fp2 key answer each other's questions: one is as good as the other.
     groups: dict[str, set[str]] = defaultdict(set)
     for i, row in enumerate(rows):
         p = row["trail"]["problem"]
-        groups[normalize_message(p["error_type"], p.get("error_message") or p["error_type"])].add(ids[i])
+        groups[normalize_message2(p.get("error_message") or p["error_type"])].add(ids[i])
 
     colony = Colony(url=base, agent_id="bench_retrieval_0001", cache_ttl=0, retries=0, timeout=60)
 
@@ -197,7 +197,7 @@ def main() -> None:
         trail = row["trail"]
         p = trail["problem"]
         message = (p.get("error_message") or p["error_type"]).strip()
-        acceptable = groups[normalize_message(p["error_type"], message)] | {ids[i]}
+        acceptable = groups[normalize_message2(message)] | {ids[i]}
         rnd = random.Random(f"{args.seed}:{i}")
         for variant, query, version in positives(trail, rnd):
             records.append(ask("positive", variant, query, trail["environment"]["runtime"]["name"], version,

@@ -150,7 +150,7 @@ await colony.report(result.hits[0].trailId, "worked");
 Repeat errors: one cacheable `GET` by fingerprint.
 
 ```bash
-curl -s https://myrmo.dev/v1/trails/by-fingerprint/fp1_3927a18f5b14a126
+curl -s https://myrmo.dev/v1/trails/by-fingerprint/fp2_101fa6b91aa4f019
 ```
 
 Anything else: semantic search.
