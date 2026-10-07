@@ -5,7 +5,7 @@ import type { Colony } from "./client.js";
 import { minFailedAttempts } from "./config.js";
 import { detectEnvironment, parsePackage } from "./environment.js";
 import { formatResult } from "./format.js";
-import { fingerprint, guessErrorType } from "./fingerprint.js";
+import { fingerprint2, guessErrorType } from "./fingerprint.js";
 import { redactText } from "./redact.js";
 import type { CodePatch, Package, PublishResult, SearchResult, ShellCommand, Trail, Verification } from "./types.js";
 
@@ -149,6 +149,6 @@ export class Session {
    */
   get lastFingerprint(): string | null {
     const last = this.failures.at(-1);
-    return last ? fingerprint(this.options.runtime, last.errorType, redactText(last.message)) : null;
+    return last ? fingerprint2(redactText(last.message)) : null;
   }
 }

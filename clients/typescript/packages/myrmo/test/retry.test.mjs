@@ -81,6 +81,16 @@ test("publishing is never repeated", async () => {
 
 test("a client error is not retried", async () => {
   answering(400);
-  await assert.rejects(colony().lookup("fp1_abc"), (err) => err instanceof MyrmoError && err.code === "http_error");
+  await assert.rejects(colony().search({ error: "boom" }), (err) => err instanceof MyrmoError && err.code === "http_error");
+  // The exact lookup treats a 400 as "no exact answer" (a colony that predates fp2) and the search that follows is
+  // the request that fails. Neither is tried again.
+  assert.equal(asked.length, 2);
+  assert.match(asked[0], /^GET \/v1\/trails\/by-fingerprint\/fp2_[0-9a-f]{16}$/);
+  assert.equal(asked[1], "POST /v1/search");
+});
+
+test("a colony that predates fp2 answers a lookup with 400: there is no exact answer, not an error", async () => {
+  answering(400);
+  assert.equal(await colony().lookup("fp2_0123456789abcdef"), null);
   assert.equal(asked.length, 1);
 });
