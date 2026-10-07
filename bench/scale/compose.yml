@@ -1,0 +1,32 @@
+# Scale test on one big machine: more embedding replicas and enrichers than the default stack, and no limits.
+#   docker compose -p myrmo-scale -f docker-compose.yml -f bench/compose.yml -f bench/scale/compose.yml up -d \
+#       gateway enricher valkey qdrant embed
+#   python bench/scale/populate.py http://localhost:8080 1000000 --wait
+#   docker compose -p myrmo-scale -f docker-compose.yml -f bench/compose.yml -f bench/scale/compose.yml run --rm loadtest
+# bench/compose.yml already turns the rate limits and the queue limit off and keeps the enrichment heuristic (no
+# decision model). Population is bound by the embedding service, which runs on CPU: the replicas split the cores.
+# Tune EMBED_REPLICAS * EMBED_THREADS to leave room for the enrichers, Qdrant and the load generator.
+x-through-balancer: &through-balancer
+  MYRMO_EMBED_URL: http://embedlb:80
+
+services:
+  embedlb:
+    image: haproxy:3.0-alpine
+    volumes:
+      - ./bench/scale/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+    depends_on: [embed]
+    restart: unless-stopped
+  gateway:
+    environment: *through-balancer
+  embed:
+    environment:
+      EMBED_THREADS: "${EMBED_THREADS:-4}"
+    deploy:
+      replicas: ${EMBED_REPLICAS:-10}
+  enricher:
+    environment: *through-balancer
+    deploy:
+      replicas: ${ENRICHERS:-12}
+  qdrant:
+    environment:
+      QDRANT__SERVICE__MAX_REQUEST_SIZE_MB: "64"

@@ -1,0 +1,146 @@
+{
+ "dataset": "100,002 trails",
+ "runs": {
+  "server 0.4.0": {
+   "date": "2026-10-07",
+   "vus": 64,
+   "duration": "30s",
+   "scenarios": [
+    {
+     "name": "Fingerprint lookup",
+     "requests": 749443,
+     "rps": 24981.433333333334,
+     "p50_ms": 2.344817,
+     "p99_ms": 6.18083609999999,
+     "error_rate": 0
+    },
+    {
+     "name": "Semantic search",
+     "requests": 24200,
+     "rps": 806.6666666666666,
+     "p50_ms": 74.8736195,
+     "p99_ms": 152.79846093999984,
+     "error_rate": 0
+    },
+    {
+     "name": "Semantic search (40 req/s)",
+     "requests": 1200,
+     "rps": 40,
+     "p50_ms": 22.071639,
+     "p99_ms": 28.70081223,
+     "error_rate": 0
+    },
+    {
+     "name": "Publish (202)",
+     "requests": 559578,
+     "rps": 18652.6,
+     "p50_ms": 2.617695,
+     "p99_ms": 10.353274519999996,
+     "error_rate": 0
+    },
+    {
+     "name": "Outcome report",
+     "requests": 424001,
+     "rps": 14133.366666666667,
+     "p50_ms": 4.247781,
+     "p99_ms": 7.708945,
+     "error_rate": 0
+    }
+   ]
+  },
+  "server 0.5.0, run 1": {
+   "date": "2026-10-07",
+   "vus": 64,
+   "duration": "30s",
+   "scenarios": [
+    {
+     "name": "Fingerprint lookup",
+     "requests": 746661,
+     "rps": 24888.7,
+     "p50_ms": 2.371416,
+     "p99_ms": 5.473009400000001,
+     "error_rate": 0
+    },
+    {
+     "name": "Semantic search",
+     "requests": 25618,
+     "rps": 853.9333333333333,
+     "p50_ms": 70.74848499999999,
+     "p99_ms": 138.8901116299999,
+     "error_rate": 0
+    },
+    {
+     "name": "Semantic search (40 req/s)",
+     "requests": 1201,
+     "rps": 40.03333333333333,
+     "p50_ms": 21.047606,
+     "p99_ms": 27.447073,
+     "error_rate": 0
+    },
+    {
+     "name": "Publish (202)",
+     "requests": 545549,
+     "rps": 18184.966666666667,
+     "p50_ms": 2.701908,
+     "p99_ms": 10.487661920000047,
+     "error_rate": 0
+    },
+    {
+     "name": "Outcome report",
+     "requests": 424410,
+     "rps": 14147,
+     "p50_ms": 4.201843,
+     "p99_ms": 8.606918739999992,
+     "error_rate": 0
+    }
+   ]
+  },
+  "server 0.5.0, run 2": {
+   "date": "2026-10-07",
+   "vus": 64,
+   "duration": "30s",
+   "scenarios": [
+    {
+     "name": "Fingerprint lookup",
+     "requests": 755912,
+     "rps": 25197.066666666666,
+     "p50_ms": 2.3432695,
+     "p99_ms": 5.282450990000001,
+     "error_rate": 0
+    },
+    {
+     "name": "Semantic search",
+     "requests": 26067,
+     "rps": 868.9,
+     "p50_ms": 70.51622,
+     "p99_ms": 131.1066407,
+     "error_rate": 0
+    },
+    {
+     "name": "Semantic search (40 req/s)",
+     "requests": 1201,
+     "rps": 40.03333333333333,
+     "p50_ms": 21.250251,
+     "p99_ms": 28.377102,
+     "error_rate": 0
+    },
+    {
+     "name": "Publish (202)",
+     "requests": 560308,
+     "rps": 18676.933333333334,
+     "p50_ms": 2.61692,
+     "p99_ms": 10.426634600000032,
+     "error_rate": 0
+    },
+    {
+     "name": "Outcome report",
+     "requests": 389559,
+     "rps": 12985.3,
+     "p50_ms": 4.60088,
+     "p99_ms": 8.491077579999999,
+     "error_rate": 0
+    }
+   ]
+  }
+ }
+}

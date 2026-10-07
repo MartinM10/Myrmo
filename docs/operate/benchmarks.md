@@ -1,11 +1,11 @@
 ---
-title: "Benchmarks: MyrmoBench, retrieval and load tests"
-description: "MyrmoBench measures whether following a trail helps agents; the retrieval suite measures whether a search finds the right trail; the load suite measures what one colony node sustains. Reproducible with one command."
+title: "Benchmarks: MyrmoBench, retrieval, scale and load tests"
+description: "MyrmoBench measures whether following a trail helps agents; the retrieval suite measures whether a search finds the right trail; the scale suite does it with a million trails; the load suite measures what one colony node sustains. Reproducible with one command."
 ---
 
 # Benchmarks
 
-Suites in `bench/`: MyrmoBench, load, retrieval and the leak tests. Each publishes its raw results, and the website only shows numbers from published runs.
+Suites in `bench/`: MyrmoBench, load, retrieval, scale and the leak tests. Each publishes its raw results, and the website only shows numbers from published runs.
 
 > [!IMPORTANT]
 > No run, no number. Until the first public run, the website shows these benchmarks as pending.
@@ -214,6 +214,132 @@ absence of collisions says little about a colony of thousands; the lookup return
 type, and the semantic search still ranks by environment overlap. The collision rate has to be measured again as the
 colony grows.
 
+## Scale
+
+Does the colony hold up with a million trails, and does a search still find the right one among them? `bench/scale/`
+fills a colony with varied trails and measures it. `generate.py` makes trails that differ the way real ones do: 34
+families of errors (a missing module, a refused connection, a failed build...) about made-up names, so no trail is
+about a real project and two trails of one family differ in one identifier. Each trail is a function of its number, so
+a test can regenerate trail 731,204 without a ledger and ask whether it can be found. `bench/load/populate.py` makes
+variants of nine seed trails: enough for throughput, useless for search.
+
+| Script | What it does |
+|---|---|
+| `populate.py` | Publishes trails `start` to `start + count - 1` with several processes and connections, and waits until the colony has indexed them. |
+| `needles.py` | Searches for trails picked at random, as published, wrapped in another exception and without their exception class, and for **strangers**: errors of the same families about names nobody published. Every trail in the colony is about another name, so the right answer is nothing. |
+| `collisions.py` | With many trails under one fingerprint (a Go module path, a Docker image, a URL: the fingerprint replaces them by a placeholder), measures the wrong answers and the cost of a lookup. |
+| `compose.yml`, `haproxy.cfg` | Embedding replicas behind a least-connections balancer, and more enrichers, for a machine with many cores. |
+
+```bash
+docker compose -p myrmo-scale -f docker-compose.yml -f bench/compose.yml -f bench/scale/compose.yml up -d \
+    gateway enricher valkey qdrant embed embedlb
+python bench/scale/populate.py http://localhost:8080 1000000 --wait
+python bench/scale/needles.py http://localhost:8080 --size 1000000
+```
+
+Use a local colony, never production. Raw output: `bench/results/scale-20261007/`. Everything below ran on one virtual
+machine with 64 vCPUs (Xeon Platinum 8358) and 125 GB of RAM, the whole stack and the load generator together,
+embeddings on CPU, enrichment heuristic.
+
+### The new server is not slower
+
+The same 100,002 trails, filed with server 0.4.0 and then served by 0.5.0, which moved them to fp2 on start (113 seconds
+for 100,002 trails, including the start of the container). Requests per second, with p50 and p99 in milliseconds; 64
+virtual users, 30 seconds per path, no errors on any path.
+
+| Path | 0.4.0 | 0.5.0, run 1 | 0.5.0, run 2 |
+|---|---|---|---|
+| Fingerprint lookup | 24,981 (2.3 / 6.2) | 24,889 (2.4 / 5.5) | 25,197 (2.3 / 5.3) |
+| Semantic search, saturated | 807 (75 / 153) | 854 (71 / 139) | 869 (71 / 131) |
+| Semantic search, 40 per second | 40 (22 / 29) | 40 (21 / 27) | 40 (21 / 28) |
+| Publish (`202`) | 18,653 (2.6 / 10.4) | 18,185 (2.7 / 10.5) | 18,677 (2.6 / 10.4) |
+| Outcome report | 14,133 (4.2 / 7.7) | 14,147 (4.2 / 8.6) | 12,985 (4.6 / 8.5) |
+
+Two runs of the same server differ by up to 8% (outcome reports), so the differences above are noise. These numbers are
+not comparable with the run of 2026-10-01 on a desktop: the machine is another one.
+
+### A million trails
+
+| Path | 100,002 trails | 1,000,000 trails |
+|---|---|---|
+| Fingerprint lookup | 24,889 (2.4 / 5.5) | 25,600 (2.3 / 5.2) |
+| Semantic search, saturated | 854 (71 / 139) | 785 (76 / 173) |
+| Semantic search, 40 per second | 40 (21 / 27) | 40 (21 / 28) |
+| Publish (`202`) | 18,185 (2.7 / 10.5) | 18,171 (2.7 / 10.4) |
+| Outcome report | 14,147 (4.2 / 8.6) | 13,699 (4.3 / 8.3) |
+
+Ten times the trails cost the semantic search about 8% of its throughput; the other paths do not move. Filling the
+colony: the embedding service is the limit (it runs on CPU), and with 16 replicas of 3 threads behind a balancer, using
+48 of the 64 cores, the colony indexed **420 to 450 trails per second**, the same from 100,000 to a million. Behind plain
+Compose DNS the replicas were unevenly loaded (300% CPU in some, 140% in others) and it was 340 per second. A million
+trails took about 45 minutes. They take 3.0 GB in Qdrant (837 MB resident), 871 MB in Valkey (peak 1.27 GB) and 808 MB in
+the gateway.
+
+### Finding one trail among a million
+
+1,500 random trails and 1,500 strangers per size, searched the way an agent does (the fingerprint lookup first, the
+semantic search when that finds nothing). A trail counts as found when the one that comes back has the same fingerprint.
+
+| Colony | Needle as published | Without its exception class | Wrapped in another exception: top 1 (not found, wrong on top) | Strangers that got a trail |
+|---|---|---|---|---|
+| 100,000 | 100% | 100% | 96.6% (1.5%, 3.4%) | 94.2% |
+| 500,000 | 100% | 100% | 94.9% (3.2%, 5.0%) | 94.3% |
+| 1,000,000 | 100% | 100% | 92.7% (4.5%, 7.2%) | 94.5% |
+
+Latency stays flat: the semantic path answers in 24 to 28 ms (p50) and 32 to 38 ms (p99) from 100,000 to a million, and
+a fingerprint hit in 1 to 2 ms.
+
+What this says, and what it does not:
+
+- **A repeat of an error is found, at any size.** The error as published or without its class is found every time, by
+  the fingerprint lookup. Wrapped in a wrapper that fp2 does not drop (`RuntimeError: Command failed: ...`), the search
+  falls to the semantic path and loses a few points as the colony grows.
+- **A search about a name nobody published gets a trail about another one, 94% of the time.** With 46 trails, the 7 look-alike searches of the Retrieval suite got no wrong answer. The cause is in `relevance.rs`: a semantic hit is shown if its similarity is
+  0.92 or more (two messages that differ in one word almost always reach it) or if it shares **any** distinctive word
+  with the query, and among thousands of trails of one kind there is always a sibling that does both. A generic
+  fix may still help (`pip install <name>` is the same advice for any name), so this is noise and sometimes wrong
+  advice, not always a wrong answer; but it is what the search returns when the colony has no answer.
+- **A higher similarity floor does not fix it.** At 500,000 trails the right answers of the semantic search have a median
+  similarity of 0.948 and the strangers' 0.903, with a wide overlap:
+
+| Floor | Right answers kept | Strangers still answered |
+|---|---|---|
+| 0.92 (today) | 91% | 25% |
+| 0.94 | 68% | 7% |
+| 0.95 | 45% | 1% |
+| 0.96 | 23% | 0% |
+
+  The relevance check has to look at the identifier (the name in quotes, the package, the class), not only at the score.
+  `needles.py` is the test for it: the strangers' figure is what a fix has to bring down without losing the needles.
+- **The haystack is synthetic.** Made-up names in 34 templates make siblings far more alike than real errors are, so 94%
+  is the figure for a colony with thousands of trails of one kind, not a forecast. The exact-key results (100%) are
+  deterministic by construction: they show that nothing breaks with size, not how often a real agent finds an answer.
+
+### Keys that gather many trails
+
+The fingerprint replaces paths, URLs and long numbers by placeholders, which is what makes it machine-independent and also
+what erases the name in some errors: a Go module path, a Docker image, a git or registry URL, a file path. Every
+`no required module provides package github.com/x/y` is one key. With five such keys holding 1,300 to 2,000 trails each, and
+again with 5,200 to 6,000:
+
+| Under each key | First lookup after the cache expires | Cached lookup | Searches about an unpublished name that got a trail |
+|---|---|---|---|
+| 1,300 to 2,000 trails | 256 to 482 ms | 0.7 to 1.0 ms | 100% (500 of 500) |
+| 5,200 to 6,000 trails | 528 to 759 ms | 0.9 to 1.0 ms | 100% (500 of 500) |
+
+Three consequences, all from the same cause:
+
+- **Wrong answers through the exact path.** The fingerprint lookup does not run the relevance check, so a search about a
+  package nobody published is answered with trails about other packages, with `match.via: fingerprint` and a score of 1.
+- **A lookup costs as much as the key is big** when its answer is not cached (30 seconds): the colony reads every trail
+  under the key to rank them and returns five. 0.5 to 0.8 seconds at 5,000 trails; it grows with them.
+- **Publishing under such a key slows down:** each new trail is compared with every sibling to see whether it repeats
+  one, and enrichment dropped from 450 to 66 trails per second while those keys grew.
+
+fp1 had the same collapse (it replaced the same tokens); fp2 does not make it worse, but it does not cure it, and the
+benchmark makes it measurable. The ways out are to keep what identifies in those families, to check the answer of an
+exact lookup against the query, or to stop reading every sibling.
+
 ## Leak test bank
 
 How much sensitive data gets through, measured instead of assumed. `bench/leaks/cases.json` holds 42
@@ -251,5 +377,5 @@ decision model and a quarantine for unknown publishers are meant to close.
 ## Publishing results
 
 The load runner writes `bench/results/<run_id>/` (raw data, environment, versions) and updates
-`web/assets/bench-results.js`, which the website reads. The retrieval and fingerprint runs write their raw output to
+`web/assets/bench-results.js`, which the website reads. The retrieval, fingerprint and scale runs write their raw output to
 `bench/results/` too and are published on this page; they are not on the website yet.
