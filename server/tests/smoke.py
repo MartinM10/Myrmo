@@ -12,6 +12,8 @@ import json
 import os
 import sys
 import time
+import random
+import string
 import urllib.error
 import urllib.request
 import uuid
@@ -263,6 +265,35 @@ def main() -> None:
     check(status == 404, "an unknown or expired draft -> 404")
     status, _, _ = call("POST", "/v1/drafts", {"nope": 1})
     check(status == 400, "an invalid draft is refused up front")
+
+    print("demand")
+    # Letters only: the fingerprint turns a long hex or alphanumeric token into a placeholder, so every run would share one.
+    token = "".join(random.choice(string.ascii_lowercase) for _ in range(10))
+    miss = {"query": f"ZzDemandError: nothing in the colony matches {token} zz", "error_type": "visit https://example.test now", "environment": {"runtime": {"name": "node"}}}
+    miss_fp = call("POST", "/v1/search", miss, agent="smoke-demand-agent-1")[1]["fingerprint"]
+    for _ in range(4):
+        call("POST", "/v1/search", miss, agent="smoke-demand-agent-1")
+    listed = lambda: [d for d in call("GET", "/v1/demand")[1]["unanswered"] if d["fingerprint"] == miss_fp]
+    check(not listed(), "one agent asking five times is not demand: nothing is listed publicly")
+    call("POST", "/v1/search", miss, agent="smoke-demand-agent-2")
+    check(not listed(), "two distinct agents are still below the threshold")
+    call("POST", "/v1/search", miss, agent="smoke-demand-agent-3")
+    row = listed()
+    check(len(row) == 1 and row[0]["agents"] == 3 and row[0]["searches"] == 7, f"three distinct agents make it demand: {row}")
+    check(row[0]["error_type"] == "", "a label that could carry text is not kept or shown")
+    nameless = {**miss, "query": miss["query"] + " nameless", "error_type": "ZzNameless"}
+    nameless_fp = call("POST", "/v1/search", nameless)[1]["fingerprint"]
+    for _ in range(4):
+        call("POST", "/v1/search", nameless)
+    check(not [d for d in call("GET", "/v1/demand")[1]["unanswered"] if d["fingerprint"] == nameless_fp], "five searches from a caller with no agent id are searches, never agents")
+    if ADMIN:
+        status, body, _ = call("GET", f"/v1/demand?fingerprints={miss_fp},fp1_0000000000000000", token=ADMIN)
+        asked = {d["fingerprint"]: d for d in body.get("fingerprints", [])}
+        check(status == 200 and asked[miss_fp]["agents"] == 3 and asked["fp1_0000000000000000"] == {"fingerprint": "fp1_0000000000000000", "searches": 0, "agents": 0}, "an operator learns how much demand there is for the errors it names")
+        status, _, _ = call("GET", "/v1/demand?fingerprints=nope", token=ADMIN)
+        check(status == 400, "a bad fingerprint is a bad request")
+        status, body, _ = call("GET", "/v1/demand")
+        check("fingerprints" not in body, "the public list never answers a lookup by fingerprint")
 
     print("operator")
     status, _, _ = call("GET", "/v1/analytics")

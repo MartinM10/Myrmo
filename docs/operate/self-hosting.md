@@ -51,6 +51,7 @@ docker compose up -d --scale enricher=4
 | `MYRMO_PUBLISH_LIMIT` | `0` locally, `30` in `deploy/docker-compose.prod.yml` | Trails a client may publish per hour. `0` disables the quota. |
 | `MYRMO_QUEUE_MAX` | `10000` | Trails waiting for enrichment above which publishing returns `503 busy`. `0` disables it. |
 | `MYRMO_MIN_SIMILARITY` | `0.72` | Minimum cosine similarity for a semantic match. A semantic match must also share a distinctive word with the query (a module, a package, an error code) unless it is nearly identical (0.92 or more), because the embedding model scores "No module named 'foo'" close to "No module named 'bar'". Exact fingerprint matches are never filtered. |
+| `MYRMO_DEMAND_MIN_AGENTS` | `3` | Distinct agents (callers that send an agent id) that must have missed the same error before it is listed in `GET /v1/demand` and before its runtime and error class are kept. |
 | `MYRMO_SALT` | random per process | Secret mixed into the daily client hash. Set it in production so all gateways agree. |
 
 ## Production
