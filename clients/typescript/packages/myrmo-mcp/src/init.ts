@@ -2,14 +2,16 @@
 //
 // For Claude Code it installs the plugin (the MCP server, a skill and a failure hook), using the
 // `claude` command from the PATH or the one the VS Code extension carries. For Cursor, Windsurf,
-// Gemini CLI and Claude Desktop it adds one "myrmo" entry to each client's own settings file
-// (everything else in the file stays as it is), and for Gemini CLI and Windsurf it also writes the
-// usage rules to their global instructions file, between markers, so it can be replaced or removed.
+// Gemini CLI, Claude Desktop, VS Code (GitHub Copilot), OpenCode and Codex it adds one "myrmo" entry
+// to each client's own settings file (everything else in the file stays as it is; each client has its
+// own shape, and Codex's file is TOML), and for Gemini CLI and Windsurf it also writes the usage rules
+// to their global instructions file, between markers, so it can be replaced or removed.
 // The server itself sends the usage rules to every client that passes MCP instructions on to the model.
 //
 // It is for the person, not the agent, and it only does what it prints. It never chooses whether
-// agents may publish: that stays the user's decision. Nothing is touched when a settings file is not
-// valid JSON.
+// agents may publish: that stays the user's decision. Nothing is touched when a settings file cannot be
+// read safely (JSON that does not parse, a TOML file that already defines "myrmo" in a way that adding
+// a table would break).
 
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
@@ -70,8 +72,23 @@ export function serverEntry(platform: NodeJS.Platform = process.platform): Entry
   return platform === "win32" ? { command: "cmd", args: ["/c", "npx", "-y", "myrmo-mcp@latest"] } : { command: "npx", args: ["-y", "myrmo-mcp@latest"] };
 }
 
+/** How a client writes one MCP server in its JSON settings: under which key, and in which shape. */
+export interface Shape {
+  key: string;
+  value: (entry: Entry) => unknown;
+}
+
+export const SHAPES: Record<"mcpServers" | "vscode" | "opencode", Shape> = {
+  // Cursor, Windsurf, Gemini CLI, Claude Desktop.
+  mcpServers: { key: "mcpServers", value: (e) => e },
+  // VS Code (GitHub Copilot): `mcp.json` with a `servers` object and an explicit type.
+  vscode: { key: "servers", value: (e) => ({ type: "stdio", command: e.command, args: e.args }) },
+  // OpenCode: a `mcp` object, the command and its arguments as one array.
+  opencode: { key: "mcp", value: (e) => ({ type: "local", command: [e.command, ...e.args], enabled: true }) },
+};
+
 /** Add the myrmo entry to a settings file's text. Returns null when the text is not valid JSON. */
-export function mergeServer(text: string | undefined, entry: Entry): { text: string; changed: boolean } | null {
+export function mergeServer(text: string | undefined, entry: Entry, shape: Shape = SHAPES.mcpServers): { text: string; changed: boolean } | null {
   let doc: Record<string, unknown> = {};
   if (text !== undefined && text.trim() !== "") {
     try {
@@ -82,10 +99,29 @@ export function mergeServer(text: string | undefined, entry: Entry): { text: str
       return null;
     }
   }
-  const servers = (doc.mcpServers && typeof doc.mcpServers === "object" ? doc.mcpServers : {}) as Record<string, unknown>;
-  if (JSON.stringify(servers.myrmo) === JSON.stringify(entry)) return { text: text ?? "", changed: false };
-  doc.mcpServers = { ...servers, myrmo: entry };
+  const servers = (doc[shape.key] && typeof doc[shape.key] === "object" ? doc[shape.key] : {}) as Record<string, unknown>;
+  const value = shape.value(entry);
+  if (JSON.stringify(servers.myrmo) === JSON.stringify(value)) return { text: text ?? "", changed: false };
+  doc[shape.key] = { ...servers, myrmo: value };
   return { text: JSON.stringify(doc, null, 2) + "\n", changed: true };
+}
+
+/**
+ * Add `[mcp_servers.myrmo]` to Codex's `config.toml`. There is no TOML parser here, so the file is only appended to, and
+ * left alone (null) when it already defines `myrmo` in some form, or sets `mcp_servers` as one inline table: adding a table
+ * next to either would make the file invalid, and Codex would stop reading it.
+ */
+export function mergeCodex(text: string | undefined, entry: Entry): { text: string; changed: boolean } | null {
+  if (text !== undefined) {
+    if (/^\s*\[?\s*mcp_servers\s*\.\s*["']?myrmo["']?\s*[\].=]/m.test(text)) {
+      const exact = /^\s*\[mcp_servers\.myrmo\]/m.test(text) && text.includes(JSON.stringify(entry.command)) && text.includes(JSON.stringify(entry.args));
+      return exact ? { text, changed: false } : null;
+    }
+    if (/^\s*mcp_servers\s*=/m.test(text)) return null;
+  }
+  const table = `[mcp_servers.myrmo]\ncommand = ${JSON.stringify(entry.command)}\nargs = ${JSON.stringify(entry.args)}\n`;
+  const base = text && text.trim() !== "" ? text.replace(/\s*$/, "") + "\n\n" : "";
+  return { text: `${base}# Added by \`npx myrmo-mcp init\`\n${table}`, changed: true };
 }
 
 /** Put the block into a markdown file, replacing an earlier copy of it. */
@@ -106,6 +142,8 @@ interface Target {
   file: string;
   /** The folder that exists when the client is installed. */
   marker: string;
+  /** How the client writes a server: a JSON shape, or Codex's TOML. */
+  kind: keyof typeof SHAPES | "codex";
 }
 
 export function targets(home: string, platform: NodeJS.Platform = process.platform, appData = process.env.APPDATA): Target[] {
@@ -115,11 +153,24 @@ export function targets(home: string, platform: NodeJS.Platform = process.platfo
       : platform === "darwin"
         ? join(home, "Library", "Application Support", "Claude", "claude_desktop_config.json")
         : join(home, ".config", "Claude", "claude_desktop_config.json");
+  // VS Code keeps the user-level MCP servers of GitHub Copilot in the user profile folder (the command "MCP: Open User Configuration").
+  const vscodeUser =
+    platform === "win32"
+      ? join(appData ?? join(home, "AppData", "Roaming"), "Code", "User")
+      : platform === "darwin"
+        ? join(home, "Library", "Application Support", "Code", "User")
+        : join(home, ".config", "Code", "User");
+  const opencodeDir = join(home, ".config", "opencode");
+  // OpenCode reads opencode.json or opencode.jsonc: use the one that exists.
+  const opencodeFile = !existsSync(join(opencodeDir, "opencode.json")) && existsSync(join(opencodeDir, "opencode.jsonc")) ? "opencode.jsonc" : "opencode.json";
   return [
-    { id: "cursor", name: "Cursor", file: join(home, ".cursor", "mcp.json"), marker: join(home, ".cursor") },
-    { id: "windsurf", name: "Windsurf", file: join(home, ".codeium", "windsurf", "mcp_config.json"), marker: join(home, ".codeium", "windsurf") },
-    { id: "gemini", name: "Gemini CLI", file: join(home, ".gemini", "settings.json"), marker: join(home, ".gemini") },
-    { id: "claude-desktop", name: "Claude Desktop", file: desktop, marker: dirname(desktop) },
+    { id: "cursor", name: "Cursor", file: join(home, ".cursor", "mcp.json"), marker: join(home, ".cursor"), kind: "mcpServers" },
+    { id: "windsurf", name: "Windsurf", file: join(home, ".codeium", "windsurf", "mcp_config.json"), marker: join(home, ".codeium", "windsurf"), kind: "mcpServers" },
+    { id: "gemini", name: "Gemini CLI", file: join(home, ".gemini", "settings.json"), marker: join(home, ".gemini"), kind: "mcpServers" },
+    { id: "claude-desktop", name: "Claude Desktop", file: desktop, marker: dirname(desktop), kind: "mcpServers" },
+    { id: "vscode", name: "VS Code (GitHub Copilot)", file: join(vscodeUser, "mcp.json"), marker: vscodeUser, kind: "vscode" },
+    { id: "opencode", name: "OpenCode", file: join(opencodeDir, opencodeFile), marker: opencodeDir, kind: "opencode" },
+    { id: "codex", name: "Codex", file: join(home, ".codex", "config.toml"), marker: join(home, ".codex"), kind: "codex" },
   ];
 }
 
@@ -135,7 +186,7 @@ export interface InitOptions {
 }
 
 const CLAUDE_CODE = "claude-code";
-export const CLIENT_IDS = [CLAUDE_CODE, "cursor", "windsurf", "gemini", "claude-desktop"];
+export const CLIENT_IDS = [CLAUDE_CODE, "cursor", "windsurf", "gemini", "claude-desktop", "vscode", "opencode", "codex"];
 export const MARKETPLACE = "MartinM10/Myrmo";
 export const PLUGIN = "myrmo@myrmo";
 
@@ -255,10 +306,14 @@ export function runInit(opts: InitOptions): { configured: string[]; skipped: str
     if (!wanted(t.id)) continue;
     if (opts.clients.length === 0 && !existsSync(t.marker)) continue; // not installed here
     const current = existsSync(t.file) ? readFileSync(t.file, "utf8") : undefined;
-    const merged = mergeServer(current, entry);
+    const merged = t.kind === "codex" ? mergeCodex(current, entry) : mergeServer(current, entry, SHAPES[t.kind]);
     if (!merged) {
       skipped.push(t.name);
-      log(`${t.name}: ${t.file} is not valid JSON, left untouched. Add the "myrmo" server by hand: ${JSON.stringify({ mcpServers: { myrmo: entry } })}`);
+      const by =
+        t.kind === "codex"
+          ? `add this to it: [mcp_servers.myrmo] command = ${JSON.stringify(entry.command)} args = ${JSON.stringify(entry.args)}`
+          : `add the "myrmo" server by hand: ${JSON.stringify({ [SHAPES[t.kind].key]: { myrmo: SHAPES[t.kind].value(entry) } })}`;
+      log(`${t.name}: ${t.file} cannot be edited safely (${t.kind === "codex" ? "it already defines myrmo in another form, or sets mcp_servers inline" : "it is not valid JSON"}), left untouched. ${by.charAt(0).toUpperCase() + by.slice(1)}`);
       continue;
     }
     if (!merged.changed) {
@@ -302,7 +357,7 @@ export function runInit(opts: InitOptions): { configured: string[]; skipped: str
   }
 
   if (configured.length === 0 && skipped.length === 0 && !opts.agentsMd) {
-    log("No supported client found. Use --client claude-code|cursor|windsurf|gemini|claude-desktop to choose one, or see https://myrmo.dev/docs/getting-started/quickstart");
+    log(`No supported client found. Use --client ${CLIENT_IDS.join("|")} to choose one, or see https://myrmo.dev/docs/getting-started/quickstart`);
   }
   log("");
   log("Restart your client to load it. Agents learn how to use Myrmo from the server itself: no more setup is needed.");

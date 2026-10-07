@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { AGENTS_BLOCK, AGENTS_BLOCK_READ_ONLY, claudeCodeSetUp, mergeServer, parseInitArgs, runInit, serverEntry, upsertBlock } from "../dist/init.js";
+import { AGENTS_BLOCK, AGENTS_BLOCK_READ_ONLY, SHAPES, claudeCodeSetUp, mergeCodex, mergeServer, parseInitArgs, runInit, serverEntry, targets, upsertBlock } from "../dist/init.js";
 
 const entry = serverEntry("linux");
 const quiet = () => {};
@@ -154,4 +154,85 @@ test("the search-and-report block tells agents not to publish, and is written on
 test("--read-only needs --agents-md", () => {
   assert.equal(typeof parseInitArgs(["--read-only"]), "string");
   assert.deepEqual(parseInitArgs(["--agents-md", "--read-only"]), { clients: [], dryRun: false, agentsMd: "AGENTS.md", readOnly: true });
+});
+
+test("VS Code (GitHub Copilot) takes a `servers` object with an explicit stdio type, and keeps what is there", () => {
+  const before = JSON.stringify({ inputs: [], servers: { other: { type: "stdio", command: "x" } } });
+  const out = mergeServer(before, entry, SHAPES.vscode);
+  const doc = JSON.parse(out.text);
+  assert.deepEqual(doc.servers.myrmo, { type: "stdio", command: "npx", args: ["-y", "myrmo-mcp@latest"] });
+  assert.ok(doc.servers.other && Array.isArray(doc.inputs));
+  assert.equal(mergeServer(out.text, entry, SHAPES.vscode).changed, false);
+});
+
+test("OpenCode takes a `mcp` object with the command as one array", () => {
+  const out = mergeServer(JSON.stringify({ theme: "x", mcp: { other: { type: "remote", url: "https://x.test" } } }), entry, SHAPES.opencode);
+  const doc = JSON.parse(out.text);
+  assert.deepEqual(doc.mcp.myrmo, { type: "local", command: ["npx", "-y", "myrmo-mcp@latest"], enabled: true });
+  assert.ok(doc.mcp.other && doc.theme === "x");
+  assert.equal(mergeServer(out.text, entry, SHAPES.opencode).changed, false);
+});
+
+test("Codex gets a [mcp_servers.myrmo] table appended to config.toml, once, and the rest of the file is kept", () => {
+  const before = 'model = "gpt-5"\n\n[mcp_servers.context7]\ncommand = "npx"\nargs = ["-y", "@upstash/context7-mcp"]\n';
+  const out = mergeCodex(before, entry);
+  assert.equal(out.changed, true);
+  assert.ok(out.text.startsWith(before.trimEnd()), "what was there is untouched");
+  assert.match(out.text, /\n\[mcp_servers\.myrmo\]\ncommand = "npx"\nargs = \["-y","myrmo-mcp@latest"\]\n$/);
+  assert.equal(mergeCodex(out.text, entry).changed, false, "a second run changes nothing");
+  assert.equal(mergeCodex(undefined, entry).text.includes("[mcp_servers.myrmo]"), true, "a missing file is created");
+  assert.equal(mergeCodex("   \n", entry).changed, true);
+});
+
+test("Codex's file is left alone when appending a table could make it invalid", () => {
+  assert.equal(mergeCodex('[mcp_servers.myrmo]\ncommand = "node"\nargs = ["x"]\n', entry), null, "myrmo is already set up differently");
+  assert.equal(mergeCodex('mcp_servers.myrmo.command = "node"\n', entry), null, "a dotted key");
+  assert.equal(mergeCodex('[mcp_servers."myrmo"]\ncommand = "node"\n', entry), null, "a quoted key");
+  assert.equal(mergeCodex('[mcp_servers.myrmo.env]\nX = "1"\n', entry), null, "a sub-table");
+  assert.equal(mergeCodex('mcp_servers = { a = { command = "x" } }\n', entry), null, "mcp_servers set inline");
+});
+
+test("init configures VS Code, OpenCode and Codex, each in its own file and shape", () => {
+  const home = newHome();
+  const res = runInit({ env: { PATH: "" }, clients: ["vscode", "opencode", "codex"], dryRun: false, home, log: quiet });
+  assert.deepEqual(res.skipped, []);
+  assert.deepEqual(res.configured.sort(), ["Codex", "OpenCode", "VS Code (GitHub Copilot)"]);
+  const by = Object.fromEntries(targets(home).map((t) => [t.id, t.file]));
+  assert.equal(JSON.parse(readFileSync(by.vscode, "utf8")).servers.myrmo.type, "stdio");
+  assert.equal(JSON.parse(readFileSync(by.opencode, "utf8")).mcp.myrmo.type, "local");
+  assert.match(readFileSync(by.codex, "utf8"), /\[mcp_servers\.myrmo\]/);
+  const again = runInit({ env: { PATH: "" }, clients: ["vscode", "opencode", "codex"], dryRun: false, home, log: (l) => assert.doesNotMatch(l, /did add|would add/) });
+  assert.deepEqual(again.skipped, []);
+});
+
+test("a Codex file that cannot be edited safely is skipped with the table to add by hand", () => {
+  const home = newHome();
+  mkdirSync(join(home, ".codex"));
+  writeFileSync(join(home, ".codex", "config.toml"), 'mcp_servers = { a = { command = "x" } }\n');
+  const lines = [];
+  const res = runInit({ env: { PATH: "" }, clients: ["codex"], dryRun: false, home, log: (l) => lines.push(l) });
+  assert.deepEqual(res.skipped, ["Codex"]);
+  assert.match(lines.join("\n"), /\[mcp_servers\.myrmo\] command = "npx"/);
+  assert.equal(readFileSync(join(home, ".codex", "config.toml"), "utf8"), 'mcp_servers = { a = { command = "x" } }\n', "the file is untouched");
+});
+
+test("OpenCode's opencode.jsonc is used when it is the file that exists", () => {
+  const home = newHome();
+  mkdirSync(join(home, ".config", "opencode"), { recursive: true });
+  writeFileSync(join(home, ".config", "opencode", "opencode.jsonc"), "{}\n");
+  assert.ok(targets(home).find((t) => t.id === "opencode").file.endsWith("opencode.jsonc"));
+  writeFileSync(join(home, ".config", "opencode", "opencode.json"), "{}\n");
+  assert.ok(targets(home).find((t) => t.id === "opencode").file.endsWith("opencode.json"), "opencode.json wins when both exist");
+});
+
+test("without --client, VS Code, OpenCode and Codex that are not installed are not touched", () => {
+  const home = newHome();
+  mkdirSync(join(home, ".cursor"));
+  runInit({ env: { PATH: "" }, clients: [], dryRun: false, home, log: quiet });
+  assert.ok(!existsSync(join(home, ".codex")) && !existsSync(join(home, ".config")) && !existsSync(join(home, "Library")));
+});
+
+test("--client accepts the new ids", () => {
+  for (const id of ["vscode", "opencode", "codex"]) assert.deepEqual(parseInitArgs(["--client", id]).clients, [id]);
+  assert.match(parseInitArgs(["--client", "emacs"]), /vscode, opencode, codex/);
 });
