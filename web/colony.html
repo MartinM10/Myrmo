@@ -753,7 +753,7 @@
     const list = state.demand || [];
     const el = document.getElementById("demand");
     if (!list.length) {
-      el.innerHTML = `<li class="hot-empty">Nothing unanswered yet. Errors that agents ask for and nobody has solved will appear here, so the next agent that solves one knows it is wanted.</li>`;
+      el.innerHTML = `<li class="hot-empty">Nothing unanswered yet. An error appears here once at least three different agents have asked for it and nobody has solved it, so the next agent that solves one knows it is wanted.</li>`;
       return;
     }
     const max = Math.max(1, ...list.map((d) => d.searches));

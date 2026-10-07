@@ -457,6 +457,19 @@ fn asking_model(headers: &HeaderMap) -> Option<String> {
         .and_then(|v| crate::analytics::clean_label(&json!(v)))
 }
 
+/// A lookup that found trails: only counted, nothing about it is kept.
+fn answered_lookup(fp: &str, model: Option<String>) -> crate::analytics::Lookup<'_> {
+    crate::analytics::Lookup {
+        fp,
+        runtime: "",
+        error_type: "",
+        answered: true,
+        model,
+        agent: None,
+        min_agents: 0,
+    }
+}
+
 async fn by_fingerprint(
     State(st): State<AppState>,
     headers: HeaderMap,
@@ -479,11 +492,7 @@ async fn by_fingerprint(
         crate::analytics::record_search(
             &mut con,
             keys::now(),
-            &fp,
-            "",
-            "",
-            true,
-            asking_model(&headers),
+            &answered_lookup(&fp, asking_model(&headers)),
         )
         .await;
         return Ok(cacheable(value, StatusCode::OK, 300));
@@ -520,7 +529,8 @@ async fn by_fingerprint(
         .ignore()
         .query_async(&mut con)
         .await?;
-    crate::analytics::record_search(&mut con, now, &fp, "", "", true, asking_model(&headers)).await;
+    crate::analytics::record_search(&mut con, now, &answered_lookup(&fp, asking_model(&headers)))
+        .await;
     Ok(cacheable(body, StatusCode::OK, 300))
 }
 
@@ -549,6 +559,7 @@ fn guess_error_type(query: &str) -> String {
 
 async fn search(
     State(st): State<AppState>,
+    Extension(caller): Extension<Caller>,
     headers: HeaderMap,
     body: Result<Bytes, BytesRejection>,
 ) -> ApiResult<Json<Value>> {
@@ -631,11 +642,16 @@ async fn search(
     crate::analytics::record_search(
         &mut con,
         now,
-        &fp,
-        runtime,
-        &error_type,
-        !ranked.is_empty(),
-        asking_model(&headers),
+        &crate::analytics::Lookup {
+            fp: &fp,
+            runtime,
+            error_type: &error_type,
+            answered: !ranked.is_empty(),
+            model: asking_model(&headers),
+            // Only a caller that declared an id is counted as an agent: an address hash changes every day.
+            agent: caller.declared.then_some(caller.agent.as_str()),
+            min_agents: st.cfg.demand_min_agents,
+        },
     )
     .await;
 
@@ -1565,19 +1581,29 @@ async fn activity(
 async fn demand(
     State(st): State<AppState>,
     headers: HeaderMap,
-    Query(q): Query<AnalyticsQuery>,
+    Query(q): Query<DemandQuery>,
 ) -> ApiResult<Response> {
     if authorize_operator(&st, &headers).is_ok() {
         let days = q.days.unwrap_or(7).clamp(1, 90);
-        let list = crate::analytics::demand(&mut st.redis(), days, 50).await?;
-        let mut res = Json(json!({ "unanswered": list, "days": days })).into_response();
+        let body = match q.fingerprints.as_deref() {
+            // The operator names the errors a seed could cover and learns how much each is wanted.
+            Some(list) => json!({
+                "fingerprints": crate::analytics::demand_for(&mut st.redis(), &parse_fingerprints(list)?, days).await?,
+                "days": days,
+            }),
+            None => json!({
+                "unanswered": crate::analytics::demand(&mut st.redis(), days, 50, q.min_agents.unwrap_or(1)).await?,
+                "days": days,
+            }),
+        };
+        let mut res = Json(body).into_response();
         res.headers_mut().insert(
             header::CACHE_CONTROL,
             HeaderValue::from_static("private, no-store"),
         );
         return Ok(res);
     }
-    let list = crate::analytics::demand(&mut st.redis(), 7, 8).await?;
+    let list = crate::analytics::demand(&mut st.redis(), 7, 8, st.cfg.demand_min_agents).await?;
     let mut res = cacheable(
         json!({ "unanswered": list, "days": 7 }),
         StatusCode::OK,
@@ -1587,6 +1613,35 @@ async fn demand(
     res.headers_mut()
         .insert(header::VARY, HeaderValue::from_static("authorization"));
     Ok(res)
+}
+
+#[derive(Deserialize)]
+struct DemandQuery {
+    days: Option<i64>,
+    min_agents: Option<u64>,
+    /// Comma-separated fingerprints, operator only.
+    fingerprints: Option<String>,
+}
+
+/// Up to 50 fingerprints from a comma-separated list; anything that is not one is a bad request.
+fn parse_fingerprints(list: &str) -> ApiResult<Vec<String>> {
+    let fps: Vec<String> = list
+        .split(',')
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(str::to_string)
+        .collect();
+    if fps.is_empty() || fps.len() > 50 {
+        return Err(ApiError::bad_request(
+            "fingerprints takes 1 to 50 comma-separated fingerprints.",
+        ));
+    }
+    if let Some(bad) = fps.iter().find(|fp| !valid_fingerprint(fp)) {
+        return Err(ApiError::bad_request(format!(
+            "'{bad}' is not a fingerprint like fp1_0123456789abcdef."
+        )));
+    }
+    Ok(fps)
 }
 
 #[derive(Deserialize)]
@@ -1697,6 +1752,21 @@ async fn stats(State(st): State<AppState>) -> ApiResult<Json<Value>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn an_operator_can_ask_about_up_to_fifty_fingerprints() {
+        let one = "fp1_0123456789abcdef";
+        assert_eq!(parse_fingerprints(one).ok(), Some(vec![one.to_string()]));
+        let two = parse_fingerprints(" fp1_0123456789abcdef , fp1_fedcba9876543210 ").ok();
+        assert_eq!(two.map(|v| v.len()), Some(2));
+        assert!(parse_fingerprints("").is_err());
+        assert!(parse_fingerprints(",").is_err());
+        assert!(parse_fingerprints("fp1_0123456789abcdef,nope").is_err());
+        assert!(parse_fingerprints("fp1_0123456789abcdeg").is_err());
+        let many = vec![one; 51].join(",");
+        assert!(parse_fingerprints(&many).is_err());
+        assert!(parse_fingerprints(&vec![one; 50].join(",")).is_ok());
+    }
 
     #[test]
     fn overlap_uses_only_provided_fields() {

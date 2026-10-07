@@ -81,29 +81,98 @@ fn queries_key(kind: &str, ts: i64) -> String {
     format!("an:q:{kind}:{}", ymd(ts))
 }
 
-/// A coarse, bounded label (runtime, error class) that is safe to store and show.
-fn coarse(text: &str) -> String {
-    text.chars()
-        .filter(|c| !c.is_control())
-        .take(64)
-        .collect::<String>()
-        .trim()
-        .to_string()
+/// A short label (runtime, error class) that is safe to keep and show: letters, digits, spaces, `_`, `.` and `-`,
+/// at most 64 characters. Anything else (a URL, an address, punctuation that could carry a sentence) gives an
+/// empty label. The text comes from a client, so it is checked when it is stored and again when it is read.
+fn safe_label(text: &str) -> String {
+    let t = text.trim();
+    let ok = t.chars().count() <= 64
+        && t.chars()
+            .all(|c| c.is_ascii_alphanumeric() || matches!(c, ' ' | '_' | '.' | '-'));
+    if !ok {
+        return String::new();
+    }
+    t.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+/// Distinct agents that missed a fingerprint, as a HyperLogLog that keeps no id.
+fn agents_key(fp: &str) -> String {
+    format!("an:qa:{fp}")
+}
+
+/// How many fingerprints got an agent counter today, so a flood of made-up errors cannot grow Redis.
+fn agent_counters_key(ts: i64) -> String {
+    format!("an:qn:{}", ymd(ts))
+}
+
+const MAX_AGENT_COUNTERS_PER_DAY: i64 = 2000;
+const AGENT_COUNTER_TTL: i64 = 60 * 86_400;
+
+/// Count `agent` among those who missed `fp` and say how many distinct agents that is. A caller without a
+/// declared id is a search but not an agent: its daily address hash would count the same person again every day.
+async fn count_miss_agent(
+    con: &mut ConnectionManager,
+    ts: i64,
+    fp: &str,
+    agent: Option<&str>,
+) -> u64 {
+    let key = agents_key(fp);
+    if let Some(agent) = agent {
+        let exists: bool = redis::cmd("EXISTS")
+            .arg(&key)
+            .query_async(con)
+            .await
+            .unwrap_or(true);
+        if !exists {
+            let day = agent_counters_key(ts);
+            let made: i64 = redis::cmd("INCR")
+                .arg(&day)
+                .query_async(con)
+                .await
+                .unwrap_or(i64::MAX);
+            let _: redis::RedisResult<()> = redis::cmd("EXPIRE")
+                .arg(&day)
+                .arg(172_800)
+                .query_async(con)
+                .await;
+            if made > MAX_AGENT_COUNTERS_PER_DAY {
+                return 0;
+            }
+        }
+        let mut pipe = redis::pipe();
+        pipe.cmd("PFADD").arg(&key).arg(agent).ignore();
+        pipe.cmd("EXPIRE").arg(&key).arg(AGENT_COUNTER_TTL).ignore();
+        if let Err(err) = pipe.query_async::<()>(con).await {
+            tracing::warn!(error = %err, "agent counter write failed");
+        }
+    }
+    redis::cmd("PFCOUNT")
+        .arg(&key)
+        .query_async(con)
+        .await
+        .unwrap_or(0)
+}
+
+/// What one lookup tells the analytics.
+pub struct Lookup<'a> {
+    pub fp: &'a str,
+    pub runtime: &'a str,
+    pub error_type: &'a str,
+    pub answered: bool,
+    pub model: Option<String>,
+    /// The agent id the caller declared, if it did.
+    pub agent: Option<&'a str>,
+    /// Distinct agents that must have missed a fingerprint before its runtime and error class are kept.
+    pub min_agents: u64,
 }
 
 /// One lookup by an agent: answered or not, counted per fingerprint and per model.
 /// Query text is never stored. For unanswered fingerprints only the runtime and the error
 /// class are kept (for example `python` and `ModuleNotFoundError`), so "what do agents want
 /// that nobody has solved" can be answered without keeping anything a user typed.
-pub async fn record_search(
-    con: &mut ConnectionManager,
-    ts: i64,
-    fp: &str,
-    runtime: &str,
-    error_type: &str,
-    answered: bool,
-    model: Option<String>,
-) {
+pub async fn record_search(con: &mut ConnectionManager, ts: i64, l: &Lookup<'_>) {
+    let answered = l.answered;
+    let fp = l.fp;
     let mut totals = vec![
         ("searches", None, 1),
         (
@@ -115,10 +184,10 @@ pub async fn record_search(
             None,
             1,
         ),
-        ("searched", model.clone(), 1),
+        ("searched", l.model.clone(), 1),
     ];
     if !answered {
-        totals.push(("search_miss", model, 1));
+        totals.push(("search_miss", l.model.clone(), 1));
     }
     record(con, ts, &totals).await;
 
@@ -132,16 +201,19 @@ pub async fn record_search(
         .arg(-(MAX_FINGERPRINTS_PER_DAY + 1))
         .ignore();
     if !answered {
+        // The runtime and the error class are text a client wrote. They are kept only once enough distinct
+        // agents have asked for the same fingerprint, so what is kept is generic by construction.
+        let agents = count_miss_agent(con, ts, fp, l.agent).await;
         let known: usize = redis::cmd("HLEN")
             .arg(META_KEY)
             .query_async(con)
             .await
             .unwrap_or(0);
-        if known < MAX_META {
+        if agents >= l.min_agents && known < MAX_META {
             pipe.cmd("HSETNX")
                 .arg(META_KEY)
                 .arg(fp)
-                .arg(json!([coarse(runtime), coarse(error_type)]).to_string())
+                .arg(json!([safe_label(l.runtime), safe_label(l.error_type)]).to_string())
                 .ignore();
         }
     }
@@ -150,11 +222,23 @@ pub async fn record_search(
     }
 }
 
-/// Errors agents asked for and nobody has solved, most requested first, over `days` days.
+/// Distinct agents that missed each fingerprint (0 when nobody with an id did), in the order given.
+async fn miss_agents(con: &mut ConnectionManager, fps: &[&str]) -> redis::RedisResult<Vec<u64>> {
+    let mut pipe = redis::pipe();
+    for fp in fps {
+        pipe.cmd("PFCOUNT").arg(agents_key(fp));
+    }
+    pipe.query_async(con).await
+}
+
+/// Errors agents asked for and nobody has solved, most requested first, over `days` days. Only fingerprints that
+/// `min_agents` distinct agents missed are listed: one agent repeating a search is not demand, and a label seen by
+/// a single agent is not safe to show.
 pub async fn demand(
     con: &mut ConnectionManager,
     days: i64,
     limit: usize,
+    min_agents: u64,
 ) -> redis::RedisResult<Vec<Value>> {
     let now = keys::now();
     let mut total: BTreeMap<String, f64> = BTreeMap::new();
@@ -172,12 +256,16 @@ pub async fn demand(
     }
     let mut list: Vec<(String, f64)> = total.into_iter().collect();
     list.sort_by(|a, b| b.1.total_cmp(&a.1));
-    list.truncate(limit);
+    let fps: Vec<&str> = list.iter().map(|(fp, _)| fp.as_str()).collect();
+    let agents = miss_agents(con, &fps).await?;
     let mut out = Vec::new();
-    for (fp, n) in list {
+    for ((fp, n), distinct) in list.iter().zip(agents) {
+        if distinct < min_agents {
+            continue;
+        }
         let meta: Option<String> = redis::cmd("HGET")
             .arg(META_KEY)
-            .arg(&fp)
+            .arg(fp)
             .query_async(con)
             .await?;
         let parsed: Vec<String> = meta
@@ -185,12 +273,48 @@ pub async fn demand(
             .unwrap_or_default();
         out.push(json!({
             "fingerprint": fp,
-            "runtime": parsed.first().cloned().unwrap_or_default(),
-            "error_type": parsed.get(1).cloned().unwrap_or_default(),
-            "searches": n as u64,
+            // Checked again on the way out: older rows were stored before labels were checked.
+            "runtime": parsed.first().map(|t| safe_label(t)).unwrap_or_default(),
+            "error_type": parsed.get(1).map(|t| safe_label(t)).unwrap_or_default(),
+            "searches": *n as u64,
+            "agents": distinct,
         }));
+        if out.len() >= limit {
+            break;
+        }
     }
     Ok(out)
+}
+
+/// How much demand there is for each of these fingerprints (searches in the last `days` days, distinct agents), for an
+/// operator who knows which errors a seed could cover. Nothing is listed that the operator did not ask about.
+pub async fn demand_for(
+    con: &mut ConnectionManager,
+    fps: &[String],
+    days: i64,
+) -> redis::RedisResult<Vec<Value>> {
+    let now = keys::now();
+    let mut pipe = redis::pipe();
+    for fp in fps {
+        for d in 0..days {
+            pipe.cmd("ZSCORE")
+                .arg(queries_key("miss", now - d * 86_400))
+                .arg(fp);
+        }
+    }
+    let scores: Vec<Option<f64>> = pipe.query_async(con).await?;
+    let refs: Vec<&str> = fps.iter().map(String::as_str).collect();
+    let agents = miss_agents(con, &refs).await?;
+    Ok(fps
+        .iter()
+        .zip(agents)
+        .enumerate()
+        .map(|(i, (fp, distinct))| {
+            let start = i * days as usize;
+            let searches: f64 = scores[start..start + days as usize].iter().flatten().sum();
+            json!({ "fingerprint": fp, "searches": searches as u64, "agents": distinct })
+        })
+        .collect())
 }
 
 /// Parsed rows for the last `days` days, newest first.
@@ -299,6 +423,31 @@ mod tests {
         assert_eq!(clean_label(&json!("<script>")), None);
         assert_eq!(clean_label(&json!("a".repeat(65))), None);
         assert_eq!(clean_label(&json!(42)), None);
+    }
+
+    #[test]
+    fn labels_that_could_carry_more_than_an_error_class_are_dropped() {
+        assert_eq!(safe_label("ModuleNotFoundError"), "ModuleNotFoundError");
+        assert_eq!(
+            safe_label("  java.lang.IllegalStateException "),
+            "java.lang.IllegalStateException"
+        );
+        assert_eq!(safe_label("HTTP 403"), "HTTP 403");
+        assert_eq!(
+            safe_label("checkstyle   MethodName"),
+            "checkstyle MethodName"
+        );
+        for bad in [
+            "see https://example.test/fix",
+            "ops@example.test",
+            "<script>alert(1)</script>",
+            "rm -rf /; echo done",
+            "key=value",
+            "Fehler: ungültig",
+            &"a".repeat(65),
+        ] {
+            assert_eq!(safe_label(bad), "", "{bad}");
+        }
     }
 
     #[test]
