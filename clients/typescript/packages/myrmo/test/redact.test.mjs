@@ -53,3 +53,19 @@ test("long hostile input is redacted in bounded time", () => {
     assert.ok(performance.now() - start < 500, `took ${Math.round(performance.now() - start)} ms`);
   }
 });
+
+test("an organisation named by a configuration key is removed, and a Maven coordinate is not", () => {
+  assert.equal(r("edc.ui.organization=Acme Corp"), "edc.ui.organization=<redacted:org>");
+  assert.equal(r('{"owner": "Ana Garcia"}'), '{"owner": "<redacted:org>"}');
+  assert.equal(r("java -Dedc.ui.organization=Acme -jar x.jar"), "java -Dedc.ui.organization=<redacted:org> -jar x.jar");
+  assert.equal(r("org.eclipse.edc:dcp-core:1.0.0"), "org.eclipse.edc:dcp-core:1.0.0");
+  assert.equal(r("tenant: <TENANT_ID>"), "tenant: <TENANT_ID>");
+});
+
+test("possibleNames lists runs of capitalised words that were not redacted, and nothing else", async () => {
+  const { possibleNames } = await import("../dist/index.js");
+  const trail = { problem: { summary: "Connector for Acme Data Systems fails. Install Python first." }, steps: ["Open the Management API"] };
+  assert.deepEqual(possibleNames(trail), ["Acme Data Systems", "Management API"]);
+  assert.deepEqual(possibleNames({ a: "Install Python and run it", b: "no names here" }), []);
+  assert.deepEqual(possibleNames({ a: "x" }), []);
+});

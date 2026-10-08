@@ -111,7 +111,7 @@ export function formatResult(result: SearchResult, opts: FormatOptions = {}): st
   if (hits.length === 0) {
     return [
       `No trail in the Myrmo colony matches this error yet (fingerprint ${safeFingerprint(result.fingerprint)}).`,
-      `Nothing found, so you may be the first to solve this one. If it takes ${attemptsPhrase(minFailedAttempts(opts.minFailedAttempts).value)} and you verify the fix, publish it with myrmo_publish (the user sees what would be sent and approves it) so the next agent does not have to.`,
+      `Carry on without it; searching again for the same line will not help. Afterwards, publishing is optional: only if solving it takes ${attemptsPhrase(minFailedAttempts(opts.minFailedAttempts).value)} and you verify the fix (myrmo_publish; the user approves what is sent).`,
     ].join("\n");
   }
   return [

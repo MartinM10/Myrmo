@@ -8,7 +8,7 @@
 import { agentIdentity, publishChoice } from "./config.js";
 import { detectEnvironment, parsePackage } from "./environment.js";
 import { fingerprint2, guessErrorType } from "./fingerprint.js";
-import { redactText, redactValue, type RedactionReport } from "./redact.js";
+import { possibleNames, redactText, redactValue, type RedactionReport } from "./redact.js";
 import type { AgentInfo, DraftResult, DraftState, Environment, Hit, Outcome, PublishMode, PublishResult, SearchQuery, SearchResult, Trail, Validation } from "./types.js";
 
 /** The public colony. Override with MYRMO_URL or the `url` option. */
@@ -254,10 +254,15 @@ export class Colony {
     return { trailId: data.trail_id, counted: data.counted, strength: data.strength };
   }
 
-  /** The trail exactly as it would be sent, with every redaction counted. Sends nothing. */
-  preview(trail: Trail): { trail: Trail; redactions: RedactionReport } {
+  /**
+   * The trail exactly as it would be sent, with every redaction counted. Sends nothing. `names` lists runs of
+   * capitalised words that could be an organisation, customer, person or project: not redacted, to be checked by
+   * whoever approves.
+   */
+  preview(trail: Trail): { trail: Trail; redactions: RedactionReport; names: string[] } {
     const redactions: RedactionReport = {};
-    return { trail: redactValue(trail, redactions), redactions };
+    const redacted = redactValue(trail, redactions);
+    return { trail: redacted, redactions, names: possibleNames(redacted) };
   }
 
   /**
