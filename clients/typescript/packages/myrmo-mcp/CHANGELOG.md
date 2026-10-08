@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.13.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.12.0...mcp-v0.13.0) (2026-10-08)
+
+
+### Features
+
+* **mcp:** warn about names in the publish preview and ask for the terms to be accepted ([380d389](https://github.com/MartinM10/Myrmo/commit/380d389f5743cc8f71e567c33b87b15ae2d8ac14))
+* vote limits, privacy, honest web and docs, seed coverage and MyrmoBench ([b2929d0](https://github.com/MartinM10/Myrmo/commit/b2929d0d1dca8aaae7e284a5e81fdda02d362834))
+
 ## [0.12.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.11.0...mcp-v0.12.0) (2026-10-08)
 
 

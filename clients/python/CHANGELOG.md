@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.10.0](https://github.com/MartinM10/Myrmo/compare/sdk-python-v0.9.0...sdk-python-v0.10.0) (2026-10-08)
+
+
+### Features
+
+* **sdk-python:** list the names a person should check before approving a publication ([ee7c75a](https://github.com/MartinM10/Myrmo/commit/ee7c75aa4243cb6252584f5f08185451dd84c614))
+* vote limits, privacy, honest web and docs, seed coverage and MyrmoBench ([b2929d0](https://github.com/MartinM10/Myrmo/commit/b2929d0d1dca8aaae7e284a5e81fdda02d362834))
+
 ## [0.9.0](https://github.com/MartinM10/Myrmo/compare/sdk-python-v0.8.0...sdk-python-v0.9.0) (2026-10-07)
 
 

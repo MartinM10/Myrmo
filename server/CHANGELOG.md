@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.6.0](https://github.com/MartinM10/Myrmo/compare/server-v0.5.2...server-v0.6.0) (2026-10-08)
+
+
+### Features
+
+* **server:** limit what one address can count, let authors withdraw their trail, mark seeds ([d10b86f](https://github.com/MartinM10/Myrmo/commit/d10b86f824cd80bdc9b3641b9f08e7f2bc5d2372))
+* **server:** redact the value of configuration keys that name an organisation or a person ([7b8902b](https://github.com/MartinM10/Myrmo/commit/7b8902b6551c2bd66e520fbc3a925cafb5fb9689))
+* vote limits, privacy, honest web and docs, seed coverage and MyrmoBench ([b2929d0](https://github.com/MartinM10/Myrmo/commit/b2929d0d1dca8aaae7e284a5e81fdda02d362834))
+
+
+### Bug fixes
+
+* **server:** ignore machine paths and filler words when matching a semantic hit ([feaefa1](https://github.com/MartinM10/Myrmo/commit/feaefa14a5adc9e7a4c301941c66e2773b16cf3e))
+
 ## [0.5.2](https://github.com/MartinM10/Myrmo/compare/server-v0.5.1...server-v0.5.2) (2026-10-07)
 
 
