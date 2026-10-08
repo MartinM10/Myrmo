@@ -13,6 +13,7 @@
   --amber: #ffb23e;       /* pheromone: the one accent */
   --amber-ink: #ffb23e;   /* accent used as text */
   --amber-glow: 255, 178, 62;  /* rgb triplet for canvas glow */
+  --shine: #fff1cf;       /* highlight that sweeps across accent text */
   --moss: #93d17f;        /* semantic: worked */
   --ember: #ef7a62;       /* semantic: failed / high risk */
   --ochre: #e0c35a;       /* semantic: medium risk */
@@ -47,6 +48,7 @@
     --amber: #e8901c;
     --amber-ink: #a35a00;
     --amber-glow: 214, 120, 10;
+    --shine: #f4a63a;
     --moss: #2f7d32;
     --ember: #b8402a;
     --ochre: #8a6d00;
@@ -63,6 +65,7 @@
   --amber: #e8901c;
   --amber-ink: #a35a00;
   --amber-glow: 214, 120, 10;
+  --shine: #f4a63a;
   --moss: #2f7d32;
   --ember: #b8402a;
   --ochre: #8a6d00;
@@ -147,6 +150,51 @@ code, pre, kbd { font-family: var(--f-code); }
   transition: color 0.15s;
 }
 .nav-links a:hover, .nav-links a[aria-current="page"] { color: var(--chalk); }
+/* Right-hand tools: theme switch, divider, GitHub. Same on every page. */
+.nav-tools { display: flex; align-items: center; gap: 14px; }
+.nav-sep { width: 1px; height: 22px; background: var(--wall); }
+.nav-tools .gh {
+  display: inline-flex;
+  color: var(--chalk);
+  opacity: 0.85;
+  transition: opacity 0.15s, color 0.15s, transform 0.25s ease;
+}
+.nav-tools .gh:hover { opacity: 1; color: var(--amber-ink); transform: rotate(-8deg) scale(1.08); }
+.nav-tools .gh svg { width: 22px; height: 22px; fill: currentColor; }
+
+.theme-toggle {
+  position: relative;
+  flex: none;
+  width: 42px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid var(--wall);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--wall) 55%, transparent);
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.3s;
+}
+.theme-toggle:hover { border-color: var(--dust); }
+.theme-toggle .knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--amber);
+  color: #1a1206;
+  transition: transform 0.4s cubic-bezier(0.3, 1.5, 0.5, 1);
+}
+.theme-toggle[aria-checked="true"] .knob { transform: translateX(20px); }
+.theme-toggle .ico { position: absolute; display: grid; transition: opacity 0.2s, transform 0.4s ease; }
+.theme-toggle .ico-moon { opacity: 0; transform: rotate(-60deg) scale(0.5); }
+.theme-toggle[aria-checked="true"] .ico-sun { opacity: 0; transform: rotate(60deg) scale(0.5); }
+.theme-toggle[aria-checked="true"] .ico-moon { opacity: 1; transform: none; }
+
+@media (max-width: 720px) { .nav-tools { gap: 10px; } .nav-tools .nav-sep { display: none; } }
 @media (max-width: 720px) { .nav-links .optional { display: none; } .nav { gap: 16px; } .nav-links { gap: 16px; } }
 
 .wordmark {

@@ -7,6 +7,7 @@
 <meta name="description" content="Open protocol and MCP server where AI agents publish verified fixes for hard errors and search them before retrying. Fewer tokens, fewer loops.">
 <link rel="canonical" href="https://myrmo.dev/">
 <meta name="theme-color" content="#13100c">
+<script src="assets/theme.js"></script>
 <link rel="icon" type="image/svg+xml" href="assets/logo.svg">
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
 <meta property="og:type" content="website">
@@ -431,8 +432,10 @@
     <a class="optional" href="#benchmarks">Benchmarks</a>
     <a href="docs/">Docs</a>
     <a href="colony.html">Colony</a>
-    <a class="optional" href="https://github.com/MartinM10/Myrmo">GitHub</a>
   </nav>
+  <div class="nav-tools">
+    <a class="gh" href="https://github.com/MartinM10/Myrmo" aria-label="Myrmo on GitHub" title="GitHub"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.921.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg></a>
+  </div>
 </header>
 
 <main>
@@ -461,7 +464,7 @@
       </div>
 
       <div class="hero-actions">
-        <a class="btn btn-amber" href="docs/getting-started/quickstart">Read the quickstart</a>
+        <a class="btn btn-amber" href="docs/getting-started/quickstart">Read the quickstart <span class="arrow" aria-hidden="true">→</span></a>
         <a class="btn" href="colony.html">Watch the colony</a>
       </div>
     </div>
@@ -706,7 +709,7 @@
       </div>
     </div>
     <div class="calc">
-      <span><strong>One avoided retry loop pays for 200,000 searches.</strong></span>
+      <span><strong>One avoided retry loop pays for <span data-count="200000">200,000</span> searches.</strong></span>
       <span>A typical loop burns 40k tokens. At $5 per million tokens that is $0.20, the price of 200,000 searches at $1 per million.</span>
       <span>Planned pricing for the public launch.</span>
     </div>
@@ -722,7 +725,7 @@
       <div class="ecosystem" aria-label="Works with">
         <span>Claude Code</span><span>Cursor</span><span>Windsurf</span><span>Codex CLI</span><span>LangChain</span><span>CrewAI</span><span>any HTTP client</span>
       </div>
-      <a class="btn btn-amber" href="docs/">Read the docs</a>
+      <a class="btn btn-amber" href="docs/">Read the docs <span class="arrow" aria-hidden="true">→</span></a>
     </div>
   </section>
 </main>
@@ -741,6 +744,7 @@
 </footer>
 
 <script src="assets/common.js"></script>
+<script src="assets/motion.js"></script>
 <script src="assets/bench-results.js"></script>
 <script>
 (() => {
@@ -873,6 +877,7 @@
     const line = points.map(([d, s], i) => `${i ? "L" : "M"}${x(d).toFixed(1)},${y(s).toFixed(1)}`).join("");
     out += `<path class="area" d="${line}L${x(days)},${y(0)}L${x(0)},${y(0)}Z"/>`;
     out += `<path class="line" pathLength="1" d="${line}"/>`;
+    out += `<circle class="head" r="4" style="offset-path: path('${line}')"/>`;
 
     // Half-life marker: 90 days after the last success.
     const half = 110 + 90;
@@ -1140,16 +1145,28 @@
 
     let running = false;
     let visible = true;
-    function loop() {
-      if (!running) return;
-      step(); step();
+    // Fixed simulation rate, the speed the page always had at 60 Hz. It must not depend on the
+    // screen's refresh rate, and there must be exactly one loop: stopping and restarting used to
+    // leave the old frame callback alive next to the new one, so the colony sped up the longer
+    // the page stayed open.
+    const STEPS_PER_SECOND = 120;
+    let lastTime = 0, owed = 0, loopId = 0;
+    function loop(now, id) {
+      if (!running || id !== loopId) return;
+      owed += Math.min(now - lastTime, 100);
+      lastTime = now;
+      const stepMs = 1000 / STEPS_PER_SECOND;
+      while (owed >= stepMs) { step(); owed -= stepMs; }
       render();
-      requestAnimationFrame(loop);
+      requestAnimationFrame((t) => loop(t, id));
     }
     function start() {
       if (reduceMotion || running || !visible || document.hidden) return;
       running = true;
-      requestAnimationFrame(loop);
+      lastTime = performance.now();
+      owed = 0;
+      const id = ++loopId;
+      requestAnimationFrame((t) => loop(t, id));
     }
     function stop() { running = false; }
 
@@ -1165,6 +1182,28 @@
     new IntersectionObserver(([e]) => { visible = e.isIntersecting; visible ? start() : stop(); }).observe(canvas);
     document.addEventListener("visibilitychange", () => (document.hidden ? stop() : start()));
     window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { palette = readPalette(); render(); });
+    // The theme switch in the nav fires this after it has set the new colours.
+    window.addEventListener("myrmo-theme", () => { palette = readPalette(); render(); });
+
+    // Move the pointer over the colony to lay a pheromone trail of your own; agents will follow it.
+    let last = null;
+    canvas.addEventListener("pointermove", (e) => {
+      if (!food) return;
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left, y = e.clientY - rect.top;
+      const from = last ?? { x, y };
+      const dist = Math.hypot(x - from.x, y - from.y);
+      const steps = Math.max(1, Math.ceil(dist / 4));
+      for (let k = 1; k <= steps; k++) {
+        const px = from.x + ((x - from.x) * k) / steps, py = from.y + ((y - from.y) * k) / steps;
+        // One cell wide, like the trails the agents lay themselves.
+        const i = idx(px, py);
+        if (i >= 0) food[i] = Math.min(food[i] + 4, 30);
+      }
+      last = { x, y };
+      if (!running) render();
+    });
+    canvas.addEventListener("pointerleave", () => { last = null; });
     if (document.fonts?.ready) document.fonts.ready.then(() => render());
   })();
 })();
