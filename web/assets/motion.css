@@ -95,7 +95,6 @@
 
 .node, .plan, .code, .chart-box { transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.3s ease; }
 .node:hover { transform: translateY(-3px); border-color: color-mix(in srgb, var(--amber) 60%, var(--wall)); }
-.plan:hover { background: color-mix(in srgb, var(--tunnel) 70%, transparent); }
 .code:hover { border-color: color-mix(in srgb, var(--amber) 35%, var(--wall)); }
 .lifecycle li { transition: transform 0.25s ease; }
 .lifecycle li:hover { transform: translateY(-3px); }
@@ -135,6 +134,191 @@
 .hot .bar i { transform-origin: left center; animation: draw-line 1s 0.2s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
 .chip { transition: color 0.15s, border-color 0.15s, background 0.2s, transform 0.15s; }
 .chip:hover { transform: translateY(-1px); }
+
+/*
+ * ---------- Second layer: richer motion (motion.js adds the classes below) ----------
+ * Rule kept from above: the base style is always the visible one. Hidden starting states only
+ * exist behind `.js` and an observer that adds `.in`, and reduced-motion users get `.in` at once.
+ */
+@property --spot { syntax: "<number>"; inherits: false; initial-value: 0; }
+
+/* Scroll progress, along the bottom edge of the nav */
+.nav { overflow: visible; }
+.scroll-progress {
+  position: absolute;
+  left: 0; right: 0; bottom: -1px;
+  height: 2px;
+  pointer-events: none;
+  background: linear-gradient(90deg, rgba(var(--amber-glow), 0.25), var(--amber));
+  transform: scaleX(var(--p, 0));
+  transform-origin: left center;
+  box-shadow: 0 0 10px rgba(var(--amber-glow), 0.6);
+}
+.nav { transition: background 0.3s, box-shadow 0.3s; }
+.nav.scrolled { box-shadow: 0 10px 30px -18px rgba(0, 0, 0, 0.55); }
+
+/* Wordmark: the three dots breathe in sequence, a trail being laid */
+@keyframes dot-breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.35); } }
+.wordmark svg circle { transform-box: fill-box; transform-origin: center; animation: dot-breathe 2.6s ease-in-out infinite; }
+.wordmark svg circle:nth-child(2) { animation-delay: 0.25s; }
+.wordmark svg circle:nth-child(3) { animation-delay: 0.5s; }
+.wordmark:hover svg circle { animation-duration: 0.9s; }
+
+/* Hero headline: words rise out of a mask, then the accent line shimmers */
+@keyframes word-up { from { transform: translateY(108%); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes shimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+.js .hero h1:not(.split) { visibility: hidden; }
+.js .hero-copy > h1 { animation: none; }
+.hero h1 .w { display: inline-block; overflow: hidden; vertical-align: top; padding-bottom: 0.12em; margin-bottom: -0.12em; }
+.hero h1 .w > span {
+  display: inline-block;
+  animation: word-up 0.8s cubic-bezier(0.2, 0.75, 0.2, 1) both;
+  animation-delay: calc(var(--i) * 80ms + 120ms);
+}
+.hero h1 .trail .w > span {
+  background: linear-gradient(100deg, var(--amber-ink) 35%, var(--shine) 50%, var(--amber-ink) 65%) 100% 0 / 300% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation:
+    word-up 0.8s cubic-bezier(0.2, 0.75, 0.2, 1) both,
+    shimmer 5s ease-in-out infinite;
+  animation-delay: calc(var(--i) * 80ms + 120ms), calc(var(--i) * 80ms + 1.6s);
+}
+.hero-copy > .hero-actions { animation-delay: 0.7s; }
+
+/* Hero scrolls away: copy fades up, the simulation settles back (scroll-driven, where supported) */
+@keyframes hero-away { to { opacity: 0.1; transform: translateY(-48px); } }
+@keyframes sim-away  { to { transform: scale(1.06); opacity: 0.55; } }
+@supports (animation-timeline: scroll()) {
+  .hero-copy { animation: hero-away linear both; animation-timeline: scroll(root block); animation-range: 0 70vh; }
+  #sim { animation: sim-away linear both; animation-timeline: scroll(root block); animation-range: 0 90vh; }
+}
+
+/* Buttons: a soft gloss sweeps across the amber one */
+.btn-amber { position: relative; overflow: hidden; isolation: isolate; }
+.btn-amber::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 -60%;
+  width: 40%;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.45), transparent);
+  transform: skewX(-20deg);
+  transition: left 0.7s ease;
+  z-index: -1;
+}
+.btn-amber:hover::after { left: 130%; }
+.btn .arrow { display: inline-block; transition: transform 0.25s ease; }
+.btn:hover .arrow { transform: translateX(4px); }
+
+/* Pointer spotlight on cards (motion.js sets --mx / --my) */
+.node, .plan, .chart-box, .calc, .trail-card {
+  background-image: radial-gradient(280px circle at var(--mx, 50%) var(--my, 50%), rgba(var(--amber-glow), calc(var(--spot) * 0.13)), transparent 65%);
+  transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.3s ease, --spot 0.35s ease;
+}
+.node:hover, .plan:hover, .chart-box:hover, .calc:hover, .trail-card:hover { --spot: 1; }
+
+/* Section heads: a line grows in front of the eyebrow, the heading settles in */
+.section-head .eyebrow::before {
+  content: "";
+  display: inline-block;
+  width: 0; height: 1px;
+  margin-right: 0;
+  vertical-align: middle;
+  background: var(--amber);
+  transition: width 0.8s 0.1s cubic-bezier(0.2, 0.7, 0.2, 1), margin 0.8s 0.1s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.section-head.in .eyebrow::before { width: 32px; margin-right: 12px; }
+
+/* Fallback reveal for browsers without scroll-driven animations */
+.js .rv:not(.in) { opacity: 0; transform: translateY(22px); }
+.js .rv { transition: opacity 0.7s cubic-bezier(0.2, 0.7, 0.2, 1), transform 0.7s cubic-bezier(0.2, 0.7, 0.2, 1); transition-delay: calc(var(--i, 0) * 70ms); }
+
+/* Lifecycle: the step number lights up as its step arrives */
+.lifecycle li::after { transition: color 0.4s, text-shadow 0.6s; }
+.js .lifecycle li:not(.in)::after { color: var(--dust); }
+.lifecycle li.in::after { text-shadow: 0 0 14px rgba(var(--amber-glow), 0.7); }
+
+/* Terminal transcript and JSON response are typed out line by line */
+@keyframes line-in { from { opacity: 0; filter: blur(3px); } to { opacity: 1; filter: none; } }
+@keyframes caret { 50% { opacity: 0; } }
+.stream.armed .ln { opacity: 0; }
+.stream.play .ln { animation: line-in 0.4s ease-out both; animation-delay: calc(var(--d, 0) * 1ms); }
+.stream.play .ln.last::after {
+  content: "";
+  display: inline-block;
+  width: 0.55em; height: 1.05em;
+  margin-left: 4px;
+  vertical-align: text-bottom;
+  background: var(--amber);
+  animation: caret 1s steps(1) infinite;
+  animation-delay: calc(var(--d, 0) * 1ms + 0.4s);
+}
+
+/* Strength chart: a glowing head rides the line while it draws */
+#strength-chart .head { fill: var(--amber); opacity: 0; filter: drop-shadow(0 0 5px rgba(var(--amber-glow), 0.9)); }
+@keyframes ride { 0% { offset-distance: 0%; opacity: 1; } 100% { offset-distance: 100%; opacity: 1; } }
+@keyframes ride-out { to { opacity: 0; } }
+#strength-chart.drawing .head {
+  animation: ride 2.2s cubic-bezier(0.3, 0.6, 0.2, 1) both, ride-out 0.5s 2.2s both;
+}
+
+/* Safeguards: slide in one by one, the rule on the left lights up */
+.js .safeguards:not(.in) li { opacity: 0; transform: translateX(-18px); }
+.safeguards li {
+  transition: opacity 0.6s ease, transform 0.6s cubic-bezier(0.2, 0.7, 0.2, 1), border-color 0.8s ease;
+  transition-delay: calc(var(--i) * 110ms);
+}
+.safeguards.in li { border-left-color: color-mix(in srgb, var(--amber) 70%, var(--wall)); }
+
+/* Request flow: nodes appear column by column, hot nodes glow, a packet travels each lane */
+@keyframes node-in { from { opacity: 0; transform: translateY(14px) scale(0.96); } }
+@keyframes hot-glow { 50% { box-shadow: 0 0 0 1px rgba(var(--amber-glow), 0.35), 0 0 26px -8px rgba(var(--amber-glow), 0.6); } }
+.flow .lane { position: relative; }
+.flow.in .node:not(.empty) { animation: node-in 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) backwards; animation-delay: calc(var(--c) * 220ms + var(--r) * 120ms); }
+.flow.in .node.hot:not(.empty) {
+  animation: node-in 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) backwards, hot-glow 3s ease-in-out infinite;
+  animation-delay: calc(var(--c) * 220ms + var(--r) * 120ms), calc(var(--c) * 220ms + 1s);
+}
+.node + .node::before { border-top-style: dashed; }
+.pkt {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 9px; height: 9px;
+  margin: -4.5px 0 0 -4.5px;
+  border-radius: 50%;
+  background: var(--amber);
+  box-shadow: 0 0 12px 2px rgba(var(--amber-glow), 0.8);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+@keyframes packet {
+  0%   { transform: translateX(var(--x0)); opacity: 0; }
+  8%   { opacity: 1; }
+  88%  { opacity: 1; }
+  100% { transform: translateX(var(--x1)); opacity: 0; }
+}
+.flow.in .pkt { animation: packet 3.4s cubic-bezier(0.55, 0, 0.35, 1) infinite; animation-delay: calc(var(--r) * 0.9s + 1.4s); }
+
+/* Benchmarks: bars fill, pending stripes drift */
+@keyframes stripes { to { background-position: 24px 0; } }
+.pending .track { background-size: 24px 24px; animation: stripes 1.4s linear infinite; }
+.js .compare:not(.in) .track i { transform: scaleX(0); }
+.track i { transform-origin: left center; transition: transform 1.1s cubic-bezier(0.2, 0.7, 0.2, 1); }
+.bar-row:nth-child(2) .track i { transition-delay: 0.15s; }
+
+/* Closing: the key phrase gets underlined, the ecosystem list pops in */
+.closing h2 em {
+  background: linear-gradient(var(--amber), var(--amber)) no-repeat 0 100% / 0 3px;
+  transition: background-size 1s 0.5s cubic-bezier(0.2, 0.7, 0.2, 1);
+  padding-bottom: 2px;
+}
+.closing.in h2 em { background-size: 100% 3px; }
+.js .closing:not(.in) .ecosystem span { opacity: 0; transform: translateY(8px); }
+.ecosystem span { transition: opacity 0.5s ease, transform 0.5s ease, color 0.2s; transition-delay: calc(var(--i) * 70ms + 0.4s); }
+.ecosystem span:hover { color: var(--amber-ink); }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
