@@ -97,6 +97,56 @@ _CLI_NAMES = (
     r"client[_-]?secret|private[_-]?key"
 )
 
+# Configuration values that name an organisation or a person: `edc.ui.organization=Acme`, `"owner": "Ana"`,
+# `LABEL maintainer=...`. The key decides, never the value, because a name looks like any other word. A key
+# matches only when its last part is one of these words, so `org.eclipse.edc:dcp-core` (a Maven coordinate) and
+# `--org-id` are left alone. A product or connector `*.title` is included: it is usually the owner's brand.
+_ORG_KEY = (
+    r"(?:(?:[A-Za-z0-9_.\-]{0,64}[._\-])?(?:(?:organi[sz]ations?|org|compan(?:y|ies)|tenants?|customers?|owners?|authors?|"
+    r"contacts?|maintainers?|publishers?|vendors?|employers?)(?:[_.\-]?(?:name|title))?|"
+    r"(?:client|display|full|legal|trade|business|brand)[_.\-]?name)|"
+    r"(?:[A-Za-z0-9_.\-]{0,64}[._\-])?(?:connector|product|portal|brand|app|ui|site)[._\-](?:[A-Za-z0-9_.\-]{0,64}[._\-])?title)"
+)
+# Values that are not a name: placeholders, types and generic words.
+_ORG_KEEP = {
+    "default", "unknown", "example", "test", "testing", "user", "users", "admin", "administrator", "root", "me",
+    "self", "system", "anonymous", "n/a", "na", "tbd", "todo", "unset", "any", "object", "dict", "list", "set",
+    "array", "map", "number", "float", "date", "datetime", "name", "author", "owner", "org", "organization",
+    "company", "customer", "tenant",
+}
+
+
+# A type annotation such as `Optional[str]`, not a name.
+_ORG_TYPE = re.compile(r"^[A-Za-z_][A-Za-z0-9_.]*\[[A-Za-z0-9_., \[\]]*\]$")
+# The key of a rule anchored to the start of a line cannot begin with `-`, or the `-Dkey=value` of a command
+# would take the rest of the command with it.
+_ORG_KEY_LINE = _ORG_KEY.replace(r"[A-Za-z0-9_.\-]{0,64}[._\-]", r"[A-Za-z0-9_][A-Za-z0-9_.\-]{0,63}[._\-]")
+
+
+def _org_kept(value: str, inline: bool) -> bool:
+    lower = value.lower()
+    return (
+        _is_reference(value)
+        or value.startswith("<")
+        or not any(ch.isalpha() for ch in value)
+        or bool(_ORG_TYPE.match(value))
+        or lower in _ORG_KEEP
+        or lower.startswith(("your", "example", "sample", "my-", "my_"))
+        or (inline and any(ch in "${}[]()*\\" for ch in value))
+    )
+
+
+def _org_value(value_group: int, inline: bool) -> Replacer:
+    """Replaces the value group with `<redacted:org>`, keeping every group before and after it."""
+
+    def replace(m: re.Match) -> Optional[str]:
+        if _org_kept(m.group(value_group), inline):
+            return None
+        return "".join(_full("org") if n == value_group else m.group(n) for n in range(1, (m.re.groups or 0) + 1))
+
+    return replace
+
+
 _RULES: List[Tuple[str, re.Pattern, Replacer]] = [
     (kind, re.compile(pattern, flags), replace)
     for kind, pattern, flags, replace in [
@@ -155,6 +205,10 @@ _RULES: List[Tuple[str, re.Pattern, Replacer]] = [
         ("card", r"\b[3-6](?:[ \-]?[0-9]){12,18}\b", 0, _card),
         ("home_path", r"(/home/|/Users/)[^/\s'\x22<>]+", 0, lambda m: m.group(1) + "<user>"),
         ("home_path", r"([a-z]:\\Users\\)[^\\\s'\x22<>]+", re.I, lambda m: m.group(1) + "<user>"),
+        # The org rules come last: they match on the key, so every more specific kind has already had its turn.
+        ("org", r"(^|[^A-Za-z0-9_.\-])(" + _ORG_KEY + r"['\x22]?[ \t]*[=:][ \t]*)(['\x22])([^'\x22\r\n]{2,120})(['\x22])", re.I, _org_value(4, False)),
+        ("org", r"(^[ \t]*(?:-[ \t]+)?" + _ORG_KEY_LINE + r"['\x22]?[ \t]*[=:][ \t]*)([^\s'\x22<>][^\r\n]*?)([ \t]*\r?$)", re.I | re.M, _org_value(2, False)),
+        ("org", r"(^|[^A-Za-z0-9_.\-])(" + _ORG_KEY + r"['\x22]?[ \t]*[=:][ \t]*)([^\s'\x22<>,;]{2,80})", re.I, _org_value(3, True)),
     ]
 ]
 
@@ -191,3 +245,46 @@ def redact_value(value: Any, report: Optional[Report] = None) -> Any:
     if isinstance(value, dict):
         return {k: redact_value(v, report) for k, v in value.items()}
     return value
+
+
+def possible_names(value: Any, limit: int = 10) -> List[str]:
+    """Runs of capitalised words that look like a name (`Acme Data Systems`), for a person to check before approving
+    a publication. This does not redact anything: a name looks like any other word, so the colony cannot remove one
+    by itself. A run at the start of a sentence loses its first word, which is capitalised anyway."""
+    found: Dict[str, None] = {}
+
+    def capitalised(word: str) -> bool:
+        return len(word) >= 2 and word[0] != word[0].lower()
+
+    def scan(text: str) -> None:
+        run: List[re.Match] = []
+
+        def flush() -> None:
+            nonlocal run
+            if run and re.search(r"(?:^|[.!?:]\s+|\n\s*)$", text[: run[0].start()]):
+                run = run[1:]
+            if len(run) >= 2:
+                found[text[run[0].start() : run[-1].end()]] = None
+            run = []
+
+        for m in re.finditer(r"[^\W\d_]+", text):
+            if not capitalised(m.group(0)):
+                flush()
+                continue
+            if run and not (text[run[-1].end() : m.start()] == " "):
+                flush()
+            run.append(m)
+        flush()
+
+    def walk(v: Any) -> None:
+        if isinstance(v, str):
+            scan(v)
+        elif isinstance(v, list):
+            for item in v:
+                walk(item)
+        elif isinstance(v, dict):
+            for item in v.values():
+                walk(item)
+
+    walk(value)
+    return list(found)[:limit]

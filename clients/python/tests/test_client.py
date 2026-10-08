@@ -173,3 +173,16 @@ def test_async_drafts_and_verdicts():
             assert (await colony.wait_for_trail(NEW_TRAIL, timeout=5, interval=0))["status"] == "indexed"
 
     asyncio.run(scenario())
+
+
+def test_possible_names_lists_capitalised_runs_and_ignores_sentence_starts(colony):
+    trail = {"problem": {"summary": "Connector for Acme Data Systems fails. Install Python first."}, "steps": ["Open the Management API"]}
+    assert colony.possible_names(trail) == ["Acme Data Systems", "Management API"]
+    assert colony.possible_names({"a": "Install Python and run it", "b": "no names here"}) == []
+
+
+def test_an_organisation_in_a_configuration_value_is_removed():
+    from myrmo import redact_text
+
+    assert redact_text("edc.ui.organization=Acme Corp") == "edc.ui.organization=<redacted:org>"
+    assert redact_text("org.eclipse.edc:dcp-core:1.0.0") == "org.eclipse.edc:dcp-core:1.0.0"
