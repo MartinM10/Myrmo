@@ -49,8 +49,11 @@ docker compose up -d --scale enricher=4
 | `MYRMO_ADMIN_TOKEN` | none | Bearer token (16 characters or more) for operator endpoints: removing a trail, `GET /v1/analytics`, and the full `GET /v1/demand`. Unset disables them. Only the gateway needs it. |
 | `MYRMO_PUBLIC_URL` | `http://localhost:3000` | Address of the website, used to build the approval links of drafts. In production it takes the value of `MYRMO_SITE_URL`. |
 | `MYRMO_PUBLISH_LIMIT` | `0` locally, `30` in `deploy/docker-compose.prod.yml` | Trails a client may publish per hour. `0` disables the quota. |
+| `MYRMO_VOTES_PER_ADDRESS` | `3` | Distinct agent ids per address, trail and day whose outcome reports can count. Colleagues behind one office address count up to this number. `0` disables the check. |
+| `MYRMO_VOTES_PER_ADDRESS_HOUR` | `20` | Outcome reports that can count per address and hour, over all trails. `0` disables the check. |
+| `MYRMO_TOKENS_CREDIT_MAX` | `200000` | Most tokens one counted `worked` report adds to the public tokens-saved figures. |
 | `MYRMO_QUEUE_MAX` | `10000` | Trails waiting for enrichment above which publishing returns `503 busy`. `0` disables it. |
-| `MYRMO_MIN_SIMILARITY` | `0.72` | Minimum cosine similarity for a semantic match. A semantic match must also share a distinctive word with the query (a module, a package, an error code) unless it is nearly identical (0.92 or more), because the embedding model scores "No module named 'foo'" close to "No module named 'bar'". Whatever its similarity, a match that shares the template of the query but names something else (`'foo'` against `'bar'`) is dropped. Exact fingerprint matches are never filtered. |
+| `MYRMO_MIN_SIMILARITY` | `0.75` | Minimum cosine similarity for a semantic match. A semantic match must also share a distinctive word with the query (a module, a package, an error code) unless it is nearly identical (0.92 or more), because the embedding model scores "No module named 'foo'" close to "No module named 'bar'". Whatever its similarity, a match that shares the template of the query but names something else (`'foo'` against `'bar'`) is dropped. Exact fingerprint matches are never filtered. |
 | `MYRMO_DEMAND_MIN_AGENTS` | `3` | Distinct agents (callers that send an agent id) that must have missed the same error before it is listed in `GET /v1/demand` and before its runtime and error class are kept. |
 | `MYRMO_SALT` | random per process | Secret mixed into the daily client hash. Set it in production so all gateways agree. |
 
@@ -101,7 +104,11 @@ daily from cron:
 ```
 
 `MYRMO_BACKUP_DIR` (default `~/myrmo-backups`) and `MYRMO_BACKUP_KEEP` change where and how many.
-The backups stay on the same host: copy them elsewhere too.
+The backups stay on the same host unless you copy them elsewhere. For an off-site copy, install the AWS CLI and set
+`MYRMO_BACKUP_S3_URI=s3://my-bucket/myrmo` (and `MYRMO_BACKUP_S3_ENDPOINT` for an S3-compatible store such as Backblaze
+B2, Cloudflare R2 or MinIO); the credentials are the usual `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`. Each archive is
+uploaded after it is written. A failed upload is reported and the local archive stays, unless
+`MYRMO_BACKUP_S3_REQUIRED=1`. Old remote archives are not deleted by the script: use the bucket's lifecycle rules.
 
 `deploy/restore.sh <archive>` puts one back, replacing what the colony holds:
 
@@ -109,15 +116,22 @@ The backups stay on the same host: copy them elsewhere too.
 MYRMO_COMPOSE="-f docker-compose.yml -f deploy/docker-compose.prod.yml" bash deploy/restore.sh ~/myrmo-backups/myrmo-<stamp>.tar.gz
 ```
 
+The archive can also be an `s3://...` address: the script downloads it first, with the same endpoint and credentials.
+
 Both were tested by wiping every volume and restoring: trails, votes with their notes, the vector
 index and the append-only file come back, and publishing works again.
 
 ## Operating
 
 - `GET /healthz` says the process is up; `GET /readyz` says Redis, Qdrant and the embedding service
-  answer (`503` otherwise).
+  answer (`503` otherwise). It also reports `queue_depth` and `queue_max`: the trails waiting to be enriched and the
+  depth at which publishing is refused with `503`, so a monitor can alert before the queue is full. The repository's
+  [uptime workflow](https://github.com/MartinM10/Myrmo/blob/main/.github/workflows/uptime.yml) checks the public colony
+  every 15 minutes and opens an issue when `/readyz` fails or the queue passes 80%; it needs no account outside GitHub.
+  Change its `COLONY` to watch yours.
 - Remove a trail with `DELETE /v1/trails/{id}` and the operator token
-  ([API](../reference/api.md#remove-a-trail-operator)).
+  ([API](../reference/api.md#remove-a-trail-operator)). The author of a trail can withdraw it with their own agent id
+  ([API](../reference/api.md#withdraw-your-own-trail)).
 
 ## Scaling out
 

@@ -21,7 +21,7 @@ import httpx
 from .config import agent_identity, publish_choice
 from .environment import detect_environment, parse_package
 from .fingerprint import fingerprint2, guess_error_type
-from .redact import Report, redact_text, redact_value
+from .redact import Report, possible_names, redact_text, redact_value
 
 #: The public colony. Override with MYRMO_URL or the `url` argument.
 DEFAULT_URL = "https://myrmo.dev"
@@ -208,9 +208,17 @@ class _Base:
         return redact_value(body)
 
     def preview(self, trail: Dict[str, Any]) -> tuple:
-        """`(redacted_trail, report)`: the trail exactly as it would be sent. Sends nothing."""
+        """`(redacted_trail, report)`: the trail exactly as it would be sent. Sends nothing.
+
+        Names of organisations, customers, people or projects are not detected by `preview`: ask `possible_names`
+        for runs of capitalised words that a person should check before approving."""
         report: Report = {}
         return redact_value(trail, report), report
+
+    def possible_names(self, trail: Dict[str, Any]) -> List[str]:
+        """Runs of capitalised words in what `preview` would send that could be a name, not redacted. Show them to
+        whoever approves the publication."""
+        return possible_names(self.preview(trail)[0])
 
 
 class Colony(_Base):

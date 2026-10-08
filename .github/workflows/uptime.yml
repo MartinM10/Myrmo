@@ -1,0 +1,58 @@
+name: Uptime
+
+# Looks at the public colony every 15 minutes and opens an issue when it is down or its publish queue is nearly full.
+# It needs no account outside GitHub: the colony's /readyz is public. When the colony is healthy again it closes the
+# issue. Change COLONY to watch another colony.
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+permissions:
+  issues: write
+
+env:
+  COLONY: https://myrmo.dev
+
+jobs:
+  readyz:
+    name: /readyz
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ask the colony
+        id: probe
+        run: |
+          problem=""
+          for attempt in 1 2 3; do
+            code=$(curl -sS -m 20 -o ready.json -w '%{http_code}' "$COLONY/readyz" || echo 000)
+            [ "$code" = 200 ] && break
+            sleep 20
+          done
+          if [ "$code" != 200 ]; then
+            problem="/readyz answered HTTP $code after 3 tries.$(head -c 300 ready.json 2>/dev/null)"
+          else
+            depth=$(jq -r '.queue_depth // 0' ready.json)
+            max=$(jq -r '.queue_max // 0' ready.json)
+            if [ "$max" -gt 0 ] && [ $((depth * 100 / max)) -ge 80 ]; then
+              problem="The publish queue holds $depth of $max trails (80% or more): new trails are about to be refused with 503."
+            fi
+          fi
+          echo "problem=$problem" >> "$GITHUB_OUTPUT"
+      - name: Open or close the issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PROBLEM: ${{ steps.probe.outputs.problem }}
+        run: |
+          gh label create uptime --color D93F0B --description "The public colony is down or struggling" --repo "$GITHUB_REPOSITORY" 2>/dev/null || true
+          open=$(gh issue list --repo "$GITHUB_REPOSITORY" --label uptime --state open --json number --jq '.[0].number // empty')
+          if [ -n "$PROBLEM" ]; then
+            body="$PROBLEM"$'\n\n'"Checked $(date -u +%FT%TZ) from GitHub Actions. This issue closes by itself when /readyz is healthy again."
+            if [ -z "$open" ]; then
+              gh issue create --repo "$GITHUB_REPOSITORY" --label uptime --title "The public colony needs attention" --body "$body"
+            else
+              gh issue comment "$open" --repo "$GITHUB_REPOSITORY" --body "$body"
+            fi
+          elif [ -n "$open" ]; then
+            gh issue close "$open" --repo "$GITHUB_REPOSITORY" --comment "/readyz is healthy again ($(date -u +%FT%TZ))."
+          fi

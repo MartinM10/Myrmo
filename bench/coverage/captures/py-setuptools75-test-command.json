@@ -1,0 +1,10 @@
+{
+  "id": "py-setuptools75-test-command",
+  "ok": true,
+  "error_line": "error: invalid command 'test'",
+  "exit_code": 1,
+  "output_tail": "usage: setup.py [global_opts] cmd1 [cmd1_opts] [cmd2 [cmd2_opts] ...]\n   or: setup.py --help [cmd1 cmd2 ...]\n   or: setup.py --help-commands\n   or: setup.py cmd --help\n\nerror: invalid command 'test'",
+  "image": "python:3.12-slim",
+  "image_digest": "python@sha256:05cda9777409a9c3ffddd94a4c476b79f0769a0b4857f0c7ed9226b6800b0d6f",
+  "command": "python setup.py test 2>&1"
+}

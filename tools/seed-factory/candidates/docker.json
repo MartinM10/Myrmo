@@ -1,0 +1,62 @@
+[
+  {
+    "id": "docker-compose-env-file-missing",
+    "error_line": "env file /w/.env not found: stat /w/.env: no such file or directory",
+    "versions": {
+      "compose": "2.x"
+    },
+    "source": {
+      "url": "https://raw.githubusercontent.com/compose-spec/compose-go/main/types/project.go",
+      "licence": "Apache-2.0"
+    },
+    "score": {
+      "recent": true,
+      "environment": true,
+      "transferable": true,
+      "reproducible": true,
+      "total": 4
+    },
+    "status": "reproduced",
+    "reason": ""
+  },
+  {
+    "id": "docker-compose-undefined-dependency",
+    "error_line": "service \"web\" depends on undefined service \"db\": invalid compose project",
+    "versions": {
+      "compose": "2.x"
+    },
+    "source": {
+      "url": "https://raw.githubusercontent.com/compose-spec/compose-go/main/loader/validate.go",
+      "licence": "Apache-2.0"
+    },
+    "score": {
+      "recent": false,
+      "environment": true,
+      "transferable": true,
+      "reproducible": true,
+      "total": 3
+    },
+    "status": "reproduced",
+    "reason": ""
+  },
+  {
+    "id": "k8s-helm-cluster-unreachable",
+    "error_line": "Error: INSTALLATION FAILED: Kubernetes cluster unreachable: Get \"http://localhost:8080/version\": dial tcp [::1]:8080: connect: connection refused",
+    "versions": {
+      "helm": "3.16"
+    },
+    "source": {
+      "url": "https://raw.githubusercontent.com/helm/helm/main/pkg/kube/client.go",
+      "licence": "Apache-2.0"
+    },
+    "score": {
+      "recent": false,
+      "environment": true,
+      "transferable": true,
+      "reproducible": true,
+      "total": 3
+    },
+    "status": "reproduced",
+    "reason": ""
+  }
+]

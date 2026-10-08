@@ -1,0 +1,10 @@
+{
+  "id": "tls-curl-hostname-mismatch",
+  "ok": true,
+  "error_line": "curl: (60) SSL: no alternative certificate subject name matches target host name '127.0.0.1'",
+  "exit_code": 60,
+  "output_tail": "curl: (60) SSL: no alternative certificate subject name matches target host name '127.0.0.1'\nMore details here: https://curl.se/docs/sslcerts.html\n\ncurl failed to verify the legitimacy of the server and therefore could not\nestablish a secure connection to it. To learn more about this situation and\nhow to fix it, please visit the web page mentioned above.",
+  "image": "myrmo-tls-lab:1",
+  "image_digest": "myrmo-tls-lab@sha256:67cf50e2bff4b80ac99712dcfc4dd5237b4f26ef9245f4cf36b64d69a6c9f714",
+  "command": "curl -sS --cacert /opt/corp-ca/corp-root-ca.pem https://127.0.0.1:8443/health 2>&1"
+}

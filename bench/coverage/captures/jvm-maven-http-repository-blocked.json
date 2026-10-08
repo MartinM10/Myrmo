@@ -1,0 +1,10 @@
+{
+  "id": "jvm-maven-http-repository-blocked",
+  "ok": true,
+  "error_line": "[ERROR] \tCaused by: The following artifacts could not be resolved: com.example:lib:pom:1.0 (absent): Could not transfer artifact com.example:lib:pom:1.0 from/to maven-default-http-blocker (http://0.0.0.0/): Blocked mirror for repositories: [legacy (http://repo.example.org/maven, default, releases+snapshots)]",
+  "exit_code": 1,
+  "output_tail": "[ERROR] Failed to execute goal on project a: Could not collect dependencies for project g:a:jar:1\n[ERROR] Failed to read artifact descriptor for com.example:lib:jar:1.0\n[ERROR] \tCaused by: The following artifacts could not be resolved: com.example:lib:pom:1.0 (absent): Could not transfer artifact com.example:lib:pom:1.0 from/to maven-default-http-blocker (http://0.0.0.0/): Blocked mirror for repositories: [legacy (http://repo.example.org/maven, default, releases+snapshots)]\n[ERROR] -> [Help 1]\n[ERROR] \n[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.\n[ERROR] Re-run Maven using the -X switch to enable full debug logging.\n[ERROR] \n[ERROR] For more information about the errors and possible solutions, please read the following articles:\n[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/DependencyResolutionException",
+  "image": "maven:3.9.9-eclipse-temurin-21",
+  "image_digest": "maven@sha256:3a4ab3276a087bf276f79cae96b1af04f53731bec53fb2e651aca79e4b10211e",
+  "command": "cd /w && mvn -q -B dependency:resolve 2>&1"
+}

@@ -1,0 +1,10 @@
+{
+  "id": "tls-pip-private-ca",
+  "ok": true,
+  "error_line": "WARNING: Retrying (Retry(total=4, connect=None, read=None, redirect=None, status=None)) after connection broken by 'SSLError(SSLCertVerificationError(1, '[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:992)'))': /simple/internal-package/",
+  "exit_code": 1,
+  "output_tail": "))': /simple/internal-package/\nWARNING: Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'SSLError(SSLCertVerificationError(1, '[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:992)'))': /simple/internal-package/\nWARNING: Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'SSLError(SSLCertVerificationError(1, '[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:992)'))': /simple/internal-package/\nWARNING: Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'SSLError(SSLCertVerificationError(1, '[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:992)'))': /simple/internal-package/\nCould not fetch URL https://intranet.example:8443/simple/internal-package/: There was a problem confirming the ssl certificate: HTTPSConnectionPool(host='intranet.example', port=8443): Max retries exceeded with url: /simple/internal-package/ (Caused by SSLError(SSLCertVerificationError(1, '[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:992)'))) - skipping\nERROR: Could not find a version that satisfies the requirement internal-package (from versions: none)\nERROR: No matching distribution found for internal-package",
+  "image": "myrmo-tls-lab:1",
+  "image_digest": "myrmo-tls-lab@sha256:d6b81e6ce0941072a6fea12335cca6d963420bc6c7932a43cb083d78d0a9fbbc",
+  "command": "pip3 install --break-system-packages --index-url https://intranet.example:8443/simple/ internal-package 2>&1"
+}

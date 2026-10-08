@@ -237,8 +237,10 @@
   },
   {
     "input": "author: John Smith",
-    "output": "author: John Smith",
-    "kinds": {}
+    "output": "author: <redacted:org>",
+    "kinds": {
+      "org": 1
+    }
   },
   {
     "input": "kind: Secret\ntype: Opaque",
@@ -703,5 +705,183 @@
     "kinds": {
       "hostname": 1
     }
+  },
+  {
+    "input": "edc.ui.organization=Acme Data Systems",
+    "output": "edc.ui.organization=<redacted:org>",
+    "kinds": {
+      "org": 1
+    }
+  },
+  {
+    "input": "edc.ui.connector.title=Acme Data Space Connector\nedc.ui.organization=Acme\nedc.hostname=localhost",
+    "output": "edc.ui.connector.title=<redacted:org>\nedc.ui.organization=<redacted:org>\nedc.hostname=localhost",
+    "kinds": {
+      "org": 2
+    }
+  },
+  {
+    "input": "EDC_UI_ORGANIZATION: Acme Corp",
+    "output": "EDC_UI_ORGANIZATION: <redacted:org>",
+    "kinds": {
+      "org": 1
+    }
+  },
+  {
+    "input": "  - company: Globex Spain S.L.",
+    "output": "  - company: <redacted:org>",
+    "kinds": {
+      "org": 1
+    }
+  },
+  {
+    "input": "java -Dedc.ui.organization=Acme -jar connector.jar",
+    "output": "java -Dedc.ui.organization=<redacted:org> -jar connector.jar",
+    "kinds": {
+      "org": 1
+    }
+  },
+  {
+    "input": "{\"organization\": \"Acme Corp\", \"id\": 3}",
+    "output": "{\"organization\": \"<redacted:org>\", \"id\": 3}",
+    "kinds": {
+      "org": 1
+    }
+  },
+  {
+    "input": "company: 'Foo, Inc.'",
+    "output": "company: '<redacted:org>'",
+    "kinds": {
+      "org": 1
+    }
+  },
+  {
+    "input": "LABEL maintainer=\"Ana Garcia\"",
+    "output": "LABEL maintainer=\"<redacted:org>\"",
+    "kinds": {
+      "org": 1
+    }
+  },
+  {
+    "input": "git commit --author=\"Ana Garcia\" -m fix",
+    "output": "git commit --author=\"<redacted:org>\" -m fix",
+    "kinds": {
+      "org": 1
+    }
+  },
+  {
+    "input": "export ORG=acme && make build",
+    "output": "export ORG=<redacted:org> && make build",
+    "kinds": {
+      "org": 1
+    }
+  },
+  {
+    "input": "docker run -e COMPANY=Acme -e TENANT=foo img",
+    "output": "docker run -e COMPANY=<redacted:org> -e TENANT=<redacted:org> img",
+    "kinds": {
+      "org": 2
+    }
+  },
+  {
+    "input": "customer_name = 'Globex'",
+    "output": "customer_name = '<redacted:org>'",
+    "kinds": {
+      "org": 1
+    }
+  },
+  {
+    "input": "display_name: Ana",
+    "output": "display_name: <redacted:org>",
+    "kinds": {
+      "org": 1
+    }
+  },
+  {
+    "input": "edc.ui.organization=Acme\r\nedc.ui.connector.title=Acme Connector\r\nother=1",
+    "output": "edc.ui.organization=<redacted:org>\r\nedc.ui.connector.title=<redacted:org>\r\nother=1",
+    "kinds": {
+      "org": 2
+    }
+  },
+  {
+    "input": "org.eclipse.edc:dcp-core:1.0.0",
+    "output": "org.eclipse.edc:dcp-core:1.0.0",
+    "kinds": {}
+  },
+  {
+    "input": "implementation 'org.eclipse.edc:dcp-core:1.0.0'",
+    "output": "implementation 'org.eclipse.edc:dcp-core:1.0.0'",
+    "kinds": {}
+  },
+  {
+    "input": "package org.eclipse.edc.spi;",
+    "output": "package org.eclipse.edc.spi;",
+    "kinds": {}
+  },
+  {
+    "input": "npm ERR! --org-id=123",
+    "output": "npm ERR! --org-id=123",
+    "kinds": {}
+  },
+  {
+    "input": "tenant: <TENANT_ID>",
+    "output": "tenant: <TENANT_ID>",
+    "kinds": {}
+  },
+  {
+    "input": "contact: ${CONTACT}",
+    "output": "contact: ${CONTACT}",
+    "kinds": {}
+  },
+  {
+    "input": "owner: Optional[str]",
+    "output": "owner: Optional[str]",
+    "kinds": {}
+  },
+  {
+    "input": "author: str",
+    "output": "author: str",
+    "kinds": {}
+  },
+  {
+    "input": "organization: https://example.org/acme",
+    "output": "organization: https://example.org/acme",
+    "kinds": {}
+  },
+  {
+    "input": "owner: root",
+    "output": "owner: root",
+    "kinds": {}
+  },
+  {
+    "input": "author: 12345",
+    "output": "author: 12345",
+    "kinds": {}
+  },
+  {
+    "input": "organization=",
+    "output": "organization=",
+    "kinds": {}
+  },
+  {
+    "input": "title: Hello",
+    "output": "title: Hello",
+    "kinds": {}
+  },
+  {
+    "input": "the myorg=acme variable",
+    "output": "the myorg=acme variable",
+    "kinds": {}
+  },
+  {
+    "input": "organization: <redacted:org>",
+    "output": "organization: <redacted:org>",
+    "kinds": {}
+  },
+  {
+    "input": "kubectl get pods --namespace edc -o json",
+    "output": "kubectl get pods --namespace edc -o json",
+    "kinds": {}
   }
 ]

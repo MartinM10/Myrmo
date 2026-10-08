@@ -1,0 +1,10 @@
+{
+  "id": "tls-openssl3-legacy-pkcs12",
+  "ok": true,
+  "error_line": "807B48BD667B0000:error:0308010C:digital envelope routines:inner_evp_generic_fetch:unsupported:../crypto/evp/evp_fetch.c:386:Global default library context, Algorithm (RC2-40-CBC : 0), Properties ()",
+  "exit_code": 1,
+  "output_tail": "Error outputting keys and certificates\n807B48BD667B0000:error:0308010C:digital envelope routines:inner_evp_generic_fetch:unsupported:../crypto/evp/evp_fetch.c:386:Global default library context, Algorithm (RC2-40-CBC : 0), Properties ()",
+  "image": "myrmo-tls-lab:1",
+  "image_digest": "myrmo-tls-lab@sha256:d6b81e6ce0941072a6fea12335cca6d963420bc6c7932a43cb083d78d0a9fbbc",
+  "command": "openssl pkcs12 -in /opt/lab/legacy.p12 -nodes -passin pass:changeit 2>&1"
+}

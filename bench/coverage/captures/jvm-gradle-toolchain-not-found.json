@@ -1,0 +1,10 @@
+{
+  "id": "jvm-gradle-toolchain-not-found",
+  "ok": true,
+  "error_line": "> Cannot find a Java installation on your machine matching this tasks requirements: {languageVersion=21, vendor=any vendor, implementation=vendor-specific} for LINUX on x86_64.",
+  "exit_code": 1,
+  "output_tail": "Welcome to Gradle 8.10.2!\n\nHere are the highlights of this release:\n - Support for Java 23\n - Faster configuration cache\n - Better configuration cache reports\n\nFor more details see https://docs.gradle.org/8.10.2/release-notes.html\n\nTo honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.10.2/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.\nDaemon will be stopped at the end of the build \n\nFAILURE: Build failed with an exception.\n\n* What went wrong:\nCould not determine the dependencies of task ':compileJava'.\n> Could not resolve all dependencies for configuration ':compileClasspath'.\n   > Failed to calculate the value of task ':compileJava' property 'javaCompiler'.\n      > Cannot find a Java installation on your machine matching this tasks requirements: {languageVersion=21, vendor=any vendor, implementation=vendor-specific} for LINUX on x86_64.\n         > No locally installed toolchains match and toolchain auto-provisioning is not enabled.\n\n* Try:\n> Learn more about toolchain auto-detection at https://docs.gradle.org/8.10.2/userguide/toolchains.html#sec:auto_detection.\n> Run with --stacktrace option to get the stack trace.\n> Run with --info or --debug option to get more log output.\n> Run with --scan to get full insights.\n> Get more help at https://help.gradle.org.\n\nBUILD FAILED in 4s",
+  "image": "eclipse-temurin:17-jdk",
+  "image_digest": "eclipse-temurin@sha256:5d6042fb8cdc14d614e4e421f52e3211fc5aeadddce44cbf9de8ed37c791f824",
+  "command": "cd /w && /opt/gradle-8.10.2/bin/gradle --no-daemon -Porg.gradle.java.installations.auto-download=false compileJava 2>&1"
+}

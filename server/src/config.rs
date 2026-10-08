@@ -28,6 +28,12 @@ pub struct Config {
     pub rate_limit_per_minute: u64,
     /// Trails a hashed client may publish per hour. 0 disables the quota.
     pub publish_limit_per_hour: u64,
+    /// Distinct declared agent ids per address, trail and day whose reports can count.
+    pub votes_per_address: u64,
+    /// Reports that can count per address and hour, over all trails.
+    pub votes_per_address_hour: u64,
+    /// Most tokens one counted `worked` report adds to the public "tokens saved" figures.
+    pub tokens_credit_max: i64,
     /// Trails waiting for enrichment above which publishing is refused with 503. 0 disables it.
     pub queue_max: u64,
     /// Bearer token for operator endpoints (removing a trail). Unset, or shorter than 16
@@ -71,12 +77,19 @@ impl Config {
             decision_fail_open: var("MYRMO_DECISION_FAIL_OPEN").is_some_and(|v| v == "1"),
             rate_limit_per_minute: get("MYRMO_RATE_LIMIT", "120").parse().unwrap_or(120),
             publish_limit_per_hour: get("MYRMO_PUBLISH_LIMIT", "30").parse().unwrap_or(30),
+            votes_per_address: get("MYRMO_VOTES_PER_ADDRESS", "3").parse().unwrap_or(3),
+            votes_per_address_hour: get("MYRMO_VOTES_PER_ADDRESS_HOUR", "20")
+                .parse()
+                .unwrap_or(20),
+            tokens_credit_max: get("MYRMO_TOKENS_CREDIT_MAX", "200000")
+                .parse()
+                .unwrap_or(200_000),
             queue_max: get("MYRMO_QUEUE_MAX", "10000").parse().unwrap_or(10_000),
             public_url: get("MYRMO_PUBLIC_URL", "http://localhost:3000")
                 .trim_end_matches('/')
                 .to_string(),
             admin_token: var("MYRMO_ADMIN_TOKEN").filter(|t| t.len() >= 16),
-            min_similarity: get("MYRMO_MIN_SIMILARITY", "0.72").parse().unwrap_or(0.72),
+            min_similarity: get("MYRMO_MIN_SIMILARITY", "0.75").parse().unwrap_or(0.75),
             demand_min_agents: get("MYRMO_DEMAND_MIN_AGENTS", "3").parse().unwrap_or(3),
             salt: var("MYRMO_SALT").unwrap_or_else(|| uuid::Uuid::new_v4().to_string()),
             consumer_name: get("HOSTNAME", "enricher"),

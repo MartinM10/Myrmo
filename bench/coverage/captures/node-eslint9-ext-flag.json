@@ -1,0 +1,10 @@
+{
+  "id": "node-eslint9-ext-flag",
+  "ok": true,
+  "error_line": "Invalid option '--ext' - perhaps you meant '-c'?",
+  "exit_code": 2,
+  "output_tail": "Invalid option '--ext' - perhaps you meant '-c'?\nYou're using eslint.config.js, some command line flags are no longer available. Please see https://eslint.org/docs/latest/use/command-line-interface for details.",
+  "image": "node:20-slim",
+  "image_digest": "node@sha256:2cf067cfed83d5ea958367df9f966191a942351a2df77d6f0193e162b5febfc0",
+  "command": "npx eslint --ext .js . 2>&1"
+}

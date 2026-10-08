@@ -1,0 +1,10 @@
+{
+  "id": "py-pip-editable-without-project-file",
+  "ok": true,
+  "error_line": "ERROR: file:///w does not appear to be a Python project: neither 'setup.py' nor 'pyproject.toml' found.",
+  "exit_code": 1,
+  "output_tail": "Obtaining file:///w\n\n[notice] A new release of pip is available: 25.0.1 -> 26.2.1\n[notice] To update, run: pip install --upgrade pip\nERROR: file:///w does not appear to be a Python project: neither 'setup.py' nor 'pyproject.toml' found.",
+  "image": "python:3.12-slim",
+  "image_digest": "python@sha256:05cda9777409a9c3ffddd94a4c476b79f0769a0b4857f0c7ed9226b6800b0d6f",
+  "command": "pip install -e . 2>&1"
+}

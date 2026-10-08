@@ -148,6 +148,13 @@ blocked or every lookup reaches the server:
 | Rules, Cache Rules | For `starts_with(http.request.uri.path, "/v1/trails/by-fingerprint/")`: **Eligible for cache**, edge TTL "use cache-control header if present, bypass cache if not" | Repeat errors are the bulk of the traffic and every response is cacheable. Check with `curl -sI <url>`: `cf-cache-status: HIT` on the second request. |
 | Caching, Configuration | **Browser Cache TTL: Respect Existing Headers** | Otherwise Cloudflare rewrites `max-age=300` to four hours, and a trail an operator removes would linger in clients' caches. |
 
+**Hide the origin.** Cloudflare protects nothing if the server's own address still answers. `deploy/lock-origin.sh`
+prints nftables rules that accept ports 80 and 443 only from Cloudflare's ranges (read from `deploy/Caddyfile.myrmo`, so
+there is one list to keep up to date) and optionally from addresses you name with `--allow`. It prints and changes
+nothing: read the rules, then apply them with `bash deploy/lock-origin.sh | sudo nft -f -`, and remove them with
+`sudo nft delete table inet myrmo_origin`. SSH and every other port stay as they are. Do it from a session you can lose
+without being locked out, and check afterwards that `https://myrmo.dev` still answers. Deploys over SSH are not affected.
+
 A removed trail can stay in Cloudflare's cache for up to five minutes. To clear it sooner, purge its
 URL (Caching, Configuration, Custom Purge).
 

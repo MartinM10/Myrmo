@@ -1,0 +1,10 @@
+{
+  "id": "py-poetry2-export",
+  "ok": true,
+  "error_line": "The requested command export does not exist.",
+  "exit_code": 1,
+  "output_tail": "The requested command export does not exist.\n\nDocumentation: https://python-poetry.org/docs/cli/",
+  "image": "python:3.12-slim",
+  "image_digest": "python@sha256:05cda9777409a9c3ffddd94a4c476b79f0769a0b4857f0c7ed9226b6800b0d6f",
+  "command": "poetry export -f requirements.txt 2>&1"
+}

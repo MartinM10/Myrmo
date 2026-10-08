@@ -1,0 +1,10 @@
+{
+  "id": "py-poetry2-shell",
+  "ok": true,
+  "error_line": "Since Poetry (2.0.0), the shell command is not installed by default. You can use,",
+  "exit_code": 1,
+  "output_tail": "Looks like you're trying to use a Poetry command that is not available.\n\nSince Poetry (2.0.0), the shell command is not installed by default. You can use,\n\n  - the new env activate command (recommended); or\n  - the shell plugin to install the shell command\n\nDocumentation: https://python-poetry.org/docs/managing-environments/#activating-the-environment\n\nNote that the env activate command is not a direct replacement for shell command.",
+  "image": "python:3.12-slim",
+  "image_digest": "python@sha256:05cda9777409a9c3ffddd94a4c476b79f0769a0b4857f0c7ed9226b6800b0d6f",
+  "command": "poetry shell 2>&1"
+}

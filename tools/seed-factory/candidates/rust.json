@@ -1,0 +1,64 @@
+[
+  {
+    "id": "rust-lockfile-v4-old-cargo",
+    "error_line": "lock file version `4` was found, but this version of Cargo does not understand this lock file, perhaps Cargo needs to be updated?",
+    "versions": {
+      "cargo": "1.75",
+      "lockfile": "4"
+    },
+    "source": {
+      "url": "https://raw.githubusercontent.com/rust-lang/cargo/master/crates/cargo-util-schemas/src/lockfile.rs",
+      "licence": "MIT OR Apache-2.0"
+    },
+    "score": {
+      "recent": true,
+      "environment": false,
+      "transferable": true,
+      "reproducible": true,
+      "total": 3
+    },
+    "status": "reproduced",
+    "reason": ""
+  },
+  {
+    "id": "rust-msrv-dependency",
+    "error_line": "error: rustc 1.78.0 is not supported by the following package:",
+    "versions": {
+      "cargo": "1.78",
+      "time": "0.3.41"
+    },
+    "source": {
+      "url": "https://raw.githubusercontent.com/rust-lang/cargo/master/doc/book/src/reference/rust-version.md",
+      "licence": "MIT OR Apache-2.0"
+    },
+    "score": {
+      "recent": true,
+      "environment": false,
+      "transferable": true,
+      "reproducible": true,
+      "total": 3
+    },
+    "status": "reproduced",
+    "reason": ""
+  },
+  {
+    "id": "rust-musl-target-missing",
+    "error_line": "= note: the `x86_64-unknown-linux-musl` target may not be installed",
+    "versions": {
+      "cargo": "1.82"
+    },
+    "source": {
+      "url": "https://raw.githubusercontent.com/rust-lang/rustup/master/doc/user-guide/src/cross-compilation.md",
+      "licence": "MIT OR Apache-2.0"
+    },
+    "score": {
+      "recent": false,
+      "environment": false,
+      "transferable": true,
+      "reproducible": true,
+      "total": 2
+    },
+    "status": "reproduced",
+    "reason": ""
+  }
+]

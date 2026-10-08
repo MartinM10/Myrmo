@@ -1,0 +1,10 @@
+{
+  "id": "k8s-kubectl-apply-validate-no-cluster",
+  "ok": true,
+  "error_line": "error: error validating \"cm.yaml\": error validating data: failed to download openapi: Get \"http://localhost:8080/openapi/v2?timeout=32s\": dial tcp [::1]:8080: connect: connection refused; if you choose to ignore these errors, turn validation off with --validate=false",
+  "exit_code": 1,
+  "output_tail": "error: error validating \"cm.yaml\": error validating data: failed to download openapi: Get \"http://localhost:8080/openapi/v2?timeout=32s\": dial tcp [::1]:8080: connect: connection refused; if you choose to ignore these errors, turn validation off with --validate=false",
+  "image": "alpine/k8s:1.31.1",
+  "image_digest": "alpine/k8s@sha256:dfe8c7a06c41d0b6e8757da99531f8f302e9a2687fa0155af4c4087df585c9c8",
+  "command": "cd /w && kubectl apply -f cm.yaml 2>&1"
+}

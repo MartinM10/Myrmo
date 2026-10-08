@@ -1,0 +1,10 @@
+{
+  "id": "tls-node-fetch-private-ca",
+  "ok": true,
+  "error_line": "cause: Error: unable to verify the first certificate",
+  "exit_code": 1,
+  "output_tail": "TypeError: fetch failed\n    at Object.fetch (node:internal/deps/undici/undici:16289:11)\n    at process.processTicksAndRejections (node:internal/process/task_queues:95:5) {\n  cause: Error: unable to verify the first certificate\n      at TLSSocket.onConnectSecure (node:_tls_wrap:1768:34)\n      at TLSSocket.emit (node:events:517:28)\n      at TLSSocket._finishInit (node:_tls_wrap:1168:8)\n      at ssl.onhandshakedone (node:_tls_wrap:954:12) {\n    code: 'UNABLE_TO_VERIFY_LEAF_SIGNATURE'\n  }\n}",
+  "image": "myrmo-tls-lab:1",
+  "image_digest": "myrmo-tls-lab@sha256:d6b81e6ce0941072a6fea12335cca6d963420bc6c7932a43cb083d78d0a9fbbc",
+  "command": "node -e \"fetch('https://intranet.example:8443/health').catch((e) => { console.error(e); process.exit(1) })\" 2>&1"
+}

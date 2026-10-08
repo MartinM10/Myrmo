@@ -1,0 +1,298 @@
+[
+  {
+    "id": "py-httpx028-proxies",
+    "error_line": "TypeError: Client.__init__() got an unexpected keyword argument 'proxies'",
+    "versions": {
+      "openai": "1.55.2",
+      "httpx": "0.28.1",
+      "python": "3.12"
+    },
+    "source": {
+      "url": "https://raw.githubusercontent.com/encode/httpx/0.28.0/CHANGELOG.md",
+      "licence": "BSD-3-Clause"
+    },
+    "score": {
+      "recent": true,
+      "environment": false,
+      "transferable": true,
+      "reproducible": true,
+      "total": 3
+    },
+    "status": "reproduced",
+    "reason": ""
+  },
+  {
+    "id": "py-numpy2-float_",
+    "error_line": "AttributeError: `np.float_` was removed in the NumPy 2.0 release. Use `np.float64` instead.. Did you mean: 'float16'?",
+    "versions": {
+      "numpy": "2.0.2",
+      "python": "3.12"
+    },
+    "source": {
+      "url": "https://raw.githubusercontent.com/numpy/numpy/v2.0.0/doc/source/numpy_2_0_migration_guide.rst",
+      "licence": "BSD-3-Clause"
+    },
+    "score": {
+      "recent": true,
+      "environment": false,
+      "transferable": true,
+      "reproducible": true,
+      "total": 3
+    },
+    "status": "reproduced",
+    "reason": ""
+  },
+  {
+    "id": "py-numpy2-nan",
+    "error_line": "AttributeError: `np.NaN` was removed in the NumPy 2.0 release. Use `np.nan` instead.. Did you mean: 'nan'?",
+    "versions": {
+      "numpy": "2.0.2",
+      "python": "3.12"
+    },
+    "source": {
+      "url": "https://raw.githubusercontent.com/numpy/numpy/v2.0.0/doc/source/numpy_2_0_migration_guide.rst",
+      "licence": "BSD-3-Clause"
+    },
+    "score": {
+      "recent": true,
+      "environment": false,
+      "transferable": true,
+      "reproducible": true,
+      "total": 3
+    },
+    "status": "reproduced",
+    "reason": ""
+  },
+  {
+    "id": "py-setuptools75-test-command",
+    "error_line": "error: invalid command 'test'",
+    "versions": {
+      "setuptools": "75.1.0",
+      "python": "3.12"
+    },
+    "source": {
+      "url": "https://raw.githubusercontent.com/pypa/setuptools/v72.0.0/NEWS.rst",
+      "licence": "MIT"
+    },
+    "score": {
+      "recent": true,
+      "environment": false,
+      "transferable": true,
+      "reproducible": true,
+      "total": 3
+    },
+    "status": "reproduced",
+    "reason": ""
+  },
+  {
+    "id": "py-torch26-weights-only",
+    "error_line": "_pickle.UnpicklingError: Weights only load failed. This file can still be loaded, to do so you have two options, \u001b[1mdo those steps only if you trust the source of the checkpoint\u001b[0m.",
+    "versions": {
+      "torch": "2.6.0",
+      "python": "3.12"
+    },
+    "source": {
+      "url": "https://raw.githubusercontent.com/pytorch/pytorch/v2.6.0/docs/source/notes/serialization.rst",
+      "licence": "BSD-3-Clause"
+    },
+    "score": {
+      "recent": true,
+      "environment": false,
+      "transferable": true,
+      "reproducible": true,
+      "total": 3
+    },
+    "status": "reproduced",
+    "reason": ""
+  },
+  {
+    "id": "py-uv-no-venv",
+    "error_line": "error: No virtual environment found; run `uv venv` to create an environment, or pass `--system` to install into a non-virtual environment",
+    "versions": {
+      "uv": "0.5.0",
+      "python": "3.12"
+    },
+    "source": {
+      "url": "https://raw.githubusercontent.com/astral-sh/uv/0.5.0/docs/pip/environments.md",
+      "licence": "MIT OR Apache-2.0"
+    },
+    "score": {
+      "recent": true,
+      "environment": false,
+      "transferable": true,
+      "reproducible": true,
+      "total": 3
+    },
+    "status": "reproduced",
+    "reason": ""
+  },
+  {
+    "id": "py-django4-force-text",
+    "error_line": "ImportError: cannot import name 'force_text' from 'django.utils.encoding' (/usr/local/lib/python3.12/site-packages/django/utils/encoding.py). Did you mean: 'force_bytes'?",
+    "versions": {
+      "django": "4.2.16",
+      "python": "3.12"
+    },
+    "source": {
+      "url": "https://raw.githubusercontent.com/django/django/4.2.16/docs/releases/4.0.txt",
+      "licence": "BSD-3-Clause"
+    },
+    "score": {
+      "recent": false,
+      "environment": false,
+      "transferable": true,
+      "reproducible": true,
+      "total": 2
+    },
+    "status": "reproduced",
+    "reason": ""
+  },
+  {
+    "id": "py-jinja31-markup",
+    "error_line": "ImportError: cannot import name 'Markup' from 'jinja2' (/usr/local/lib/python3.12/site-packages/jinja2/__init__.py)",
+    "versions": {
+      "jinja2": "3.1.4",
+      "python": "3.12"
+    },
+    "source": {
+      "url": "https://raw.githubusercontent.com/pallets/jinja/3.1.4/CHANGES.rst",
+      "licence": "BSD-3-Clause"
+    },
+    "score": {
+      "recent": false,
+      "environment": false,
+      "transferable": true,
+      "reproducible": true,
+      "total": 2
+    },
+    "status": "reproduced",
+    "reason": ""
+  },
+  {
+    "id": "py-pyyaml541-cython3",
+    "error_line": "AttributeError: 'build_ext' object has no attribute 'cython_sources'",
+    "versions": {
+      "pyyaml": "5.4.1",
+      "python": "3.11"
+    },
+    "source": {
+      "url": "https://raw.githubusercontent.com/yaml/pyyaml/main/CHANGES",
+      "licence": "MIT"
+    },
+    "score": {
+      "recent": false,
+      "environment": false,
+      "transferable": true,
+      "reproducible": true,
+      "total": 2
+    },
+    "status": "reproduced",
+    "reason": ""
+  },
+  {
+    "id": "py-pyyaml6-load-loader",
+    "error_line": "TypeError: load() missing 1 required positional argument: 'Loader'",
+    "versions": {
+      "pyyaml": "6.0.2",
+      "python": "3.12"
+    },
+    "source": {
+      "url": "https://raw.githubusercontent.com/yaml/pyyaml/6.0/CHANGES",
+      "licence": "MIT"
+    },
+    "score": {
+      "recent": false,
+      "environment": false,
+      "transferable": true,
+      "reproducible": true,
+      "total": 2
+    },
+    "status": "reproduced",
+    "reason": ""
+  },
+  {
+    "id": "py-sqlalchemy2-engine-execute",
+    "error_line": "AttributeError: 'Engine' object has no attribute 'execute'",
+    "versions": {
+      "sqlalchemy": "2.0.36",
+      "python": "3.12"
+    },
+    "source": {
+      "url": "https://raw.githubusercontent.com/sqlalchemy/sqlalchemy/rel_2_0_36/doc/build/changelog/whatsnew_20.rst",
+      "licence": "MIT"
+    },
+    "score": {
+      "recent": false,
+      "environment": false,
+      "transferable": true,
+      "reproducible": true,
+      "total": 2
+    },
+    "status": "reproduced",
+    "reason": ""
+  },
+  {
+    "id": "py-sqlalchemy2-postgres-dialect",
+    "error_line": "sqlalchemy.exc.NoSuchModuleError: Can't load plugin: sqlalchemy.dialects:postgres",
+    "versions": {
+      "sqlalchemy": "2.0.36",
+      "python": "3.12"
+    },
+    "source": {
+      "url": "https://raw.githubusercontent.com/sqlalchemy/sqlalchemy/rel_2_0_36/doc/build/changelog/changelog_14.rst",
+      "licence": "MIT"
+    },
+    "score": {
+      "recent": false,
+      "environment": false,
+      "transferable": true,
+      "reproducible": true,
+      "total": 2
+    },
+    "status": "reproduced",
+    "reason": ""
+  },
+  {
+    "id": "py-torch-cpu-wheel-cuda",
+    "error_line": "AssertionError: Torch not compiled with CUDA enabled",
+    "versions": {
+      "torch": "2.6.0+cpu",
+      "python": "3.12"
+    },
+    "source": {
+      "url": "https://raw.githubusercontent.com/pytorch/pytorch/v2.6.0/README.md",
+      "licence": "BSD-3-Clause"
+    },
+    "score": {
+      "recent": false,
+      "environment": false,
+      "transferable": true,
+      "reproducible": true,
+      "total": 2
+    },
+    "status": "rejected",
+    "reason": "the fix downloads several gigabytes of CUDA wheels, more than a factory container can hold"
+  },
+  {
+    "id": "py-werkzeug3-url-quote",
+    "error_line": "ImportError: cannot import name 'url_quote' from 'werkzeug.urls' (/usr/local/lib/python3.12/site-packages/werkzeug/urls.py). Did you mean: 'unquote'?",
+    "versions": {
+      "flask": "2.2.2",
+      "werkzeug": "3.0.1",
+      "python": "3.12"
+    },
+    "source": {
+      "url": "https://raw.githubusercontent.com/pallets/werkzeug/3.0.1/CHANGES.rst",
+      "licence": "BSD-3-Clause"
+    },
+    "score": {
+      "recent": false,
+      "environment": false,
+      "transferable": true,
+      "reproducible": true,
+      "total": 2
+    },
+    "status": "reproduced",
+    "reason": ""
+  }
+]

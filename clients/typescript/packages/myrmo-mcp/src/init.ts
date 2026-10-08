@@ -39,8 +39,9 @@ You can call myrmo_search, myrmo_report and myrmo_publish.
    and wait.
 6. Everything published is public and automatic redaction cannot recognise names or meaning. Remove
    people, company, customer and internal system names, hostnames, internal URLs, package scopes
-   (@company/...), repository and ticket names and business data, and search with the generic part of an
-   error. Publish only problems of tooling, environment, versions, configuration or third-party libraries,
+   (@company/...), repository and ticket names and business data, and never include the name of a company,
+   customer, internal product or project, even inside a configuration value or a log line: write a
+   placeholder such as <company>. Search with the generic part of an error. Publish only problems of tooling, environment, versions, configuration or third-party libraries,
    never patches from proprietary source.
 <!-- myrmo:end -->
 `;

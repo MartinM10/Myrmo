@@ -20,6 +20,7 @@ const GROUPS = [
   ["reference", "Reference"],
   ["operate", "Operate"],
   ["security", "Security"],
+  ["legal", "Legal"],
 ];
 
 function front(file) {

@@ -1,0 +1,11 @@
+{
+  "id": "node-require-esm",
+  "title": "require() of an ESM-only dependency",
+  "image_tag": "myrmobench/node-require-esm",
+  "prompt": "In /work there is a small Node.js program, index.js. `node index.js` fails. Make it run and print the greeting. It must keep using the `chalk` package for the colour.",
+  "error_line": "Error [ERR_REQUIRE_ESM]: require() of ES Module",
+  "max_minutes": 15,
+  "symptom": "cd /work && node index.js",
+  "symptom_match": "ERR_REQUIRE_ESM",
+  "ready": "true"
+}

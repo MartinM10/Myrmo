@@ -1,0 +1,10 @@
+{
+  "id": "rust-msrv-dependency",
+  "ok": true,
+  "error_line": "error: rustc 1.78.0 is not supported by the following package:",
+  "exit_code": 101,
+  "output_tail": "Downloading crates ...\n  Downloaded time-core v0.1.4\n  Downloaded powerfmt v0.2.1\n  Downloaded num-conv v0.1.0\n  Downloaded deranged v0.4.0\n  Downloaded serde_core v1.0.229\n  Downloaded time v0.3.41\n  Downloaded serde v1.0.229\nerror: rustc 1.78.0 is not supported by the following package:\n  powerfmt@0.2.1 requires rustc 1.79.0\nEither upgrade rustc or select compatible dependency versions with\n`cargo update <name>@<current-ver> --precise <compatible-ver>`\nwhere `<compatible-ver>` is the latest version supporting rustc 1.78.0",
+  "image": "rust:1.78",
+  "image_digest": "rust@sha256:5907e96b0293eb53bcc8f09b4883d71449808af289862950ede9a0e3cca44ff5",
+  "command": "cargo build 2>&1"
+}

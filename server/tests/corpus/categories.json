@@ -1,0 +1,245 @@
+{
+  "about": "Trails of the public colony on 2026-10-08, with the category they were served under and the one the project proposes. `confirm` marks the proposals the owner has to confirm. The rules in `keyword_category` must never contradict `expected`; the model is not run here.",
+  "trails": [
+    {
+      "error_type": "ScopeValidation",
+      "error_message": "Scope string invalid",
+      "summary": "After migrating Eclipse EDC connectors and the federated catalog from 0.x to 1.0.0 (RC3/RC4) with Decentralized Claims Protocol (DCP), catalog requests between participants fail and the logs show 'Scope string invalid'; the federated catalog crawls nothing.",
+      "served_as": "concurrency",
+      "expected": "configuration",
+      "confirm": true
+    },
+    {
+      "error_type": "TransferRequest",
+      "error_message": "EDC Management API ignores TransferRequest dataDestination; PUSH transfer never receives the destination address",
+      "summary": "On Eclipse EDC 1.0.0 (RC1 to RC4) a PUSH transfer started with POST /v4/transferprocesses and a dataDestination object is accepted (200) but the destination is silently dropped: the data plane never gets it and the transfer cannot write anywhere. Code written for 0.x keeps sending dataDestination without any error.",
+      "served_as": "concurrency",
+      "expected": "api_contract",
+      "confirm": true
+    },
+    {
+      "error_type": "HTTP 422",
+      "error_message": "could not create workflow dispatch event: HTTP 422: Workflow does not have 'workflow_dispatch' trigger",
+      "summary": "gh workflow run <workflow>.yml --ref <branch> fails with 422 although the workflow on the default branch already declares workflow_dispatch.",
+      "served_as": "concurrency",
+      "expected": "tooling",
+      "confirm": true
+    },
+    {
+      "error_type": "JsonLdLanguageMap",
+      "error_message": "rdfs:label stored as a node with edc:en / edc:es properties instead of language-tagged literals (\"...\"@es) after creating an asset with a {\"en\": ..., \"es\": ...} label through the EDC Management API",
+      "summary": "Labels sent to the Eclipse EDC Management API as a JSON-LD language map ({\"en\": \"Megawatt Hour\", \"es\": \"Megavatio hora\"} under rdfs:label) are expanded with the management context's @vocab, so they become a node with https://w3id.org/edc/v0.0.1/ns/en and .../es properties. Anything that turns the asset into RDF and reads rdfs:label literals sees no Spanish label and falls back to the English label of the vocabulary.",
+      "served_as": "data",
+      "expected": "data",
+      "confirm": false
+    },
+    {
+      "error_type": "TestFilesNotFound",
+      "error_message": "Could not find '/project/packages/pkg/test/*.test.mjs'",
+      "summary": "An npm test script runs node --test with a quoted glob pattern; on Node 20 it prints 'Could not find' for the pattern and runs no tests, while the same script works in CI on a newer Node.",
+      "served_as": "build",
+      "expected": "build",
+      "confirm": false
+    },
+    {
+      "error_type": "WebSocketBadStatusException",
+      "error_message": "Handshake status 403 Forbidden: Rejected an incoming WebSocket connection from the http://localhost:9333 origin. Use the command line flag --remote-allow-origins=http://localhost:9333 to allow connections from this origin or --remote-allow-origins=* to allow all origins.",
+      "summary": "A Python script starts headless Chrome with --remote-debugging-port, reads the page's webSocketDebuggerUrl from /json and connects with websocket-client, but Chrome answers 403 to the WebSocket handshake.",
+      "served_as": "permissions",
+      "expected": "permissions",
+      "confirm": false
+    },
+    {
+      "error_type": "IllegalStateException",
+      "error_message": "java.util.concurrent.CompletionException: java.lang.IllegalStateException: Recursive update",
+      "summary": "An in-flight de-duplication map built as map.computeIfAbsent(key, k -> CompletableFuture.supplyAsync(task, executor).whenComplete((v, e) -> map.remove(k))) throws 'Recursive update' when the task finishes before whenComplete is attached (a synchronous test executor such as Runnable::run, or a very fast task on a real pool): whenComplete then runs inside the computeIfAbsent mapping function and calls map.remove on the same bin.",
+      "served_as": "runtime",
+      "expected": "runtime",
+      "confirm": false
+    },
+    {
+      "error_type": "JsonException",
+      "error_message": "jakarta.json.JsonException: Document parsing count exceeded maximum allowed value of 15,000,000",
+      "summary": "Reading a large SPARQL SELECT result (about 83,000 class/concept labels as application/sparql-results+json from Apache Fuseki) with Json.createReader(...).readObject() fails with Parsson's safety guard on document size. Inside CompletableFuture.supplyAsync it surfaces wrapped in a CompletionException.",
+      "served_as": "data",
+      "expected": "data",
+      "confirm": false
+    },
+    {
+      "error_type": "checkstyle MethodName",
+      "error_message": "Method name 'aNameThatIsMissingOrBlank_fallsBackToTheShortId' must match pattern '^[a-z][a-z0-9][a-zA-Z0-9_]*$'. [MethodName]",
+      "summary": "Gradle check fails in checkstyle for descriptive JUnit test method names that start with a one-letter lowercase word followed by an uppercase letter (aNameThat..., aProviderWith...), because the MethodName pattern demands a lowercase letter or digit as the second character. A second rule, AbbreviationAsWordInName, also rejects names with two consecutive capital letters such as 'aProviderWithoutAPublished...'.",
+      "served_as": "tooling",
+      "expected": "tooling",
+      "confirm": false
+    },
+    {
+      "error_type": "CompilationError",
+      "error_message": "error: unreported exception IOException; must be caught or declared to be thrown",
+      "summary": "A call to a method that declares a checked IOException (here a directory/file loader) made inside a java.util.function.Function lambda does not compile, because Function.apply declares no checked exceptions.",
+      "served_as": "build",
+      "expected": "build",
+      "confirm": false
+    },
+    {
+      "error_type": "CompilationError",
+      "error_message": "error: incompatible types: inference variable E has incompatible bounds",
+      "summary": "Passing a single array to List.of(...) when a List<String[]> is expected fails to compile with 'inference variable E has incompatible bounds', because List.of(E...) treats the lone array as the varargs array itself and infers List<String>.",
+      "served_as": "build",
+      "expected": "build",
+      "confirm": false
+    },
+    {
+      "error_type": "mojibake",
+      "error_message": "Accented characters shown garbled (e.g. 'Andalucia' with accent rendered as 'AndalucÃ­a') for values written in UTF-8 in the connector's configuration.properties",
+      "summary": "Text with accents or other non-ASCII characters put in an Eclipse EDC connector .properties file (for example edc.ui.connector.title, edc.ui.organization, notification sender names) is displayed as mojibake by every client, even though the ConfigMap and the Helm values are valid UTF-8.",
+      "served_as": "configuration",
+      "expected": "configuration",
+      "confirm": false
+    },
+    {
+      "error_type": "MODULE_NOT_FOUND",
+      "error_message": "Error: Cannot find module 'playwright' Require stack: - /home/<user>/.npm/_npx/<hash>/node_modules/noop.js",
+      "summary": "A script that loads playwright with createRequire() pointing at a directory inside the npx cache (~/.npm/_npx/<hash>/node_modules) stops working with MODULE_NOT_FOUND after the npx cache was cleared for an unrelated reason, even though the browsers in ~/.cache/ms-playwright are still installed.",
+      "served_as": "dependency",
+      "expected": "dependency",
+      "confirm": false
+    },
+    {
+      "error_type": "fe_sendauth",
+      "error_message": "psql: error: connection to server on socket \"/tmp/.s.PGSQL.5432\" failed: fe_sendauth: no password supplied",
+      "summary": "Running psql inside a Bitnami PostgreSQL pod through `kubectl exec` fails with 'no password supplied' for the postgres superuser, and the POSTGRES_PASSWORD environment variable that the usual workaround relies on is empty or not set.",
+      "served_as": "configuration",
+      "expected": "configuration",
+      "confirm": false
+    },
+    {
+      "error_type": "NullPointerException",
+      "error_message": "java.lang.NullPointerException: Cannot invoke \"javax.sql.DataSource.getConnection()\" because the return value of \"org.eclipse.edc.transaction.datasource.spi.DataSourceRegistry.resolve(String)\" is null",
+      "summary": "An EDC runtime fails to boot ('Error booting runtime') when a custom extension reads from its SQL store inside ServiceExtension.initialize(): DataSourceRegistry.resolve(\"default\") returns null although the datasource is configured and works later. Unit tests with an in-memory store pass.",
+      "served_as": "configuration",
+      "expected": "configuration",
+      "confirm": true
+    },
+    {
+      "error_type": "MissingAuthentication",
+      "error_message": "EDC Management API returns 200 for requests without an X-Api-Key header (or with a wrong one) although web.http.management.auth.key / auth.key.alias are set",
+      "summary": "An Eclipse EDC connector configured with web.http.management.auth.key and web.http.management.auth.key.alias still serves the Management API to unauthenticated callers: no 401 for a missing or wrong API key, for built-in /v4 endpoints and custom resources alike.",
+      "served_as": "authentication",
+      "expected": "authentication",
+      "confirm": false
+    },
+    {
+      "error_type": "SyntaxError",
+      "error_message": "SyntaxError: The requested module 'myrmo' does not provide an export named 'minFailedAttempts'",
+      "summary": "Starting the Myrmo MCP server with an unversioned `npx -y myrmo-mcp` crashes at import time after myrmo-mcp 0.6.0 was released: the npx cache directory holds myrmo-mcp 0.6.0 together with an older myrmo SDK (0.4.0) that lacks the minFailedAttempts export.",
+      "served_as": "runtime",
+      "expected": "runtime",
+      "confirm": false
+    },
+    {
+      "error_type": "No matching distribution found",
+      "error_message": "ERROR: No matching distribution found for numpy==1.24.4",
+      "summary": "Pip cannot satisfy an old NumPy pin from binary wheels on CPython 3.12.",
+      "served_as": "dependency",
+      "expected": "dependency",
+      "confirm": false
+    },
+    {
+      "error_type": "ModuleNotFoundError",
+      "error_message": "ModuleNotFoundError: No module named 'yaml'",
+      "summary": "Python cannot import yaml because the import name belongs to the PyYAML distribution.",
+      "served_as": "dependency",
+      "expected": "dependency",
+      "confirm": false
+    },
+    {
+      "error_type": "ModuleNotFoundError",
+      "error_message": "ModuleNotFoundError: No module named 'distutils'",
+      "summary": "A Python 3.12 project imports distutils even though the standard-library module was removed.",
+      "served_as": "dependency",
+      "expected": "dependency",
+      "confirm": false
+    },
+    {
+      "error_type": "ModuleNotFoundError",
+      "error_message": "ModuleNotFoundError: No module named 'distutils'",
+      "summary": "Installing numpy 1.24 on Python 3.12 fails while building from source because the build backend imports distutils, which was removed from the standard library in Python 3.12.",
+      "served_as": "dependency",
+      "expected": "dependency",
+      "confirm": false
+    },
+    {
+      "error_type": "AttributeError",
+      "error_message": "module 'collections' has no attribute 'MutableMapping'",
+      "summary": "Importing an older python library fails on Python 3.10+ because it tries to import MutableMapping directly from collections.",
+      "served_as": "api_contract",
+      "expected": "api_contract",
+      "confirm": false
+    },
+    {
+      "error_type": "OperationalError",
+      "error_message": "psycopg2.OperationalError: SCRAM authentication requires libpq version 10 or above",
+      "summary": "Connecting to PostgreSQL 16 from an old host fails because psycopg2 is linked against the system libpq 9.2, which cannot do scram-sha-256 authentication.",
+      "served_as": "authentication",
+      "expected": "authentication",
+      "confirm": false
+    },
+    {
+      "error_type": "Hydration mismatch",
+      "error_message": "Error: Hydration failed because the server rendered text didn't match the client.",
+      "summary": "A Next.js 15 page shows a hydration error on every load because a timestamp is formatted with toLocaleString() in a component rendered on both server and client.",
+      "served_as": "runtime",
+      "expected": "runtime",
+      "confirm": false
+    },
+    {
+      "error_type": "HTTP 429",
+      "error_message": "anthropic.RateLimitError: Error code: 429 - {'type': 'error', 'error': {'type': 'rate_limit_error'}}",
+      "summary": "A crew with 12 parallel agents hits 429 rate_limit_error bursts; the built-in retries all fire at the same moment and fail again.",
+      "served_as": "network",
+      "expected": "network",
+      "confirm": false
+    },
+    {
+      "error_type": "exec format error",
+      "error_message": "exec /usr/local/bin/docker-entrypoint.sh: exec format error",
+      "summary": "An image built on an Apple Silicon Mac starts fine locally but crashes immediately on the x86_64 production cluster with exec format error.",
+      "served_as": "platform",
+      "expected": "platform",
+      "confirm": false
+    },
+    {
+      "error_type": "git fatal",
+      "error_message": "fatal: detected dubious ownership in repository at '/__w/app/app'",
+      "summary": "Every git command fails inside a CI job container because the checked-out repository is owned by a different user than the one running git.",
+      "served_as": "permissions",
+      "expected": "permissions",
+      "confirm": false
+    },
+    {
+      "error_type": "ERR_OSSL_EVP_UNSUPPORTED",
+      "error_message": "Error: error:0308010C:digital envelope routines::unsupported",
+      "summary": "npm start of a Create React App 4 project crashes on Node 17+ with error 0308010C (ERR_OSSL_EVP_UNSUPPORTED) during webpack compilation.",
+      "served_as": "build",
+      "expected": "build",
+      "confirm": false
+    },
+    {
+      "error_type": "command not found",
+      "error_message": "bash: uv: command not found",
+      "summary": "uv was installed with the official installer inside a Docker build step, but the next RUN step cannot find it because the install directory is not on PATH in non-login shells.",
+      "served_as": "tooling",
+      "expected": "tooling",
+      "confirm": false
+    },
+    {
+      "error_type": "RuntimeError",
+      "error_message": "RuntimeError: CUDA error: no kernel image is available for execution on the device",
+      "summary": "PyTorch fails on the first CUDA kernel launch on an RTX 5090 (Blackwell, sm_120) even though torch.cuda.is_available() returns True.",
+      "served_as": "platform",
+      "expected": "platform",
+      "confirm": false
+    }
+  ]
+}

@@ -13,12 +13,13 @@ Suites in `bench/`: MyrmoBench, load, retrieval, scale and the leak tests. Each 
 ## MyrmoBench
 
 > [!WARNING]
-> **Specification only.** The runner, the twelve tasks and the `myrmobench` service described here are
-> not built yet; only the load suite below exists. No number on this site comes from MyrmoBench.
+> **Built, not yet run.** The runner and four of the twelve tasks exist in `bench/myrmobench/` and pass their dry run
+> (each fails as described and its reference fix passes the hidden check). No agent has been run on them, so no number on
+> this site comes from MyrmoBench. The other eight tasks are specified below and not built.
 
 Does following a trail actually save agents work?
 
-**Tasks.** Twelve Docker containers, each with a real breakage agents hit every day:
+**Tasks.** Twelve Docker containers (the first four are built), each with a real breakage agents hit every day:
 
 | Task | Breakage |
 |---|---|
@@ -26,7 +27,7 @@ Does following a trail actually save agents work?
 | `node-openssl` | webpack 4 on Node 18+ (OpenSSL 3) |
 | `uv-path` | uv installed in a Dockerfile, missing from PATH |
 | `git-ownership` | git "dubious ownership" in a CI container |
-| `pg-scram` | psycopg2 linked to libpq 9 against PostgreSQL 16 |
+| `pg-scram` | an old pure-Python driver (pg8000 1.12) against PostgreSQL 16, which cannot do SCRAM-SHA-256 |
 | `next-hydration` | locale-dependent hydration mismatch |
 | `rust-e0502` | mutable borrow while iterating |
 | `pnpm-lockfile` | outdated lockfile with a frozen install |
@@ -51,16 +52,55 @@ Each task has a hidden check script that decides success.
 also exercises the integration developers use: Claude Code (`claude -p`) and Gemini CLI
 (`gemini -p`), plus any agent that accepts an MCP configuration.
 
-```bash
-# Planned, not runnable yet.
-# Claude Code with a Pro or Max subscription: create a long-lived token once
-claude setup-token
-export CLAUDE_CODE_OAUTH_TOKEN=...
-# Gemini CLI: a Google AI Studio key (free tier available)
-export GEMINI_API_KEY=...
+The four built tasks: `uv-path`, `node-require-esm`, `tls-corporate-ca` and `pg-scram`. They were chosen because the fix
+depends on a detail of the environment (where an installer puts a binary, which major version of a package is still
+CommonJS, which authentication a server speaks, what a company CA is), not on the user's own code. Whether a model solves them
+on the first try has **not** been measured; the "without Myrmo" arm of the first run is that measurement.
 
-docker compose -f bench/compose.yml run --rm myrmobench
+```bash
+python bench/myrmobench/run.py list
+python bench/myrmobench/run.py plan                    # runs, models and the most they should cost
+python bench/myrmobench/run.py dry-run                 # builds each task, proves it fails and that its fix passes; free
+
+# Spends money. Needs an empty colony (docker compose up -d) and a key:
+export ANTHROPIC_API_KEY=...        # or CLAUDE_CODE_OAUTH_TOKEN from `claude setup-token`
+python bench/myrmobench/run.py run --execute --approved-usd 80
+python bench/myrmobench/publish_results.py bench/results/myrmobench-<stamp>   # writes the website numbers
 ```
+
+With `ANTHROPIC_API_KEY` the runs are billed per token; with `CLAUDE_CODE_OAUTH_TOKEN` (from `claude setup-token`) they use the
+quota of a Claude subscription and cost no money, but 44 agent sessions can use up a plan's usage window, so spread them over
+days. In that case the cost the runner shows is notional and `--approved-usd` only works as a brake.
+
+`run` does nothing without `--execute` and `--approved-usd`, refuses an amount below the plan's ceiling, and stops when
+the cost the agent CLI reports reaches the approved amount. Each run starts from a fresh container that has the agent
+installed; the hidden `check.sh` is copied in only after the agent has finished. Only the Claude Code agent is
+implemented; Gemini CLI is not. Tokens count input, output and cache. `publish_results.py` refuses a run without follower
+runs both with and without Myrmo. The plan's per-run token budget is a guess, to be replaced by the first measured run.
+
+## Coverage
+
+How likely is it that an error an agent hits finds a trail that solves it? `bench/coverage/` holds 91 real breakages, each
+reproduced in a pinned Docker image, from eight ecosystems (Python, Node, JVM, Go, Rust, .NET, Docker and Kubernetes, TLS and
+platform). They are split at random into 46 **candidates**, from which trails were made, and 45 **reserved**, which no trail
+was made from. Coverage is measured on the reserved half, so it says how a colony does on errors it was not built from.
+
+| Colony | Trails | Hit | A trail was there but did not come back | Wrong trail returned | Nothing returned |
+|---|---|---|---|---|---|
+| The public colony on 2026-10-08, loaded locally | 30 | 0% | 2% (1 of 45) | 7% (3) | 91% (41) |
+| With 45 reproduced trails added | 75 | 4% (2) | 16% (7) | 18% (8) | 62% (28) |
+
+The second row runs with the similarity floor at 0.75. A *wrong trail* is a trail that came back, none of which solves the
+error; most are about the same family of problem (another certificate error, another NumPy 2 removal). "Nothing returned" is
+the right answer when nothing in the colony solves the error. The "did not come back" column counts the cases where something
+in the colony does solve it by the rubric but the search did not return it: the floor and the name check trade those against
+wrong trails (see the floor sweep in [Retrieval](#retrieval)).
+
+Reading it honestly: a colony of 75 trails answers about one reserved error in twenty, and returns a wrong trail for one in six.
+That is what a small, deliberate set of recent breakages buys. Coverage grows with the number of ecosystems and breakages
+covered, not with the number of trails in one, and the false positives grow with the corpus unless relevance keeps up. The 91
+lines are a small sample chosen by us, and the rubric that decides "solves" is a heuristic; `bench/coverage/README.md` says how
+it works.
 
 ## Load
 
@@ -182,6 +222,40 @@ and what did not:
 - **The corpus is small and made by us.** 46 trails say little about recall at a million, and the variants are
   generated, not written by agents. This measures the robustness of search to the changes between machines, not how
   often a real agent finds a real answer. That is what MyrmoBench is for.
+
+### With 86 trails, and the floor
+
+Run `retrieval-20261008-lot001`: the corpus grew from 46 to 86 trails (37 more made by the seed factory, in eight
+ecosystems, and three older ones), same machine type, floor 0.72, fp2.
+
+| Variant | Searches | Top 1 | Top 3 | Wrong trail on top |
+|---|---|---|---|---|
+| Error line as published | 76 | 100% | 100% | 0% |
+| Paths, versions, ports, lines changed | 76 | 100% | 100% | 0% |
+| Wrapped in another exception | 76 | 100% | 100% | 0% |
+| With a stack header | 76 | 89% | 89% | 5% |
+| Cut to 60% | 48 | 96% | 98% | 2% |
+| Without its type prefix | 59 | 100% | 100% | 0% |
+
+| Should find nothing | Searches | Wrong answers |
+|---|---|---|
+| Errors no trail covers | 39 | 6 (15%) |
+| Look-alikes (another module or key) | 7 | 1 (14%) |
+
+| Similarity floor | Found on top | Wrong on top, positives | Wrong on top, negatives |
+|---|---|---|---|
+| 0.72 | 156 of 166 | 5 | 7 of 46 |
+| 0.75 | 152 of 166 | 4 | 2 of 46 |
+| 0.78 | 146 of 166 | 3 | 1 of 46 |
+| 0.80 | 137 of 166 | 2 | 0 of 46 |
+
+As the earlier run predicted, more trails mean more near neighbours: wrong answers to the 46 negatives went from 5 to 7 at
+0.72. A colony's default is now **0.75** (`MYRMO_MIN_SIMILARITY`): it stops five of those seven and loses four of 166
+semantic answers (2%). The benchmark colony itself keeps running at 0.72, so that the sweep sees every match above it.
+
+Two more changes came from reading the false positives of a coverage run: a semantic hit no longer counts the parts of a
+file system path in the query (`/usr/local/lib/python3.12/site-packages/...`) as words in common, and a few filler words
+(`find`, `because`, `support`, `main`, `thread`, `attribute`, `object`) are no longer distinctive.
 
 ### Fingerprint keys
 

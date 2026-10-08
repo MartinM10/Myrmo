@@ -1,0 +1,10 @@
+{
+  "id": "py-werkzeug3-url-quote",
+  "ok": true,
+  "error_line": "ImportError: cannot import name 'url_quote' from 'werkzeug.urls' (/usr/local/lib/python3.12/site-packages/werkzeug/urls.py). Did you mean: 'unquote'?",
+  "exit_code": 1,
+  "output_tail": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n  File \"/usr/local/lib/python3.12/site-packages/flask/__init__.py\", line 5, in <module>\n    from .app import Flask as Flask\n  File \"/usr/local/lib/python3.12/site-packages/flask/app.py\", line 30, in <module>\n    from werkzeug.urls import url_quote\nImportError: cannot import name 'url_quote' from 'werkzeug.urls' (/usr/local/lib/python3.12/site-packages/werkzeug/urls.py). Did you mean: 'unquote'?",
+  "image": "python:3.12-slim",
+  "image_digest": "python@sha256:05cda9777409a9c3ffddd94a4c476b79f0769a0b4857f0c7ed9226b6800b0d6f",
+  "command": "python -c \"import flask\" 2>&1"
+}

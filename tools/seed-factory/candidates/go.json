@@ -1,0 +1,64 @@
+[
+  {
+    "id": "go-cgo-alpine-no-gcc",
+    "error_line": "cgo: C compiler \"gcc\" not found: exec: \"gcc\": executable file not found in $PATH",
+    "versions": {
+      "go": "1.23",
+      "os": "alpine"
+    },
+    "source": {
+      "url": "https://raw.githubusercontent.com/golang/go/go1.23.0/src/cmd/cgo/doc.go",
+      "licence": "BSD-3-Clause"
+    },
+    "score": {
+      "recent": false,
+      "environment": true,
+      "transferable": true,
+      "reproducible": true,
+      "total": 3
+    },
+    "status": "reproduced",
+    "reason": ""
+  },
+  {
+    "id": "go-toolchain-local-too-new",
+    "error_line": "go: go.mod requires go >= 1.24.0 (running go 1.22.5; GOTOOLCHAIN=local)",
+    "versions": {
+      "go": "1.22.5",
+      "go.mod": "1.24.0"
+    },
+    "source": {
+      "url": "https://raw.githubusercontent.com/golang/go/master/src/cmd/go/internal/toolchain/select.go",
+      "licence": "BSD-3-Clause"
+    },
+    "score": {
+      "recent": true,
+      "environment": false,
+      "transferable": true,
+      "reproducible": true,
+      "total": 3
+    },
+    "status": "reproduced",
+    "reason": ""
+  },
+  {
+    "id": "go-private-module-no-credentials",
+    "error_line": "fatal: could not read Username for 'https://github.com': terminal prompts disabled",
+    "versions": {
+      "go": "1.22.5"
+    },
+    "source": {
+      "url": "https://raw.githubusercontent.com/golang/go/go1.23.0/src/cmd/go/alldocs.go",
+      "licence": "BSD-3-Clause"
+    },
+    "score": {
+      "recent": false,
+      "environment": false,
+      "transferable": true,
+      "reproducible": true,
+      "total": 2
+    },
+    "status": "reproduced",
+    "reason": ""
+  }
+]

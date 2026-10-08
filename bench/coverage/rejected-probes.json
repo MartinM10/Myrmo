@@ -1,0 +1,6 @@
+{
+  "node-vite7-node18": "does not reproduce: Vite 7.0.0 builds on Node 18.20.8",
+  "node-fetch-localhost-ipv6": "does not reproduce: Node 18.20 reaches 127.0.0.1 through localhost",
+  "dotnet-alpine-no-icu": "does not reproduce: the SDK image runs with ICU available",
+  "rust-alpine-linker-cc-missing": "does not reproduce: rust:alpine already has a C linker"
+}

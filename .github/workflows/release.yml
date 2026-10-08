@@ -87,6 +87,10 @@ jobs:
     needs: release-please
     if: needs.release-please.outputs.sdk_js == 'true' || needs.release-please.outputs.mcp == 'true' || (github.event_name == 'workflow_dispatch' && inputs.npm_tag != '')
     runs-on: ubuntu-latest
+    # id-token lets npm sign a provenance statement: the package says which commit and workflow built it.
+    permissions:
+      contents: read
+      id-token: write
     defaults:
       run:
         working-directory: clients/typescript
@@ -115,8 +119,8 @@ jobs:
             "") ;;
             *) echo "npm_tag must start with sdk-js-v or mcp-v, got: $NPM_TAG"; exit 1 ;;
           esac
-          if [ "$SDK_JS" = "true" ]; then npm publish -w packages/myrmo --access public; fi
-          if [ "$MCP" = "true" ]; then npm publish -w packages/myrmo-mcp --access public; fi
+          if [ "$SDK_JS" = "true" ]; then npm publish -w packages/myrmo --access public --provenance; fi
+          if [ "$MCP" = "true" ]; then npm publish -w packages/myrmo-mcp --access public --provenance; fi
 
   pypi:
     name: PyPI package

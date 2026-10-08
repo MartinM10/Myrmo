@@ -1,0 +1,10 @@
+{
+  "id": "dotnet-global-json-sdk-missing",
+  "ok": true,
+  "error_line": "A compatible .NET SDK was not found.",
+  "exit_code": 145,
+  "output_tail": "The command could not be loaded, possibly because:\n  * You intended to execute a .NET application:\n      The application '--version' does not exist.\n  * You intended to execute a .NET SDK command:\n      A compatible .NET SDK was not found.\n\nRequested SDK version: 9.0.100\nglobal.json file: /w/global.json\n\nInstalled SDKs:\n\nInstall the [9.0.100] .NET SDK or update [/w/global.json] to match an installed SDK.\n\nLearn about SDK resolution:\nhttps://aka.ms/dotnet/sdk-not-found\n8.0.425 [/usr/share/dotnet/sdk]",
+  "image": "mcr.microsoft.com/dotnet/sdk:8.0",
+  "image_digest": "mcr.microsoft.com/dotnet/sdk@sha256:ec9c0a0dc5f60adc2065762050638dd5ed5facfc53716d4580a42d86027c8e80",
+  "command": "cd /w && dotnet --version 2>&1"
+}

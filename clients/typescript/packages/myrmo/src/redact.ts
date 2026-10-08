@@ -76,6 +76,53 @@ const card: Replacer = ([m]) => {
 const keepPrefix = (kind: string, valueGroup: number): Replacer => (m) =>
   isReference(m[valueGroup]) ? null : m.slice(1, valueGroup).join("") + full(kind);
 
+// Configuration values that name an organisation or a person: `edc.ui.organization=Acme`, `"owner": "Ana"`,
+// `LABEL maintainer=...`. The key decides, never the value, because a name looks like any other word. A key
+// matches only when its last part is one of these words, so `org.eclipse.edc:dcp-core` (a Maven coordinate) and
+// `--org-id` are left alone. A product or connector `*.title` is included: it is usually the owner's brand.
+const ORG_KEY =
+  String.raw`(?:(?:[A-Za-z0-9_.\-]{0,64}[._\-])?(?:(?:organi[sz]ations?|org|compan(?:y|ies)|tenants?|customers?|owners?|authors?|` +
+  String.raw`contacts?|maintainers?|publishers?|vendors?|employers?)(?:[_.\-]?(?:name|title))?|` +
+  String.raw`(?:client|display|full|legal|trade|business|brand)[_.\-]?name)|` +
+  String.raw`(?:[A-Za-z0-9_.\-]{0,64}[._\-])?(?:connector|product|portal|brand|app|ui|site)[._\-](?:[A-Za-z0-9_.\-]{0,64}[._\-])?title)`;
+/** Values that are not a name: placeholders, types and generic words. */
+const ORG_KEEP = new Set([
+  "default", "unknown", "example", "test", "testing", "user", "users", "admin", "administrator", "root", "me",
+  "self", "system", "anonymous", "n/a", "na", "tbd", "todo", "unset", "any", "object", "dict", "list", "set",
+  "array", "map", "number", "float", "date", "datetime", "name", "author", "owner", "org", "organization",
+  "company", "customer", "tenant",
+]);
+
+/** A type annotation such as `Optional[str]`, not a name. */
+const ORG_TYPE = /^[A-Za-z_][A-Za-z0-9_.]*\[[A-Za-z0-9_., \[\]]*\]$/;
+/**
+ * The key of a rule anchored to the start of a line cannot begin with `-`, or the `-Dkey=value` of a command would
+ * take the rest of the command with it.
+ */
+const ORG_KEY_LINE = ORG_KEY.replace(
+  String.raw`[A-Za-z0-9_.\-]{0,64}[._\-]`,
+  String.raw`[A-Za-z0-9_][A-Za-z0-9_.\-]{0,63}[._\-]`,
+);
+
+function orgKept(value: string, inline: boolean): boolean {
+  const lower = value.toLowerCase();
+  return (
+    isReference(value) ||
+    value.startsWith("<") ||
+    !/\p{L}/u.test(value) ||
+    ORG_TYPE.test(value) ||
+    ORG_KEEP.has(lower) ||
+    ["your", "example", "sample", "my-", "my_"].some((p) => lower.startsWith(p)) ||
+    (inline && [...value].some((c) => "${}[]()*\\".includes(c)))
+  );
+}
+
+/** Replaces the value group with `<redacted:org>`, keeping every group before and after it. */
+const orgValue = (valueGroup: number, inline: boolean): Replacer => (m) =>
+  orgKept(m[valueGroup], inline)
+    ? null
+    : m.slice(1).map((group, i) => (i + 1 === valueGroup ? full("org") : group)).join("");
+
 const SCHEMES = ["bearer", "basic", "token", "digest", "negotiate", "ntlm", "hawk"];
 const authorization: Replacer = (m) => {
   const [, prefix, scheme, value] = m;
@@ -149,6 +196,10 @@ const RULES: Rule[] = [
   r("card", String.raw`\b[3-6](?:[ \-]?[0-9]){12,18}\b`, "", card),
   r("home_path", String.raw`(\/home\/|\/Users\/)[^/\s'\x22<>]+`, "", (m) => `${m[1]}<user>`),
   r("home_path", String.raw`([a-z]:\\Users\\)[^\\\s'\x22<>]+`, "i", (m) => `${m[1]}<user>`),
+  // The org rules come last: they match on the key, so every more specific kind has already had its turn.
+  r("org", String.raw`(^|[^A-Za-z0-9_.\-])(` + ORG_KEY + String.raw`['\x22]?[ \t]*[=:][ \t]*)(['\x22])([^'\x22\r\n]{2,120})(['\x22])`, "i", orgValue(4, false)),
+  r("org", String.raw`(^[ \t]*(?:-[ \t]+)?` + ORG_KEY_LINE + String.raw`['\x22]?[ \t]*[=:][ \t]*)([^\s'\x22<>][^\r\n]*?)([ \t]*\r?$)`, "im", orgValue(2, false)),
+  r("org", String.raw`(^|[^A-Za-z0-9_.\-])(` + ORG_KEY + String.raw`['\x22]?[ \t]*[=:][ \t]*)([^\s'\x22<>,;]{2,80})`, "i", orgValue(3, true)),
 ];
 
 export function redactText(input: string, report: RedactionReport = {}): string {
@@ -179,4 +230,39 @@ export function redactValue<T>(value: T, report: RedactionReport = {}): T {
     return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, redactValue(v, report)])) as T;
   }
   return value;
+}
+
+/**
+ * Runs of capitalised words that look like a name (`Acme Data Systems`), for a person to check before approving a
+ * publication. This does not redact anything: a name looks like any other word, so the colony cannot remove one by
+ * itself. A run at the start of a sentence loses its first word, which is capitalised anyway.
+ */
+export function possibleNames(value: unknown, limit = 10): string[] {
+  const found = new Set<string>();
+  const capitalised = (w: string) => w.length >= 2 && w[0] !== w[0].toLowerCase();
+  const scan = (text: string) => {
+    let run: { index: number; end: number }[] = [];
+    const flush = () => {
+      if (run.length && /(?:^|[.!?:]\s+|\n\s*)$/.test(text.slice(0, run[0].index))) run = run.slice(1);
+      if (run.length >= 2) found.add(text.slice(run[0].index, run[run.length - 1].end));
+      run = [];
+    };
+    for (const m of text.matchAll(/\p{L}+/gu)) {
+      const word = { index: m.index ?? 0, end: (m.index ?? 0) + m[0].length };
+      if (!capitalised(m[0])) {
+        flush();
+        continue;
+      }
+      if (run.length && !(text[run[run.length - 1].end] === " " && run[run.length - 1].end + 1 === word.index)) flush();
+      run.push(word);
+    }
+    flush();
+  };
+  const walk = (v: unknown): void => {
+    if (typeof v === "string") scan(v);
+    else if (Array.isArray(v)) v.forEach(walk);
+    else if (v && typeof v === "object") Object.values(v).forEach(walk);
+  };
+  walk(value);
+  return [...found].slice(0, limit);
 }

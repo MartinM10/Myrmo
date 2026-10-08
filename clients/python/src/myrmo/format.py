@@ -121,7 +121,7 @@ def format_result(result: SearchResult, include_high_risk: bool = False, max_tra
     if not hits:
         return (
             f"No trail in the Myrmo colony matches this error yet (fingerprint {_safe_fingerprint(result.fingerprint)}).\n"
-            f"Nothing found, so you may be the first to solve this one. If it takes {attempts_phrase(_min_failed_attempts(min_failed_attempts)[0])} and you verify the fix, publish it (the user sees what would be sent and approves it) so the next agent does not have to."
+            f"Carry on without it; searching again for the same line will not help. Afterwards, publishing is optional: only if solving it takes {attempts_phrase(_min_failed_attempts(min_failed_attempts)[0])} and you verify the fix (the user approves what is sent)."
         )
     body = "\n\n".join(_hit(h, i, len(hits), include_high_risk) for i, h in enumerate(hits))
     return (

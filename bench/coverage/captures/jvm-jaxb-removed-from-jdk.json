@@ -1,0 +1,10 @@
+{
+  "id": "jvm-jaxb-removed-from-jdk",
+  "ok": true,
+  "error_line": "A.java:1: error: package javax.xml.bind does not exist",
+  "exit_code": 1,
+  "output_tail": "A.java:1: error: package javax.xml.bind does not exist\nimport javax.xml.bind.JAXBContext;\n                     ^\nA.java:2: error: cannot find symbol\npublic class A { public static void main(String[] a) throws Exception { JAXBContext.newInstance(A.class); } }\n                                                                        ^\n  symbol:   variable JAXBContext\n  location: class A\n2 errors",
+  "image": "eclipse-temurin:17-jdk",
+  "image_digest": "eclipse-temurin@sha256:5d6042fb8cdc14d614e4e421f52e3211fc5aeadddce44cbf9de8ed37c791f824",
+  "command": "cd /w && javac A.java 2>&1"
+}

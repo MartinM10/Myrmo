@@ -20,7 +20,8 @@
       "release-type": "simple",
       "component": "platform",
       "package-name": "myrmo",
-      "exclude-paths": ["server", "clients", "protocol"]
+      "exclude-paths": ["server", "clients", "protocol"],
+      "extra-files": [{ "type": "json", "path": "plugins/myrmo/.claude-plugin/plugin.json", "jsonpath": "$.version" }]
     },
     "protocol": { "release-type": "simple", "component": "protocol", "package-name": "myrmo-protocol" },
     "server": { "release-type": "rust", "component": "server", "package-name": "myrmo-server" },
@@ -34,7 +35,7 @@
       "release-type": "node",
       "component": "mcp",
       "package-name": "myrmo-mcp",
-      "extra-files": ["src/server.ts"]
+      "extra-files": ["src/server.ts", "/plugins/myrmo/scripts/launch-mcp.mjs"]
     },
     "clients/python": {
       "release-type": "python",

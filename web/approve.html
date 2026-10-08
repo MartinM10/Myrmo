@@ -24,6 +24,9 @@
   .section ol { margin: 0; padding-left: 22px; display: grid; gap: 4px; }
   .cmd { border: 1px solid var(--line, #3a3a3a); border-radius: 8px; padding: 10px 12px; display: grid; gap: 6px; }
   .cmd pre, pre.block { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font-family: "Fragment Mono", monospace; font-size: 0.85rem; }
+  .consent { display: flex; gap: 10px; align-items: flex-start; border: 1px solid var(--line, #3a3a3a); border-radius: 8px; padding: 12px 14px; }
+  .consent input { margin-top: 4px; flex: none; }
+  .consent span { overflow-wrap: anywhere; }
   .actions { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
   .result { border: 1px solid var(--line, #3a3a3a); border-radius: 10px; padding: 16px; display: grid; gap: 8px; }
   details pre { max-height: 420px; overflow: auto; }
@@ -50,6 +53,8 @@
   <span>An agent asked to publish this. Nothing is published unless you choose to.</span>
   <span class="spacer"></span>
   <a href="docs/security/privacy">Privacy</a>
+  <a href="docs/legal/privacy-policy">Privacy policy</a>
+  <a href="docs/legal/terms">Terms</a>
 </footer>
 
 <script src="assets/common.js"></script>
@@ -70,13 +75,46 @@
     invalid_trail: "it was not valid",
   };
 
-  async function call(method, path) {
-    const res = await fetch(`${api}${path}`, { method, headers: { accept: "application/json" } });
+  async function call(method, path, payload) {
+    const res = await fetch(`${api}${path}`, {
+      method,
+      headers: { accept: "application/json", ...(payload ? { "content-type": "application/json" } : {}) },
+      ...(payload ? { body: JSON.stringify(payload) } : {}),
+    });
     const body = await res.json().catch(() => ({}));
     return { ok: res.ok, status: res.status, body };
   }
 
   const line = (label, value) => (value ? `<p><strong>${esc(label)}</strong> ${esc(value)}</p>` : "");
+
+  // Runs of capitalised words that could be a company, customer, person or project. Not redacted: a name looks
+  // like any other word, so the person who approves is the one who can tell. Same rule as `possibleNames` in the SDK.
+  function possibleNames(value, limit = 10) {
+    const found = new Set();
+    const capitalised = (w) => w.length >= 2 && w[0] !== w[0].toLowerCase();
+    const scan = (text) => {
+      let run = [];
+      const flush = () => {
+        if (run.length && /(?:^|[.!?:]\s+|\n\s*)$/.test(text.slice(0, run[0].index))) run = run.slice(1);
+        if (run.length >= 2) found.add(text.slice(run[0].index, run[run.length - 1].end));
+        run = [];
+      };
+      for (const m of text.matchAll(/\p{L}+/gu)) {
+        const word = { index: m.index, end: m.index + m[0].length };
+        if (!capitalised(m[0])) { flush(); continue; }
+        if (run.length && !(text[run[run.length - 1].end] === " " && run[run.length - 1].end + 1 === word.index)) flush();
+        run.push(word);
+      }
+      flush();
+    };
+    const walk = (v) => {
+      if (typeof v === "string") scan(v);
+      else if (Array.isArray(v)) v.forEach(walk);
+      else if (v && typeof v === "object") Object.values(v).forEach(walk);
+    };
+    walk(value);
+    return [...found].slice(0, limit);
+  }
 
   function review(draft) {
     const t = draft.trail;
@@ -90,12 +128,14 @@
     }).join("");
     const patches = s.code_patches.map((x) => `<div class="cmd"><span>${esc(x.file_path)}</span><pre>${esc(x.diff)}</pre></div>`).join("");
     const env = t.environment;
+    const names = possibleNames(t);
     app.innerHTML = `
       <h1>Publish this trail?</h1>
       <div class="notice">
         <strong>It will be public.</strong>
-        <span>Anyone can read it on the Myrmo colony, under CC BY-SA 4.0. Secrets and personal data were removed automatically, but a pattern cannot recognise a person's name, a customer, an internal URL or proprietary code. Read it before you publish. By publishing you license it as described in <a href="docs/operate/licensing">Licensing</a>.</span>
+        <span>Anyone can read it on the Myrmo colony, under CC BY-SA 4.0. Secrets and personal data were removed automatically, but a pattern cannot recognise a person's name, a customer, an internal URL or proprietary code. Read it before you publish. By publishing you accept the <a href="docs/legal/terms">terms of service</a> and license it as they describe (see also <a href="docs/operate/licensing">Licensing</a>).</span>
       </div>
+      ${names.length ? `<div class="notice"><strong>Check these names.</strong><span>They look like a company, customer, person or project and were not removed: ${names.map((n) => `<code>${esc(n)}</code>`).join(", ")}. If one is real, discard this draft and ask the agent to publish it again with a placeholder.</span></div>` : ""}
       <div class="section"><h2>Problem</h2>
         <p><span class="pill">${esc(p.error_type)}</span> ${esc(p.error_message ?? "")}</p>
         <p>${esc(p.summary)}</p>
@@ -112,8 +152,11 @@
         <p>${esc(t.agent_info.model)} · ${esc(t.agent_info.framework)} · ${esc(String(t.effort.failed_attempts))} failed attempts</p>
       </div>
       <details><summary>The exact payload that will be published</summary><pre class="block">${esc(JSON.stringify(t, null, 2))}</pre></details>
+      <label class="consent"><input type="checkbox" id="consent">
+        <span>I have read this trail. It contains no personal data, secrets, or names of companies, customers or people. I accept the <a href="docs/legal/terms">terms of service</a>: I release it under CC BY-SA 4.0 and grant the project the licence described there. <a href="docs/legal/privacy-policy">Privacy policy</a>.</span>
+      </label>
       <div class="actions">
-        <button class="btn btn-amber" id="publish" type="button">Publish to the colony</button>
+        <button class="btn btn-amber" id="publish" type="button" disabled>Publish to the colony</button>
         <button class="btn" id="discard" type="button">Discard</button>
         <span id="note" role="status"></span>
       </div>
@@ -121,10 +164,13 @@
     const publish = document.getElementById("publish");
     const discard = document.getElementById("discard");
     const note = document.getElementById("note");
-    const busy = (on) => { publish.disabled = discard.disabled = on; };
+    const consent = document.getElementById("consent");
+    const busy = (on) => { publish.disabled = on || !consent.checked; discard.disabled = on; };
+    consent.addEventListener("change", () => busy(false));
     publish.addEventListener("click", async () => {
+      if (!consent.checked) return;
       busy(true);
-      const r = await call("POST", `/v1/drafts/${token}/publish`);
+      const r = await call("POST", `/v1/drafts/${token}/publish`, { accepted_terms: true });
       if (r.ok) return track();
       busy(false);
       note.textContent = r.body?.error?.message ?? `Could not publish (${r.status}).`;

@@ -1,0 +1,85 @@
+[
+  {
+    "id": "jvm-classfile-65-on-17",
+    "error_line": "java.lang.UnsupportedClassVersionError: Hello has been compiled by a more recent version of the Java Runtime (class file version 65.0), this version of the Java Runtime only recognizes class file versions up to 61.0",
+    "versions": {
+      "jdk": "17",
+      "class_file": "65"
+    },
+    "source": {
+      "url": "https://raw.githubusercontent.com/apache/maven-compiler-plugin/master/src/main/java/org/apache/maven/plugin/compiler/AbstractCompilerMojo.java",
+      "licence": "Apache-2.0"
+    },
+    "score": {
+      "recent": false,
+      "environment": true,
+      "transferable": true,
+      "reproducible": true,
+      "total": 3
+    },
+    "status": "reproduced",
+    "reason": ""
+  },
+  {
+    "id": "jvm-gradle73-jdk21",
+    "error_line": "General error during conversion: Unsupported class file major version 65",
+    "versions": {
+      "gradle": "7.3.3",
+      "jdk": "21"
+    },
+    "source": {
+      "url": "https://raw.githubusercontent.com/gradle/gradle/master/README.md",
+      "licence": "Apache-2.0"
+    },
+    "score": {
+      "recent": true,
+      "environment": false,
+      "transferable": true,
+      "reproducible": true,
+      "total": 3
+    },
+    "status": "reproduced",
+    "reason": ""
+  },
+  {
+    "id": "jvm-java17-inaccessible-object",
+    "error_line": "Exception in thread \"main\" java.lang.reflect.InaccessibleObjectException: Unable to make field private final byte[] java.lang.String.value accessible: module java.base does not \"opens java.lang\" to unnamed module @23fe1d71",
+    "versions": {
+      "jdk": "17"
+    },
+    "source": {
+      "url": "https://raw.githubusercontent.com/apache/spark/v3.5.0/launcher/src/main/java/org/apache/spark/launcher/JavaModuleOptions.java",
+      "licence": "Apache-2.0"
+    },
+    "score": {
+      "recent": false,
+      "environment": true,
+      "transferable": true,
+      "reproducible": true,
+      "total": 3
+    },
+    "status": "reproduced",
+    "reason": ""
+  },
+  {
+    "id": "jvm-lombok-jdk23",
+    "error_line": "A.java:1: error: cannot find symbol",
+    "versions": {
+      "lombok": "1.18.34",
+      "jdk": "23"
+    },
+    "source": {
+      "url": "https://raw.githubusercontent.com/projectlombok/lombok/v1.18.34/doc/changelog.markdown",
+      "licence": "MIT"
+    },
+    "score": {
+      "recent": true,
+      "environment": false,
+      "transferable": true,
+      "reproducible": true,
+      "total": 3
+    },
+    "status": "reproduced",
+    "reason": ""
+  }
+]

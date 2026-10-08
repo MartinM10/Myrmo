@@ -53,6 +53,9 @@ if (args[0] === "config") {
       process.exit(2);
     }
     console.log(result.message);
+    if (key === "publish" && (value === "ask" || value === "auto")) {
+      console.log("By letting agents publish you accept the terms of service: https://myrmo.dev/docs/legal/terms");
+    }
   }
   process.exit(0);
 }

@@ -1,0 +1,10 @@
+{
+  "id": "py-sqlalchemy2-postgres-dialect",
+  "ok": true,
+  "error_line": "sqlalchemy.exc.NoSuchModuleError: Can't load plugin: sqlalchemy.dialects:postgres",
+  "exit_code": 1,
+  "output_tail": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n  File \"<string>\", line 2, in create_engine\n  File \"/usr/local/lib/python3.12/site-packages/sqlalchemy/util/deprecations.py\", line 281, in warned\n    return fn(*args, **kwargs)  # type: ignore[no-any-return]\n           ^^^^^^^^^^^^^^^^^^^\n  File \"/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/create.py\", line 550, in create_engine\n    entrypoint = u._get_entrypoint()\n                 ^^^^^^^^^^^^^^^^^^^\n  File \"/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/url.py\", line 758, in _get_entrypoint\n    cls = registry.load(name)\n          ^^^^^^^^^^^^^^^^^^^\n  File \"/usr/local/lib/python3.12/site-packages/sqlalchemy/util/langhelpers.py\", line 375, in load\n    raise exc.NoSuchModuleError(\nsqlalchemy.exc.NoSuchModuleError: Can't load plugin: sqlalchemy.dialects:postgres",
+  "image": "python:3.12-slim",
+  "image_digest": "python@sha256:05cda9777409a9c3ffddd94a4c476b79f0769a0b4857f0c7ed9226b6800b0d6f",
+  "command": "python -c \"from sqlalchemy import create_engine; create_engine('postgres://u:p@h/db')\""
+}

@@ -140,7 +140,7 @@ def publish_corpus(base: str, rows: list[dict]) -> dict[int, str]:
 
 # -- scoring ----------------------------------------------------------------------------
 
-FLOORS = [0.72, 0.75, 0.78, 0.80, 0.85]  # 0.72 is the colony's default (MYRMO_MIN_SIMILARITY)
+FLOORS = [0.72, 0.75, 0.78, 0.80, 0.85]  # 0.72 is the floor the benchmark colony runs at (bench/compose.yml); a real colony defaults to 0.75
 
 
 def words(message: str) -> int:
@@ -273,7 +273,7 @@ def render(summary: dict, corpus: int, seed: int) -> str:
     for label, key in (("Errors no trail covers", "unrelated"), ("Look-alikes (another module or key)", "lookalike")):
         w = summary[key]
         lines.append(f"| {label} | {w['n']} | {w['returned_any']} | {w['wrong_answers']} ({pct(w['wrong_answers'], w['n'])}) |")
-    lines += ["", "What a stricter similarity floor would have done with the same searches (semantic answers only; the colony's default is 0.72):", "",
+    lines += ["", "What a stricter similarity floor would have done with the same searches (semantic answers only; the benchmark colony runs at 0.72; a real colony defaults to 0.75):", "",
               "| Floor | Found on top | Wrong on top, positives | Wrong on top, negatives |", "|---|---|---|---|"]
     for s in summary["floor_sweep"]:
         lines.append(f"| {s['floor']:.2f} | {s['found']} of {s['semantic_positives']} | {s['wrong_on_positives']} | {s['wrong_on_negatives']} of {s['negatives']} |")

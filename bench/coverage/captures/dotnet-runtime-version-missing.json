@@ -1,0 +1,10 @@
+{
+  "id": "dotnet-runtime-version-missing",
+  "ok": true,
+  "error_line": "You must install or update .NET to run this application.",
+  "exit_code": 150,
+  "output_tail": "You must install or update .NET to run this application.\n\nApp: /tmp/out/w.dll\nArchitecture: x64\nFramework: 'Microsoft.NETCore.App', version '9.0.0' (x64)\n.NET location: /usr/share/dotnet/\n\nThe following frameworks were found:\n  8.0.31 at [/usr/share/dotnet/shared/Microsoft.NETCore.App]\n\nLearn more:\nhttps://aka.ms/dotnet/app-launch-failed\n\nTo install missing framework, download:\nhttps://aka.ms/dotnet-core-applaunch?framework=Microsoft.NETCore.App&framework_version=9.0.0&arch=x64&rid=linux-x64&os=debian.12",
+  "image": "mcr.microsoft.com/dotnet/sdk:8.0",
+  "image_digest": "mcr.microsoft.com/dotnet/sdk@sha256:ec9c0a0dc5f60adc2065762050638dd5ed5facfc53716d4580a42d86027c8e80",
+  "command": "dotnet /tmp/out/w.dll 2>&1"
+}

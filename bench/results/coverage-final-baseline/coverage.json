@@ -1,0 +1,376 @@
+{
+  "summary": {
+    "split": "reserved",
+    "lines": 45,
+    "colony_trails": 30,
+    "per_ecosystem": {
+      "all": {
+        "silence": 41,
+        "miss": 1,
+        "false_positive": 3
+      },
+      "docker": {
+        "silence": 4
+      },
+      "dotnet": {
+        "silence": 1
+      },
+      "go": {
+        "silence": 3
+      },
+      "jvm": {
+        "silence": 5,
+        "miss": 1
+      },
+      "node": {
+        "silence": 6,
+        "false_positive": 1
+      },
+      "platform": {
+        "silence": 1
+      },
+      "python": {
+        "silence": 15,
+        "false_positive": 2
+      },
+      "rust": {
+        "silence": 2
+      },
+      "tls": {
+        "silence": 4
+      }
+    },
+    "hit_rate": 0.0,
+    "false_positive_rate": 0.067,
+    "silence_rate": 0.911
+  },
+  "rows": [
+    {
+      "id": "docker-compose-unknown-service-key",
+      "ecosystem": "docker",
+      "outcome": "silence",
+      "via": "search",
+      "returned": 0
+    },
+    {
+      "id": "docker-daemon-socket",
+      "ecosystem": "docker",
+      "outcome": "silence",
+      "via": "search",
+      "returned": 0
+    },
+    {
+      "id": "dotnet-runtime-version-missing",
+      "ecosystem": "dotnet",
+      "outcome": "silence",
+      "via": "search",
+      "returned": 0
+    },
+    {
+      "id": "go-install-latest-needs-newer-go",
+      "ecosystem": "go",
+      "outcome": "silence",
+      "via": "search",
+      "returned": 0
+    },
+    {
+      "id": "go-missing-gosum-entry",
+      "ecosystem": "go",
+      "outcome": "silence",
+      "via": "search",
+      "returned": 0
+    },
+    {
+      "id": "go-race-without-cgo",
+      "ecosystem": "go",
+      "outcome": "silence",
+      "via": "search",
+      "returned": 0
+    },
+    {
+      "id": "jvm-gradle85-jdk24",
+      "ecosystem": "jvm",
+      "outcome": "silence",
+      "via": "search",
+      "returned": 0
+    },
+    {
+      "id": "jvm-javac-release-newer-than-jdk",
+      "ecosystem": "jvm",
+      "outcome": "silence",
+      "via": "search",
+      "returned": 0
+    },
+    {
+      "id": "jvm-jaxb-removed-from-jdk",
+      "ecosystem": "jvm",
+      "outcome": "silence",
+      "via": "search",
+      "returned": 0
+    },
+    {
+      "id": "jvm-maven-http-repository-blocked",
+      "ecosystem": "jvm",
+      "outcome": "miss",
+      "via": "search",
+      "returned": 0
+    },
+    {
+      "id": "jvm-maven-java-home-invalid",
+      "ecosystem": "jvm",
+      "outcome": "silence",
+      "via": "search",
+      "returned": 0
+    },
+    {
+      "id": "jvm-maven-source-5",
+      "ecosystem": "jvm",
+      "outcome": "silence",
+      "via": "search",
+      "returned": 0
+    },
+    {
+      "id": "k8s-kubectl-apply-validate-no-cluster",
+      "ecosystem": "docker",
+      "outcome": "silence",
+      "via": "search",
+      "returned": 0
+    },
+    {
+      "id": "k8s-kubectl-no-kubeconfig",
+      "ecosystem": "docker",
+      "outcome": "silence",
+      "via": "search",
+      "returned": 0
+    },
+    {
+      "id": "node-eslint9-ext-flag",
+      "ecosystem": "node",
+      "outcome": "silence",
+      "via": "search",
+      "returned": 0
+    },
+    {
+      "id": "node-eslint9-no-flat-config",
+      "ecosystem": "node",
+      "outcome": "false_positive",
+      "via": "search",
+      "returned": 1
+    },
+    {
+      "id": "node-pnpm-outdated-lockfile",
+      "ecosystem": "node",
+      "outcome": "silence",
+      "via": "search",
+      "returned": 0
+    },
+    {
+      "id": "node-require-esm-async",
+      "ecosystem": "node",
+      "outcome": "silence",
+      "via": "search",
+      "returned": 0
+    },
+    {
+      "id": "node-tailwind4-cli",
+      "ecosystem": "node",
+      "outcome": "silence",
+      "via": "search",
+      "returned": 0
+    },
+    {
+      "id": "node-ts-unknown-file-extension",
+      "ecosystem": "node",
+      "outcome": "silence",
+      "via": "search",
+      "returned": 0
+    },
+    {
+      "id": "node-webpack5-no-polyfills",
+      "ecosystem": "node",
+      "outcome": "silence",
+      "via": "search",
+      "returned": 0
+    },
+    {
+      "id": "platform-node18-glibc-too-old",
+      "ecosystem": "platform",
+      "outcome": "silence",
+      "via": "search",
+      "returned": 0
+    },
+    {
+      "id": "py-flask3-json-encoder",
+      "ecosystem": "python",
+      "outcome": "silence",
+      "via": "search",
+      "returned": 0
+    },
+    {
+      "id": "py-numpy2-abi-pandas",
+      "ecosystem": "python",
+      "outcome": "false_positive",
+      "via": "search",
+      "returned": 1
+    },
+    {
+      "id": "py-numpy2-abi-scipy",
+      "ecosystem": "python",
+      "outcome": "false_positive",
+      "via": "search",
+      "returned": 1
+    },
+    {
+      "id": "py-numpy2-array-copy-false",
+      "ecosystem": "python",
+      "outcome": "silence",
+      "via": "search",
+      "returned": 0
+    },
+    {
+      "id": "py-numpy21-requires-newer-python",
+      "ecosystem": "python",
+      "outcome": "silence",
+      "via": "search",
+      "returned": 0
+    },
+    {
+      "id": "py-opencv-libgl-slim",
+      "ecosystem": "python",
+      "outcome": "silence",
+      "via": "search",
+      "returned": 0
+    },
+    {
+      "id": "py-pandas2-dataframe-append",
+      "ecosystem": "python",
+      "outcome": "silence",
+      "via": "search",
+      "returned": 0
+    },
+    {
+      "id": "py-pip-editable-without-project-file",
+      "ecosystem": "python",
+      "outcome": "silence",
+      "via": "search",
+      "returned": 0
+    },
+    {
+      "id": "py-poetry2-export",
+      "ecosystem": "python",
+      "outcome": "silence",
+      "via": "search",
+      "returned": 0
+    },
+    {
+      "id": "py-poetry2-shell",
+      "ecosystem": "python",
+      "outcome": "silence",
+      "via": "search",
+      "returned": 0
+    },
+    {
+      "id": "py-protobuf4-descriptors",
+      "ecosystem": "python",
+      "outcome": "silence",
+      "via": "search",
+      "returned": 0
+    },
+    {
+      "id": "py-pydantic2-basesettings",
+      "ecosystem": "python",
+      "outcome": "silence",
+      "via": "search",
+      "returned": 0
+    },
+    {
+      "id": "py-pydantic2-regex",
+      "ecosystem": "python",
+      "outcome": "silence",
+      "via": "search",
+      "returned": 0
+    },
+    {
+      "id": "py-python312-asyncore",
+      "ecosystem": "python",
+      "outcome": "silence",
+      "via": "search",
+      "returned": 0
+    },
+    {
+      "id": "py-python313-cgi",
+      "ecosystem": "python",
+      "outcome": "silence",
+      "via": "search",
+      "returned": 0
+    },
+    {
+      "id": "py-selenium4-executable-path",
+      "ecosystem": "python",
+      "outcome": "silence",
+      "via": "search",
+      "returned": 0
+    },
+    {
+      "id": "py-urllib3-v2-old-openssl",
+      "ecosystem": "python",
+      "outcome": "silence",
+      "via": "search",
+      "returned": 0
+    },
+    {
+      "id": "rust-edition2024-old-cargo",
+      "ecosystem": "rust",
+      "outcome": "silence",
+      "via": "search",
+      "returned": 0
+    },
+    {
+      "id": "rust-openssl-sys-no-pkgconfig",
+      "ecosystem": "rust",
+      "outcome": "silence",
+      "via": "search",
+      "returned": 0
+    },
+    {
+      "id": "tls-curl-private-ca",
+      "ecosystem": "tls",
+      "outcome": "silence",
+      "via": "search",
+      "returned": 0
+    },
+    {
+      "id": "tls-java-pkix-private-ca",
+      "ecosystem": "tls",
+      "outcome": "silence",
+      "via": "search",
+      "returned": 0
+    },
+    {
+      "id": "tls-node-fetch-private-ca",
+      "ecosystem": "tls",
+      "outcome": "silence",
+      "via": "search",
+      "returned": 0
+    },
+    {
+      "id": "tls-openssl3-ee-key-too-small",
+      "ecosystem": "tls",
+      "outcome": "silence",
+      "via": "search",
+      "returned": 0
+    }
+  ],
+  "dubious": [
+    {
+      "line": "py-numpy2-abi-pandas",
+      "trail_id": "19ad6751-ce95-466a-8d3f-e9b327c33b37",
+      "error": "ERROR: No matching distribution found for numpy==1.24.4"
+    },
+    {
+      "line": "py-numpy2-abi-scipy",
+      "trail_id": "8d18f779-b95b-4fba-adc0-11d11d2c4374",
+      "error": "ModuleNotFoundError: No module named 'distutils'"
+    }
+  ]
+}

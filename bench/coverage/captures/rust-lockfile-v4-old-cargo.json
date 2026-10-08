@@ -1,0 +1,10 @@
+{
+  "id": "rust-lockfile-v4-old-cargo",
+  "ok": true,
+  "error_line": "lock file version `4` was found, but this version of Cargo does not understand this lock file, perhaps Cargo needs to be updated?",
+  "exit_code": 101,
+  "output_tail": "error: failed to parse lock file at: /w/Cargo.lock\n\nCaused by:\n  lock file version `4` was found, but this version of Cargo does not understand this lock file, perhaps Cargo needs to be updated?",
+  "image": "rust:1.75",
+  "image_digest": "rust@sha256:87f3b2f93b82995443a1a558c234212dafe79cfdc3af956539610560369ddcd0",
+  "command": "cargo build 2>&1"
+}

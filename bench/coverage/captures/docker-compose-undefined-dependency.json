@@ -1,0 +1,10 @@
+{
+  "id": "docker-compose-undefined-dependency",
+  "ok": true,
+  "error_line": "service \"web\" depends on undefined service \"db\": invalid compose project",
+  "exit_code": 1,
+  "output_tail": "service \"web\" depends on undefined service \"db\": invalid compose project",
+  "image": "docker:27-cli",
+  "image_digest": "docker@sha256:851f91d241214e7c6db86513b270d58776379aacc5eb9c4a87e5b47115e3065c",
+  "command": "docker compose config 2>&1"
+}

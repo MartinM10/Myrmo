@@ -133,3 +133,22 @@ test("the hook script, run like Claude Code runs it, honours the settings file",
   writeFileSync(file, JSON.stringify({ hook: "on" }));
   assert.match(run().stdout, /myrmo_search/);
 });
+
+test("the launcher starts the exact myrmo-mcp that this repository releases, never @latest", () => {
+  const launcher = readFileSync(join(root, "scripts", "launch-mcp.mjs"), "utf8");
+  const pinned = launcher.match(/const MCP_VERSION = "(\d+\.\d+\.\d+)"; \/\/ x-release-please-version/);
+  assert.ok(pinned, "the version sits on a line release-please updates");
+  assert.equal(pinned[1], json(join(repo, "clients", "typescript", "packages", "myrmo-mcp", "package.json")).version);
+  assert.doesNotMatch(launcher, /myrmo-mcp@latest/);
+  assert.match(launcher, /shell: process\.platform === "win32"/, "the Windows fix stays");
+  const config = json(join(repo, "release-please-config.json"));
+  assert.ok(config.packages["clients/typescript/packages/myrmo-mcp"]["extra-files"].includes("/plugins/myrmo/scripts/launch-mcp.mjs"));
+});
+
+test("the plugin manifest has a version that release-please keeps", () => {
+  const manifest = json(join(root, ".claude-plugin", "plugin.json"));
+  assert.match(manifest.version, /^\d+\.\d+\.\d+$/);
+  const config = json(join(repo, "release-please-config.json"));
+  assert.ok(config.packages["."]["extra-files"].some((f) => f.path === "plugins/myrmo/.claude-plugin/plugin.json" && f.jsonpath === "$.version"));
+  assert.equal(manifest.version, json(join(repo, ".release-please-manifest.json"))["."]);
+});

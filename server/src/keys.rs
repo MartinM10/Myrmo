@@ -39,6 +39,19 @@ pub fn fingerprint_cache(fp: &str) -> String {
 pub fn anon_author(id: &str) -> String {
     format!("anon_author:{id}")
 }
+/// Hash of the address that published a trail, declared agent id or not, kept for a day. A report from that
+/// address counts as the author's.
+pub fn pub_addr(id: &str) -> String {
+    format!("pub_addr:{id}")
+}
+/// Declared agent ids that reported on one trail from one address today (set).
+pub fn vote_addr(id: &str, client: &str) -> String {
+    format!("vaddr:{id}:{client}")
+}
+/// Reports that counted from one address in one hour, over all trails.
+pub fn vote_hour(client: &str, hour: i64) -> String {
+    format!("vhour:{client}:{hour}")
+}
 /// A trail waiting for a person to approve it (hash, short TTL).
 pub fn draft(token: &str) -> String {
     format!("draft:{token}")

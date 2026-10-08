@@ -347,6 +347,11 @@ test("a preview says whether the colony would accept the trail, and an invalid o
   assert.match(preview, /would REJECT this trail/);
   assert.match(preview, /\/solution\/verification_method\/type/);
 
+  const named = structuredClone(trail);
+  named.problem.summary = "Connector for Acme Data Systems fails to start";
+  const withNames = textOf(await client.callTool({ name: "myrmo_publish", arguments: { trail: named, preview: true } }));
+  assert.match(withNames, /Check before approving: these look like names and were NOT removed: "Acme Data Systems"/);
+
   const good = textOf(await client.callTool({ name: "myrmo_publish", arguments: { trail, preview: true } }));
   assert.match(good, /The colony accepts this trail/);
   assert.doesNotMatch(good, /REJECT/);
@@ -364,12 +369,13 @@ test("a preview says whether the colony would accept the trail, and an invalid o
 test("the user's one-time choice is saved, applied at once, and remembered by the next session", async () => {
   const config = freshConfig();
   const shown = [];
-  const first = await stdioClient("", { ...unchosen(config), answer: async (params) => (shown.push(params.message), { action: "accept", content: { choice: "auto" } }) });
+  const first = await stdioClient("", { ...unchosen(config), answer: async (params) => (shown.push(params.message), { action: "accept", content: { choice: "auto", accept_terms: true } }) });
   const before = published();
   const out = textOf(await first.callTool({ name: "myrmo_publish", arguments: { trail } }));
   assert.match(out, /Published|Accepted|indexed|queued/i);
   assert.equal(published(), before + 1);
   assert.match(shown[0], /CC BY-SA/);
+  assert.match(shown[0], /terms of service/);
   assert.match(shown[0], /config publish auto\|ask\|off/);
   assert.equal(JSON.parse(readFileSync(config, "utf8")).publish, "auto");
   await first.close();
@@ -379,6 +385,17 @@ test("the user's one-time choice is saved, applied at once, and remembered by th
   await second.callTool({ name: "myrmo_publish", arguments: { trail } });
   assert.equal(published(), before + 2);
   await second.close();
+});
+
+test("choosing to publish without accepting the terms publishes nothing and saves nothing", async () => {
+  const config = freshConfig();
+  const client = await stdioClient("", { ...unchosen(config), answer: async () => ({ action: "accept", content: { choice: "auto" } }) });
+  const before = published();
+  const out = textOf(await client.callTool({ name: "myrmo_publish", arguments: { trail } }));
+  assert.match(out, /did not choose/);
+  assert.equal(published(), before);
+  assert.equal(JSON.parse(readFileSync(config, "utf8")).publish, undefined);
+  await client.close();
 });
 
 test("choosing 'never' sends nothing and is remembered", async () => {

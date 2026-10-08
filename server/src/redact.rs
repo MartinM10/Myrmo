@@ -143,6 +143,99 @@ fn assignment(c: &Captures) -> Option<String> {
     Some(format!("{}{}{}", g(c, 1), g(c, 2), full("secret")))
 }
 
+// Configuration values that name an organisation or a person: `edc.ui.organization=Acme`, `"owner": "Ana"`,
+// `LABEL maintainer=...`. The key decides, never the value, because a name looks like any other word. A key
+// matches only when its last part is one of these words, so `org.eclipse.edc:dcp-core` (a Maven coordinate) and
+// `--org-id` are left alone. A product or connector `*.title` is included: it is usually the owner's brand.
+const ORG_KEY: &str = r"(?:(?:[A-Za-z0-9_.\-]{0,64}[._\-])?(?:(?:organi[sz]ations?|org|compan(?:y|ies)|tenants?|customers?|owners?|authors?|contacts?|maintainers?|publishers?|vendors?|employers?)(?:[_.\-]?(?:name|title))?|(?:client|display|full|legal|trade|business|brand)[_.\-]?name)|(?:[A-Za-z0-9_.\-]{0,64}[._\-])?(?:connector|product|portal|brand|app|ui|site)[._\-](?:[A-Za-z0-9_.\-]{0,64}[._\-])?title)";
+/// Values that are not a name: placeholders, types and generic words.
+const ORG_KEEP: &[&str] = &[
+    "default",
+    "unknown",
+    "example",
+    "test",
+    "testing",
+    "user",
+    "users",
+    "admin",
+    "administrator",
+    "root",
+    "me",
+    "self",
+    "system",
+    "anonymous",
+    "n/a",
+    "na",
+    "tbd",
+    "todo",
+    "unset",
+    "any",
+    "object",
+    "dict",
+    "list",
+    "set",
+    "array",
+    "map",
+    "number",
+    "float",
+    "date",
+    "datetime",
+    "name",
+    "author",
+    "owner",
+    "org",
+    "organization",
+    "company",
+    "customer",
+    "tenant",
+];
+
+/// A type annotation such as `Optional[str]`, not a name.
+static ORG_TYPE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^[A-Za-z_][A-Za-z0-9_.]*\[[A-Za-z0-9_., \[\]]*\]$").unwrap());
+
+/// The key of a rule anchored to the start of a line cannot begin with `-`, or the `-Dkey=value` of a command
+/// would take the rest of the command with it.
+fn org_key_line() -> String {
+    ORG_KEY.replace(
+        r"[A-Za-z0-9_.\-]{0,64}[._\-]",
+        r"[A-Za-z0-9_][A-Za-z0-9_.\-]{0,63}[._\-]",
+    )
+}
+
+fn org_kept(value: &str, inline: bool) -> bool {
+    let lower = value.to_lowercase();
+    is_reference(value)
+        || value.starts_with('<')
+        || !value.chars().any(char::is_alphabetic)
+        || ORG_TYPE.is_match(value)
+        || ORG_KEEP.contains(&lower.as_str())
+        || ["your", "example", "sample", "my-", "my_"]
+            .iter()
+            .any(|p| lower.starts_with(p))
+        || (inline && value.chars().any(|c| "${}[]()*\\".contains(c)))
+}
+
+/// Replaces the value group with `<redacted:org>`, keeping every group before and after it.
+fn org_value(value_group: usize, inline: bool) -> Replacer {
+    Box::new(move |c| {
+        if org_kept(g(c, value_group), inline) {
+            return None;
+        }
+        Some(
+            (1..c.len())
+                .map(|n| {
+                    if n == value_group {
+                        full("org")
+                    } else {
+                        g(c, n).to_string()
+                    }
+                })
+                .collect(),
+        )
+    })
+}
+
 static RULES: LazyLock<Vec<Rule>> = LazyLock::new(|| {
     fn rule(
         kind: &'static str,
@@ -161,6 +254,7 @@ static RULES: LazyLock<Vec<Rule>> = LazyLock::new(|| {
             replace: Box::new(replace),
         }
     }
+    let line_key = org_key_line();
     vec![
         rule(
             "private_key",
@@ -401,6 +495,31 @@ static RULES: LazyLock<Vec<Rule>> = LazyLock::new(|| {
             true,
             r"([a-z]:\\Users\\)[^\\\s'\x22<>]+",
             |c| Some(format!("{}<user>", g(c, 1))),
+        ),
+        // The org rules come last: they match on the key, so every more specific kind has already had its turn.
+        rule(
+            "org",
+            true,
+            &format!(
+                r"(^|[^A-Za-z0-9_.\-])({ORG_KEY}['\x22]?[ \t]*[=:][ \t]*)(['\x22])([^'\x22\r\n]{{2,120}})(['\x22])"
+            ),
+            org_value(4, false),
+        ),
+        rule(
+            "org",
+            true,
+            &format!(
+                r"(?m)(^[ \t]*(?:-[ \t]+)?{line_key}['\x22]?[ \t]*[=:][ \t]*)([^\s'\x22<>][^\r\n]*?)([ \t]*\r?$)"
+            ),
+            org_value(2, false),
+        ),
+        rule(
+            "org",
+            true,
+            &format!(
+                r"(^|[^A-Za-z0-9_.\-])({ORG_KEY}['\x22]?[ \t]*[=:][ \t]*)([^\s'\x22<>,;]{{2,80}})"
+            ),
+            org_value(3, true),
         ),
     ]
 });

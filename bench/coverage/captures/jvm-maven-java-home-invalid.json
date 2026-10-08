@@ -1,0 +1,10 @@
+{
+  "id": "jvm-maven-java-home-invalid",
+  "ok": true,
+  "error_line": "The JAVA_HOME environment variable is not defined correctly,",
+  "exit_code": 1,
+  "output_tail": "The JAVA_HOME environment variable is not defined correctly,\nthis environment variable is needed to run this program.",
+  "image": "maven:3.9.9-eclipse-temurin-21",
+  "image_digest": "maven@sha256:3a4ab3276a087bf276f79cae96b1af04f53731bec53fb2e651aca79e4b10211e",
+  "command": "JAVA_HOME=/nonexistent mvn -v 2>&1"
+}

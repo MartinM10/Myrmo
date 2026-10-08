@@ -70,6 +70,12 @@ jobs:
       - run: cargo fmt --check
       - run: cargo clippy --all-targets -- -D warnings
       - run: cargo test
+      - name: The colony page and the server agree on runtime names
+        working-directory: .
+        run: node tools/check-runtime-aliases.mjs
+      - name: The website and the docs make no claim the code does not back
+        working-directory: .
+        run: node tools/check-claims.mjs
 
   typescript:
     name: SDK and MCP (TypeScript)
@@ -129,7 +135,7 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install pytest jsonschema
-      - run: python -m pytest tools/seed-factory -q
+      - run: python -m pytest tools/seed-factory bench/myrmobench -q
 
   python:
     name: SDK (Python ${{ matrix.python }})

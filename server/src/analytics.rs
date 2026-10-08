@@ -44,6 +44,28 @@ pub fn clean_label(value: &Value) -> Option<String> {
     ok.then_some(s)
 }
 
+/// The framework the project's own seed trails declare. A seed is not an agent that solved something in the field:
+/// it is counted under its own label and never under the model name it carries.
+pub const SEED_FRAMEWORK: &str = "myrmo-seed";
+/// Labels under which seed trails are counted. `seed-factory` is what trails laid before seeds had their own label.
+pub const SEED_LABELS: [&str; 2] = ["seed", "seed-factory"];
+
+pub fn is_seed(agent_info: &Value) -> bool {
+    agent_info["framework"]
+        .as_str()
+        .is_some_and(|f| f.eq_ignore_ascii_case(SEED_FRAMEWORK))
+}
+
+/// The model and framework labels a laid trail is counted under.
+pub fn laid_labels(agent_info: &Value) -> (Option<String>, Option<String>) {
+    let model = if is_seed(agent_info) {
+        Some("seed".to_string())
+    } else {
+        clean_label(&agent_info["model"])
+    };
+    (model, clean_label(&agent_info["framework"]))
+}
+
 /// Add `Metric|label` increments to a pipeline, unless the day is already full of labels.
 pub async fn record(
     con: &mut ConnectionManager,
@@ -388,7 +410,11 @@ pub fn model_leaderboard(rows: &[Value], limit: usize) -> Vec<Value> {
             t[4] += n("laid") + n("rediscovered") + n("worked");
         }
     }
-    let mut list: Vec<_> = total.into_iter().collect();
+    // Seeds are not models: they are reported apart (see `seed_laid`).
+    let mut list: Vec<_> = total
+        .into_iter()
+        .filter(|(model, _)| !SEED_LABELS.contains(&model.as_str()))
+        .collect();
     list.sort_by_key(|(_, t)| std::cmp::Reverse(t[4]));
     list.into_iter()
         .take(limit)
@@ -404,9 +430,47 @@ pub fn model_leaderboard(rows: &[Value], limit: usize) -> Vec<Value> {
         .collect()
 }
 
+/// Seed trails laid over the exported days.
+pub fn seed_laid(rows: &[Value]) -> i64 {
+    rows.iter()
+        .flat_map(|r| {
+            SEED_LABELS
+                .iter()
+                .map(move |l| r["models"][*l]["laid"].as_i64().unwrap_or(0))
+        })
+        .sum()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_seed_is_counted_as_a_seed_whatever_model_it_names() {
+        let seed = json!({"model": "claude-opus-5-5", "framework": "myrmo-seed"});
+        assert!(is_seed(&seed));
+        assert_eq!(laid_labels(&seed).0.as_deref(), Some("seed"));
+        let field = json!({"model": "claude-opus-5-5", "framework": "claude-code"});
+        assert!(!is_seed(&field));
+        assert_eq!(laid_labels(&field).0.as_deref(), Some("claude-opus-5-5"));
+    }
+
+    #[test]
+    fn models_leave_out_seeds_and_the_seed_total_counts_them() {
+        let hash = [
+            ("laid|seed", "9"),
+            ("laid|seed-factory", "10"),
+            ("laid|gpt-5", "2"),
+        ]
+        .into_iter()
+        .map(|(k, v)| (k.to_string(), v.to_string()))
+        .collect();
+        let r = row("20261002", 1, &hash);
+        let board = model_leaderboard(std::slice::from_ref(&r), 10);
+        assert_eq!(board.len(), 1);
+        assert_eq!(board[0]["model"], "gpt-5");
+        assert_eq!(seed_laid(&[r]), 19);
+    }
 
     #[test]
     fn labels_are_validated() {

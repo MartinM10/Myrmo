@@ -1,0 +1,10 @@
+{
+  "id": "jvm-maven-source-5",
+  "ok": true,
+  "error_line": "[ERROR] Source option 5 is no longer supported. Use 8 or later.",
+  "exit_code": 1,
+  "output_tail": "[ERROR] COMPILATION ERROR : \n[ERROR] Source option 5 is no longer supported. Use 8 or later.\n[ERROR] Target option 5 is no longer supported. Use 8 or later.\n[ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.13.0:compile (default-compile) on project a: Compilation failure: Compilation failure: \n[ERROR] Source option 5 is no longer supported. Use 8 or later.\n[ERROR] Target option 5 is no longer supported. Use 8 or later.\n[ERROR] -> [Help 1]\n[ERROR] \n[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.\n[ERROR] Re-run Maven using the -X switch to enable full debug logging.\n[ERROR] \n[ERROR] For more information about the errors and possible solutions, please read the following articles:\n[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException",
+  "image": "maven:3.9.9-eclipse-temurin-21",
+  "image_digest": "maven@sha256:3a4ab3276a087bf276f79cae96b1af04f53731bec53fb2e651aca79e4b10211e",
+  "command": "mvn -q -B compile 2>&1"
+}

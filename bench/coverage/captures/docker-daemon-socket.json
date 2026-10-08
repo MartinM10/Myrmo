@@ -1,0 +1,10 @@
+{
+  "id": "docker-daemon-socket",
+  "ok": true,
+  "error_line": "Cannot connect to the Docker daemon at unix:///var/run/docker.sock. Is the docker daemon running?",
+  "exit_code": 1,
+  "output_tail": "Cannot connect to the Docker daemon at unix:///var/run/docker.sock. Is the docker daemon running?",
+  "image": "docker:27-cli",
+  "image_digest": "docker@sha256:851f91d241214e7c6db86513b270d58776379aacc5eb9c4a87e5b47115e3065c",
+  "command": "env -u DOCKER_HOST docker ps 2>&1"
+}

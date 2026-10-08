@@ -1,0 +1,10 @@
+{
+  "id": "py-torch26-weights-only",
+  "ok": true,
+  "error_line": "_pickle.UnpicklingError: Weights only load failed. This file can still be loaded, to do so you have two options, \u001b[1mdo those steps only if you trust the source of the checkpoint\u001b[0m.",
+  "exit_code": 1,
+  "output_tail": "al_tensor.py:275: UserWarning: Failed to initialize NumPy: No module named 'numpy' (Triggered internally at /pytorch/torch/csrc/utils/tensor_numpy.cpp:81.)\n  cpu = _conversion_method_template(device=torch.device(\"cpu\"))\nTraceback (most recent call last):\n  File \"<string>\", line 4, in <module>\n  File \"/usr/local/lib/python3.12/site-packages/torch/serialization.py\", line 1470, in load\n    raise pickle.UnpicklingError(_get_wo_message(str(e))) from None\n_pickle.UnpicklingError: Weights only load failed. This file can still be loaded, to do so you have two options, \u001b[1mdo those steps only if you trust the source of the checkpoint\u001b[0m. \n\t(1) In PyTorch 2.6, we changed the default value of the `weights_only` argument in `torch.load` from `False` to `True`. Re-running `torch.load` with `weights_only` set to `False` will likely succeed, but it can result in arbitrary code execution. Do it only if you got the file from a trusted source.\n\t(2) Alternatively, to load with `weights_only=True` please check the recommended steps in the following error message.\n\tWeightsUnpickler error: Unsupported global: GLOBAL __main__.A was not an allowed global by default. Please use `torch.serialization.add_safe_globals([A])` or the `torch.serialization.safe_globals([A])` context manager to allowlist this global if you trust this class/function.\n\nCheck the documentation of torch.load to learn more about types accepted by default with weights_only https://pytorch.org/docs/stable/generated/torch.load.html.",
+  "image": "python:3.12-slim",
+  "image_digest": "python@sha256:05cda9777409a9c3ffddd94a4c476b79f0769a0b4857f0c7ed9226b6800b0d6f",
+  "command": "python -c \"import torch\nclass A: pass\ntorch.save(A(), '/tmp/a.pt')\ntorch.load('/tmp/a.pt')\" 2>&1"
+}

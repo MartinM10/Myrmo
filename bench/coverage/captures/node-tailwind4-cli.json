@@ -1,0 +1,10 @@
+{
+  "id": "node-tailwind4-cli",
+  "ok": true,
+  "error_line": "npm error could not determine executable to run",
+  "exit_code": 1,
+  "output_tail": "npm error could not determine executable to run\nnpm error A complete log of this run can be found in: /root/.npm/_logs/2026-10-08T18_36_32_155Z-debug-0.log",
+  "image": "node:20-slim",
+  "image_digest": "node@sha256:2cf067cfed83d5ea958367df9f966191a942351a2df77d6f0193e162b5febfc0",
+  "command": "npx tailwindcss init 2>&1"
+}

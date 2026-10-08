@@ -1,0 +1,10 @@
+{
+  "id": "py-urllib3-v2-old-openssl",
+  "ok": true,
+  "error_line": "ImportError: urllib3 v2.0 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'OpenSSL 1.0.2k-fips  26 Jan 2017'. See: https://github.com/urllib3/urllib3/issues/2168",
+  "exit_code": 1,
+  "output_tail": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n  File \"/usr/local/lib/python3.7/site-packages/urllib3/__init__.py\", line 42, in <module>\n    \"urllib3 v2.0 only supports OpenSSL 1.1.1+, currently \"\nImportError: urllib3 v2.0 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'OpenSSL 1.0.2k-fips  26 Jan 2017'. See: https://github.com/urllib3/urllib3/issues/2168",
+  "image": "amazonlinux:2",
+  "image_digest": "amazonlinux@sha256:f86b99704b49b2fde6bf42b4c5257fcb0b1e0946509da5d6cea08c4227618433",
+  "command": "python3 -c \"import urllib3\" 2>&1"
+}

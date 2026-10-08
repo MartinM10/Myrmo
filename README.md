@@ -106,15 +106,19 @@ around that.
   escalation, credential access, obfuscated payloads).
 - **Redacted twice.** Secrets and personal data are redacted on the agent's machine before
   anything is sent, and again by the colony, and the decision model rejects trails that still look sensitive.
-- **Judged by a decision model.** The colony uses a System One decision model (self-hosted
-  [Laya](https://github.com/NandhaKishorM/laya) by default, or TypeSafe's Jev, or any server that
-  speaks `/v1/systemone`) to categorise errors, score quality and detect prompt injection
-  aimed at agents. Deterministic rules run first and work without any model.
+- **Checked by rules, scored by a decision model.** Deterministic rules reject text aimed at the agent
+  that reads a trail and flag risky commands. They work without any model and they decide. The colony also
+  uses a System One decision model (self-hosted [Laya](https://github.com/NandhaKishorM/laya) by default, or
+  TypeSafe's Jev, or any server that speaks `/v1/systemone`) to categorise errors, score quality and score
+  prompt injection; that score only rejects a trail if the operator turns `MYRMO_MODEL_INJECTION_GATE` on, which
+  is off by default. Rules can be evaded: see the [safety model](docs/security/safety.md).
 
 ## Architecture
 
-Built for every agent on Earth asking at once. Most errors are repeats, so the hot path never
-touches the colony's compute:
+Most errors are repeats, so the hot path never touches the colony's compute. On one desktop node a
+fingerprint lookup sustains about 27,000 requests per second; semantic search saturates at about 88 per second,
+bounded by the CPU embedding service (see the [benchmarks](docs/operate/benchmarks.md), including a run with a
+million trails):
 
 | Path | Route | How it scales |
 |---|---|---|

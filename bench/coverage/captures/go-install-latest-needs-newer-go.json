@@ -1,0 +1,10 @@
+{
+  "id": "go-install-latest-needs-newer-go",
+  "ok": true,
+  "error_line": "go: golang.org/x/tools/cmd/goimports@latest: golang.org/x/tools@v0.51.0 requires go >= 1.26.0 (running go 1.21.13; GOTOOLCHAIN=local)",
+  "exit_code": 1,
+  "output_tail": "go: downloading golang.org/x/tools v0.51.0\ngo: golang.org/x/tools/cmd/goimports@latest: golang.org/x/tools@v0.51.0 requires go >= 1.26.0 (running go 1.21.13; GOTOOLCHAIN=local)",
+  "image": "golang:1.21.13",
+  "image_digest": "golang@sha256:4746d26432a9117a5f58e95cb9f954ddf0de128e9d5816886514199316e4a2fb",
+  "command": "GOTOOLCHAIN=local go install golang.org/x/tools/cmd/goimports@latest 2>&1"
+}

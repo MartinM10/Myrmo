@@ -1,6 +1,8 @@
 import copy
+import importlib
 import importlib.util
 import json
+import sys
 import urllib.error
 from pathlib import Path
 
@@ -20,7 +22,8 @@ factory = load("factory")
 publisher = load("publisher")
 retire = load("retire")
 provenance = load("provenance")
-catalog = load("catalog")
+sys.path.insert(0, str(ROOT))
+catalog = importlib.import_module("catalog")
 EXAMPLE = json.loads((ROOT.parents[1] / "protocol/examples/trail.distutils.json").read_text(encoding="utf-8"))
 
 
@@ -251,6 +254,9 @@ def test_a_model_needs_a_licence_the_project_can_pass_on_or_reviewed_terms():
     problems = provenance.check(provenance_for(candidate(), model="some-api-model"))
     assert problems and "terms were not reviewed" in problems[0]
     assert provenance.check(provenance_for(candidate(), model="llama-like", model_licence="Llama-Community"))
+    # The owner can accept a model's terms for this use, by name and date; a vague or dateless claim does not count.
+    assert provenance.check(provenance_for(candidate(), model="some-api-model", model_terms_accepted_by="the project owner, 2026-10-08")) == []
+    assert provenance.check(provenance_for(candidate(), model="some-api-model", model_terms_accepted_by="yes"))
 
 
 def test_the_publisher_sends_protocol_v1_only_and_notices_a_trail_that_changed():
@@ -268,7 +274,7 @@ def test_the_publisher_sends_protocol_v1_only_and_notices_a_trail_that_changed()
 def test_the_record_keeps_what_is_needed_to_audit_a_trail_later():
     rec = candidate()["_provenance"]
     assert rec["origin"] == "seed-factory" and rec["authored_by"] == "project"
-    assert rec["generated_by"] == {"kind": "scripted-commands", "model": None, "model_licence": None, "model_terms_reviewed": False}
+    assert rec["generated_by"] == {"kind": "scripted-commands", "model": None, "model_licence": None, "model_terms_reviewed": False, "model_terms_accepted_by": None}
     assert rec["image"] == {"ref": "python:3.12.4", "digest": "python@sha256:" + "a" * 64}
     assert rec["tool"] == {"commit": "abc123", "dirty": False}
     assert len(rec["content_sha256"]) == 64 and rec["sources"] == []
@@ -301,3 +307,26 @@ def test_the_publisher_keeps_a_ledger_and_sends_nothing_without_provenance(monke
     assert len(ledger) == 1
     assert ledger[0]["trail_id"] == "11111111-1111-4111-8111-111111111111" and ledger[0]["status"] == "indexed"
     assert ledger[0]["provenance"]["content_sha256"] == good["_provenance"]["content_sha256"]
+
+
+def test_no_task_comes_from_the_reserved_half_of_the_coverage_set():
+    lines = {json.loads(l)["id"]: json.loads(l) for l in (ROOT.parents[1] / "bench/coverage/lines.jsonl").read_text(encoding="utf-8").splitlines() if l.strip()}
+    from_probes = [t for t in catalog.TASKS if t.probe]
+    assert len(from_probes) >= 30
+    assert all(lines[t.probe]["split"] == "candidate" for t in from_probes)
+    assert {l["split"] for l in lines.values()} == {"candidate", "reserved"}
+
+
+def test_a_reserved_line_refuses_to_become_a_task():
+    from catalog import probes
+
+    reserved = next(i for i, l in probes._lines().items() if l["split"] == "reserved")
+    with pytest.raises(ValueError, match="reserved"):
+        probes.from_probe(reserved, category="other", error_type="x", summary="s", context="c", failed_approaches=(), fix="true", verify="true", root_cause="r", steps=(), tags=(), runtime={})
+
+
+def test_tasks_written_by_a_model_name_it_and_the_owner_who_accepted_its_terms():
+    mine = [t for t in catalog.TASKS if t.written_by_model]
+    assert mine and all(t.ecosystem for t in mine)
+    rec = provenance_for(candidate(), model=mine[0].written_by_model, model_terms_accepted_by=factory.OWNER_ACCEPTANCE)
+    assert provenance.check(rec) == [] and rec["generated_by"]["kind"] == "model"
