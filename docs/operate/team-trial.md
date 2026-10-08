@@ -19,6 +19,9 @@ claude plugin marketplace add MartinM10/Myrmo
 claude plugin install myrmo@myrmo
 ```
 
+To set it up once for the whole team, run the second command with `--scope project` and commit the `.claude/settings.json`
+it writes: everyone who opens the repository gets the plugin ([scopes](../reference/claude-code-plugin.md#where-it-is-installed)).
+
 **Nothing to install: the hosted server.** It cannot keep an id, so each person picks one: 8 to 64
 letters, digits, `_` or `-`, pseudonymous (not your name or email), something like `ana-7f3k9q`.
 **Everyone needs a different one**, or colleagues count as a single agent.

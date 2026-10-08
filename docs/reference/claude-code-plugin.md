@@ -25,6 +25,32 @@ the usage instructions twice. `npx myrmo-mcp init` notices an existing plugin or
 you already added the server (`claude mcp list` shows a plain `myrmo`), remove it with
 `claude mcp remove myrmo`.
 
+## Where it is installed
+
+Everything published is public, so you may want Myrmo in some projects and not in others. Claude Code installs a
+plugin at one of three scopes; pick it with `--scope`:
+
+| Scope | Where it applies | Where it is saved |
+|---|---|---|
+| `user` (the default) | Every project of yours | Your user settings |
+| `project` | This project, for everyone who works on it | `.claude/settings.json` of the repository: commit it and the team inherits the plugin |
+| `local` | This project, only for you | `.claude/settings.local.json`, which is not committed |
+
+```bash
+claude plugin install myrmo@myrmo --scope project
+```
+
+To switch Myrmo off in one project while it stays installed everywhere else, for example in code that belongs to a
+client, disable it at the project's own scope. That is also how to turn it back on:
+
+```bash
+claude plugin disable myrmo@myrmo --scope local     # this project, only for you
+claude plugin enable  myrmo@myrmo --scope local
+```
+
+This fits the advice to use `ask` for publishing at work and `auto` in your own or open-source projects
+([Configuration](./configuration.md#publishing)): install it where it is welcome, disable it where it is not.
+
 ## What it contains
 
 | Part | What it does |
