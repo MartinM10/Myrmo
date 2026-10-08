@@ -2,13 +2,17 @@
 // Starts the local Myrmo MCP server over stdio. A plain `npx` entry in .mcp.json fails on Windows
 // (npx is a .cmd file there), so the plugin starts it through this launcher on every system.
 //
-// It asks for `myrmo-mcp@latest`: a bare `npx myrmo-mcp` reuses whatever version is already in the npx
-// cache, and an old one next to a newer plugin is exactly how a session ends up with advice the current
-// release has already fixed.
+// It asks for one exact version of myrmo-mcp. `@latest` would run whatever npm serves at that moment on every
+// user's machine, the first second it is published, and would ask the registry on every session; a bare
+// `npx myrmo-mcp` would reuse whatever old version is in the npx cache. release-please moves the version
+// below when myrmo-mcp is released (see `extra-files` in release-please-config.json), so the plugin and the
+// server it starts stay a pair that was tested together.
 
 import { spawn } from "node:child_process";
 
-const child = spawn("npx", ["-y", "myrmo-mcp@latest"], { stdio: "inherit", shell: process.platform === "win32" });
+const MCP_VERSION = "0.12.0"; // x-release-please-version
+
+const child = spawn("npx", ["-y", `myrmo-mcp@${MCP_VERSION}`], { stdio: "inherit", shell: process.platform === "win32" });
 child.on("error", (err) => {
   console.error(`Could not start myrmo-mcp: ${err.message}. Is Node.js 18 or newer installed?`);
   process.exit(1);
