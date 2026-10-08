@@ -4,6 +4,8 @@ on:
   push:
     branches: [main]
   pull_request:
+  # Started by the Release workflow for the release pull request (see release.yml).
+  workflow_dispatch:
 
 permissions:
   contents: read
