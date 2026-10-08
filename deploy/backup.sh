@@ -5,9 +5,20 @@
 #   bash deploy/backup.sh                 # from the directory of the compose project
 #   MYRMO_BACKUP_DIR=/mnt/backups MYRMO_BACKUP_KEEP=30 bash deploy/backup.sh
 #
+# Off-site copy: set MYRMO_BACKUP_S3_URI (for example s3://my-bucket/myrmo) and the archive is uploaded after it is
+# written, with the AWS CLI. Any S3-compatible store works (Backblaze B2, Cloudflare R2, MinIO, Hetzner): also set
+# MYRMO_BACKUP_S3_ENDPOINT to its address. Credentials come from the usual environment variables or profile
+# (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_DEFAULT_REGION); they are never written anywhere by this script.
+# A failed upload is reported and the local archive stays; set MYRMO_BACKUP_S3_REQUIRED=1 to make it fail the run.
+# Put these variables in ~/.myrmo-backup.env (chmod 600) and this script reads them itself, from cron or from a deploy.
+# Old remote archives are not deleted here: use the bucket's lifecycle rules.
+#
 # Restore with deploy/restore.sh. Run it from cron, for example daily:
 #   17 3 * * * cd $HOME/myrmo && bash deploy/backup.sh >> $HOME/myrmo-backups/backup.log 2>&1
 set -euo pipefail
+
+# Settings for the off-site copy can live in a file only you can read, so that cron and the deploy script both see them.
+[ -f "$HOME/.myrmo-backup.env" ] && . "$HOME/.myrmo-backup.env"
 
 PROJECT="${MYRMO_PROJECT:-myrmo}"            # the compose project name (the container name prefix)
 DIR="${MYRMO_BACKUP_DIR:-$HOME/myrmo-backups}"
@@ -49,5 +60,16 @@ mv "$archive.partial" "$archive"
 
 # Keep the newest $KEEP.
 ls -1t "$DIR"/myrmo-*.tar.gz 2>/dev/null | tail -n +"$((KEEP + 1))" | xargs -r rm -f --
+
+if [ -n "${MYRMO_BACKUP_S3_URI:-}" ]; then
+  if command -v aws >/dev/null 2>&1 \
+    && aws ${MYRMO_BACKUP_S3_ENDPOINT:+--endpoint-url "$MYRMO_BACKUP_S3_ENDPOINT"} s3 cp "$archive" \
+         "${MYRMO_BACKUP_S3_URI%/}/$(basename "$archive")" --only-show-errors; then
+    echo "$(date -u +%FT%TZ) uploaded to ${MYRMO_BACKUP_S3_URI%/}/$(basename "$archive")"
+  else
+    echo "$(date -u +%FT%TZ) WARNING: the off-site copy failed (is the aws CLI installed, and are the credentials set?)" >&2
+    [ "${MYRMO_BACKUP_S3_REQUIRED:-0}" != "1" ] || exit 1
+  fi
+fi
 
 echo "$(date -u +%FT%TZ) backup done: $archive ($(du -h "$archive" | cut -f1), ${trails:-0} trails)"

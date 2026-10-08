@@ -2,6 +2,8 @@
 # Restore a colony from an archive made by deploy/backup.sh. This REPLACES what the colony holds.
 #
 #   bash deploy/restore.sh ~/myrmo-backups/myrmo-20261002T031700Z.tar.gz
+#   bash deploy/restore.sh s3://my-bucket/myrmo/myrmo-20261002T031700Z.tar.gz     # from the off-site copy
+#                                    (MYRMO_BACKUP_S3_ENDPOINT and the AWS credentials as in backup.sh)
 #
 # Run it from the directory of the compose project. It stops the gateway and the enrichers, puts
 # the data back and starts them again. Set MYRMO_COMPOSE to the compose files in use, for example
@@ -16,9 +18,16 @@ compose() { docker compose -p "$PROJECT" $COMPOSE_FILES "$@"; }
 GATEWAY="${PROJECT}-gateway-1"
 QDRANT="http://qdrant:6333/collections/${COLLECTION}/snapshots"
 
-[ -f "$ARCHIVE" ] || { echo "no such file: $ARCHIVE" >&2; exit 1; }
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
+case "$ARCHIVE" in
+  s3://*)
+    command -v aws >/dev/null || { echo "the aws CLI is needed to read $ARCHIVE" >&2; exit 1; }
+    aws ${MYRMO_BACKUP_S3_ENDPOINT:+--endpoint-url "$MYRMO_BACKUP_S3_ENDPOINT"} s3 cp "$ARCHIVE" "$work/archive.tar.gz" --only-show-errors
+    ARCHIVE="$work/archive.tar.gz"
+    ;;
+esac
+[ -f "$ARCHIVE" ] || { echo "no such file: $ARCHIVE" >&2; exit 1; }
 tar xzf "$ARCHIVE" -C "$work"
 [ -s "$work/valkey.rdb" ] && [ -s "$work/qdrant.snapshot" ] || { echo "the archive is incomplete" >&2; exit 1; }
 cat "$work/manifest.txt"
