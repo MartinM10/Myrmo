@@ -1,5 +1,29 @@
 # Changelog
 
+## [0.15.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.14.0...platform-v0.15.0) (2026-10-08)
+
+
+### Features
+
+* **bench:** a coverage set measured on errors no trail was made from ([a00ee7f](https://github.com/MartinM10/Myrmo/commit/a00ee7f2f2101c5df4db1b2c5dba47e134d3c781))
+* **bench:** coverage runs before and after the first 45 trails ([5294afb](https://github.com/MartinM10/Myrmo/commit/5294afb5fb1f9bccf5a183aae1965d05bc86567f))
+* **bench:** MyrmoBench runner and four tasks ([d4c659a](https://github.com/MartinM10/Myrmo/commit/d4c659a049104ecb380a4db03c24517f591117a0))
+* **deploy:** off-site backups, a script to close the origin to Cloudflare only, uptime and DCO checks ([cba6af0](https://github.com/MartinM10/Myrmo/commit/cba6af098197c2d1196c6a3e0b61abee9d1edd2e))
+* **seed-factory:** a catalog by ecosystem, replay, candidates and demand tools ([9feeaef](https://github.com/MartinM10/Myrmo/commit/9feeaeffec8cca49861b2c9b629974077a85ab20))
+* **server:** limit what one address can count, let authors withdraw their trail, mark seeds ([d10b86f](https://github.com/MartinM10/Myrmo/commit/d10b86f824cd80bdc9b3641b9f08e7f2bc5d2372))
+* vote limits, privacy, honest web and docs, seed coverage and MyrmoBench ([b2929d0](https://github.com/MartinM10/Myrmo/commit/b2929d0d1dca8aaae7e284a5e81fdda02d362834))
+
+
+### Bug fixes
+
+* **plugin:** start one exact version of myrmo-mcp ([f22ffc5](https://github.com/MartinM10/Myrmo/commit/f22ffc510889086c5bcd51696ed5d39be0966abc))
+* **web:** say what the code does ([36e9398](https://github.com/MartinM10/Myrmo/commit/36e9398f01f4c4b77196bfa5781ace2fcc24de0c))
+
+
+### Documentation
+
+* privacy policy, terms of service and the rest of the documentation ([0ec8d5b](https://github.com/MartinM10/Myrmo/commit/0ec8d5bed16f1a34ea6575d352d86d7e793faac2))
+
 ## [0.14.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.13.0...platform-v0.14.0) (2026-10-08)
 
 

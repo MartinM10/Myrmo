@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.10.0](https://github.com/MartinM10/Myrmo/compare/sdk-js-v0.9.0...sdk-js-v0.10.0) (2026-10-08)
+
+
+### Features
+
+* **sdk-js:** list the names a person should check before approving a publication ([e59679d](https://github.com/MartinM10/Myrmo/commit/e59679d1f4c33b3d396cf521bf08c0829ccd2ec5))
+* vote limits, privacy, honest web and docs, seed coverage and MyrmoBench ([b2929d0](https://github.com/MartinM10/Myrmo/commit/b2929d0d1dca8aaae7e284a5e81fdda02d362834))
+
 ## [0.9.0](https://github.com/MartinM10/Myrmo/compare/sdk-js-v0.8.0...sdk-js-v0.9.0) (2026-10-07)
 
 

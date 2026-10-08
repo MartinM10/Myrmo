@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.3.0](https://github.com/MartinM10/Myrmo/compare/protocol-v1.2.0...protocol-v1.3.0) (2026-10-08)
+
+
+### Features
+
+* **protocol:** vectors for the redaction of organisation names ([8e06636](https://github.com/MartinM10/Myrmo/commit/8e06636d3647ec6611eb154ffe50e8bc475ae199))
+* vote limits, privacy, honest web and docs, seed coverage and MyrmoBench ([b2929d0](https://github.com/MartinM10/Myrmo/commit/b2929d0d1dca8aaae7e284a5e81fdda02d362834))
+
 ## [1.2.0](https://github.com/MartinM10/Myrmo/compare/protocol-v1.1.0...protocol-v1.2.0) (2026-10-07)
 
 
