@@ -30,7 +30,7 @@ sys.path.insert(0, str(ROOT / "protocol"))
 from fingerprint_v2 import fingerprint as fp2_of  # noqa: E402  (the reference implementation)
 
 
-def call(method: str, path: str, body: dict | None = None, agent: str | None = None, token: str | None = None) -> tuple[int, dict, dict]:
+def call(method: str, path: str, body: dict | None = None, agent: str | None = None, token: str | None = None, ip: str | None = None) -> tuple[int, dict, dict]:
     data = json.dumps(body).encode() if body is not None else None
     req = urllib.request.Request(BASE + path, data=data, method=method)
     req.add_header("content-type", "application/json")
@@ -38,6 +38,9 @@ def call(method: str, path: str, body: dict | None = None, agent: str | None = N
         req.add_header("x-myrmo-agent", agent)
     if token is not None:
         req.add_header("authorization", f"Bearer {token}")
+    if ip:
+        # The colony hashes the first address of X-Forwarded-For, as it does behind its proxy: this plays another machine.
+        req.add_header("x-forwarded-for", ip)
     for attempt in range(4):
         try:
             with urllib.request.urlopen(req, timeout=60) as res:
@@ -162,11 +165,11 @@ def main() -> None:
         "agent_info": {"model": "gpt-5", "framework": "codex-cli"},
         "environment": {"os": "macos", "arch": "arm64", "runtime": {"name": "python", "version": "3.12.7"}, "packages": []},
         "notes": "Same fix on Apple Silicon.",
-    }, agent=follower)
+    }, agent=follower, ip="203.0.113.10")
     check(status == 202 and body["counted"] and body["strength"] > before, f"worked report raises strength {before} -> {body.get('strength')}")
     status, body, _ = call("POST", f"/v1/trails/{trail_id}/outcomes", {
         "protocol_version": "1.0", "outcome": "worked", "agent_info": {"model": "gpt-5", "framework": "codex-cli"},
-    }, agent=follower)
+    }, agent=follower, ip="203.0.113.10")
     check(status == 202 and not body["counted"], "same agent twice in a day is not counted")
     status, body, _ = call("POST", f"/v1/trails/{trail_id}/outcomes", {
         "protocol_version": "1.0", "outcome": "worked", "agent_info": {"model": "claude-opus-5-5", "framework": "langchain"},
@@ -247,7 +250,7 @@ def main() -> None:
         candidate = copy.deepcopy(EXAMPLE)
         # The colony treats the same major.minor runtime as the same environment and merges equal
         # solutions, so every fixture gets a minor version of its own.
-        minor = (int(run, 16) % 100000) * 10 + {"anon": 1, "draft": 2, "discard": 3, "retire": 4, "jvm": 5}[label]
+        minor = (int(run, 16) % 100000) * 10 + {"anon": 1, "draft": 2, "discard": 3, "retire": 4, "jvm": 5, "sybil": 6, "withdraw": 7}[label]
         candidate["environment"]["runtime"]["version"] = f"6.{minor}.0"
         candidate["problem"]["error_message"] = f"ModuleNotFoundError: No module named 'smoke_{run}_{label}'"
         return candidate
@@ -277,6 +280,20 @@ def main() -> None:
     check(call("GET", f"/v1/trails/{body['trail_id']}")[1]["outcomes"]["failed"] == 1, "the failed report is on the trail")
     check(not outcome("failed")["counted"], "and once a day, like everybody")
 
+    print("votes cannot be inflated by changing the agent id")
+    target = unique("sybil")
+    status, body, _ = call("POST", "/v1/trails", target, agent=author, ip="198.51.100.1")
+    CREATED.append(body["trail_id"])
+    wait_for_status(body["trail_id"])
+    vote = lambda kind, agent, ip, model="claude-opus-5-5": call("POST", f"/v1/trails/{body['trail_id']}/outcomes", {"protocol_version": "1.0", "outcome": kind, "agent_info": {"model": model, "framework": "claude-code"}}, agent=agent, ip=ip)[1]
+    check(not vote("worked", f"other_id_{run}", "198.51.100.1")["counted"], "the author's address under another id does not reinforce")
+    flood = [vote("worked", f"sock_{i}_{run}", "198.51.100.2")["counted"] for i in range(8)]
+    check(sum(flood) == 3, f"eight ids from one address count three times, not eight: {flood}")
+    sink = [vote("failed", f"sink_{i}_{run}", "198.51.100.3")["counted"] for i in range(8)]
+    check(sum(sink) == 3, f"and failed reports from one address are limited the same way: {sink}")
+    office = [vote("worked", f"mate_{i}_{run}", f"198.51.100.{10 + i}")["counted"] for i in range(3)]
+    check(all(office), "colleagues on different addresses all count")
+
     print("two spellings of a runtime are one runtime")
     jv = unique("jvm")
     jv["environment"]["runtime"] = {"name": "java", "version": "21.0.2"}
@@ -302,10 +319,13 @@ def main() -> None:
     status, view, headers = call("GET", f"/v1/drafts/{token}")
     check(status == 200 and view["state"] == "pending" and view["trail"]["problem"]["error_type"] == "ModuleNotFoundError", "the draft shows the payload to approve")
     check("no-store" in headers.get("Cache-Control", headers.get("cache-control", "")), "drafts are never cached")
-    status, first, _ = call("POST", f"/v1/drafts/{token}/publish")
+    status, refused, _ = call("POST", f"/v1/drafts/{token}/publish")
+    check(status == 400 and refused["error"]["code"] == "terms_not_accepted", f"publishing without accepting the terms is refused (got {status})")
+    check(call("GET", f"/v1/drafts/{token}")[1]["state"] == "pending", "and the draft stays pending")
+    status, first, _ = call("POST", f"/v1/drafts/{token}/publish", {"accepted_terms": True})
     check(status == 202 and first["status"] == "queued", f"approving publishes it (got {status})")
     CREATED.append(first["trail_id"])
-    status, again, _ = call("POST", f"/v1/drafts/{token}/publish")
+    status, again, _ = call("POST", f"/v1/drafts/{token}/publish", {"accepted_terms": True})
     check(status == 202 and again["trail_id"] == first["trail_id"], "approving twice publishes once")
     wait_for_status(first["trail_id"])
     status, view, _ = call("GET", f"/v1/drafts/{token}")
@@ -314,7 +334,7 @@ def main() -> None:
     other = body["draft_id"]
     status, body, _ = call("POST", f"/v1/drafts/{other}/discard")
     check(status == 200 and body["state"] == "discarded", "a draft can be discarded")
-    status, body, _ = call("POST", f"/v1/drafts/{other}/publish")
+    status, body, _ = call("POST", f"/v1/drafts/{other}/publish", {"accepted_terms": True})
     check(status == 409, f"a discarded draft cannot be published (got {status})")
     status, _, _ = call("GET", "/v1/drafts/" + "0" * 32)
     check(status == 404, "an unknown or expired draft -> 404")
@@ -350,6 +370,22 @@ def main() -> None:
         status, body, _ = call("GET", "/v1/demand")
         check("fingerprints" not in body, "the public list never answers a lookup by fingerprint")
 
+    print("an author withdraws their own trail")
+    mine = unique("withdraw")
+    status, body, _ = call("POST", "/v1/trails", mine, agent=author)
+    withdrawn = body["trail_id"]
+    CREATED.append(withdrawn)
+    wait_for_status(withdrawn)
+    status, _, _ = call("DELETE", f"/v1/trails/{withdrawn}", agent=f"someone_else_{run}")
+    check(status == 403, f"another agent id cannot withdraw it (got {status})")
+    status, _, _ = call("DELETE", f"/v1/trails/{withdrawn}")
+    check(status == 403, f"a caller with no agent id cannot either (got {status})")
+    status, body, _ = call("DELETE", f"/v1/trails/{withdrawn}", {"reason": "mine"}, agent=author)
+    check(status == 200 and body["status"] == "removed", f"the author withdraws it with the id it was published with (got {status})")
+    check(call("GET", f"/v1/trails/{withdrawn}")[1].get("status") == "removed", "the id answers removed")
+    hits = call("POST", "/v1/search", {"query": mine["problem"]["error_message"], "environment": {"runtime": {"name": "python"}}})[1]["results"]
+    check(withdrawn not in [r["trail_id"] for r in hits], "and it is gone from search")
+
     print("operator")
     status, _, _ = call("GET", "/v1/analytics")
     check(status in (401, 501), f"daily analytics need an operator token (got {status})")
@@ -363,7 +399,7 @@ def main() -> None:
         status, _, _ = call("GET", "/v1/analytics", token="x" * 20)
         check(status == 401, "a wrong operator token cannot read analytics")
     status, body, _ = call("DELETE", f"/v1/trails/{first['trail_id']}")
-    check(status in (401, 501), f"removing a trail needs an operator token (got {status})")
+    check(status == 403, f"removing a trail needs its author's id or an operator token (got {status})")
     if ADMIN:
         status, _, _ = call("DELETE", f"/v1/trails/{first['trail_id']}", token="not-the-token-0000")
         check(status == 401, "a wrong operator token is refused")

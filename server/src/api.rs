@@ -205,20 +205,22 @@ async fn rate_limit(
     let minute = now / 60;
     let mut con = st.redis();
     let mut pipe = redis::pipe();
-    pipe.cmd("PFADD")
-        .arg(keys::stat_agents(keys::hour(now)))
-        .arg(&agent)
-        .ignore();
-    pipe.cmd("EXPIRE")
-        .arg(keys::stat_agents(keys::hour(now)))
-        .arg(90_000)
-        .ignore();
-    // Durable analytics: distinct agents per day, and declared (stable) ids all time.
-    pipe.cmd("PFADD")
-        .arg(crate::analytics::agents_day_key(now))
-        .arg(&agent)
-        .ignore();
+    // Only a caller that declared an id is an agent. An address hash changes every day, and a browser that opens
+    // the colony page has no id, so counting it would make "agents" mean "anything that sent a request".
     if declared {
+        pipe.cmd("PFADD")
+            .arg(keys::stat_agents(keys::hour(now)))
+            .arg(&agent)
+            .ignore();
+        pipe.cmd("EXPIRE")
+            .arg(keys::stat_agents(keys::hour(now)))
+            .arg(90_000)
+            .ignore();
+        // Durable analytics: distinct agents per day, and declared (stable) ids all time.
+        pipe.cmd("PFADD")
+            .arg(crate::analytics::agents_day_key(now))
+            .arg(&agent)
+            .ignore();
         pipe.cmd("PFADD")
             .arg(crate::analytics::AGENTS_ALL)
             .arg(&agent)
@@ -232,12 +234,16 @@ async fn rate_limit(
             .ignore();
     }
     // Fail open: a Redis hiccup must not take the API down.
-    let used: u64 = match pipe.query_async::<Vec<u64>>(&mut con).await {
-        Ok(values) => values.first().copied().unwrap_or(0),
-        Err(err) => {
-            tracing::warn!(error = %err, "rate limiter unavailable");
-            0
+    let used: u64 = if declared || limit > 0 {
+        match pipe.query_async::<Vec<u64>>(&mut con).await {
+            Ok(values) => values.first().copied().unwrap_or(0),
+            Err(err) => {
+                tracing::warn!(error = %err, "rate limiter unavailable");
+                0
+            }
         }
+    } else {
+        0
     };
 
     let reset = 60 - now % 60;
@@ -368,6 +374,7 @@ fn result_json(c: &Candidate, via: &str, score: f64, overlap: Option<f64>, now: 
         "strength": round3(c.strength(now)),
         "outcomes": c.outcomes.json(),
         "risk": current_risk(&c.payload),
+        "seed": crate::analytics::is_seed(&c.payload["trail"]["agent_info"]),
         "trail": c.payload["trail"],
     })
 }
@@ -738,6 +745,14 @@ async fn queue_trail(st: &AppState, caller: &Caller, trail: &Value, fp: &str) ->
         .arg("created_ts")
         .arg(now)
         .ignore();
+    // The publisher's address hash is kept for a day whether or not an agent id was declared, so that
+    // changing the id does not let the publisher confirm their own trail.
+    pipe.cmd("SET")
+        .arg(keys::pub_addr(&id))
+        .arg(&caller.client)
+        .arg("EX")
+        .arg(86_400)
+        .ignore();
     // A declared agent id is pseudonymous by design and stays with the trail. An address hash
     // is kept for a day only: enough to stop the publisher confirming their own trail.
     if caller.declared {
@@ -959,6 +974,7 @@ async fn get_draft(State(st): State<AppState>, Path(token): Path<String>) -> Api
 async fn publish_draft(
     State(st): State<AppState>,
     Path(token): Path<String>,
+    body: Result<Bytes, BytesRejection>,
 ) -> ApiResult<Response> {
     let draft = load_draft(&st, &token).await?;
     let state = draft.get("state").map_or("pending", String::as_str);
@@ -978,6 +994,17 @@ async fn publish_draft(
             ));
         }
         _ => {}
+    }
+    // Publishing licenses the trail as the terms say, so whoever presses Publish says they accept them.
+    let accepted = parse_body(body)
+        .ok()
+        .is_some_and(|b| b["accepted_terms"] == json!(true));
+    if !accepted {
+        return Err(ApiError::new(
+            StatusCode::BAD_REQUEST,
+            "terms_not_accepted",
+            "Publishing needs the terms of service to be accepted: send {\"accepted_terms\": true}.",
+        ));
     }
     // Two clicks at once must not publish twice.
     let mut con = st.redis();
@@ -1151,16 +1178,28 @@ fn authorize_operator(st: &AppState, headers: &HeaderMap) -> ApiResult<()> {
     }
 }
 
+/// Whether the agent id a caller declared is the one a trail was published with. A caller with no id, or whose
+/// "id" is only the hash of their address, is never the author here: removal is for the person who holds the id.
+fn author_may_remove(declared: bool, caller_agent: &str, author: Option<&str>) -> bool {
+    declared && author == Some(caller_agent)
+}
+
 /// Take a trail out of the colony: search, fingerprint lookups, the feed and its outcome data.
-/// A tombstone stays for 90 days so that a trail still queued is not indexed afterwards and the
-/// id answers `removed` instead of `not found`. Removing twice is fine.
+/// An operator (bearer token) may remove any trail; the author may remove their own, by sending the
+/// `X-Myrmo-Agent` they published with. A tombstone stays for 90 days so that a trail still queued is not
+/// indexed afterwards and the id answers `removed` instead of `not found`. Removing twice is fine.
 async fn remove_trail(
     State(st): State<AppState>,
+    Extension(caller): Extension<Caller>,
     headers: HeaderMap,
     Path(id): Path<String>,
     body: Result<Bytes, BytesRejection>,
 ) -> ApiResult<Json<Value>> {
-    authorize_operator(&st, &headers)?;
+    // A bearer token means an operator, and a wrong one is refused rather than tried as an author.
+    let by_operator = headers.contains_key(header::AUTHORIZATION);
+    if by_operator {
+        authorize_operator(&st, &headers)?;
+    }
     if !valid_uuid(&id) {
         return Err(ApiError::not_found("No trail with that id."));
     }
@@ -1180,7 +1219,27 @@ async fn remove_trail(
     if status == "removed" {
         return Ok(Json(json!({ "trail_id": id, "status": "removed" })));
     }
+    if !by_operator {
+        let author = trail_author(&mut con, &id, &meta).await?;
+        if !author_may_remove(caller.declared, &caller.agent, author.as_deref()) {
+            return Err(ApiError::new(
+                StatusCode::FORBIDDEN,
+                "forbidden",
+                "Only the author of the trail, with the X-Myrmo-Agent id it was published with, or an operator can remove it.",
+            ));
+        }
+    }
     let now = keys::now();
+    // Read before it is deleted: the model and framework it was counted under.
+    let agent_info = if status == "indexed" {
+        let payload = st.qdrant.get(std::slice::from_ref(&id)).await?;
+        payload
+            .first()
+            .map(|(_, p)| p["trail"]["agent_info"].clone())
+            .unwrap_or(Value::Null)
+    } else {
+        Value::Null
+    };
     if status == "indexed" {
         st.qdrant.delete(&id).await?;
     }
@@ -1199,11 +1258,27 @@ async fn remove_trail(
         keys::replies(&id),
         keys::environments(&id),
         keys::anon_author(&id),
+        keys::pub_addr(&id),
     ] {
         pipe.cmd("DEL").arg(key).ignore();
     }
     if status == "indexed" {
         pipe.cmd("DECR").arg(keys::STAT_TRAILS).ignore();
+    }
+    // The figures that count trails laid must not keep a trail that is gone. Trails indexed before the labels were
+    // kept with them are taken back under the labels they were counted under then.
+    let mut taken_back: Vec<(&str, Option<String>, i64)> = Vec::new();
+    if status == "indexed" {
+        let label = |field: &str, fallback: &Value| match meta.get(field) {
+            Some(l) if !l.is_empty() => Some(l.clone()),
+            Some(_) => None,
+            None => crate::analytics::clean_label(fallback),
+        };
+        taken_back = vec![
+            ("trails", None, -1),
+            ("laid", label("laid_model", &agent_info["model"]), -1),
+            ("fw_laid", label("laid_fw", &agent_info["framework"]), -1),
+        ];
     }
     // The "hot" list names trails by their label: a removed trail must not stay on it.
     if let Some(label) = meta.get("label") {
@@ -1225,7 +1300,15 @@ async fn remove_trail(
         .arg(90 * 86_400)
         .ignore();
     let _: () = pipe.query_async(&mut con).await?;
-    tracing::info!(trail = %id, was = %status, reason = %reason, "trail removed by an operator");
+    if !taken_back.is_empty() {
+        let laid_at = meta
+            .get("laid_ts")
+            .or_else(|| meta.get("created_ts"))
+            .and_then(|t| t.parse().ok())
+            .unwrap_or(now);
+        crate::analytics::record(&mut con, laid_at, &taken_back).await;
+    }
+    tracing::info!(trail = %id, was = %status, reason = %reason, by = if by_operator { "operator" } else { "author" }, "trail removed");
     Ok(Json(json!({ "trail_id": id, "status": "removed" })))
 }
 
@@ -1240,6 +1323,13 @@ async fn readyz(State(st): State<AppState>) -> Response {
         .is_ok();
     let (qdrant_ok, embed_ok) = tokio::join!(st.qdrant.healthy(), st.embedder.healthy());
     let ready = redis_ok && qdrant_ok && embed_ok;
+    // Trails waiting for enrichment and the depth at which publishing is refused: what a monitor needs to see the
+    // queue filling up before it is full. Not part of `ready`: a deep queue is slow, not down.
+    let queue_depth: u64 = redis::cmd("XLEN")
+        .arg(keys::STREAM)
+        .query_async(&mut st.redis())
+        .await
+        .unwrap_or(0);
     let status = if ready {
         StatusCode::OK
     } else {
@@ -1247,7 +1337,10 @@ async fn readyz(State(st): State<AppState>) -> Response {
     };
     (
         status,
-        Json(json!({ "ready": ready, "redis": redis_ok, "qdrant": qdrant_ok, "embedding": embed_ok })),
+        Json(json!({
+            "ready": ready, "redis": redis_ok, "qdrant": qdrant_ok, "embedding": embed_ok,
+            "queue_depth": queue_depth, "queue_max": st.cfg.queue_max,
+        })),
     )
         .into_response()
 }
@@ -1281,6 +1374,22 @@ fn environment_summary(env: &Value) -> String {
 /// Whether a report can count at all: anybody's, except an author's that would raise the strength of their own trail.
 fn author_may_report(is_author: bool, outcome: &str) -> bool {
     !is_author || outcome == "failed"
+}
+
+/// Whether an agent id may count from an address on a trail: it already did today, or the address still has places.
+/// A limit of 0 disables the check.
+fn address_admits(already: bool, distinct: u64, limit: u64) -> bool {
+    limit == 0 || already || distinct < limit
+}
+
+/// Whether the report that has just taken place number `used` in the address's hour may count. 0 disables the check.
+fn hour_total_allows(used: u64, limit: u64) -> bool {
+    limit == 0 || used <= limit
+}
+
+/// What a trail's declared effort adds to the "tokens saved" figures.
+fn credited_tokens(declared: i64, max: i64) -> i64 {
+    declared.clamp(0, max.max(0))
 }
 
 async fn report_outcome(
@@ -1325,9 +1434,14 @@ async fn report_outcome(
     let hour = keys::hour(now);
 
     // The author cannot reinforce their own trail, but may report it failed: that can only lower its strength, and it
-    // is how an obsolete trail is taken down by the one who wrote it. One agent counts once a day, and an author's
-    // report that cannot count does not use up that day.
-    let is_author = trail_author(&mut con, &id, &meta).await?.as_deref() == Some(&caller.agent);
+    // is how an obsolete trail is taken down by the one who wrote it. The author is the declared id that published
+    // it or any report from the address that published it today, because the id is the caller's own choice.
+    // Beyond that, a report counts only if it is the agent's first today, the address has not used up its places
+    // on this trail, and the address has not used up its hourly total. A report that cannot count is accepted and
+    // does not use up any of these.
+    let published_from = con.get::<_, Option<String>>(keys::pub_addr(&id)).await?;
+    let is_author = trail_author(&mut con, &id, &meta).await?.as_deref() == Some(&caller.agent)
+        || published_from.as_deref() == Some(&caller.client);
     let eligible = author_may_report(is_author, &outcome);
     let first_today: bool = eligible
         && redis::cmd("SET")
@@ -1339,7 +1453,39 @@ async fn report_outcome(
             .query_async::<Option<String>>(&mut con)
             .await?
             .is_some();
-    let counted = first_today;
+    let mut counted = false;
+    if first_today {
+        let vote_key = keys::vote_addr(&id, &caller.client);
+        let (known, distinct): (bool, u64) = redis::pipe()
+            .cmd("SISMEMBER")
+            .arg(&vote_key)
+            .arg(&caller.agent)
+            .cmd("SCARD")
+            .arg(&vote_key)
+            .query_async(&mut con)
+            .await?;
+        if address_admits(known, distinct, st.cfg.votes_per_address) {
+            let hour_key = keys::vote_hour(&caller.client, hour);
+            let (used,): (u64,) = redis::pipe()
+                .cmd("SADD")
+                .arg(&vote_key)
+                .arg(&caller.agent)
+                .ignore()
+                .cmd("EXPIRE")
+                .arg(&vote_key)
+                .arg(86_400)
+                .ignore()
+                .cmd("INCR")
+                .arg(&hour_key)
+                .cmd("EXPIRE")
+                .arg(&hour_key)
+                .arg(3_700)
+                .ignore()
+                .query_async(&mut con)
+                .await?;
+            counted = hour_total_allows(used, st.cfg.votes_per_address_hour);
+        }
+    }
     let mut analytics_outcome: Option<String> = None;
 
     let env = &report["environment"];
@@ -1381,6 +1527,11 @@ async fn report_outcome(
     };
     let event = json!({ "kind": kind, "agent": agent_info, "trail_id": id, "text": text, "at": keys::iso(now) });
 
+    // The protocol sets no maximum on `tokens_spent`: what one report adds to the public figures is capped here.
+    let tokens = credited_tokens(
+        meta.get("tokens").and_then(|t| t.parse().ok()).unwrap_or(0),
+        st.cfg.tokens_credit_max,
+    );
     let mut pipe = redis::pipe();
     if counted {
         pipe.cmd("HINCRBY")
@@ -1394,7 +1545,6 @@ async fn report_outcome(
                 .arg("last_success_ts")
                 .arg(now)
                 .ignore();
-            let tokens: i64 = meta.get("tokens").and_then(|t| t.parse().ok()).unwrap_or(0);
             pipe.cmd("INCRBY")
                 .arg(keys::stat_tokens(hour))
                 .arg(tokens)
@@ -1451,7 +1601,6 @@ async fn report_outcome(
     if let Some(outcome) = analytics_outcome {
         // Which model followed the trail and what happened: kept for later analysis.
         let model = crate::analytics::clean_label(&agent_info["model"]);
-        let tokens: i64 = meta.get("tokens").and_then(|t| t.parse().ok()).unwrap_or(0);
         let mut inc: Vec<(&str, Option<String>, i64)> = vec![("outcomes", None, 1)];
         if outcome == "worked" {
             inc.push(("tokens_saved", None, tokens));
@@ -1521,6 +1670,7 @@ async fn feed_items(st: &AppState, ids: &[String]) -> ApiResult<Vec<Value>> {
                 "environments_confirmed": p["environments_confirmed"].as_u64().unwrap_or(0),
                 "risk": current_risk(p),
                 "strength": round3(c.strength(now)),
+                "seed": crate::analytics::is_seed(&p["trail"]["agent_info"]),
                 "trail": p["trail"],
                 "replies": replies.iter().filter_map(|r| serde_json::from_str::<Value>(r).ok()).collect::<Vec<_>>(),
             })
@@ -1649,7 +1799,7 @@ fn parse_fingerprints(list: &str) -> ApiResult<Vec<String>> {
     }
     if let Some(bad) = fps.iter().find(|fp| !valid_fingerprint(fp)) {
         return Err(ApiError::bad_request(format!(
-            "'{bad}' is not a fingerprint like fp1_0123456789abcdef."
+            "'{bad}' is not a fingerprint like fp2_0123456789abcdef."
         )));
     }
     Ok(fps)
@@ -1732,6 +1882,7 @@ async fn stats(State(st): State<AppState>) -> ApiResult<Json<Value>> {
             };
             let summary = json!({
                 "models": crate::analytics::model_leaderboard(&rows, 10),
+                "seed_trails_30d": crate::analytics::seed_laid(&rows),
                 "searches_30d": total("searches"),
                 "answered_30d": total("search_hits"),
             });
@@ -1754,6 +1905,7 @@ async fn stats(State(st): State<AppState>) -> ApiResult<Json<Value>> {
         "agents_declared_total": declared_total,
         "models": models,
         "models_self_reported": true,
+        "seed_trails_30d": summary["seed_trails_30d"],
         "searches_30d": summary["searches_30d"],
         "answered_30d": summary["answered_30d"],
         "hot": hot.into_iter().map(|(label, n)| json!({ "label": label, "searches": n as u64 })).collect::<Vec<_>>(),
@@ -1766,14 +1918,14 @@ mod tests {
 
     #[test]
     fn an_operator_can_ask_about_up_to_fifty_fingerprints() {
-        let one = "fp1_0123456789abcdef";
+        let one = "fp2_0123456789abcdef";
         assert_eq!(parse_fingerprints(one).ok(), Some(vec![one.to_string()]));
-        let two = parse_fingerprints(" fp1_0123456789abcdef , fp1_fedcba9876543210 ").ok();
+        let two = parse_fingerprints(" fp2_0123456789abcdef , fp2_fedcba9876543210 ").ok();
         assert_eq!(two.map(|v| v.len()), Some(2));
         assert!(parse_fingerprints("").is_err());
         assert!(parse_fingerprints(",").is_err());
-        assert!(parse_fingerprints("fp1_0123456789abcdef,nope").is_err());
-        assert!(parse_fingerprints("fp1_0123456789abcdeg").is_err());
+        assert!(parse_fingerprints("fp2_0123456789abcdef,nope").is_err());
+        assert!(parse_fingerprints("fp2_0123456789abcdeg").is_err());
         let many = vec![one; 51].join(",");
         assert!(parse_fingerprints(&many).is_err());
         assert!(parse_fingerprints(&vec![one; 50].join(",")).is_ok());
@@ -1808,6 +1960,73 @@ mod tests {
         }
     }
 
+    /// The places of one address on one trail, as the report handler uses them.
+    fn simulate_address(agents: &[&str], limit: u64) -> Vec<bool> {
+        let mut places: std::collections::HashSet<&str> = Default::default();
+        agents
+            .iter()
+            .map(|agent| {
+                let admitted = address_admits(places.contains(agent), places.len() as u64, limit);
+                if admitted {
+                    places.insert(agent);
+                }
+                admitted
+            })
+            .collect()
+    }
+
+    #[test]
+    fn many_ids_from_one_address_count_up_to_the_limit_only() {
+        let ids: Vec<String> = (0..50).map(|i| format!("agent-{i:04}")).collect();
+        let refs: Vec<&str> = ids.iter().map(String::as_str).collect();
+        let counted = simulate_address(&refs, 3)
+            .into_iter()
+            .filter(|c| *c)
+            .count();
+        assert_eq!(counted, 3);
+        // The same holds for `failed`: the address limit does not look at the outcome.
+        assert!(
+            address_admits(true, 3, 3),
+            "an id that already counted is not turned away"
+        );
+        assert!(!address_admits(false, 3, 3));
+    }
+
+    #[test]
+    fn colleagues_behind_one_office_address_can_confirm_each_other() {
+        let counted = simulate_address(
+            &["alice-agent", "bob-agent", "carol-agent", "dave-agent"],
+            3,
+        );
+        assert_eq!(counted, vec![true, true, true, false]);
+    }
+
+    #[test]
+    fn an_address_has_an_hourly_total_over_all_trails() {
+        assert!(hour_total_allows(20, 20));
+        assert!(!hour_total_allows(21, 20));
+        assert!(hour_total_allows(10_000, 0));
+        assert!(address_admits(false, 10_000, 0));
+    }
+
+    #[test]
+    fn the_author_is_recognised_by_address_even_under_another_id() {
+        // The author's id is `agent-aaaa`; the report comes from the same address under `agent-bbbb`.
+        let (author, caller_agent, published_from, caller_client) =
+            (Some("agent-aaaa"), "agent-bbbb", Some("addr1"), "addr1");
+        let is_author = author == Some(caller_agent) || published_from == Some(caller_client);
+        assert!(is_author);
+        assert!(!author_may_report(is_author, "worked"));
+        assert!(author_may_report(is_author, "failed"));
+    }
+
+    #[test]
+    fn a_report_cannot_credit_more_tokens_than_the_cap() {
+        assert_eq!(credited_tokens(5_000, 200_000), 5_000);
+        assert_eq!(credited_tokens(9_000_000_000, 200_000), 200_000);
+        assert_eq!(credited_tokens(-5, 200_000), 0);
+    }
+
     #[test]
     fn two_spellings_of_a_runtime_overlap_fully() {
         let trail = json!({"os": "linux", "runtime": {"name": "java", "version": "21.0.2"}});
@@ -1832,6 +2051,19 @@ mod tests {
         assert_eq!(risk["flags"][0]["flag"], "download_and_execute");
         let without_trail = json!({ "risk": { "level": "medium", "flags": [] } });
         assert_eq!(current_risk(&without_trail)["level"], "medium");
+    }
+
+    #[test]
+    fn only_the_author_with_the_id_they_published_with_may_remove() {
+        assert!(author_may_remove(true, "agent-aaaa", Some("agent-aaaa")));
+        assert!(!author_may_remove(true, "agent-bbbb", Some("agent-aaaa")));
+        assert!(!author_may_remove(true, "agent-aaaa", None));
+        // A caller with no id is identified by an address hash, and that never lets them remove a trail.
+        assert!(!author_may_remove(
+            false,
+            "0123456789abcdef",
+            Some("0123456789abcdef")
+        ));
     }
 
     #[test]

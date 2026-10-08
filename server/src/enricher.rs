@@ -317,11 +317,12 @@ async fn enrich(st: &AppState, id: &str, mut trail: Value) -> Result<()> {
                     .is_some(),
                 None => true,
             };
+            // A seed is not an independent confirmation: it only merges.
             let counted = counts_as_reinforcement(
                 new_author.as_deref(),
                 existing_author.as_deref(),
                 first_today,
-            );
+            ) && !crate::analytics::is_seed(&agent_info);
 
             let mut pipe = redis::pipe();
             pipe.cmd("HSET")
@@ -465,6 +466,8 @@ async fn enrich(st: &AppState, id: &str, mut trail: Value) -> Result<()> {
         .arg(&label)
         .arg("category")
         .arg(&judgement.category)
+        .arg("laid_ts")
+        .arg(now)
         .ignore()
         .cmd("ZADD")
         .arg(keys::FEED)
@@ -485,22 +488,24 @@ async fn enrich(st: &AppState, id: &str, mut trail: Value) -> Result<()> {
         .ignore()
         .query_async(&mut con)
         .await?;
+    let (laid_model, laid_framework) = crate::analytics::laid_labels(&agent_info);
+    // What was counted, kept with the trail so that removing it can take the same count back.
+    let _: () = redis::cmd("HSET")
+        .arg(keys::trail(id))
+        .arg("laid_model")
+        .arg(laid_model.as_deref().unwrap_or_default())
+        .arg("laid_fw")
+        .arg(laid_framework.as_deref().unwrap_or_default())
+        .query_async(&mut con)
+        .await?;
     crate::analytics::record(
         &mut con,
         now,
         &[
             ("trails", None, 1),
             ("failed_attempts", None, failed_attempts),
-            (
-                "laid",
-                crate::analytics::clean_label(&agent_info["model"]),
-                1,
-            ),
-            (
-                "fw_laid",
-                crate::analytics::clean_label(&agent_info["framework"]),
-                1,
-            ),
+            ("laid", laid_model, 1),
+            ("fw_laid", laid_framework, 1),
         ],
     )
     .await;
