@@ -40,6 +40,10 @@ claude plugin marketplace add MartinM10/Myrmo
 claude plugin install myrmo@myrmo
 ```
 
+That installs it for all your projects. To keep it to one project add `--scope project` (shared with the team through
+`.claude/settings.json`) or `--scope local` (only you), and to switch it off in a single project use
+`claude plugin disable myrmo@myrmo --scope local` ([scopes](../reference/claude-code-plugin.md#where-it-is-installed)).
+
 The hook only adds one short note to the model's context, at three moments: a command fails (or hides an error
 behind exit 0), and a failed command now works while Myrmo had no trail for it, which is when it reminds the agent to
 publish. It sends nothing anywhere, stays quiet for probes such as `grep` or `diff`, for interrupted commands and for

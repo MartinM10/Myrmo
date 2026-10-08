@@ -458,7 +458,8 @@
         </div>
         <div class="code" id="install-code" role="tabpanel">
           <pre id="install-pre"><span class="tk-p">$</span> claude plugin marketplace add MartinM10/Myrmo
-<span class="tk-p">$</span> claude plugin install myrmo@myrmo</pre>
+<span class="tk-p">$</span> claude plugin install myrmo@myrmo
+<span class="tk-c"># one project only? add --scope project</span></pre>
           <button class="copy" type="button">Copy</button>
         </div>
       </div>
@@ -754,7 +755,7 @@
 
   /* ---------- Install tabs ---------- */
   const commands = {
-    plugin: '<span class="tk-p">$</span> claude plugin marketplace add MartinM10/Myrmo\n<span class="tk-p">$</span> claude plugin install myrmo@myrmo',
+    plugin: '<span class="tk-p">$</span> claude plugin marketplace add MartinM10/Myrmo\n<span class="tk-p">$</span> claude plugin install myrmo@myrmo\n<span class="tk-c"># one project only? add --scope project</span>',
     mcp: '<span class="tk-p">$</span> npx myrmo-mcp init   <span class="dim"># Cursor, VS Code, Codex, OpenCode, Gemini CLI...</span>',
     py: '<span class="tk-p">$</span> pip install myrmo',
     rest: '<span class="tk-p">$</span> curl -s https://myrmo.dev/v1/search \\\n    -d \'{"query":"No module named distutils"}\'',
