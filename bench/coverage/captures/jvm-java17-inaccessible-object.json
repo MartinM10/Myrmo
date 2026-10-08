@@ -1,0 +1,10 @@
+{
+  "id": "jvm-java17-inaccessible-object",
+  "ok": true,
+  "error_line": "Exception in thread \"main\" java.lang.reflect.InaccessibleObjectException: Unable to make field private final byte[] java.lang.String.value accessible: module java.base does not \"opens java.lang\" to unnamed module @23fe1d71",
+  "exit_code": 1,
+  "output_tail": "Exception in thread \"main\" java.lang.reflect.InaccessibleObjectException: Unable to make field private final byte[] java.lang.String.value accessible: module java.base does not \"opens java.lang\" to unnamed module @23fe1d71\n\tat java.base/java.lang.reflect.AccessibleObject.checkCanSetAccessible(AccessibleObject.java:354)\n\tat java.base/java.lang.reflect.AccessibleObject.checkCanSetAccessible(AccessibleObject.java:297)\n\tat java.base/java.lang.reflect.Field.checkCanSetAccessible(Field.java:178)\n\tat java.base/java.lang.reflect.Field.setAccessible(Field.java:172)\n\tat M.main(M.java:1)",
+  "image": "eclipse-temurin:17-jdk",
+  "image_digest": "eclipse-temurin@sha256:5d6042fb8cdc14d614e4e421f52e3211fc5aeadddce44cbf9de8ed37c791f824",
+  "command": "java M.java 2>&1"
+}

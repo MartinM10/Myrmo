@@ -1,0 +1,10 @@
+{
+  "id": "py-pyyaml541-cython3",
+  "ok": true,
+  "error_line": "AttributeError: 'build_ext' object has no attribute 'cython_sources'",
+  "exit_code": 1,
+  "output_tail": "upyupuk5/overlay/lib/python3.11/site-packages/setuptools/command/egg_info.py\", line 572, in run\n          self.add_defaults()\n        File \"/tmp/pip-build-env-upyupuk5/overlay/lib/python3.11/site-packages/setuptools/command/egg_info.py\", line 610, in add_defaults\n          sdist.add_defaults(self)\n        File \"/tmp/pip-build-env-upyupuk5/overlay/lib/python3.11/site-packages/setuptools/command/sdist.py\", line 113, in add_defaults\n          super().add_defaults()\n        File \"/tmp/pip-build-env-upyupuk5/overlay/lib/python3.11/site-packages/setuptools/_distutils/command/sdist.py\", line 256, in add_defaults\n          self._add_defaults_ext()\n        File \"/tmp/pip-build-env-upyupuk5/overlay/lib/python3.11/site-packages/setuptools/_distutils/command/sdist.py\", line 341, in _add_defaults_ext\n          self.filelist.extend(build_ext.get_source_files())\n                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n        File \"<string>\", line 201, in get_source_files\n      AttributeError: 'build_ext' object has no attribute 'cython_sources'\n      [end of output]\n  \n  note: This error originates from a subprocess, and is likely not a problem with pip.\nerror: subprocess-exited-with-error\n\n× Getting requirements to build wheel did not run successfully.\n│ exit code: 1\n╰─> See above for output.\n\nnote: This error originates from a subprocess, and is likely not a problem with pip.\n\n[notice] A new release of pip is available: 24.0 -> 26.2.1\n[notice] To update, run: pip install --upgrade pip",
+  "image": "python:3.11-slim",
+  "image_digest": "python@sha256:0dd364ba7e10242f07755449e3a3d0e35f9efd987952737b90def6709ab0c5ce",
+  "command": "pip install pyyaml==5.4.1 2>&1"
+}

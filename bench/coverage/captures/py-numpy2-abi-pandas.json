@@ -1,0 +1,10 @@
+{
+  "id": "py-numpy2-abi-pandas",
+  "ok": true,
+  "error_line": "ValueError: numpy.dtype size changed, may indicate binary incompatibility. Expected 96 from C header, got 88 from PyObject",
+  "exit_code": 1,
+  "output_tail": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n  File \"/usr/local/lib/python3.11/site-packages/pandas/__init__.py\", line 22, in <module>\n    from pandas.compat import is_numpy_dev as _is_numpy_dev  # pyright: ignore # noqa:F401\n    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/local/lib/python3.11/site-packages/pandas/compat/__init__.py\", line 18, in <module>\n    from pandas.compat.numpy import (\n  File \"/usr/local/lib/python3.11/site-packages/pandas/compat/numpy/__init__.py\", line 4, in <module>\n    from pandas.util.version import Version\n  File \"/usr/local/lib/python3.11/site-packages/pandas/util/__init__.py\", line 2, in <module>\n    from pandas.util._decorators import (  # noqa:F401\n  File \"/usr/local/lib/python3.11/site-packages/pandas/util/_decorators.py\", line 14, in <module>\n    from pandas._libs.properties import cache_readonly\n  File \"/usr/local/lib/python3.11/site-packages/pandas/_libs/__init__.py\", line 13, in <module>\n    from pandas._libs.interval import Interval\n  File \"pandas/_libs/interval.pyx\", line 1, in init pandas._libs.interval\nValueError: numpy.dtype size changed, may indicate binary incompatibility. Expected 96 from C header, got 88 from PyObject",
+  "image": "python:3.11-slim",
+  "image_digest": "python@sha256:0dd364ba7e10242f07755449e3a3d0e35f9efd987952737b90def6709ab0c5ce",
+  "command": "python -c \"import pandas\""
+}

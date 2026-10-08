@@ -1,0 +1,10 @@
+{
+  "id": "node-eslint-plugin-missing",
+  "ok": true,
+  "error_line": "ESLint couldn't find the plugin \"eslint-plugin-react\".",
+  "exit_code": 2,
+  "output_tail": "Oops! Something went wrong! :(\n\nESLint: 8.57.1\n\nESLint couldn't find the plugin \"eslint-plugin-react\".\n\n(The package \"eslint-plugin-react\" was not found when loaded as a Node module from the directory \"/w\".)\n\nIt's likely that the plugin isn't installed correctly. Try reinstalling by running the following:\n\n    npm install eslint-plugin-react@latest --save-dev\n\nThe plugin \"eslint-plugin-react\" was referenced from the config file in \".eslintrc.json\".\n\nIf you still can't figure out the problem, please stop by https://eslint.org/chat/help to chat with the team.",
+  "image": "node:20-slim",
+  "image_digest": "node@sha256:2cf067cfed83d5ea958367df9f966191a942351a2df77d6f0193e162b5febfc0",
+  "command": "cd /w && npx eslint . 2>&1"
+}

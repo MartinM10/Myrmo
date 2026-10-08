@@ -1,0 +1,10 @@
+{
+  "id": "node-pnpm10-ignored-build-sqlite3",
+  "ok": true,
+  "error_line": "Error: Could not locate the bindings file. Tried:",
+  "exit_code": 1,
+  "output_tail": "ect.<anonymous> (/w/node_modules/.pnpm/sqlite3@5.1.7/node_modules/sqlite3/lib/sqlite3.js:2:17)\n    at Module._compile (node:internal/modules/cjs/loader:1521:14) {\n  tries: [\n    '/w/node_modules/.pnpm/sqlite3@5.1.7/node_modules/sqlite3/build/node_sqlite3.node',\n    '/w/node_modules/.pnpm/sqlite3@5.1.7/node_modules/sqlite3/build/Debug/node_sqlite3.node',\n    '/w/node_modules/.pnpm/sqlite3@5.1.7/node_modules/sqlite3/build/Release/node_sqlite3.node',\n    '/w/node_modules/.pnpm/sqlite3@5.1.7/node_modules/sqlite3/out/Debug/node_sqlite3.node',\n    '/w/node_modules/.pnpm/sqlite3@5.1.7/node_modules/sqlite3/Debug/node_sqlite3.node',\n    '/w/node_modules/.pnpm/sqlite3@5.1.7/node_modules/sqlite3/out/Release/node_sqlite3.node',\n    '/w/node_modules/.pnpm/sqlite3@5.1.7/node_modules/sqlite3/Release/node_sqlite3.node',\n    '/w/node_modules/.pnpm/sqlite3@5.1.7/node_modules/sqlite3/build/default/node_sqlite3.node',\n    '/w/node_modules/.pnpm/sqlite3@5.1.7/node_modules/sqlite3/compiled/20.20.2/linux/x64/node_sqlite3.node',\n    '/w/node_modules/.pnpm/sqlite3@5.1.7/node_modules/sqlite3/addon-build/release/install-root/node_sqlite3.node',\n    '/w/node_modules/.pnpm/sqlite3@5.1.7/node_modules/sqlite3/addon-build/debug/install-root/node_sqlite3.node',\n    '/w/node_modules/.pnpm/sqlite3@5.1.7/node_modules/sqlite3/addon-build/default/install-root/node_sqlite3.node',\n    '/w/node_modules/.pnpm/sqlite3@5.1.7/node_modules/sqlite3/lib/binding/node-v115-linux-x64/node_sqlite3.node'\n  ]\n}\n\nNode.js v20.20.2",
+  "image": "node:20-slim",
+  "image_digest": "node@sha256:2cf067cfed83d5ea958367df9f966191a942351a2df77d6f0193e162b5febfc0",
+  "command": "node -e \"require('sqlite3')\" 2>&1"
+}

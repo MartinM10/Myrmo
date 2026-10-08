@@ -1,0 +1,10 @@
+{
+  "id": "py-selenium4-executable-path",
+  "ok": true,
+  "error_line": "TypeError: WebDriver.__init__() got an unexpected keyword argument 'executable_path'",
+  "exit_code": 1,
+  "output_tail": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nTypeError: WebDriver.__init__() got an unexpected keyword argument 'executable_path'",
+  "image": "python:3.12-slim",
+  "image_digest": "python@sha256:05cda9777409a9c3ffddd94a4c476b79f0769a0b4857f0c7ed9226b6800b0d6f",
+  "command": "python -c \"from selenium import webdriver; webdriver.Chrome(executable_path='/x')\" 2>&1"
+}

@@ -1,0 +1,10 @@
+{
+  "id": "py-python313-cgi",
+  "ok": true,
+  "error_line": "ModuleNotFoundError: No module named 'cgi'",
+  "exit_code": 1,
+  "output_tail": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    import cgi\nModuleNotFoundError: No module named 'cgi'",
+  "image": "python:3.13-slim",
+  "image_digest": "python@sha256:bf44cdfcb76cd3b41e879bc058fc37ec5872002ccfde7fcb765e218cde0cd79c",
+  "command": "python -c \"import cgi\" 2>&1"
+}

@@ -1,0 +1,10 @@
+{
+  "id": "py-torch-cpu-wheel-cuda",
+  "ok": true,
+  "error_line": "AssertionError: Torch not compiled with CUDA enabled",
+  "exit_code": 1,
+  "output_tail": "/usr/local/lib/python3.12/site-packages/torch/_subclasses/functional_tensor.py:275: UserWarning: Failed to initialize NumPy: No module named 'numpy' (Triggered internally at /pytorch/torch/csrc/utils/tensor_numpy.cpp:81.)\n  cpu = _conversion_method_template(device=torch.device(\"cpu\"))\nTraceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n  File \"/usr/local/lib/python3.12/site-packages/torch/cuda/__init__.py\", line 310, in _lazy_init\n    raise AssertionError(\"Torch not compiled with CUDA enabled\")\nAssertionError: Torch not compiled with CUDA enabled",
+  "image": "python:3.12-slim",
+  "image_digest": "python@sha256:05cda9777409a9c3ffddd94a4c476b79f0769a0b4857f0c7ed9226b6800b0d6f",
+  "command": "python -c \"import torch; torch.zeros(1).cuda()\" 2>&1"
+}

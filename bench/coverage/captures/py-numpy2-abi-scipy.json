@@ -1,0 +1,10 @@
+{
+  "id": "py-numpy2-abi-scipy",
+  "ok": true,
+  "error_line": "A module that was compiled using NumPy 1.x cannot be run in",
+  "exit_code": 1,
+  "output_tail": "ngs.warn(f\"A NumPy version >={np_minversion} and <{np_maxversion}\"\n\nA module that was compiled using NumPy 1.x cannot be run in\nNumPy 2.1.0 as it may crash. To support both 1.x and 2.x\nversions of NumPy, modules must be compiled with NumPy 2.0.\nSome module may need to rebuild instead e.g. with 'pybind11>=2.12'.\n\nIf you are a user of the module, the easiest solution will be to\ndowngrade to 'numpy<2' or try to upgrade the affected module.\nWe expect that some modules will need time to support NumPy 2.\n\nTraceback (most recent call last):  File \"<string>\", line 1, in <module>\n  File \"/usr/local/lib/python3.11/site-packages/scipy/linalg/__init__.py\", line 197, in <module>\n    from ._misc import *\n  File \"/usr/local/lib/python3.11/site-packages/scipy/linalg/_misc.py\", line 3, in <module>\n    from .blas import get_blas_funcs\n  File \"/usr/local/lib/python3.11/site-packages/scipy/linalg/blas.py\", line 213, in <module>\n    from scipy.linalg import _fblas\nAttributeError: _ARRAY_API not found\nTraceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n  File \"/usr/local/lib/python3.11/site-packages/scipy/linalg/__init__.py\", line 197, in <module>\n    from ._misc import *\n  File \"/usr/local/lib/python3.11/site-packages/scipy/linalg/_misc.py\", line 3, in <module>\n    from .blas import get_blas_funcs\n  File \"/usr/local/lib/python3.11/site-packages/scipy/linalg/blas.py\", line 213, in <module>\n    from scipy.linalg import _fblas\nImportError: numpy.core.multiarray failed to import",
+  "image": "python:3.11-slim",
+  "image_digest": "python@sha256:0dd364ba7e10242f07755449e3a3d0e35f9efd987952737b90def6709ab0c5ce",
+  "command": "python -c \"import scipy.linalg\" 2>&1"
+}

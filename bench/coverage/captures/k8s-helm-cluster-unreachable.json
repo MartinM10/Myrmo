@@ -1,0 +1,10 @@
+{
+  "id": "k8s-helm-cluster-unreachable",
+  "ok": true,
+  "error_line": "Error: INSTALLATION FAILED: Kubernetes cluster unreachable: Get \"http://localhost:8080/version\": dial tcp [::1]:8080: connect: connection refused",
+  "exit_code": 1,
+  "output_tail": "Error: INSTALLATION FAILED: Kubernetes cluster unreachable: Get \"http://localhost:8080/version\": dial tcp [::1]:8080: connect: connection refused",
+  "image": "alpine/k8s:1.31.1",
+  "image_digest": "alpine/k8s@sha256:dfe8c7a06c41d0b6e8757da99531f8f302e9a2687fa0155af4c4087df585c9c8",
+  "command": "helm install x /tmp/c 2>&1"
+}

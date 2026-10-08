@@ -1,0 +1,10 @@
+{
+  "id": "jvm-javac-release-newer-than-jdk",
+  "ok": true,
+  "error_line": "error: release version 17 not supported",
+  "exit_code": 2,
+  "output_tail": "error: release version 17 not supported\nUsage: javac <options> <source files>\nuse --help for a list of possible options",
+  "image": "eclipse-temurin:11-jdk",
+  "image_digest": "eclipse-temurin@sha256:8db2bcf62ae171d1247c331db0410d8bc6347e7493bdafe104bb9a33d59c1291",
+  "command": "javac --release 17 A.java 2>&1"
+}

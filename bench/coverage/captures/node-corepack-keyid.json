@@ -1,0 +1,10 @@
+{
+  "id": "node-corepack-keyid",
+  "ok": true,
+  "error_line": "Internal Error: Cannot find matching keyid: {\"signatures\":[{\"sig\":\"MEUCIHciHKBHwqkH34yZb0OgAoHtoOSbngV7JfQN0/Qh+zJSAiEAxMhi3kN0i0bRrOSXAhDqi79UNwuqYuqdZkVFnn0a+CI=\",\"keyid\":\"SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U\"}],\"keys\":[{\"expires\":null,\"keyid\":\"SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA\",\"keytype\":\"ecdsa-sha2-nistp256\",\"scheme\":\"ecdsa-sha2-nistp256\",\"key\":\"MFkwEwYHKoZIzj0CA",
+  "exit_code": 1,
+  "output_tail": "Preparing pnpm@latest-10 for immediate activation...\nInternal Error: Cannot find matching keyid: {\"signatures\":[{\"sig\":\"MEUCIHciHKBHwqkH34yZb0OgAoHtoOSbngV7JfQN0/Qh+zJSAiEAxMhi3kN0i0bRrOSXAhDqi79UNwuqYuqdZkVFnn0a+CI=\",\"keyid\":\"SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U\"}],\"keys\":[{\"expires\":null,\"keyid\":\"SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA\",\"keytype\":\"ecdsa-sha2-nistp256\",\"scheme\":\"ecdsa-sha2-nistp256\",\"key\":\"MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE1Olb3zMAFFxXKHiIkQO5cJ3Yhl5i6UPp+IhuteBJbuHcA5UogKo0EWtlWwW6KSaKoTNEYL7JlCQiVnkhBktUgg==\"}]}\n    at verifySignature (/usr/local/lib/node_modules/corepack/dist/lib/corepack.cjs:21535:47)\n    at installVersion (/usr/local/lib/node_modules/corepack/dist/lib/corepack.cjs:21882:7)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at async Engine.ensurePackageManager (/usr/local/lib/node_modules/corepack/dist/lib/corepack.cjs:22310:32)\n    at async PrepareCommand.execute (/usr/local/lib/node_modules/corepack/dist/lib/corepack.cjs:23019:27)\n    at async PrepareCommand.validateAndExecute (/usr/local/lib/node_modules/corepack/dist/lib/corepack.cjs:19835:22)\n    at async _Cli.run (/usr/local/lib/node_modules/corepack/dist/lib/corepack.cjs:20772:18)\n    at async Object.runMain (/usr/local/lib/node_modules/corepack/dist/lib/corepack.cjs:23091:19)",
+  "image": "node:22.11-slim",
+  "image_digest": "node@sha256:f035ba7ffee18f67200e2eb8018e0f13c954ec16338f264940f701997e3c12da",
+  "command": "corepack enable && corepack prepare pnpm@latest-10 --activate 2>&1"
+}

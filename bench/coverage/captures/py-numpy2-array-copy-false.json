@@ -1,0 +1,10 @@
+{
+  "id": "py-numpy2-array-copy-false",
+  "ok": true,
+  "error_line": "ValueError: Unable to avoid copy while creating an array as requested.",
+  "exit_code": 1,
+  "output_tail": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nValueError: Unable to avoid copy while creating an array as requested.\nIf using `np.array(obj, copy=False)` replace it with `np.asarray(obj)` to allow a copy when needed (no behavior change in NumPy 1.x).\nFor more details, see https://numpy.org/devdocs/numpy_2_0_migration_guide.html#adapting-to-changes-in-the-copy-keyword.",
+  "image": "python:3.12-slim",
+  "image_digest": "python@sha256:05cda9777409a9c3ffddd94a4c476b79f0769a0b4857f0c7ed9226b6800b0d6f",
+  "command": "python -c \"import numpy as np; np.array([1, 2], copy=False)\" 2>&1"
+}

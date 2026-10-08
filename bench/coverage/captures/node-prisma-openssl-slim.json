@@ -1,0 +1,10 @@
+{
+  "id": "node-prisma-openssl-slim",
+  "ok": true,
+  "error_line": "Unable to require(`/w/node_modules/.prisma/client/libquery_engine-debian-openssl-1.1.x.so.node`).",
+  "exit_code": 1,
+  "output_tail": "prisma:warn Prisma failed to detect the libssl/openssl version to use, and may not work as expected. Defaulting to \"openssl-1.1.x\".\nPlease manually install OpenSSL via `apt-get update -y && apt-get install -y openssl` and try installing Prisma again. If you're running Prisma on Docker, add this command to your Dockerfile, or switch to an image that already has OpenSSL installed.\nUnable to require(`/w/node_modules/.prisma/client/libquery_engine-debian-openssl-1.1.x.so.node`).\nPrisma cannot find the required `libssl` system library in your system. Please install openssl and try again.\n\nDetails: libssl.so.1.1: cannot open shared object file: No such file or directory",
+  "image": "node:20-slim",
+  "image_digest": "node@sha256:2cf067cfed83d5ea958367df9f966191a942351a2df77d6f0193e162b5febfc0",
+  "command": "cd /w && npx prisma generate --schema schema.prisma >/dev/null 2>&1; node -e \"const { PrismaClient } = require('@prisma/client'); new PrismaClient().\\$connect().catch((e) => { console.error(e.message); process.exit(1) })\" 2>&1"
+}

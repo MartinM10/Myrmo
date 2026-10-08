@@ -1,0 +1,10 @@
+{
+  "id": "py-django4-force-text",
+  "ok": true,
+  "error_line": "ImportError: cannot import name 'force_text' from 'django.utils.encoding' (/usr/local/lib/python3.12/site-packages/django/utils/encoding.py). Did you mean: 'force_bytes'?",
+  "exit_code": 1,
+  "output_tail": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nImportError: cannot import name 'force_text' from 'django.utils.encoding' (/usr/local/lib/python3.12/site-packages/django/utils/encoding.py). Did you mean: 'force_bytes'?",
+  "image": "python:3.12-slim",
+  "image_digest": "python@sha256:05cda9777409a9c3ffddd94a4c476b79f0769a0b4857f0c7ed9226b6800b0d6f",
+  "command": "python -c \"from django.utils.encoding import force_text\" 2>&1"
+}

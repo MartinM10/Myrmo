@@ -1,0 +1,10 @@
+{
+  "id": "py-pydantic2-regex",
+  "ok": true,
+  "error_line": "pydantic.errors.PydanticUserError: `regex` is removed. use `pattern` instead",
+  "exit_code": 1,
+  "output_tail": "Traceback (most recent call last):\n  File \"<string>\", line 2, in <module>\n  File \"<string>\", line 3, in M\n  File \"/usr/local/lib/python3.12/site-packages/pydantic/fields.py\", line 823, in Field\n    raise PydanticUserError('`regex` is removed. use `pattern` instead', code='removed-kwargs')\npydantic.errors.PydanticUserError: `regex` is removed. use `pattern` instead\n\nFor further information visit https://errors.pydantic.dev/2.9/u/removed-kwargs",
+  "image": "python:3.12-slim",
+  "image_digest": "python@sha256:05cda9777409a9c3ffddd94a4c476b79f0769a0b4857f0c7ed9226b6800b0d6f",
+  "command": "python -c \"from pydantic import BaseModel, Field\nclass M(BaseModel):\n    x: str = Field(regex='a')\""
+}

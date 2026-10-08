@@ -1,0 +1,10 @@
+{
+  "id": "py-uv-no-venv",
+  "ok": true,
+  "error_line": "error: No virtual environment found; run `uv venv` to create an environment, or pass `--system` to install into a non-virtual environment",
+  "exit_code": 2,
+  "output_tail": "error: No virtual environment found; run `uv venv` to create an environment, or pass `--system` to install into a non-virtual environment",
+  "image": "python:3.12-slim",
+  "image_digest": "python@sha256:05cda9777409a9c3ffddd94a4c476b79f0769a0b4857f0c7ed9226b6800b0d6f",
+  "command": "uv pip install six 2>&1"
+}

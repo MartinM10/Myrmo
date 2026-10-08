@@ -1,0 +1,10 @@
+{
+  "id": "jvm-lombok-jdk23",
+  "ok": true,
+  "error_line": "A.java:1: error: cannot find symbol",
+  "exit_code": 1,
+  "output_tail": "A.java:1: error: cannot find symbol\n@lombok.Getter class A { private String name = \"x\"; public static void main(String[] a) { System.out.println(new A().getName()); } }\n                                                                                                                    ^\n  symbol:   method getName()\n  location: class A\n1 error",
+  "image": "eclipse-temurin:23-jdk",
+  "image_digest": "eclipse-temurin@sha256:83177670e43c17769a5402a60601545318e45e63adf634fb5022340e516cded4",
+  "command": "javac -cp /tmp/lombok.jar A.java 2>&1"
+}

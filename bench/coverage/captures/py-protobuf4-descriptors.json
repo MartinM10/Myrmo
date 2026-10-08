@@ -1,0 +1,10 @@
+{
+  "id": "py-protobuf4-descriptors",
+  "ok": true,
+  "error_line": "TypeError: Descriptors cannot be created directly.",
+  "exit_code": 1,
+  "output_tail": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n  File \"/w/m_pb2.py\", line 36, in <module>\n    _descriptor.FieldDescriptor(\n  File \"/usr/local/lib/python3.9/site-packages/google/protobuf/descriptor.py\", line 553, in __new__\n    _message.Message._CheckCalledFromGeneratedFile()\nTypeError: Descriptors cannot be created directly.\nIf this call came from a _pb2.py file, your generated code is out of date and must be regenerated with protoc >= 3.19.0.\nIf you cannot immediately regenerate your protos, some other possible workarounds are:\n 1. Downgrade the protobuf package to 3.20.x or lower.\n 2. Set PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python (but this will use pure-Python parsing and will be much slower).\n\nMore information: https://developers.google.com/protocol-buffers/docs/news/2022-05-06#python-updates",
+  "image": "python:3.9-slim",
+  "image_digest": "python@sha256:2d97f6910b16bd338d3060f261f53f144965f755599aab1acda1e13cf1731b1b",
+  "command": "cd /w && python -c \"import m_pb2\" 2>&1"
+}

@@ -1,0 +1,10 @@
+{
+  "id": "go-vendor-inconsistent",
+  "ok": true,
+  "error_line": "go: inconsistent vendoring in /w:",
+  "exit_code": 1,
+  "output_tail": "go: inconsistent vendoring in /w:\n\tgithub.com/google/uuid@v1.5.0: is explicitly required in go.mod, but not marked as explicit in vendor/modules.txt\n\tgithub.com/google/uuid@v1.6.0: is marked as explicit in vendor/modules.txt, but not explicitly required in go.mod\n\n\tTo ignore the vendor directory, use -mod=readonly or -mod=mod.\n\tTo sync the vendor directory, run:\n\t\tgo mod vendor",
+  "image": "golang:1.22.5",
+  "image_digest": "golang@sha256:86a3c48a61915a8c62c0e1d7594730399caa3feb73655dfe96c7bc17710e96cf",
+  "command": "cd /w && go build ./... 2>&1"
+}

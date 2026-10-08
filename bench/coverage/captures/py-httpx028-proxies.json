@@ -1,0 +1,10 @@
+{
+  "id": "py-httpx028-proxies",
+  "ok": true,
+  "error_line": "TypeError: Client.__init__() got an unexpected keyword argument 'proxies'",
+  "exit_code": 1,
+  "output_tail": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n  File \"/usr/local/lib/python3.12/site-packages/openai/_client.py\", line 123, in __init__\n    super().__init__(\n  File \"/usr/local/lib/python3.12/site-packages/openai/_base_client.py\", line 857, in __init__\n    self._client = http_client or SyncHttpxClientWrapper(\n                                  ^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/local/lib/python3.12/site-packages/openai/_base_client.py\", line 755, in __init__\n    super().__init__(**kwargs)\nTypeError: Client.__init__() got an unexpected keyword argument 'proxies'",
+  "image": "python:3.12-slim",
+  "image_digest": "python@sha256:05cda9777409a9c3ffddd94a4c476b79f0769a0b4857f0c7ed9226b6800b0d6f",
+  "command": "python -c \"import openai; openai.OpenAI(api_key='x')\" 2>&1"
+}

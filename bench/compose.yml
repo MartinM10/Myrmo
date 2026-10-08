@@ -10,6 +10,9 @@ services:
       MYRMO_RATE_LIMIT: "0"
       MYRMO_PUBLISH_LIMIT: "0"
       MYRMO_QUEUE_MAX: "0"
+      # The retrieval benchmark sweeps stricter floors from the scores of what the colony returns, so it runs the
+      # colony at the lowest floor it sweeps. The default of a real colony is higher (0.75).
+      MYRMO_MIN_SIMILARITY: "0.72"
   enricher:
     environment:
       MYRMO_DECISION_URL: ""

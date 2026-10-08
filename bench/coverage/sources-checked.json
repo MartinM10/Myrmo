@@ -1,0 +1,548 @@
+[
+  {
+    "id": "py-numpy2-float_",
+    "url": "https://raw.githubusercontent.com/numpy/numpy/v2.0.0/doc/source/numpy_2_0_migration_guide.rst",
+    "licence": "BSD-3-Clause",
+    "ok": true
+  },
+  {
+    "id": "py-numpy2-nan",
+    "url": "https://raw.githubusercontent.com/numpy/numpy/v2.0.0/doc/source/numpy_2_0_migration_guide.rst",
+    "licence": "BSD-3-Clause",
+    "ok": true
+  },
+  {
+    "id": "py-numpy2-abi-pandas",
+    "url": "https://raw.githubusercontent.com/numpy/numpy/v2.0.0/doc/source/numpy_2_0_migration_guide.rst",
+    "licence": "BSD-3-Clause",
+    "ok": true
+  },
+  {
+    "id": "py-numpy2-abi-scipy",
+    "url": "https://raw.githubusercontent.com/numpy/numpy/v2.0.0/doc/source/numpy_2_0_migration_guide.rst",
+    "licence": "BSD-3-Clause",
+    "ok": true
+  },
+  {
+    "id": "py-pydantic2-basesettings",
+    "url": "https://raw.githubusercontent.com/pydantic/pydantic/v2.9.2/docs/migration.md",
+    "licence": "MIT",
+    "ok": true
+  },
+  {
+    "id": "py-pydantic2-regex",
+    "url": "https://raw.githubusercontent.com/pydantic/pydantic/v2.9.2/docs/migration.md",
+    "licence": "MIT",
+    "ok": true
+  },
+  {
+    "id": "py-sqlalchemy2-engine-execute",
+    "url": "https://raw.githubusercontent.com/sqlalchemy/sqlalchemy/rel_2_0_36/doc/build/changelog/whatsnew_20.rst",
+    "licence": "MIT",
+    "ok": true
+  },
+  {
+    "id": "py-sqlalchemy2-postgres-dialect",
+    "url": "https://raw.githubusercontent.com/sqlalchemy/sqlalchemy/rel_2_0_36/doc/build/changelog/changelog_14.rst",
+    "licence": "MIT",
+    "ok": true
+  },
+  {
+    "id": "py-torch26-weights-only",
+    "url": "https://raw.githubusercontent.com/pytorch/pytorch/v2.6.0/docs/source/notes/serialization.rst",
+    "licence": "BSD-3-Clause",
+    "ok": true
+  },
+  {
+    "id": "py-torch-cpu-wheel-cuda",
+    "url": "https://raw.githubusercontent.com/pytorch/pytorch/v2.6.0/README.md",
+    "licence": "BSD-3-Clause",
+    "ok": true
+  },
+  {
+    "id": "py-poetry2-export",
+    "url": "https://raw.githubusercontent.com/python-poetry/poetry/2.1.1/docs/cli.md",
+    "licence": "MIT",
+    "ok": true
+  },
+  {
+    "id": "py-poetry2-shell",
+    "url": "https://raw.githubusercontent.com/python-poetry/poetry/2.1.1/docs/cli.md",
+    "licence": "MIT",
+    "ok": true
+  },
+  {
+    "id": "py-uv-no-venv",
+    "url": "https://raw.githubusercontent.com/astral-sh/uv/0.5.0/docs/pip/environments.md",
+    "licence": "MIT OR Apache-2.0",
+    "ok": true
+  },
+  {
+    "id": "py-urllib3-v2-old-openssl",
+    "url": "https://raw.githubusercontent.com/urllib3/urllib3/2.0.7/CHANGES.rst",
+    "licence": "MIT",
+    "ok": true
+  },
+  {
+    "id": "py-python313-cgi",
+    "url": "https://raw.githubusercontent.com/python/peps/main/peps/pep-0594.rst",
+    "licence": "CC0-1.0",
+    "ok": true
+  },
+  {
+    "id": "py-python312-asyncore",
+    "url": "https://raw.githubusercontent.com/python/peps/main/peps/pep-0594.rst",
+    "licence": "CC0-1.0",
+    "ok": true
+  },
+  {
+    "id": "py-httpx028-proxies",
+    "url": "https://raw.githubusercontent.com/encode/httpx/0.28.0/CHANGELOG.md",
+    "licence": "BSD-3-Clause",
+    "ok": true
+  },
+  {
+    "id": "py-setuptools75-test-command",
+    "url": "https://raw.githubusercontent.com/pypa/setuptools/v72.0.0/NEWS.rst",
+    "licence": "MIT",
+    "ok": true
+  },
+  {
+    "id": "py-pyyaml541-cython3",
+    "url": "https://raw.githubusercontent.com/yaml/pyyaml/main/CHANGES",
+    "licence": "MIT",
+    "ok": true
+  },
+  {
+    "id": "py-pip-editable-without-project-file",
+    "url": "https://raw.githubusercontent.com/pypa/pip/24.0/NEWS.rst",
+    "licence": "MIT",
+    "ok": true
+  },
+  {
+    "id": "py-numpy21-requires-newer-python",
+    "url": "https://raw.githubusercontent.com/numpy/numpy/v2.1.0/doc/source/release/2.1.0-notes.rst",
+    "licence": "BSD-3-Clause",
+    "ok": true
+  },
+  {
+    "id": "py-flask3-json-encoder",
+    "url": "https://raw.githubusercontent.com/pallets/flask/3.0.3/CHANGES.rst",
+    "licence": "BSD-3-Clause",
+    "ok": true
+  },
+  {
+    "id": "py-werkzeug3-url-quote",
+    "url": "https://raw.githubusercontent.com/pallets/werkzeug/3.0.1/CHANGES.rst",
+    "licence": "BSD-3-Clause",
+    "ok": true
+  },
+  {
+    "id": "py-jinja31-markup",
+    "url": "https://raw.githubusercontent.com/pallets/jinja/3.1.4/CHANGES.rst",
+    "licence": "BSD-3-Clause",
+    "ok": true
+  },
+  {
+    "id": "py-pandas2-dataframe-append",
+    "url": "https://raw.githubusercontent.com/pandas-dev/pandas/v2.2.2/doc/source/whatsnew/v2.0.0.rst",
+    "licence": "BSD-3-Clause",
+    "ok": true
+  },
+  {
+    "id": "py-django4-force-text",
+    "url": "https://raw.githubusercontent.com/django/django/4.2.16/docs/releases/4.0.txt",
+    "licence": "BSD-3-Clause",
+    "ok": true
+  },
+  {
+    "id": "py-selenium4-executable-path",
+    "url": "https://raw.githubusercontent.com/SeleniumHQ/selenium/selenium-4.25.0/py/CHANGES",
+    "licence": "Apache-2.0",
+    "ok": true
+  },
+  {
+    "id": "py-pyyaml6-load-loader",
+    "url": "https://raw.githubusercontent.com/yaml/pyyaml/6.0/CHANGES",
+    "licence": "MIT",
+    "ok": true
+  },
+  {
+    "id": "py-protobuf4-descriptors",
+    "url": "https://raw.githubusercontent.com/protocolbuffers/protobuf/v25.3/python/message.c",
+    "licence": "BSD-3-Clause",
+    "ok": true
+  },
+  {
+    "id": "py-numpy2-array-copy-false",
+    "url": "https://raw.githubusercontent.com/numpy/numpy/v2.0.0/doc/source/numpy_2_0_migration_guide.rst",
+    "licence": "BSD-3-Clause",
+    "ok": true
+  },
+  {
+    "id": "py-scipy114-simps",
+    "url": "https://raw.githubusercontent.com/scipy/scipy/v1.14.0/doc/source/release/1.14.0-notes.rst",
+    "licence": "BSD-3-Clause",
+    "ok": true
+  },
+  {
+    "id": "py-opencv-libgl-slim",
+    "url": "https://raw.githubusercontent.com/opencv/opencv-python/4.x/README.md",
+    "licence": "MIT",
+    "ok": true
+  },
+  {
+    "id": "py-playwright-browsers-missing",
+    "url": "https://raw.githubusercontent.com/microsoft/playwright/main/packages/playwright-core/src/server/registry/index.ts",
+    "licence": "Apache-2.0",
+    "ok": true
+  },
+  {
+    "id": "node-eslint9-no-flat-config",
+    "url": "https://raw.githubusercontent.com/eslint/eslint/v9.15.0/docs/src/use/configure/migration-guide.md",
+    "licence": "MIT",
+    "ok": true
+  },
+  {
+    "id": "node-eslint9-ext-flag",
+    "url": "https://raw.githubusercontent.com/eslint/eslint/v9.15.0/docs/src/use/configure/migration-guide.md",
+    "licence": "MIT",
+    "ok": true
+  },
+  {
+    "id": "node-tailwind4-cli",
+    "url": "https://raw.githubusercontent.com/tailwindlabs/tailwindcss/v4.0.0/CHANGELOG.md",
+    "licence": "MIT",
+    "ok": true
+  },
+  {
+    "id": "node-tailwind4-postcss",
+    "url": "https://raw.githubusercontent.com/tailwindlabs/tailwindcss/v4.0.0/CHANGELOG.md",
+    "licence": "MIT",
+    "ok": true
+  },
+  {
+    "id": "node-pnpm10-ignored-build-sqlite3",
+    "url": "https://raw.githubusercontent.com/pnpm/pnpm/v10.0.0/pnpm/CHANGELOG.md",
+    "licence": "MIT",
+    "ok": true
+  },
+  {
+    "id": "node-pnpm-outdated-lockfile",
+    "url": "https://raw.githubusercontent.com/pnpm/pnpm/v9.15.0/pnpm/CHANGELOG.md",
+    "licence": "MIT",
+    "ok": true
+  },
+  {
+    "id": "node-corepack-keyid",
+    "url": "https://raw.githubusercontent.com/nodejs/corepack/main/README.md",
+    "licence": "MIT",
+    "ok": true
+  },
+  {
+    "id": "node-require-esm-async",
+    "url": "https://raw.githubusercontent.com/nodejs/node/v22.12.0/doc/api/modules.md",
+    "licence": "MIT",
+    "ok": true
+  },
+  {
+    "id": "node-jest30-testpathpattern",
+    "url": "https://raw.githubusercontent.com/jestjs/jest/v30.0.0/CHANGELOG.md",
+    "licence": "MIT",
+    "ok": true
+  },
+  {
+    "id": "node-esm-json-import-attribute",
+    "url": "https://raw.githubusercontent.com/nodejs/node/v22.12.0/doc/api/esm.md",
+    "licence": "MIT",
+    "ok": true
+  },
+  {
+    "id": "node-ts-unknown-file-extension",
+    "url": "https://raw.githubusercontent.com/nodejs/node/v20.18.0/doc/api/errors.md",
+    "licence": "MIT",
+    "ok": true
+  },
+  {
+    "id": "node-webpack5-no-polyfills",
+    "url": "https://raw.githubusercontent.com/webpack/webpack/v5.96.1/lib/ModuleNotFoundError.js",
+    "licence": "MIT",
+    "ok": true
+  },
+  {
+    "id": "node-eslint-plugin-missing",
+    "url": "https://raw.githubusercontent.com/eslint/eslint/v8.57.1/messages/plugin-missing.js",
+    "licence": "MIT",
+    "ok": true
+  },
+  {
+    "id": "node-prisma-openssl-slim",
+    "url": "https://raw.githubusercontent.com/prisma/prisma/5.22.0/packages/get-platform/src/getPlatform.ts",
+    "licence": "Apache-2.0",
+    "ok": true
+  },
+  {
+    "id": "jvm-lombok-jdk23",
+    "url": "https://raw.githubusercontent.com/projectlombok/lombok/v1.18.34/doc/changelog.markdown",
+    "licence": "MIT",
+    "ok": true
+  },
+  {
+    "id": "jvm-java17-inaccessible-object",
+    "url": "https://raw.githubusercontent.com/apache/spark/v3.5.0/launcher/src/main/java/org/apache/spark/launcher/JavaModuleOptions.java",
+    "licence": "Apache-2.0",
+    "ok": true
+  },
+  {
+    "id": "jvm-classfile-65-on-17",
+    "url": "https://raw.githubusercontent.com/apache/maven-compiler-plugin/master/src/main/java/org/apache/maven/plugin/compiler/AbstractCompilerMojo.java",
+    "licence": "Apache-2.0",
+    "ok": true
+  },
+  {
+    "id": "jvm-gradle85-jdk24",
+    "url": "https://raw.githubusercontent.com/gradle/gradle/master/README.md",
+    "licence": "Apache-2.0",
+    "ok": true
+  },
+  {
+    "id": "jvm-maven-source-5",
+    "url": "https://raw.githubusercontent.com/apache/maven-compiler-plugin/master/README.md",
+    "licence": "Apache-2.0",
+    "ok": true
+  },
+  {
+    "id": "jvm-maven-java-home-invalid",
+    "url": "https://raw.githubusercontent.com/apache/maven/maven-3.9.9/apache-maven/src/bin/mvn",
+    "licence": "Apache-2.0",
+    "ok": true
+  },
+  {
+    "id": "jvm-gradle73-jdk21",
+    "url": "https://raw.githubusercontent.com/gradle/gradle/master/README.md",
+    "licence": "Apache-2.0",
+    "ok": true
+  },
+  {
+    "id": "jvm-javac-release-newer-than-jdk",
+    "url": "https://raw.githubusercontent.com/apache/maven-compiler-plugin/master/src/main/java/org/apache/maven/plugin/compiler/AbstractCompilerMojo.java",
+    "licence": "Apache-2.0",
+    "ok": true
+  },
+  {
+    "id": "jvm-maven-http-repository-blocked",
+    "url": "https://raw.githubusercontent.com/apache/maven/maven-3.9.9/apache-maven/src/conf/settings.xml",
+    "licence": "Apache-2.0",
+    "ok": true
+  },
+  {
+    "id": "jvm-gradle-toolchain-not-found",
+    "url": "https://raw.githubusercontent.com/gradle/gradle/master/README.md",
+    "licence": "Apache-2.0",
+    "ok": true
+  },
+  {
+    "id": "jvm-jaxb-removed-from-jdk",
+    "url": "https://raw.githubusercontent.com/jakartaee/jaxb-api/master/README.md",
+    "licence": "BSD-3-Clause",
+    "ok": true
+  },
+  {
+    "id": "go-toolchain-local-too-new",
+    "url": "https://raw.githubusercontent.com/golang/go/master/src/cmd/go/internal/toolchain/select.go",
+    "licence": "BSD-3-Clause",
+    "ok": true
+  },
+  {
+    "id": "go-install-latest-needs-newer-go",
+    "url": "https://raw.githubusercontent.com/golang/go/master/src/cmd/go/internal/toolchain/select.go",
+    "licence": "BSD-3-Clause",
+    "ok": true
+  },
+  {
+    "id": "go-cgo-alpine-no-gcc",
+    "url": "https://raw.githubusercontent.com/golang/go/go1.23.0/src/cmd/cgo/doc.go",
+    "licence": "BSD-3-Clause",
+    "ok": true
+  },
+  {
+    "id": "go-missing-gosum-entry",
+    "url": "https://raw.githubusercontent.com/golang/go/go1.23.0/src/cmd/go/alldocs.go",
+    "licence": "BSD-3-Clause",
+    "ok": true
+  },
+  {
+    "id": "go-private-module-no-credentials",
+    "url": "https://raw.githubusercontent.com/golang/go/go1.23.0/src/cmd/go/alldocs.go",
+    "licence": "BSD-3-Clause",
+    "ok": true
+  },
+  {
+    "id": "go-race-without-cgo",
+    "url": "https://raw.githubusercontent.com/golang/go/go1.23.0/src/cmd/go/alldocs.go",
+    "licence": "BSD-3-Clause",
+    "ok": true
+  },
+  {
+    "id": "go-vendor-inconsistent",
+    "url": "https://raw.githubusercontent.com/golang/go/go1.23.0/src/cmd/go/internal/modload/vendor.go",
+    "licence": "BSD-3-Clause",
+    "ok": true
+  },
+  {
+    "id": "rust-edition2024-old-cargo",
+    "url": "https://raw.githubusercontent.com/rust-lang/cargo/master/doc/book/src/reference/unstable.md",
+    "licence": "MIT OR Apache-2.0",
+    "ok": true
+  },
+  {
+    "id": "rust-msrv-dependency",
+    "url": "https://raw.githubusercontent.com/rust-lang/cargo/master/doc/book/src/reference/rust-version.md",
+    "licence": "MIT OR Apache-2.0",
+    "ok": true
+  },
+  {
+    "id": "rust-lockfile-v4-old-cargo",
+    "url": "https://raw.githubusercontent.com/rust-lang/cargo/master/crates/cargo-util-schemas/src/lockfile.rs",
+    "licence": "MIT OR Apache-2.0",
+    "ok": true
+  },
+  {
+    "id": "rust-openssl-sys-no-pkgconfig",
+    "url": "https://raw.githubusercontent.com/sfackler/rust-openssl/master/openssl/src/lib.rs",
+    "licence": "MIT OR Apache-2.0",
+    "ok": true
+  },
+  {
+    "id": "rust-musl-target-missing",
+    "url": "https://raw.githubusercontent.com/rust-lang/rustup/master/doc/user-guide/src/cross-compilation.md",
+    "licence": "MIT OR Apache-2.0",
+    "ok": true
+  },
+  {
+    "id": "dotnet-sdk8-targets-net9",
+    "url": "https://raw.githubusercontent.com/dotnet/sdk/main/src/Tasks/Common/Resources/Strings.resx",
+    "licence": "MIT",
+    "ok": true
+  },
+  {
+    "id": "dotnet-global-json-sdk-missing",
+    "url": "https://raw.githubusercontent.com/dotnet/sdk/main/src/Tasks/Common/Resources/Strings.resx",
+    "licence": "MIT",
+    "ok": true
+  },
+  {
+    "id": "dotnet-runtime-version-missing",
+    "url": "https://raw.githubusercontent.com/dotnet/runtime/main/src/native/corehost/error_codes.h",
+    "licence": "MIT",
+    "ok": true
+  },
+  {
+    "id": "docker-compose-env-file-missing",
+    "url": "https://raw.githubusercontent.com/compose-spec/compose-go/main/types/project.go",
+    "licence": "Apache-2.0",
+    "ok": true
+  },
+  {
+    "id": "docker-compose-undefined-dependency",
+    "url": "https://raw.githubusercontent.com/compose-spec/compose-go/main/loader/validate.go",
+    "licence": "Apache-2.0",
+    "ok": true
+  },
+  {
+    "id": "docker-daemon-socket",
+    "url": "https://raw.githubusercontent.com/moby/moby/master/client/errors.go",
+    "licence": "Apache-2.0",
+    "ok": true
+  },
+  {
+    "id": "k8s-helm-cluster-unreachable",
+    "url": "https://raw.githubusercontent.com/helm/helm/main/pkg/kube/client.go",
+    "licence": "Apache-2.0",
+    "ok": true
+  },
+  {
+    "id": "k8s-kubectl-no-kubeconfig",
+    "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/staging/src/k8s.io/kubectl/pkg/cmd/util/helpers.go",
+    "licence": "Apache-2.0",
+    "ok": true
+  },
+  {
+    "id": "docker-compose-unknown-service-key",
+    "url": "https://raw.githubusercontent.com/compose-spec/compose-go/main/schema/compose-spec.json",
+    "licence": "Apache-2.0",
+    "ok": true
+  },
+  {
+    "id": "k8s-kubectl-apply-validate-no-cluster",
+    "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/staging/src/k8s.io/kubectl/pkg/cmd/apply/apply.go",
+    "licence": "Apache-2.0",
+    "ok": true
+  },
+  {
+    "id": "tls-curl-private-ca",
+    "url": "https://raw.githubusercontent.com/openssl/openssl/openssl-3.0/crypto/x509/x509_txt.c",
+    "licence": "Apache-2.0",
+    "ok": true
+  },
+  {
+    "id": "tls-git-private-ca",
+    "url": "https://raw.githubusercontent.com/openssl/openssl/openssl-3.0/crypto/x509/x509_txt.c",
+    "licence": "Apache-2.0",
+    "ok": true
+  },
+  {
+    "id": "tls-python-requests-private-ca",
+    "url": "https://raw.githubusercontent.com/openssl/openssl/openssl-3.0/crypto/x509/x509_txt.c",
+    "licence": "Apache-2.0",
+    "ok": true
+  },
+  {
+    "id": "tls-node-fetch-private-ca",
+    "url": "https://raw.githubusercontent.com/openssl/openssl/openssl-3.0/crypto/x509/x509_txt.c",
+    "licence": "Apache-2.0",
+    "ok": true
+  },
+  {
+    "id": "tls-java-pkix-private-ca",
+    "url": "https://raw.githubusercontent.com/openssl/openssl/openssl-3.0/crypto/x509/x509_txt.c",
+    "licence": "Apache-2.0",
+    "ok": true
+  },
+  {
+    "id": "tls-openssl3-ee-key-too-small",
+    "url": "https://raw.githubusercontent.com/openssl/openssl/openssl-3.0/doc/man3/SSL_CTX_set_security_level.pod",
+    "licence": "Apache-2.0",
+    "ok": true
+  },
+  {
+    "id": "tls-openssl3-legacy-pkcs12",
+    "url": "https://raw.githubusercontent.com/openssl/openssl/openssl-3.0/doc/man7/migration_guide.pod",
+    "licence": "Apache-2.0",
+    "ok": true
+  },
+  {
+    "id": "tls-pip-private-ca",
+    "url": "https://raw.githubusercontent.com/pypa/pip/24.0/NEWS.rst",
+    "licence": "MIT",
+    "ok": true
+  },
+  {
+    "id": "tls-curl-hostname-mismatch",
+    "url": "https://raw.githubusercontent.com/openssl/openssl/openssl-3.0/crypto/x509/x509_txt.c",
+    "licence": "Apache-2.0",
+    "ok": true
+  },
+  {
+    "id": "platform-node18-glibc-too-old",
+    "url": "https://raw.githubusercontent.com/nodejs/node/v18.20.4/BUILDING.md",
+    "licence": "MIT",
+    "ok": true
+  },
+  {
+    "id": "platform-node-glibc-binary-on-alpine",
+    "url": "https://raw.githubusercontent.com/nodejs/node/v18.20.4/BUILDING.md",
+    "licence": "MIT",
+    "ok": true
+  }
+]

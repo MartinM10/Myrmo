@@ -1,0 +1,10 @@
+{
+  "id": "jvm-gradle73-jdk21",
+  "ok": true,
+  "error_line": "General error during conversion: Unsupported class file major version 65",
+  "exit_code": 1,
+  "output_tail": "ver.exec.BuildCommandOnly.execute(BuildCommandOnly.java:37)\n  \tat org.gradle.launcher.daemon.server.api.DaemonCommandExecution.proceed(DaemonCommandExecution.java:104)\n  \tat org.gradle.launcher.daemon.server.exec.EstablishBuildEnvironment.doBuild(EstablishBuildEnvironment.java:84)\n  \tat org.gradle.launcher.daemon.server.exec.BuildCommandOnly.execute(BuildCommandOnly.java:37)\n  \tat org.gradle.launcher.daemon.server.api.DaemonCommandExecution.proceed(DaemonCommandExecution.java:104)\n  \tat org.gradle.launcher.daemon.server.exec.StartBuildOrRespondWithBusy$1.run(StartBuildOrRespondWithBusy.java:52)\n  \tat org.gradle.launcher.daemon.server.DaemonStateCoordinator$1.run(DaemonStateCoordinator.java:297)\n  \tat org.gradle.internal.concurrent.ExecutorPolicy$CatchAndRecordFailures.onExecute(ExecutorPolicy.java:64)\n  \tat org.gradle.internal.concurrent.ManagedExecutorImpl$1.run(ManagedExecutorImpl.java:48)\n  \tat java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144)\n  \tat java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642)\n  \tat org.gradle.internal.concurrent.ThreadFactoryImpl$ManagedThreadRunnable.run(ThreadFactoryImpl.java:61)\n  \tat java.base/java.lang.Thread.run(Thread.java:1583)\n  \n  1 error\n\n\n* Try:\n> Run with --stacktrace option to get the stack trace.\n> Run with --info or --debug option to get more log output.\n> Run with --scan to get full insights.\n\n* Get more help at https://help.gradle.org\n\nBUILD FAILED in 2s",
+  "image": "eclipse-temurin:21-jdk",
+  "image_digest": "eclipse-temurin@sha256:3e3c176ffed168beb42c607be9bc1639b466cf00261a0fb04425562c9d0c5c2b",
+  "command": "/opt/gradle-7.3.3/bin/gradle --no-daemon help 2>&1"
+}

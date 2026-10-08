@@ -1,0 +1,10 @@
+{
+  "id": "node-esm-json-import-attribute",
+  "ok": true,
+  "error_line": "TypeError [ERR_IMPORT_ATTRIBUTE_MISSING]: Module \"file:///w/x.json\" needs an import attribute of \"type: json\"",
+  "exit_code": 1,
+  "output_tail": "node:internal/modules/esm/assert:88\n        throw new ERR_IMPORT_ATTRIBUTE_MISSING(url, 'type', validType);\n              ^\n\nTypeError [ERR_IMPORT_ATTRIBUTE_MISSING]: Module \"file:///w/x.json\" needs an import attribute of \"type: json\"\n    at validateAttributes (node:internal/modules/esm/assert:88:15)\n    at defaultLoadSync (node:internal/modules/esm/load:172:3)\n    at ModuleLoader.load (node:internal/modules/esm/loader:831:12)\n    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:609:31)\n    at #createModuleJob (node:internal/modules/esm/loader:640:36)\n    at #getJobFromResolveResult (node:internal/modules/esm/loader:353:34)\n    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:321:41) {\n  code: 'ERR_IMPORT_ATTRIBUTE_MISSING'\n}\n\nNode.js v22.23.3",
+  "image": "node:22-slim",
+  "image_digest": "node@sha256:c3de60bf2f9dd0ac6370e6117950ff62d6e339527e7472301c9c78a017978392",
+  "command": "node a.mjs 2>&1"
+}

@@ -1,0 +1,10 @@
+{
+  "id": "go-missing-gosum-entry",
+  "ok": true,
+  "error_line": "main.go:2:16: missing go.sum entry for module providing package github.com/google/uuid (imported by w); to add:",
+  "exit_code": 1,
+  "output_tail": "go: downloading github.com/google/uuid v1.6.0\nmain.go:2:16: module lookup disabled by GOPROXY=off\nmain.go:2:16: missing go.sum entry for module providing package github.com/google/uuid (imported by w); to add:\n\tgo get w",
+  "image": "golang:1.22.5",
+  "image_digest": "golang@sha256:86a3c48a61915a8c62c0e1d7594730399caa3feb73655dfe96c7bc17710e96cf",
+  "command": "GOFLAGS=-mod=mod GOPROXY=off go build ./... 2>&1; go build ./... 2>&1"
+}

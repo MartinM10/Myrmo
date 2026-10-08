@@ -1,0 +1,10 @@
+{
+  "id": "platform-node18-glibc-too-old",
+  "ok": true,
+  "error_line": "/opt/node-v18.20.4-linux-x64/bin/node: /lib64/libm.so.6: version `GLIBC_2.27' not found (required by /opt/node-v18.20.4-linux-x64/bin/node)",
+  "exit_code": 1,
+  "output_tail": "/opt/node-v18.20.4-linux-x64/bin/node: /lib64/libm.so.6: version `GLIBC_2.27' not found (required by /opt/node-v18.20.4-linux-x64/bin/node)\n/opt/node-v18.20.4-linux-x64/bin/node: /lib64/libc.so.6: version `GLIBC_2.28' not found (required by /opt/node-v18.20.4-linux-x64/bin/node)",
+  "image": "amazonlinux:2",
+  "image_digest": "amazonlinux@sha256:f86b99704b49b2fde6bf42b4c5257fcb0b1e0946509da5d6cea08c4227618433",
+  "command": "/opt/node-v18.20.4-linux-x64/bin/node -v 2>&1"
+}

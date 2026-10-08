@@ -1,0 +1,10 @@
+{
+  "id": "node-jest30-testpathpattern",
+  "ok": true,
+  "error_line": "Option \"testPathPattern\" was replaced by \"--testPathPatterns\". \"--testPathPatterns\" is only available as a command-line option.",
+  "exit_code": 1,
+  "output_tail": "testPathPattern:\n\n  Option \"testPathPattern\" was replaced by \"--testPathPatterns\". \"--testPathPatterns\" is only available as a command-line option.\n  \n  Please update your configuration.\n\n  CLI Options Documentation:\n  https://jestjs.io/docs/cli",
+  "image": "node:20-slim",
+  "image_digest": "node@sha256:2cf067cfed83d5ea958367df9f966191a942351a2df77d6f0193e162b5febfc0",
+  "command": "npx jest --testPathPattern a 2>&1"
+}

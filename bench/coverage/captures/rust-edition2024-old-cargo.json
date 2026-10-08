@@ -1,0 +1,10 @@
+{
+  "id": "rust-edition2024-old-cargo",
+  "ok": true,
+  "error_line": "feature `edition2024` is required",
+  "exit_code": 101,
+  "output_tail": "error: failed to parse manifest at `/w/Cargo.toml`\n\nCaused by:\n  feature `edition2024` is required\n\n  The package requires the Cargo feature called `edition2024`, but that feature is not stabilized in this version of Cargo (1.78.0 (54d8815d0 2024-03-26)).\n  Consider trying a newer version of Cargo (this may require the nightly release).\n  See https://doc.rust-lang.org/nightly/cargo/reference/unstable.html#edition-2024 for more information about the status of this feature.",
+  "image": "rust:1.78",
+  "image_digest": "rust@sha256:5907e96b0293eb53bcc8f09b4883d71449808af289862950ede9a0e3cca44ff5",
+  "command": "cargo build 2>&1"
+}

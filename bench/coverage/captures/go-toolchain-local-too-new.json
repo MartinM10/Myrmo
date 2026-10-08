@@ -1,0 +1,10 @@
+{
+  "id": "go-toolchain-local-too-new",
+  "ok": true,
+  "error_line": "go: go.mod requires go >= 1.24.0 (running go 1.22.5; GOTOOLCHAIN=local)",
+  "exit_code": 1,
+  "output_tail": "go: go.mod requires go >= 1.24.0 (running go 1.22.5; GOTOOLCHAIN=local)",
+  "image": "golang:1.22.5",
+  "image_digest": "golang@sha256:86a3c48a61915a8c62c0e1d7594730399caa3feb73655dfe96c7bc17710e96cf",
+  "command": "GOTOOLCHAIN=local go build ./... 2>&1"
+}

@@ -1,0 +1,10 @@
+{
+  "id": "go-cgo-alpine-no-gcc",
+  "ok": true,
+  "error_line": "cgo: C compiler \"gcc\" not found: exec: \"gcc\": executable file not found in $PATH",
+  "exit_code": 1,
+  "output_tail": "# runtime/cgo\ncgo: C compiler \"gcc\" not found: exec: \"gcc\": executable file not found in $PATH",
+  "image": "golang:1.23-alpine",
+  "image_digest": "golang@sha256:383395b794dffa5b53012a212365d40c8e37109a626ca30d6151c8348d380b5f",
+  "command": "CGO_ENABLED=1 go build ./... 2>&1"
+}

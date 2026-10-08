@@ -1,0 +1,10 @@
+{
+  "id": "tls-git-private-ca",
+  "ok": true,
+  "error_line": "fatal: unable to access 'https://intranet.example:8443/repo.git/': server certificate verification failed. CAfile: none CRLfile: none",
+  "exit_code": 128,
+  "output_tail": "fatal: unable to access 'https://intranet.example:8443/repo.git/': server certificate verification failed. CAfile: none CRLfile: none",
+  "image": "myrmo-tls-lab:1",
+  "image_digest": "myrmo-tls-lab@sha256:d6b81e6ce0941072a6fea12335cca6d963420bc6c7932a43cb083d78d0a9fbbc",
+  "command": "git ls-remote https://intranet.example:8443/repo.git 2>&1"
+}

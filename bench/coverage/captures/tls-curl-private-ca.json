@@ -1,0 +1,10 @@
+{
+  "id": "tls-curl-private-ca",
+  "ok": true,
+  "error_line": "curl: (60) SSL certificate problem: unable to get local issuer certificate",
+  "exit_code": 60,
+  "output_tail": "curl: (60) SSL certificate problem: unable to get local issuer certificate\nMore details here: https://curl.se/docs/sslcerts.html\n\ncurl failed to verify the legitimacy of the server and therefore could not\nestablish a secure connection to it. To learn more about this situation and\nhow to fix it, please visit the web page mentioned above.",
+  "image": "myrmo-tls-lab:1",
+  "image_digest": "myrmo-tls-lab@sha256:d6b81e6ce0941072a6fea12335cca6d963420bc6c7932a43cb083d78d0a9fbbc",
+  "command": "curl -sS https://intranet.example:8443/health 2>&1"
+}

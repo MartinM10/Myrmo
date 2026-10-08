@@ -1,0 +1,10 @@
+{
+  "id": "node-webpack5-no-polyfills",
+  "ok": true,
+  "error_line": "BREAKING CHANGE: webpack < 5 used to include polyfills for node.js core modules by default.",
+  "exit_code": 1,
+  "output_tail": "is module and configure a polyfill for it.\n\nIf you want to include a polyfill, you need to:\n\t- add a fallback 'resolve.fallback: { \"crypto\": require.resolve(\"crypto-browserify\") }'\n\t- install 'crypto-browserify'\nIf you don't want to include a polyfill, you can use an empty module like this:\n\tresolve.fallback: { \"crypto\": false }\nresolve 'crypto' in '/w/src'\n  Parsed request is a module\n  using description file: /w/package.json (relative path: ./src)\n    Field 'browser' doesn't contain a valid alias configuration\n    resolve as module\n      /w/src/node_modules doesn't exist or is not a directory\n      looking for modules in /w/node_modules\n        single file module\n          using description file: /w/package.json (relative path: ./node_modules/crypto)\n            no extension\n              Field 'browser' doesn't contain a valid alias configuration\n              /w/node_modules/crypto doesn't exist\n            .js\n              Field 'browser' doesn't contain a valid alias configuration\n              /w/node_modules/crypto.js doesn't exist\n            .json\n              Field 'browser' doesn't contain a valid alias configuration\n              /w/node_modules/crypto.json doesn't exist\n            .wasm\n              Field 'browser' doesn't contain a valid alias configuration\n              /w/node_modules/crypto.wasm doesn't exist\n        /w/node_modules/crypto doesn't exist\n      /node_modules doesn't exist or is not a directory\n\nwebpack 5.96.1 compiled with 1 error in 90 ms",
+  "image": "node:20-slim",
+  "image_digest": "node@sha256:2cf067cfed83d5ea958367df9f966191a942351a2df77d6f0193e162b5febfc0",
+  "command": "cd /w && npx webpack --mode development --target web 2>&1"
+}

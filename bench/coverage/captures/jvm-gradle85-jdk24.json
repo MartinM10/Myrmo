@@ -1,0 +1,10 @@
+{
+  "id": "jvm-gradle85-jdk24",
+  "ok": true,
+  "error_line": "> BUG! exception in phase 'semantic analysis' in source unit '_BuildScript_' Unsupported class file major version 68",
+  "exit_code": 1,
+  "output_tail": "thod in java.lang.System has been called\nWARNING: java.lang.System::load has been called by net.rubygrapefruit.platform.internal.NativeLibraryLoader in an unnamed module (file:/opt/gradle-8.5/lib/native-platform-0.22-milestone-25.jar)\nWARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module\nWARNING: Restricted methods will be blocked in a future release unless native access is enabled\n\n\nWelcome to Gradle 8.5!\n\nHere are the highlights of this release:\n - Support for running on Java 21\n - Faster first use with Kotlin DSL\n - Improved error and warning messages\n\nFor more details see https://docs.gradle.org/8.5/release-notes.html\n\nTo honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.5/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.\nDaemon will be stopped at the end of the build \n\nFAILURE: Build failed with an exception.\n\n* What went wrong:\nCould not open settings generic class cache for settings file '/w/settings.gradle' (/root/.gradle/caches/8.5/scripts/8qwbgcenxq54vph87qvmhwou3).\n> BUG! exception in phase 'semantic analysis' in source unit '_BuildScript_' Unsupported class file major version 68\n\n* Try:\n> Run with --stacktrace option to get the stack trace.\n> Run with --info or --debug option to get more log output.\n> Run with --scan to get full insights.\n> Get more help at https://help.gradle.org.\n\nBUILD FAILED in 3s",
+  "image": "eclipse-temurin:24-jdk",
+  "image_digest": "eclipse-temurin@sha256:7493205ffe6caa8074fa8a06a276bb1c5ac41d3dd0fd43a0db66d7f776e80b3e",
+  "command": "/opt/gradle-8.5/bin/gradle --no-daemon help 2>&1"
+}

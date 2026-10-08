@@ -1,0 +1,35 @@
+from probe import P
+
+COMPOSE = "mkdir /w && cd /w && "
+
+PROBES = [
+    P("docker-compose-env-file-missing", "docker", "docker:27-cli", COMPOSE + "printf 'services:\\n  web:\\n    image: nginx\\n    env_file: .env\\n' > compose.yaml",
+      "docker compose config 2>&1", r"env file .* not found",
+      {"compose": "2.x"}, "https://raw.githubusercontent.com/compose-spec/compose-go/main/types/project.go",
+      "env file", "Apache-2.0", must=(r"env_file|env file", r"\.env|required")),
+    P("docker-compose-undefined-dependency", "docker", "docker:27-cli", COMPOSE + "printf 'services:\\n  web:\\n    image: nginx\\n    depends_on: [db]\\n' > compose.yaml",
+      "docker compose config 2>&1", r"depends on undefined service",
+      {"compose": "2.x"}, "https://raw.githubusercontent.com/compose-spec/compose-go/main/loader/validate.go",
+      "depends on undefined service", "Apache-2.0", must=(r"depends_on|depends on undefined service", r"service")),
+    P("docker-daemon-socket", "docker", "docker:27-cli", "true",
+      "env -u DOCKER_HOST docker ps 2>&1", r"Cannot connect to the Docker daemon",
+      {"docker": "27"}, "https://raw.githubusercontent.com/moby/moby/master/client/errors.go",
+      "Cannot connect to the Docker daemon", "Apache-2.0", must=(r"docker\.sock|docker daemon", r"Cannot connect|permission|running")),
+    P("k8s-helm-cluster-unreachable", "docker", "alpine/k8s:1.31.1", "helm create /tmp/c >/dev/null",
+      "helm install x /tmp/c 2>&1", r"cluster unreachable",
+      {"helm": "3.16"}, "https://raw.githubusercontent.com/helm/helm/main/pkg/kube/client.go",
+      "cluster unreachable", "Apache-2.0", must=(r"cluster unreachable|connection refused", r"KUBECONFIG|kubeconfig|kubectl config")),
+    P("k8s-kubectl-no-kubeconfig", "docker", "alpine/k8s:1.31.1", "true",
+      "kubectl get pods 2>&1", r"was refused - did you specify the right host or port",
+      {"kubectl": "1.31"}, "https://raw.githubusercontent.com/kubernetes/kubernetes/master/staging/src/k8s.io/kubectl/pkg/cmd/util/helpers.go",
+      "did you specify the right host or port", "Apache-2.0", must=(r"KUBECONFIG|kubeconfig|kubectl config", r"refused|host or port")),
+    P("docker-compose-unknown-service-key", "docker", "docker:27-cli", COMPOSE + "printf 'services:\\n  web:\\n    image: nginx\\n    restart_policy: always\\n' > compose.yaml",
+      "docker compose config 2>&1", r"(?i)additional propert",
+      {"compose": "2.x"}, "https://raw.githubusercontent.com/compose-spec/compose-go/main/schema/compose-spec.json",
+      "restart_policy", "Apache-2.0", must=(r"restart_policy|additional propert", r"restart")),
+    P("k8s-kubectl-apply-validate-no-cluster", "docker", "alpine/k8s:1.31.1",
+      r'''mkdir /w && cd /w && printf 'apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: x\n' > cm.yaml''',
+      "cd /w && kubectl apply -f cm.yaml 2>&1", r"failed to download openapi|error validating",
+      {"kubectl": "1.31"}, "https://raw.githubusercontent.com/kubernetes/kubernetes/master/staging/src/k8s.io/kubectl/pkg/cmd/apply/apply.go",
+      "validate", "Apache-2.0", must=(r"validate|openapi", r"kubeconfig|KUBECONFIG|--validate=false|cluster")),
+]
