@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.2](https://github.com/MartinM10/Myrmo/compare/server-v0.5.1...server-v0.5.2) (2026-10-07)
+
+
+### Bug fixes
+
+* **server:** a search does not return a trail that names something else than the query ([067cdcc](https://github.com/MartinM10/Myrmo/commit/067cdcc0cbb238822b763440a45773ead0a2f419))
+
 ## [0.5.1](https://github.com/MartinM10/Myrmo/compare/server-v0.5.0...server-v0.5.1) (2026-10-07)
 
 

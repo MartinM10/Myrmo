@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.10.1...mcp-v0.11.0) (2026-10-07)
+
+
+### Features
+
+* **mcp:** init sets up VS Code (GitHub Copilot), OpenCode and Codex ([505d933](https://github.com/MartinM10/Myrmo/commit/505d933d310cb49bb2dba940695610948ee348ee))
+
 ## [0.10.1](https://github.com/MartinM10/Myrmo/compare/mcp-v0.10.0...mcp-v0.10.1) (2026-10-07)
 
 

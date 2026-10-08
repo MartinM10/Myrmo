@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.12.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.11.1...platform-v0.12.0) (2026-10-07)
+
+
+### Features
+
+* **web:** every docs page is also served as markdown, with one file for all of them ([355a345](https://github.com/MartinM10/Myrmo/commit/355a345b556465560c78be1fcb34f1c3819159aa))
+
+
+### Documentation
+
+* architecture, components, development, and using Myrmo next to other sources ([4982b85](https://github.com/MartinM10/Myrmo/commit/4982b85123d34b29bb0dc6a11bfe71533e3f4528))
+* the clients that init sets up, and the shape each one uses ([03fddf3](https://github.com/MartinM10/Myrmo/commit/03fddf34f5a1ba2c9f781ec6feb629793bbc11d2))
+* the name check, with the scale figures before and after ([22caf7c](https://github.com/MartinM10/Myrmo/commit/22caf7cadd9f1767235d6428a97083aa6a531cd2))
+
 ## [0.11.1](https://github.com/MartinM10/Myrmo/compare/platform-v0.11.0...platform-v0.11.1) (2026-10-07)
 
 
