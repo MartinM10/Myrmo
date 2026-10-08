@@ -1,0 +1,86 @@
+[
+  {
+    "id": "tls-git-private-ca",
+    "error_line": "fatal: unable to access 'https://intranet.example:8443/repo.git/': server certificate verification failed. CAfile: none CRLfile: none",
+    "versions": {
+      "git": "2.39",
+      "os": "debian-12"
+    },
+    "source": {
+      "url": "https://raw.githubusercontent.com/openssl/openssl/openssl-3.0/crypto/x509/x509_txt.c",
+      "licence": "Apache-2.0"
+    },
+    "score": {
+      "recent": false,
+      "environment": true,
+      "transferable": true,
+      "reproducible": true,
+      "total": 3
+    },
+    "status": "reproduced",
+    "reason": ""
+  },
+  {
+    "id": "tls-openssl3-legacy-pkcs12",
+    "error_line": "807B48BD667B0000:error:0308010C:digital envelope routines:inner_evp_generic_fetch:unsupported:../crypto/evp/evp_fetch.c:386:Global default library context, Algorithm (RC2-40-CBC : 0), Properties ()",
+    "versions": {
+      "openssl": "3.0",
+      "os": "debian-12"
+    },
+    "source": {
+      "url": "https://raw.githubusercontent.com/openssl/openssl/openssl-3.0/doc/man7/migration_guide.pod",
+      "licence": "Apache-2.0"
+    },
+    "score": {
+      "recent": false,
+      "environment": true,
+      "transferable": true,
+      "reproducible": true,
+      "total": 3
+    },
+    "status": "reproduced",
+    "reason": ""
+  },
+  {
+    "id": "tls-pip-private-ca",
+    "error_line": "WARNING: Retrying (Retry(total=4, connect=None, read=None, redirect=None, status=None)) after connection broken by 'SSLError(SSLCertVerificationError(1, '[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:992)'))': /simple/internal-package/",
+    "versions": {
+      "pip": "23",
+      "os": "debian-12"
+    },
+    "source": {
+      "url": "https://raw.githubusercontent.com/pypa/pip/24.0/NEWS.rst",
+      "licence": "MIT"
+    },
+    "score": {
+      "recent": false,
+      "environment": true,
+      "transferable": true,
+      "reproducible": true,
+      "total": 3
+    },
+    "status": "reproduced",
+    "reason": ""
+  },
+  {
+    "id": "tls-python-requests-private-ca",
+    "error_line": "requests.exceptions.SSLError: HTTPSConnectionPool(host='intranet.example', port=8443): Max retries exceeded with url: /health (Caused by SSLError(SSLCertVerificationError(1, '[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:992)')))",
+    "versions": {
+      "requests": "2.28",
+      "python": "3.11"
+    },
+    "source": {
+      "url": "https://raw.githubusercontent.com/openssl/openssl/openssl-3.0/crypto/x509/x509_txt.c",
+      "licence": "Apache-2.0"
+    },
+    "score": {
+      "recent": false,
+      "environment": true,
+      "transferable": true,
+      "reproducible": true,
+      "total": 3
+    },
+    "status": "reproduced",
+    "reason": ""
+  }
+]

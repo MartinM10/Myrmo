@@ -113,7 +113,7 @@ def content_hash(public_trail: dict) -> str:
 
 def record(*, task_id: str, batch: str, image: str, public_trail: dict, sources: list[dict] | None = None,
            model: str | None = None, model_licence: str | None = None, model_terms_reviewed: bool = False,
-           digest: str | None = None, version: dict | None = None) -> dict:
+           model_terms_accepted_by: str | None = None, digest: str | None = None, version: dict | None = None) -> dict:
     """The provenance of one trail. `sources` are what the task was built from: {"kind", "ref", "licence", "used_as"}.
     The factory's own catalog tasks are written by the project and run scripted commands, so they have no model and
     no outside source. A trail an agent produced names its model and the licence (or reviewed terms) it ran under."""
@@ -124,7 +124,7 @@ def record(*, task_id: str, batch: str, image: str, public_trail: dict, sources:
         "batch": batch,
         "executed_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "authored_by": "project",
-        "generated_by": {"kind": "model" if model else "scripted-commands", "model": model, "model_licence": model_licence, "model_terms_reviewed": model_terms_reviewed},
+        "generated_by": {"kind": "model" if model else "scripted-commands", "model": model, "model_licence": model_licence, "model_terms_reviewed": model_terms_reviewed, "model_terms_accepted_by": model_terms_accepted_by},
         "image": {"ref": image, "digest": digest},
         "tool": version or factory_version(),
         "sources": sources or [],
@@ -150,7 +150,11 @@ def check(rec: dict | None) -> list[str]:
         problems.append("the image the task ran in is not recorded")
     generated = rec["generated_by"]
     if generated.get("model"):
-        if not (licence_allowed(generated.get("model_licence")) or generated.get("model_terms_reviewed") is True):
+        # A model's output may be used when its licence is permissive, when its terms were reviewed for this use, or
+        # when the project's owner accepts them and says so by name and date (`model_terms_accepted_by`).
+        accepted = generated.get("model_terms_accepted_by")
+        owner_accepts = isinstance(accepted, str) and re.fullmatch(r"[^,]+, \d{4}-\d{2}-\d{2}", accepted) is not None
+        if not (licence_allowed(generated.get("model_licence")) or generated.get("model_terms_reviewed") is True or owner_accepts):
             problems.append(f"model {generated['model']}: its licence is not permissive and its terms were not reviewed for this use")
     for source in rec.get("sources", []):
         label = source.get("ref") or source.get("kind") or "source"

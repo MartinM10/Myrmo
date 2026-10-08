@@ -18,7 +18,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(ROOT / "protocol"))
 from fingerprint_v2 import fingerprint
-from catalog import MESSAGE_OVERRIDES, TASKS, Task, publishable
+from catalog import MESSAGE_OVERRIDES, TASKS, Task, ecosystem_of, publishable
 import provenance
 
 SCHEMA = json.loads((ROOT / "protocol/trail.v1.schema.json").read_text())
@@ -41,6 +41,9 @@ HOST_PRIVATE = sorted(
     reverse=True,
 )
 HOST_USER = getpass.getuser() if len(getpass.getuser()) >= 4 else ""
+# The text of the model-written tasks (summary, root cause, steps) is covered by the project owner's decision to use
+# the model's output for this purpose; the provenance record keeps who decided and when.
+OWNER_ACCEPTANCE = "the project owner, 2026-10-08"
 MIN_ERROR_MESSAGE = 20
 # What Docker prints while it fetches an image. It is not output of the task and must not become its error.
 DOCKER_NOISE = re.compile(
@@ -67,7 +70,7 @@ def run(task: Task, command: str) -> dict:
     full = f"{setup}{command}"
     started = time.monotonic()
     label = f"seed-factory.run={uuid.uuid4().hex}"
-    docker_command = ["docker", "run", "--rm", "--init", "--label", label, "--cpus=1", "--memory=512m", task.image, "sh", "-c", full]
+    docker_command = ["docker", "run", "--rm", "--init", "--label", label, "--cpus=1", f"--memory={task.memory}", task.image, "sh", "-c", full]
     try:
         p = subprocess.run(docker_command, capture_output=True, text=True, timeout=TIMEOUT)
         if p.returncode == SETUP_FAILED and "seed-factory: setup failed" in p.stderr:
@@ -151,6 +154,7 @@ def trail(task: Task) -> dict:
     FACTORY_VERSION = FACTORY_VERSION or provenance.factory_version()
     cleaned["_provenance"] = provenance.record(
         task_id=task.task_id, batch=BATCH, image=task.image, digest=provenance.image_digest(task.image), version=FACTORY_VERSION,
+        model=task.written_by_model, model_terms_accepted_by=OWNER_ACCEPTANCE if task.written_by_model else None,
         public_trail={k: v for k, v in cleaned.items() if not k.startswith("_")},
     )
     return cleaned
@@ -182,6 +186,8 @@ def main() -> int:
     parser.add_argument("--start", type=int, default=0)
     parser.add_argument("--batch", default="pilot-001")
     parser.add_argument("--output", default=str(OUT / "pilot.jsonl"))
+    parser.add_argument("--ecosystem", action="append", help="only tasks of this ecosystem (repeatable); `legacy` is the first catalog")
+    parser.add_argument("--ids", nargs="+", help="only these task ids")
     parser.add_argument("--include-excluded", action="store_true", help="also run tasks the publication policy excludes (for tests)")
     args = parser.parse_args()
     global BATCH
@@ -190,6 +196,10 @@ def main() -> int:
     results = []
     with ThreadPoolExecutor(max_workers=min(MAX_WORKERS, args.limit)) as pool:
         pool_tasks = TASKS if args.include_excluded else publishable()
+        if args.ecosystem:
+            pool_tasks = tuple(t for t in pool_tasks if ecosystem_of(t) in args.ecosystem)
+        if args.ids:
+            pool_tasks = tuple(t for t in pool_tasks if t.task_id in args.ids)
         selected = pool_tasks[args.start : args.start + args.limit]
         # Fetch each image once, before the workers start, so no task sees a download in its output.
         for image in sorted({task.image for task in selected}):
@@ -209,7 +219,7 @@ def main() -> int:
                 candidate["_factory"]["validation_error"] = str(exc)
             results.append(candidate)
     results.sort(key=lambda x: x["_factory"]["task_id"])
-    (OUT / "pilot-all.jsonl").write_text("\n".join(json.dumps(x, sort_keys=True) for x in results) + "\n", encoding="utf-8")
+    Path(args.output).with_name(Path(args.output).stem + "-all.jsonl").write_text("\n".join(json.dumps(x, sort_keys=True) for x in results) + "\n", encoding="utf-8")
     seen = set()
     unique = []
     for item in results:

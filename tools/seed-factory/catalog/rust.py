@@ -1,0 +1,36 @@
+from .probes import from_probe
+
+RUST178 = {"name": "rust", "version": "1.78"}
+
+TASKS = (
+    from_probe(
+        "rust-lockfile-v4-old-cargo", category="tooling", error_type="lock file version", runtime={"name": "rust", "version": "1.75"}, memory="2g",
+        summary="A Cargo.lock written by a newer Cargo (lock file version 4) cannot be read by Cargo 1.75 or older, which stops with an error naming the lock file version.",
+        context="Building in a container or CI image whose Rust is older than the one that last updated Cargo.lock.",
+        failed_approaches=("cd /w && cargo update 2>&1", "cd /w && cargo build --locked 2>&1"),
+        fix="cd /w && sed -i 's/^version = 4/version = 3/' Cargo.lock && cargo build", verify="cd /w && cargo build && echo built",
+        root_cause="Cargo 1.78 started writing lock file version 4, and Cargo versions before 1.78 do not understand it. The format is checked before anything else, so even cargo update fails.",
+        steps=("Use a Rust toolchain of 1.78 or later, or", "change version = 4 to version = 3 in Cargo.lock (or delete it and run cargo generate-lockfile with the older Cargo).", "Pin the toolchain in rust-toolchain.toml so every machine uses the same Cargo."),
+        tags=("rust", "cargo", "cargo.lock", "toolchain"), message="lock file version",
+    ),
+    from_probe(
+        "rust-msrv-dependency", category="dependency", error_type="rustc is not supported by the following package", runtime=RUST178, memory="2g",
+        summary="A crate in the dependency tree needs a newer rustc than the installed one, and Cargo stops with a message listing the package and the version it requires.",
+        context="Building a project on Rust 1.78 after cargo picked the newest releases of its dependencies.",
+        failed_approaches=("cd /w && cargo build --release 2>&1", "cd /w && cargo build --offline 2>&1"),
+        fix="cd /w && cargo add time@=0.3.36 && cargo update powerfmt --precise 0.2.0 && cargo build", verify="cd /w && cargo build && echo built",
+        root_cause="Crates declare the oldest compiler they support (rust-version). Cargo resolves to the newest releases unless told otherwise, and a release can require a compiler newer than yours.",
+        steps=("Update the toolchain: rustup update.", "Or select releases that support your compiler: cargo update <crate> --precise <version>, or pin the dependency.", "Set resolver.incompatible-rust-versions = \"fallback\" in .cargo/config.toml (Cargo 1.84 and later) so Cargo prefers compatible releases."),
+        tags=("rust", "cargo", "msrv", "rust-version"), message="is not supported by the following package",
+    ),
+    from_probe(
+        "rust-musl-target-missing", category="build", error_type="target may not be installed", runtime={"name": "rust", "version": "1.82"}, memory="2g",
+        summary="Building for the musl target fails with a note that the target may not be installed, because rustup has not added its standard library.",
+        context="Making a static Linux binary with cargo build --target x86_64-unknown-linux-musl.",
+        failed_approaches=("cd /w && cargo build --target x86_64-unknown-linux-musl --release 2>&1", "cd /w && rustc --target x86_64-unknown-linux-musl src/main.rs 2>&1"),
+        fix="rustup target add x86_64-unknown-linux-musl && cd /w && cargo build --target x86_64-unknown-linux-musl", verify="cd /w && ls target/x86_64-unknown-linux-musl/debug/w",
+        root_cause="A rustup toolchain contains the standard library only for the host target. Every other target, such as musl or wasm32, has to be installed with rustup target add.",
+        steps=("Run rustup target add x86_64-unknown-linux-musl.", "A crate with C dependencies also needs a musl C toolchain (musl-tools, or a cross tool).", "List the installed targets with rustup target list --installed."),
+        tags=("rust", "musl", "rustup", "cross-compilation"), message="target may not be installed",
+    ),
+)

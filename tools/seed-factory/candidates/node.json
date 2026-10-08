@@ -1,0 +1,108 @@
+[
+  {
+    "id": "node-corepack-keyid",
+    "error_line": "Internal Error: Cannot find matching keyid: {\"signatures\":[{\"sig\":\"MEUCIHciHKBHwqkH34yZb0OgAoHtoOSbngV7JfQN0/Qh+zJSAiEAxMhi3kN0i0bRrOSXAhDqi79UNwuqYuqdZkVFnn0a+CI=\",\"keyid\":\"SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U\"}],\"keys\":[{\"expires\":null,\"keyid\":\"SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA\",\"keytype\":\"ecdsa-sha2-nistp256\",\"scheme\":\"ecdsa-sha2-nistp256\",\"key\":\"MFkwEwYHKoZIzj0CA",
+    "versions": {
+      "node": "22.11",
+      "corepack": "0.29"
+    },
+    "source": {
+      "url": "https://raw.githubusercontent.com/nodejs/corepack/main/README.md",
+      "licence": "MIT"
+    },
+    "score": {
+      "recent": true,
+      "environment": false,
+      "transferable": true,
+      "reproducible": true,
+      "total": 3
+    },
+    "status": "reproduced",
+    "reason": ""
+  },
+  {
+    "id": "node-esm-json-import-attribute",
+    "error_line": "TypeError [ERR_IMPORT_ATTRIBUTE_MISSING]: Module \"file:///w/x.json\" needs an import attribute of \"type: json\"",
+    "versions": {
+      "node": "22"
+    },
+    "source": {
+      "url": "https://raw.githubusercontent.com/nodejs/node/v22.12.0/doc/api/esm.md",
+      "licence": "MIT"
+    },
+    "score": {
+      "recent": true,
+      "environment": false,
+      "transferable": true,
+      "reproducible": true,
+      "total": 3
+    },
+    "status": "reproduced",
+    "reason": ""
+  },
+  {
+    "id": "node-jest30-testpathpattern",
+    "error_line": "Option \"testPathPattern\" was replaced by \"--testPathPatterns\". \"--testPathPatterns\" is only available as a command-line option.",
+    "versions": {
+      "jest": "30.0.0",
+      "node": "20"
+    },
+    "source": {
+      "url": "https://raw.githubusercontent.com/jestjs/jest/v30.0.0/CHANGELOG.md",
+      "licence": "MIT"
+    },
+    "score": {
+      "recent": true,
+      "environment": false,
+      "transferable": true,
+      "reproducible": true,
+      "total": 3
+    },
+    "status": "reproduced",
+    "reason": ""
+  },
+  {
+    "id": "node-pnpm10-ignored-build-sqlite3",
+    "error_line": "Error: Could not locate the bindings file. Tried:",
+    "versions": {
+      "pnpm": "10.0.0",
+      "sqlite3": "5.1.7",
+      "node": "20"
+    },
+    "source": {
+      "url": "https://raw.githubusercontent.com/pnpm/pnpm/v10.0.0/pnpm/CHANGELOG.md",
+      "licence": "MIT"
+    },
+    "score": {
+      "recent": true,
+      "environment": false,
+      "transferable": true,
+      "reproducible": true,
+      "total": 3
+    },
+    "status": "reproduced",
+    "reason": ""
+  },
+  {
+    "id": "node-tailwind4-postcss",
+    "error_line": "Error: It looks like you're trying to use `tailwindcss` directly as a PostCSS plugin. The PostCSS plugin has moved to a separate package, so to continue using Tailwind CSS with PostCSS you'll need to install `@tailwindcss/postcss` and update your PostCSS configuration.",
+    "versions": {
+      "tailwindcss": "4.0.0",
+      "postcss": "8",
+      "node": "20"
+    },
+    "source": {
+      "url": "https://raw.githubusercontent.com/tailwindlabs/tailwindcss/v4.0.0/CHANGELOG.md",
+      "licence": "MIT"
+    },
+    "score": {
+      "recent": true,
+      "environment": false,
+      "transferable": true,
+      "reproducible": true,
+      "total": 3
+    },
+    "status": "reproduced",
+    "reason": ""
+  }
+]

@@ -79,7 +79,9 @@ def main() -> int:
     args = parser.parse_args()
     if not allowed(args.base):
         raise SystemExit("refusing URL: only localhost/private or exactly https://myrmo.dev is allowed")
-    if args.max > MAX_PER_HOUR:
+    # The pace limit protects the public colony. A colony on your own machine has no quota to respect.
+    per_hour = MAX_PER_HOUR if urlparse(args.base.rstrip("/")).hostname == "myrmo.dev" else 1_000_000
+    if args.max > per_hour:
         raise SystemExit("refusing batch over 25 publications per hour")
     records = OUT / "published.jsonl"
     history = [json.loads(line) for line in records.read_text().splitlines()] if records.exists() else []
@@ -99,7 +101,7 @@ def main() -> int:
                 continue
             while True:
                 recent = sorted(item.get("submitted_at", 0) for item in history if item.get("base") == args.base.rstrip("/") and time.time() - item.get("submitted_at", 0) < WINDOW_SECONDS)
-                if len(recent) < MAX_PER_HOUR:
+                if len(recent) < per_hour:
                     break
                 time.sleep(max(1, recent[0] + WINDOW_SECONDS - time.time()))
             submitted_at = time.time()

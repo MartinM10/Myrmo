@@ -1,0 +1,57 @@
+[
+  {
+    "id": "terraform-provider-constraints",
+    "status": "rejected",
+    "reason": "its documentation is under a licence the project cannot build on (BUSL), and OpenTofu's is MPL-2.0"
+  },
+  {
+    "id": "github-actions-deprecated-action",
+    "status": "rejected",
+    "reason": "needs GitHub's runners to fail: it cannot be reproduced in a container"
+  },
+  {
+    "id": "database-client-auth",
+    "status": "rejected",
+    "reason": "the usual sources (PostgreSQL, MySQL, Redis) are under licences outside the policy; no permissive source describes them"
+  },
+  {
+    "id": "arm64-exec-format",
+    "status": "rejected",
+    "reason": "needs arm64 emulation, which this machine does not have"
+  },
+  {
+    "id": "py-torch-cpu-wheel-cuda",
+    "status": "rejected",
+    "reason": "the fix downloads several gigabytes of CUDA wheels, more than a factory container can hold"
+  },
+  {
+    "id": "py-psycopg2-alpine-pg_config",
+    "status": "rejected",
+    "reason": "psycopg2 is LGPL, a licence outside the policy"
+  },
+  {
+    "id": "py-pillow-antialias",
+    "status": "rejected",
+    "reason": "Pillow's licence (HPND) is outside the policy"
+  },
+  {
+    "id": "py-python313-cgi",
+    "status": "rejected",
+    "reason": "Python's own documentation is PSF-licensed; replaced by PEP 594 (CC0) as the source, kept only as a coverage line"
+  },
+  {
+    "id": "node-vite7-node18",
+    "status": "rejected",
+    "reason": "does not reproduce: Vite 7.0.0 builds on Node 18.20.8"
+  },
+  {
+    "id": "node-fetch-localhost-ipv6",
+    "status": "rejected",
+    "reason": "does not reproduce: Node 18.20 reaches 127.0.0.1 through localhost"
+  },
+  {
+    "id": "dotnet-alpine-no-icu",
+    "status": "rejected",
+    "reason": "does not reproduce: the SDK image runs with ICU available"
+  }
+]

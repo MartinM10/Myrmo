@@ -1,0 +1,24 @@
+[
+  {
+    "id": "platform-node-glibc-binary-on-alpine",
+    "error_line": "sh: /opt/node-v18.20.4-linux-x64/bin/node: not found",
+    "versions": {
+      "node": "18.20.4",
+      "os": "alpine:3.20",
+      "libc": "musl"
+    },
+    "source": {
+      "url": "https://raw.githubusercontent.com/nodejs/node/v18.20.4/BUILDING.md",
+      "licence": "MIT"
+    },
+    "score": {
+      "recent": false,
+      "environment": true,
+      "transferable": true,
+      "reproducible": true,
+      "total": 3
+    },
+    "status": "reproduced",
+    "reason": ""
+  }
+]
