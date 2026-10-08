@@ -15,7 +15,8 @@ export default defineConfig({
   sitemap: { hostname: `${site}/docs/` },
   // Needs git history; disabled in container builds where .git is not copied.
   lastUpdated: process.env.MYRMO_DOCS_NO_GIT !== "1",
-  appearance: "dark",
+  // Follows the system theme until someone picks one; the choice is shared with the website.
+  appearance: true,
   // docs/README.md is the GitHub entry point to this folder, not a site page.
   srcExclude: ["README.md"],
   // Self-hosting pages link to local services on purpose.

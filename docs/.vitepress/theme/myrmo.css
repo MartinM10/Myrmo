@@ -144,3 +144,84 @@
   font-family: var(--myrmo-display);
   font-size: 15px;
 }
+
+/*
+ * Motion: same language as the website. Base styles stay visible; every animation is an
+ * entrance that ends in the normal state, and reduced-motion users get none of it.
+ */
+@keyframes myrmo-rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes myrmo-grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes myrmo-shimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+
+@media (prefers-reduced-motion: no-preference) {
+  /* New page content rises in, first blocks one after the other (replays on each page change) */
+  .vp-doc > div > :nth-child(-n + 6) { animation: myrmo-rise 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+  .vp-doc > div > :nth-child(2) { animation-delay: 0.06s; }
+  .vp-doc > div > :nth-child(3) { animation-delay: 0.12s; }
+  .vp-doc > div > :nth-child(4) { animation-delay: 0.18s; }
+  .vp-doc > div > :nth-child(5) { animation-delay: 0.24s; }
+  .vp-doc > div > :nth-child(6) { animation-delay: 0.3s; }
+
+  /* Home hero */
+  .VPHero .name, .VPHero .text, .VPHero .tagline, .VPHero .actions { animation: myrmo-rise 0.8s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+  .VPHero .text { animation-delay: 0.12s; }
+  .VPHero .tagline { animation-delay: 0.26s; }
+  .VPHero .actions { animation-delay: 0.4s; }
+  .VPHero .text {
+    background: linear-gradient(100deg, var(--vp-c-text-1) 35%, var(--vp-c-brand-1) 50%, var(--vp-c-text-1) 65%) 100% 0 / 300% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: myrmo-rise 0.8s 0.12s cubic-bezier(0.2, 0.7, 0.2, 1) both, myrmo-shimmer 6s 1.4s ease-in-out infinite;
+  }
+
+  /* Hover: sidebar links slide, code blocks and feature cards lift and glow */
+  .VPSidebarItem .link > .text { transition: transform 0.2s ease; }
+  .VPSidebarItem .link:hover > .text { transform: translateX(3px); }
+  .vp-doc div[class*="language-"] { transition: box-shadow 0.3s ease; }
+  .vp-doc div[class*="language-"]:hover { box-shadow: 0 0 0 1px rgba(232, 144, 28, 0.35), 0 12px 30px -18px rgba(232, 144, 28, 0.5); }
+  .VPFeature { transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.3s ease; }
+  .VPFeature:hover { transform: translateY(-3px); border-color: var(--vp-c-brand-3); box-shadow: 0 14px 34px -20px rgba(232, 144, 28, 0.55); }
+  .VPButton { transition: transform 0.18s ease, background-color 0.25s, border-color 0.25s, color 0.25s; }
+  .VPButton:hover { transform: translateY(-2px); }
+
+  /* Headings: the rule under h2 draws itself */
+  .vp-doc h2 { position: relative; }
+  .vp-doc h2::before {
+    content: "";
+    position: absolute;
+    top: -1px; left: 0;
+    width: 48px; height: 2px;
+    background: var(--vp-c-brand-3);
+    transform-origin: left center;
+    animation: myrmo-grow 0.7s 0.2s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+
+  /* Scroll-driven, where the browser supports it */
+  @supports (animation-timeline: scroll()) {
+    body::before {
+      content: "";
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      z-index: 60;
+      pointer-events: none;
+      background: linear-gradient(90deg, rgba(232, 144, 28, 0.25), var(--vp-c-brand-3));
+      box-shadow: 0 0 10px rgba(232, 144, 28, 0.6);
+      transform-origin: left center;
+      animation: myrmo-grow linear both;
+      animation-timeline: scroll(root block);
+    }
+  }
+  @supports (animation-timeline: view()) {
+    .vp-doc > div > :nth-child(n + 7):is(table, blockquote, details, [class*="language-"], .custom-block, ul, ol) {
+      animation: myrmo-rise linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 30%;
+    }
+    .VPFeature { animation: myrmo-rise linear backwards; animation-timeline: view(); animation-range: entry 0% entry 40%; }
+  }
+}
