@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.11.0...mcp-v0.12.0) (2026-10-08)
+
+
+### Features
+
+* **mcp:** tell agents to search also when something misbehaves without an error message ([1d4f9d2](https://github.com/MartinM10/Myrmo/commit/1d4f9d219c7803c9d50896d287fb268ddd7a8c4c))
+
 ## [0.11.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.10.1...mcp-v0.11.0) (2026-10-07)
 
 

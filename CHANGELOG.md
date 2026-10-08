@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.14.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.13.0...platform-v0.14.0) (2026-10-08)
+
+
+### Features
+
+* **mcp:** tell agents to search also when something misbehaves without an error message ([1d4f9d2](https://github.com/MartinM10/Myrmo/commit/1d4f9d219c7803c9d50896d287fb268ddd7a8c4c))
+
+
+### Documentation
+
+* how to install the plugin per user, per project or only for you ([2b4703a](https://github.com/MartinM10/Myrmo/commit/2b4703a1a998275367644af6605c62fb72e0bb57))
+* **plugin:** the skill also covers misbehaviour without an error message ([1a75e67](https://github.com/MartinM10/Myrmo/commit/1a75e671810e187148ce8d2580ccde67e7568845))
+
 ## [0.13.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.12.0...platform-v0.13.0) (2026-10-08)
 
 
