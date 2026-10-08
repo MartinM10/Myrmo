@@ -1,32 +1,33 @@
 {
   "summary": {
     "split": "reserved",
-    "lines": 37,
-    "colony_trails": 67,
+    "lines": 45,
+    "colony_trails": 75,
     "per_ecosystem": {
       "all": {
-        "silence": 20,
-        "false_positive": 11,
-        "hit": 3,
-        "miss": 3
+        "silence": 28,
+        "miss": 7,
+        "hit": 2,
+        "false_positive": 8
       },
       "docker": {
         "silence": 2,
+        "miss": 2
+      },
+      "dotnet": {
         "miss": 1
       },
       "go": {
-        "false_positive": 1,
-        "silence": 1,
+        "silence": 2,
         "hit": 1
       },
       "jvm": {
-        "hit": 1,
-        "miss": 1,
-        "silence": 2
+        "miss": 3,
+        "silence": 3
       },
       "node": {
-        "silence": 2,
-        "false_positive": 3,
+        "silence": 4,
+        "false_positive": 2,
         "miss": 1
       },
       "platform": {
@@ -34,7 +35,7 @@
       },
       "python": {
         "false_positive": 4,
-        "silence": 10
+        "silence": 13
       },
       "rust": {
         "silence": 1,
@@ -42,13 +43,13 @@
       },
       "tls": {
         "hit": 1,
-        "silence": 1,
-        "false_positive": 2
+        "silence": 2,
+        "false_positive": 1
       }
     },
-    "hit_rate": 0.081,
-    "false_positive_rate": 0.297,
-    "silence_rate": 0.541
+    "hit_rate": 0.044,
+    "false_positive_rate": 0.178,
+    "silence_rate": 0.622
   },
   "rows": [
     {
@@ -66,11 +67,18 @@
       "returned": 0
     },
     {
+      "id": "dotnet-runtime-version-missing",
+      "ecosystem": "dotnet",
+      "outcome": "miss",
+      "via": "search",
+      "returned": 0
+    },
+    {
       "id": "go-install-latest-needs-newer-go",
       "ecosystem": "go",
-      "outcome": "false_positive",
+      "outcome": "silence",
       "via": "search",
-      "returned": 1
+      "returned": 0
     },
     {
       "id": "go-missing-gosum-entry",
@@ -89,12 +97,26 @@
     {
       "id": "jvm-gradle85-jdk24",
       "ecosystem": "jvm",
-      "outcome": "hit",
+      "outcome": "miss",
       "via": "search",
-      "returned": 1
+      "returned": 0
     },
     {
       "id": "jvm-javac-release-newer-than-jdk",
+      "ecosystem": "jvm",
+      "outcome": "miss",
+      "via": "search",
+      "returned": 0
+    },
+    {
+      "id": "jvm-jaxb-removed-from-jdk",
+      "ecosystem": "jvm",
+      "outcome": "silence",
+      "via": "search",
+      "returned": 0
+    },
+    {
+      "id": "jvm-maven-http-repository-blocked",
       "ecosystem": "jvm",
       "outcome": "miss",
       "via": "search",
@@ -111,6 +133,13 @@
       "id": "jvm-maven-source-5",
       "ecosystem": "jvm",
       "outcome": "silence",
+      "via": "search",
+      "returned": 0
+    },
+    {
+      "id": "k8s-kubectl-apply-validate-no-cluster",
+      "ecosystem": "docker",
+      "outcome": "miss",
       "via": "search",
       "returned": 0
     },
@@ -133,14 +162,14 @@
       "ecosystem": "node",
       "outcome": "false_positive",
       "via": "search",
-      "returned": 1
+      "returned": 2
     },
     {
       "id": "node-pnpm-outdated-lockfile",
       "ecosystem": "node",
-      "outcome": "false_positive",
+      "outcome": "silence",
       "via": "search",
-      "returned": 3
+      "returned": 0
     },
     {
       "id": "node-require-esm-async",
@@ -154,10 +183,17 @@
       "ecosystem": "node",
       "outcome": "miss",
       "via": "search",
-      "returned": 1
+      "returned": 0
     },
     {
       "id": "node-ts-unknown-file-extension",
+      "ecosystem": "node",
+      "outcome": "silence",
+      "via": "search",
+      "returned": 0
+    },
+    {
+      "id": "node-webpack5-no-polyfills",
       "ecosystem": "node",
       "outcome": "silence",
       "via": "search",
@@ -182,17 +218,31 @@
       "ecosystem": "python",
       "outcome": "false_positive",
       "via": "search",
-      "returned": 3
+      "returned": 2
     },
     {
       "id": "py-numpy2-abi-scipy",
       "ecosystem": "python",
       "outcome": "false_positive",
       "via": "search",
-      "returned": 2
+      "returned": 1
+    },
+    {
+      "id": "py-numpy2-array-copy-false",
+      "ecosystem": "python",
+      "outcome": "silence",
+      "via": "search",
+      "returned": 0
     },
     {
       "id": "py-numpy21-requires-newer-python",
+      "ecosystem": "python",
+      "outcome": "silence",
+      "via": "search",
+      "returned": 0
+    },
+    {
+      "id": "py-opencv-libgl-slim",
       "ecosystem": "python",
       "outcome": "silence",
       "via": "search",
@@ -221,6 +271,13 @@
     },
     {
       "id": "py-poetry2-shell",
+      "ecosystem": "python",
+      "outcome": "silence",
+      "via": "search",
+      "returned": 0
+    },
+    {
+      "id": "py-protobuf4-descriptors",
       "ecosystem": "python",
       "outcome": "silence",
       "via": "search",
@@ -287,7 +344,7 @@
       "ecosystem": "tls",
       "outcome": "hit",
       "via": "search",
-      "returned": 2
+      "returned": 3
     },
     {
       "id": "tls-java-pkix-private-ca",
@@ -301,76 +358,61 @@
       "ecosystem": "tls",
       "outcome": "false_positive",
       "via": "search",
-      "returned": 3
+      "returned": 1
     },
     {
       "id": "tls-openssl3-ee-key-too-small",
       "ecosystem": "tls",
-      "outcome": "false_positive",
+      "outcome": "silence",
       "via": "search",
-      "returned": 2
+      "returned": 0
     }
   ],
   "dubious": [
     {
-      "line": "node-pnpm-outdated-lockfile",
-      "trail_id": "4b5d682e-4a76-46a3-bc2b-c2bee5817df9",
-      "error": "Internal Error: Cannot find matching keyid: {\"signatures\":[{\"sig\":\"MEUCIHciHKBHwqkH34yZb0OgAoHtoOSbngV7JfQN0/Qh+zJSAiEAx"
-    },
-    {
-      "line": "node-pnpm-outdated-lockfile",
-      "trail_id": "539f8e2b-5ae6-416a-b4cb-d8a757f75996",
-      "error": "Error: Could not locate the bindings file. Tried:"
+      "line": "node-eslint9-no-flat-config",
+      "trail_id": "fead1071-2ff2-46a7-9a5a-32b93e18b3ad",
+      "error": "ESLint couldn't find the plugin \"eslint-plugin-react\"."
     },
     {
       "line": "node-require-esm-async",
-      "trail_id": "075d67b0-abbc-4bff-b59b-c97acd9b277e",
+      "trail_id": "6e0dad3d-1ed9-4686-97d0-1db8f662d7b9",
       "error": "TypeError [ERR_IMPORT_ATTRIBUTE_MISSING]: Module \"file:///w/x.json\" needs an import attribute of \"type: json\""
     },
     {
       "line": "py-flask3-json-encoder",
-      "trail_id": "da64f514-984a-4f77-bb31-1da90fd64ca9",
+      "trail_id": "a2871979-f809-4c17-a305-58c8b6792884",
       "error": "ImportError: cannot import name 'url_quote' from 'werkzeug.urls' (/usr/local/lib/python3.12/site-packages/werkzeug/urls."
     },
     {
       "line": "py-numpy2-abi-pandas",
-      "trail_id": "776dbb68-f7c3-494e-965d-4c9520970d6e",
+      "trail_id": "a275c758-3088-4d2c-978f-f43227fa7ae5",
       "error": "AttributeError: `np.float_` was removed in the NumPy 2.0 release. Use `np.float64` instead.. Did you mean: 'float16'?"
     },
     {
       "line": "py-numpy2-abi-pandas",
-      "trail_id": "cbd6eace-9799-4cb2-8bf1-d0b325527802",
+      "trail_id": "f3e8dcde-05a2-484c-84d3-627d95efc75f",
       "error": "ERROR: No matching distribution found for numpy==1.24.4"
     },
     {
-      "line": "py-numpy2-abi-pandas",
-      "trail_id": "6bcd62a5-8a74-46d2-855a-4c5f9b2397d6",
-      "error": "AttributeError: `np.NaN` was removed in the NumPy 2.0 release. Use `np.nan` instead.. Did you mean: 'nan'?"
-    },
-    {
       "line": "py-numpy2-abi-scipy",
-      "trail_id": "63731c34-661c-44c0-9689-0d36c24ac8cc",
+      "trail_id": "a9861726-7ab7-458b-bfdc-e0ee4d43d433",
       "error": "ModuleNotFoundError: No module named 'distutils'"
     },
     {
-      "line": "py-numpy2-abi-scipy",
-      "trail_id": "776dbb68-f7c3-494e-965d-4c9520970d6e",
-      "error": "AttributeError: `np.float_` was removed in the NumPy 2.0 release. Use `np.float64` instead.. Did you mean: 'float16'?"
+      "line": "py-urllib3-v2-old-openssl",
+      "trail_id": "f0405414-9da4-4da2-af25-dacdcad21f1f",
+      "error": "807BD2FAB07D0000:error:0308010C:digital envelope routines:inner_evp_generic_fetch:unsupported:../crypto/evp/evp_fetch.c:"
     },
     {
       "line": "py-urllib3-v2-old-openssl",
-      "trail_id": "a8f168eb-1750-49b9-aa77-b38188662b20",
-      "error": "807BD2FAB07D0000:error:0308010C:digital envelope routines:inner_evp_generic_fetch:unsupported:../crypto/evp/evp_fetch.c:"
+      "trail_id": "ce6a15cb-c24c-4e8f-8f72-c3d602ccea1f",
+      "error": "Unable to require(`/w/node_modules/.prisma/client/libquery_engine-debian-openssl-1.1.x.so.node`)."
     },
     {
       "line": "rust-openssl-sys-no-pkgconfig",
-      "trail_id": "a8f168eb-1750-49b9-aa77-b38188662b20",
+      "trail_id": "f0405414-9da4-4da2-af25-dacdcad21f1f",
       "error": "807BD2FAB07D0000:error:0308010C:digital envelope routines:inner_evp_generic_fetch:unsupported:../crypto/evp/evp_fetch.c:"
-    },
-    {
-      "line": "tls-node-fetch-private-ca",
-      "trail_id": "4b5d682e-4a76-46a3-bc2b-c2bee5817df9",
-      "error": "Internal Error: Cannot find matching keyid: {\"signatures\":[{\"sig\":\"MEUCIHciHKBHwqkH34yZb0OgAoHtoOSbngV7JfQN0/Qh+zJSAiEAx"
     }
   ]
 }

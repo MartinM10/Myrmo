@@ -1,53 +1,48 @@
 {
   "summary": {
     "split": "reserved",
-    "lines": 37,
-    "colony_trails": 67,
+    "lines": 45,
+    "colony_trails": 30,
     "per_ecosystem": {
       "all": {
-        "silence": 17,
-        "false_positive": 13,
-        "hit": 4,
-        "miss": 3
+        "silence": 41,
+        "miss": 1,
+        "false_positive": 3
       },
       "docker": {
-        "silence": 2,
-        "miss": 1
+        "silence": 4
+      },
+      "dotnet": {
+        "silence": 1
       },
       "go": {
-        "false_positive": 1,
-        "silence": 1,
-        "hit": 1
+        "silence": 3
       },
       "jvm": {
-        "hit": 1,
-        "miss": 1,
-        "silence": 2
-      },
-      "node": {
-        "silence": 2,
-        "false_positive": 3,
+        "silence": 5,
         "miss": 1
       },
-      "platform": {
-        "hit": 1
-      },
-      "python": {
-        "false_positive": 5,
-        "silence": 9
-      },
-      "rust": {
-        "silence": 1,
+      "node": {
+        "silence": 6,
         "false_positive": 1
       },
+      "platform": {
+        "silence": 1
+      },
+      "python": {
+        "silence": 15,
+        "false_positive": 2
+      },
+      "rust": {
+        "silence": 2
+      },
       "tls": {
-        "hit": 1,
-        "false_positive": 3
+        "silence": 4
       }
     },
-    "hit_rate": 0.108,
-    "false_positive_rate": 0.351,
-    "silence_rate": 0.459
+    "hit_rate": 0.0,
+    "false_positive_rate": 0.067,
+    "silence_rate": 0.911
   },
   "rows": [
     {
@@ -65,11 +60,18 @@
       "returned": 0
     },
     {
+      "id": "dotnet-runtime-version-missing",
+      "ecosystem": "dotnet",
+      "outcome": "silence",
+      "via": "search",
+      "returned": 0
+    },
+    {
       "id": "go-install-latest-needs-newer-go",
       "ecosystem": "go",
-      "outcome": "false_positive",
+      "outcome": "silence",
       "via": "search",
-      "returned": 1
+      "returned": 0
     },
     {
       "id": "go-missing-gosum-entry",
@@ -81,19 +83,33 @@
     {
       "id": "go-race-without-cgo",
       "ecosystem": "go",
-      "outcome": "hit",
+      "outcome": "silence",
       "via": "search",
-      "returned": 1
+      "returned": 0
     },
     {
       "id": "jvm-gradle85-jdk24",
       "ecosystem": "jvm",
-      "outcome": "hit",
+      "outcome": "silence",
       "via": "search",
-      "returned": 1
+      "returned": 0
     },
     {
       "id": "jvm-javac-release-newer-than-jdk",
+      "ecosystem": "jvm",
+      "outcome": "silence",
+      "via": "search",
+      "returned": 0
+    },
+    {
+      "id": "jvm-jaxb-removed-from-jdk",
+      "ecosystem": "jvm",
+      "outcome": "silence",
+      "via": "search",
+      "returned": 0
+    },
+    {
+      "id": "jvm-maven-http-repository-blocked",
       "ecosystem": "jvm",
       "outcome": "miss",
       "via": "search",
@@ -114,9 +130,16 @@
       "returned": 0
     },
     {
+      "id": "k8s-kubectl-apply-validate-no-cluster",
+      "ecosystem": "docker",
+      "outcome": "silence",
+      "via": "search",
+      "returned": 0
+    },
+    {
       "id": "k8s-kubectl-no-kubeconfig",
       "ecosystem": "docker",
-      "outcome": "miss",
+      "outcome": "silence",
       "via": "search",
       "returned": 0
     },
@@ -137,23 +160,23 @@
     {
       "id": "node-pnpm-outdated-lockfile",
       "ecosystem": "node",
-      "outcome": "false_positive",
+      "outcome": "silence",
       "via": "search",
-      "returned": 3
+      "returned": 0
     },
     {
       "id": "node-require-esm-async",
       "ecosystem": "node",
-      "outcome": "false_positive",
+      "outcome": "silence",
       "via": "search",
-      "returned": 1
+      "returned": 0
     },
     {
       "id": "node-tailwind4-cli",
       "ecosystem": "node",
-      "outcome": "miss",
+      "outcome": "silence",
       "via": "search",
-      "returned": 1
+      "returned": 0
     },
     {
       "id": "node-ts-unknown-file-extension",
@@ -163,32 +186,46 @@
       "returned": 0
     },
     {
+      "id": "node-webpack5-no-polyfills",
+      "ecosystem": "node",
+      "outcome": "silence",
+      "via": "search",
+      "returned": 0
+    },
+    {
       "id": "platform-node18-glibc-too-old",
       "ecosystem": "platform",
-      "outcome": "hit",
+      "outcome": "silence",
       "via": "search",
-      "returned": 1
+      "returned": 0
     },
     {
       "id": "py-flask3-json-encoder",
       "ecosystem": "python",
-      "outcome": "false_positive",
+      "outcome": "silence",
       "via": "search",
-      "returned": 2
+      "returned": 0
     },
     {
       "id": "py-numpy2-abi-pandas",
       "ecosystem": "python",
       "outcome": "false_positive",
       "via": "search",
-      "returned": 3
+      "returned": 1
     },
     {
       "id": "py-numpy2-abi-scipy",
       "ecosystem": "python",
       "outcome": "false_positive",
       "via": "search",
-      "returned": 2
+      "returned": 1
+    },
+    {
+      "id": "py-numpy2-array-copy-false",
+      "ecosystem": "python",
+      "outcome": "silence",
+      "via": "search",
+      "returned": 0
     },
     {
       "id": "py-numpy21-requires-newer-python",
@@ -198,11 +235,18 @@
       "returned": 0
     },
     {
+      "id": "py-opencv-libgl-slim",
+      "ecosystem": "python",
+      "outcome": "silence",
+      "via": "search",
+      "returned": 0
+    },
+    {
       "id": "py-pandas2-dataframe-append",
       "ecosystem": "python",
-      "outcome": "false_positive",
+      "outcome": "silence",
       "via": "search",
-      "returned": 1
+      "returned": 0
     },
     {
       "id": "py-pip-editable-without-project-file",
@@ -220,6 +264,13 @@
     },
     {
       "id": "py-poetry2-shell",
+      "ecosystem": "python",
+      "outcome": "silence",
+      "via": "search",
+      "returned": 0
+    },
+    {
+      "id": "py-protobuf4-descriptors",
       "ecosystem": "python",
       "outcome": "silence",
       "via": "search",
@@ -263,9 +314,9 @@
     {
       "id": "py-urllib3-v2-old-openssl",
       "ecosystem": "python",
-      "outcome": "false_positive",
+      "outcome": "silence",
       "via": "search",
-      "returned": 3
+      "returned": 0
     },
     {
       "id": "rust-edition2024-old-cargo",
@@ -277,104 +328,49 @@
     {
       "id": "rust-openssl-sys-no-pkgconfig",
       "ecosystem": "rust",
-      "outcome": "false_positive",
+      "outcome": "silence",
       "via": "search",
-      "returned": 1
+      "returned": 0
     },
     {
       "id": "tls-curl-private-ca",
       "ecosystem": "tls",
-      "outcome": "hit",
+      "outcome": "silence",
       "via": "search",
-      "returned": 2
+      "returned": 0
     },
     {
       "id": "tls-java-pkix-private-ca",
       "ecosystem": "tls",
-      "outcome": "false_positive",
+      "outcome": "silence",
       "via": "search",
-      "returned": 1
+      "returned": 0
     },
     {
       "id": "tls-node-fetch-private-ca",
       "ecosystem": "tls",
-      "outcome": "false_positive",
+      "outcome": "silence",
       "via": "search",
-      "returned": 3
+      "returned": 0
     },
     {
       "id": "tls-openssl3-ee-key-too-small",
       "ecosystem": "tls",
-      "outcome": "false_positive",
+      "outcome": "silence",
       "via": "search",
-      "returned": 2
+      "returned": 0
     }
   ],
   "dubious": [
     {
-      "line": "node-pnpm-outdated-lockfile",
-      "trail_id": "4b5d682e-4a76-46a3-bc2b-c2bee5817df9",
-      "error": "Internal Error: Cannot find matching keyid: {\"signatures\":[{\"sig\":\"MEUCIHciHKBHwqkH34yZb0OgAoHtoOSbngV7JfQN0/Qh+zJSAiEAx"
-    },
-    {
-      "line": "node-pnpm-outdated-lockfile",
-      "trail_id": "539f8e2b-5ae6-416a-b4cb-d8a757f75996",
-      "error": "Error: Could not locate the bindings file. Tried:"
-    },
-    {
-      "line": "node-require-esm-async",
-      "trail_id": "075d67b0-abbc-4bff-b59b-c97acd9b277e",
-      "error": "TypeError [ERR_IMPORT_ATTRIBUTE_MISSING]: Module \"file:///w/x.json\" needs an import attribute of \"type: json\""
-    },
-    {
-      "line": "py-flask3-json-encoder",
-      "trail_id": "da64f514-984a-4f77-bb31-1da90fd64ca9",
-      "error": "ImportError: cannot import name 'url_quote' from 'werkzeug.urls' (/usr/local/lib/python3.12/site-packages/werkzeug/urls."
-    },
-    {
       "line": "py-numpy2-abi-pandas",
-      "trail_id": "776dbb68-f7c3-494e-965d-4c9520970d6e",
-      "error": "AttributeError: `np.float_` was removed in the NumPy 2.0 release. Use `np.float64` instead.. Did you mean: 'float16'?"
-    },
-    {
-      "line": "py-numpy2-abi-pandas",
-      "trail_id": "cbd6eace-9799-4cb2-8bf1-d0b325527802",
+      "trail_id": "19ad6751-ce95-466a-8d3f-e9b327c33b37",
       "error": "ERROR: No matching distribution found for numpy==1.24.4"
     },
     {
-      "line": "py-numpy2-abi-pandas",
-      "trail_id": "6bcd62a5-8a74-46d2-855a-4c5f9b2397d6",
-      "error": "AttributeError: `np.NaN` was removed in the NumPy 2.0 release. Use `np.nan` instead.. Did you mean: 'nan'?"
-    },
-    {
       "line": "py-numpy2-abi-scipy",
-      "trail_id": "63731c34-661c-44c0-9689-0d36c24ac8cc",
+      "trail_id": "8d18f779-b95b-4fba-adc0-11d11d2c4374",
       "error": "ModuleNotFoundError: No module named 'distutils'"
-    },
-    {
-      "line": "py-numpy2-abi-scipy",
-      "trail_id": "776dbb68-f7c3-494e-965d-4c9520970d6e",
-      "error": "AttributeError: `np.float_` was removed in the NumPy 2.0 release. Use `np.float64` instead.. Did you mean: 'float16'?"
-    },
-    {
-      "line": "py-urllib3-v2-old-openssl",
-      "trail_id": "a8f168eb-1750-49b9-aa77-b38188662b20",
-      "error": "807BD2FAB07D0000:error:0308010C:digital envelope routines:inner_evp_generic_fetch:unsupported:../crypto/evp/evp_fetch.c:"
-    },
-    {
-      "line": "rust-openssl-sys-no-pkgconfig",
-      "trail_id": "a8f168eb-1750-49b9-aa77-b38188662b20",
-      "error": "807BD2FAB07D0000:error:0308010C:digital envelope routines:inner_evp_generic_fetch:unsupported:../crypto/evp/evp_fetch.c:"
-    },
-    {
-      "line": "tls-java-pkix-private-ca",
-      "trail_id": "e41f3a82-15f5-4cec-b22c-b908cfdde4ed",
-      "error": "Exception in thread \"main\" java.lang.reflect.InaccessibleObjectException: Unable to make field private final byte[] java"
-    },
-    {
-      "line": "tls-node-fetch-private-ca",
-      "trail_id": "4b5d682e-4a76-46a3-bc2b-c2bee5817df9",
-      "error": "Internal Error: Cannot find matching keyid: {\"signatures\":[{\"sig\":\"MEUCIHciHKBHwqkH34yZb0OgAoHtoOSbngV7JfQN0/Qh+zJSAiEAx"
     }
   ]
 }
