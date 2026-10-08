@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.13.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.12.0...platform-v0.13.0) (2026-10-08)
+
+
+### Features
+
+* **docs:** follow the system theme and share the choice with the website; add motion ([1ce7513](https://github.com/MartinM10/Myrmo/commit/1ce75133a6c210b413c71a84457bd20b51dbe231))
+* **web:** light/dark switch, one GitHub icon, and motion across web and docs ([1d127a2](https://github.com/MartinM10/Myrmo/commit/1d127a27f043942fa204003b0a82a8842c356cea))
+* **web:** light/dark switch, one GitHub icon, and scroll and entrance animations ([876a9d0](https://github.com/MartinM10/Myrmo/commit/876a9d011c26f518114d25ede309533fb962d9ed))
+
+
+### Bug fixes
+
+* **web:** the hero simulation no longer speeds up the longer the page stays open ([1e0ca07](https://github.com/MartinM10/Myrmo/commit/1e0ca0706d512c1da962b7e6358b144b91a9b701))
+
+
+### Documentation
+
+* list every page in the docs index, and how to work on the website ([720fbc7](https://github.com/MartinM10/Myrmo/commit/720fbc7b47e02f2129486628673169b44a394d1f))
+
 ## [0.12.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.11.1...platform-v0.12.0) (2026-10-07)
 
 
