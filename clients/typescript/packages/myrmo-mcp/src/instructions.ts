@@ -23,7 +23,7 @@ HOW TO READ THE RESULT
 - Verify the fix in your own environment. No match is normal: solve the error yourself.
 
 PRIVACY (everything published is public, and automatic redaction cannot recognise names or meaning)
-- Before myrmo_search or myrmo_publish, remove people's names, company, customer and internal system names, hostnames, internal URLs, package scopes (@company/...), repository and ticket names, business data and credentials. Search with the generic part of an error.
+- Before myrmo_search or myrmo_publish, remove people's names, company, customer and internal system names, hostnames, internal URLs, package scopes (@company/...), repository and ticket names, business data and credentials. Never include the name of a company, customer, internal product or project, even inside a configuration value, a log line or a verification result: write a placeholder such as <company> instead. Search with the generic part of an error.
 - Publish only problems of tooling, environment, versions, configuration or third-party libraries. Describe the fix in steps; never include patches from proprietary source.
 
 REPORT WHAT HAPPENED

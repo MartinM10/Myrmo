@@ -109,6 +109,8 @@ function errorText(err: unknown): string {
   return `Myrmo is unreachable: ${err instanceof Error ? err.message : String(err)}. Continue without it.`;
 }
 
+const TERMS_URL = "https://myrmo.dev/docs/legal/terms";
+
 /**
  * Ask the user, once, how publishing should work from now on. The answer is theirs: it is saved to
  * their settings file and never comes from a tool argument.
@@ -124,7 +126,8 @@ async function askConsent(server: McpServer, preview: string): Promise<"auto" | 
 
 ${preview}
 
-How should publishing work from now on? You can change it later with: npx myrmo-mcp config publish auto|ask|off`,
+How should publishing work from now on? Publishing needs you to accept the terms of service (${TERMS_URL}); without it nothing is published. ` +
+        `You can change the choice later with: npx myrmo-mcp config publish auto|ask|off`,
       requestedSchema: {
         type: "object",
         properties: {
@@ -135,12 +138,21 @@ How should publishing work from now on? You can change it later with: npx myrmo-
             enum: ["ask", "auto", "off"],
             default: "ask",
           },
+          accept_terms: {
+            type: "boolean",
+            title: "I accept the terms of service",
+            description: `Needed to publish (ask or auto): I release what is published under CC BY-SA 4.0 and grant the project the licence in the terms: ${TERMS_URL}`,
+            default: false,
+          },
         },
         required: ["choice"],
       },
     });
     const choice = answer.content?.choice;
-    return answer.action === "accept" && (choice === "auto" || choice === "ask" || choice === "off") ? choice : "declined";
+    if (answer.action !== "accept") return "declined";
+    if (choice === "off") return "off";
+    // Publishing needs the terms to be accepted; a choice to publish without ticking the box saves nothing.
+    return (choice === "auto" || choice === "ask") && answer.content?.accept_terms === true ? choice : "declined";
   } catch {
     return "declined";
   }
@@ -151,7 +163,7 @@ async function askUser(server: McpServer, preview: string): Promise<"approved" |
   if (!server.server.getClientCapabilities()?.elicitation) return "unsupported";
   try {
     const answer = await server.server.elicitInput({
-      message: `An agent wants to publish this fix to the public Myrmo colony, where anyone can read it. Check that it contains nothing private.\n\n${preview}`,
+      message: `An agent wants to publish this fix to the public Myrmo colony, where anyone can read it. Check that it contains nothing private. By approving you accept the terms of service (${TERMS_URL}).\n\n${preview}`,
       requestedSchema: {
         type: "object",
         properties: { publish: { type: "boolean", title: "Publish this trail?", description: "Nothing is sent unless you answer yes." } },
@@ -293,9 +305,14 @@ export function createServer(opts: ServerOptions): McpServer {
           `Not published: this fix took ${attempts} failed attempts and the colony only accepts fixes that took ${opts.minFailedAttempts} or more. Easy fixes are not worth other agents' context.`,
         );
       }
-      const { trail: redacted, redactions } = opts.colony.preview(trail);
+      // `names` arrived with myrmo 0.10: an older SDK has none, and then there is simply no warning to show.
+      const { trail: redacted, redactions, names = [] } = opts.colony.preview(trail) as { trail: Trail; redactions: Record<string, number>; names?: string[] };
       const removed = Object.entries(redactions).map(([k, v]) => `${v} ${k}`).join(", ") || "nothing";
-      const preview = `Payload that would be sent (redacted locally: ${removed}):\n${JSON.stringify(redacted, null, 2)}`;
+      // Not redacted: a name looks like any other word, so the person who approves is the one who can tell.
+      const nameWarning = names.length
+        ? `\n\nCheck before approving: these look like names and were NOT removed: ${names.map((n) => `"${n}"`).join(", ")}. If one is a company, customer, person, internal product or project, replace it with a placeholder.`
+        : "";
+      const preview = `Payload that would be sent (redacted locally: ${removed}):\n${JSON.stringify(redacted, null, 2)}${nameWarning}`;
 
       // What publishing would check first, so that a payload that looks right is one the colony takes.
       const check = await opts.colony.validate(trail);
