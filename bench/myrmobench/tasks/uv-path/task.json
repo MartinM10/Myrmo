@@ -1,0 +1,11 @@
+{
+  "id": "uv-path",
+  "title": "uv installed in a build step is not found",
+  "image_tag": "myrmobench/uv-path",
+  "prompt": "In /work there is build.sh, the build of our app image written as a script: each line stands for one RUN step of a Dockerfile. It fails. Make `./build.sh` succeed and print BUILD OK. It must keep doing what it does: create a virtual environment with uv and install `six` into it with uv.",
+  "error_line": "uv: command not found",
+  "max_minutes": 15,
+  "symptom": "cd /work && ./build.sh",
+  "symptom_match": "uv.*not found",
+  "ready": "true"
+}

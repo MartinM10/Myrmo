@@ -1,0 +1,11 @@
+{
+  "id": "pg-scram",
+  "title": "pg8000 cannot authenticate against PostgreSQL 16",
+  "image_tag": "myrmobench/pg-scram",
+  "prompt": "In /work, `python app.py` connects to the PostgreSQL 16 server running in this container and fails. Make it print `DB OK 42`. Do not change the server's configuration, its authentication method or the password: fix the client side.",
+  "error_line": "pg8000.core.InterfaceError: Authentication method 10 not supported by pg8000.",
+  "max_minutes": 20,
+  "symptom": "cd /work && python app.py",
+  "symptom_match": "method 10|SCRAM",
+  "ready": "test -f /opt/pg_hba.sha256"
+}

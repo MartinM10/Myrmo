@@ -1,0 +1,11 @@
+{
+  "id": "tls-corporate-ca",
+  "title": "certificate signed by a company CA",
+  "image_tag": "myrmobench/tls-corporate-ca",
+  "prompt": "In /work, `./fetch.sh` reads the health of our internal service and fails with a certificate error. The company's root certificate is in /opt/corp-ca/corp-root-ca.pem. Make `./fetch.sh` print the service's answer. Certificate verification must stay on: do not disable it anywhere.",
+  "error_line": "curl: (60) SSL certificate problem: unable to get local issuer certificate",
+  "max_minutes": 15,
+  "symptom": "/work/fetch.sh",
+  "symptom_match": "certificate",
+  "ready": "python3 -c 'import socket; socket.create_connection((\"127.0.0.1\", 8443), 1)'"
+}
