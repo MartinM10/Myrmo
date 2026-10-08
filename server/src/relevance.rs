@@ -129,6 +129,30 @@ const GENERIC: &[&str] = &[
     "python",
     "node",
     "rust",
+    // Filler of a sentence and structure of a stack trace: they appear in unrelated errors.
+    "find",
+    "locate",
+    "because",
+    "support",
+    "supported",
+    "main",
+    "thread",
+    "attribute",
+    "object",
+    "binary",
+    "experimental",
+    // The parts of a file system path that differ between machines and say nothing about the error.
+    "path",
+    "tmp",
+    "usr",
+    "lib",
+    "bin",
+    "opt",
+    "var",
+    "etc",
+    "home",
+    "site",
+    "local",
 ];
 
 fn is_generic(token: &str) -> bool {
@@ -150,10 +174,31 @@ fn words(text: &str) -> Vec<String> {
         .collect()
 }
 
+/// The query without the file system paths in it (`/usr/local/lib/python3.12/site-packages/flask/json/__init__.py`):
+/// where the interpreter or the checkout lives is a fact about a machine, and two unrelated errors printed on machines
+/// that share a layout would otherwise share words. A relative name such as `golang.org/x/tools` is kept: it is a name.
+fn without_paths(query: &str) -> String {
+    let is_path = |token: &str| {
+        let t = token.trim_matches(|c: char| {
+            matches!(c, '\'' | '"' | '`' | '(' | ')' | '[' | ']' | ',' | ';')
+        });
+        t.starts_with('/')
+            || t.starts_with("~/")
+            || t.starts_with("./")
+            || t.starts_with("../")
+            || t.contains(":\\")
+    };
+    query
+        .split_whitespace()
+        .filter(|token| !is_path(token))
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
 /// The words of a query that tell this error from another one.
 pub fn distinctive(query: &str, error_type: &str) -> HashSet<String> {
     let type_words: HashSet<String> = words(error_type).into_iter().collect();
-    words(query)
+    words(&without_paths(query))
         .into_iter()
         .filter(|w| {
             !is_generic(w)
@@ -344,6 +389,33 @@ pub fn is_relevant(query: &str, error_type: &str, trail: &Value, similarity: f64
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn the_layout_of_a_machine_is_not_what_an_error_is_about() {
+        let flask = "ImportError: cannot import name 'JSONEncoder' from 'flask.json' (/usr/local/lib/python3.12/site-packages/flask/json/__init__.py)";
+        let werkzeug = json!({"problem": {"error_message": "ImportError: cannot import name 'url_quote' from 'werkzeug.urls' (/usr/local/lib/python3.12/site-packages/werkzeug/urls.py)", "summary": "Flask imports url_quote from werkzeug"}, "solution": {"root_cause": "Werkzeug 3 removed it"}});
+        let wanted = distinctive(flask, "ImportError");
+        assert!(
+            wanted.contains("jsonencoder") && wanted.contains("flask"),
+            "{wanted:?}"
+        );
+        for word in ["usr", "local", "lib", "site", "python3"] {
+            assert!(!wanted.contains(word), "{word}");
+        }
+        // Same layout, other names: the only words in common are the machine's.
+        let unrelated = json!({"problem": {"error_message": "ImportError: cannot import name 'url_quote' from 'werkzeug.urls'", "summary": "A module moved", "task_context": "Running python from /usr/local/lib/python3.12/site-packages"}, "solution": {"root_cause": "Removed in 3.0"}});
+        assert!(!Asked::new(flask, "ImportError").is_relevant(&unrelated, 0.77));
+        let _ = werkzeug;
+    }
+
+    #[test]
+    fn a_name_that_looks_like_a_path_is_still_a_name() {
+        let wanted = distinctive(
+            "go: golang.org/x/tools/cmd/goimports@latest: requires go >= 1.26.0",
+            "",
+        );
+        assert!(wanted.iter().any(|w| w == "goimport"), "{wanted:?}");
+    }
 
     #[test]
     fn names_that_differ_make_a_conflict_and_nothing_else_does() {
