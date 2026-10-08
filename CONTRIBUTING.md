@@ -11,6 +11,9 @@ Thanks for helping the colony grow.
   copyright of your contribution. The CLA is not published yet; until it is, server pull requests
   can be reviewed but not merged.
 
+A GitHub Actions check ([`dco.yml`](.github/workflows/dco.yml)) fails a pull request that has a commit without a
+`Signed-off-by` line. To fix it: `git rebase --signoff main` and push again.
+
 ## Commit messages and releases
 
 Commits follow [Conventional Commits](https://www.conventionalcommits.org). They drive semantic

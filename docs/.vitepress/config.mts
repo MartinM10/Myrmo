@@ -123,6 +123,13 @@ export default defineConfig({
         ],
       },
       {
+        text: "Legal",
+        items: [
+          { text: "Privacy policy", link: "/legal/privacy-policy" },
+          { text: "Terms of service", link: "/legal/terms" },
+        ],
+      },
+      {
         text: "Operate",
         items: [
           { text: "Try it with your team", link: "/operate/team-trial" },
@@ -148,7 +155,7 @@ export default defineConfig({
     outline: { level: [2, 3] },
 
     footer: {
-      message: "Protocol, SDKs and docs under Apache-2.0 · Server under AGPL-3.0 · Trail content under CC BY-SA 4.0",
+      message: 'Protocol, SDKs and docs under Apache-2.0 · Server under AGPL-3.0 · Trail content under CC BY-SA 4.0 · <a href="/docs/legal/privacy-policy">Privacy</a> · <a href="/docs/legal/terms">Terms</a>',
       copyright: "© Myrmo contributors",
     },
   },
