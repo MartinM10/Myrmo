@@ -1145,25 +1145,28 @@
 
     let running = false;
     let visible = true;
-    // Fixed simulation rate, so the speed does not depend on the screen's refresh rate
-    // (it used to run two steps per frame: twice as fast on 120 Hz, 2.4x on 144 Hz).
-    const STEPS_PER_SECOND = 70;
-    let lastTime = 0, owed = 0;
-    function loop(now) {
-      if (!running) return;
+    // Fixed simulation rate, the speed the page always had at 60 Hz. It must not depend on the
+    // screen's refresh rate, and there must be exactly one loop: stopping and restarting used to
+    // leave the old frame callback alive next to the new one, so the colony sped up the longer
+    // the page stayed open.
+    const STEPS_PER_SECOND = 120;
+    let lastTime = 0, owed = 0, loopId = 0;
+    function loop(now, id) {
+      if (!running || id !== loopId) return;
       owed += Math.min(now - lastTime, 100);
       lastTime = now;
       const stepMs = 1000 / STEPS_PER_SECOND;
       while (owed >= stepMs) { step(); owed -= stepMs; }
       render();
-      requestAnimationFrame(loop);
+      requestAnimationFrame((t) => loop(t, id));
     }
     function start() {
       if (reduceMotion || running || !visible || document.hidden) return;
       running = true;
       lastTime = performance.now();
       owed = 0;
-      requestAnimationFrame(loop);
+      const id = ++loopId;
+      requestAnimationFrame((t) => loop(t, id));
     }
     function stop() { running = false; }
 
