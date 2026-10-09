@@ -212,7 +212,8 @@ test("a Codex file that cannot be edited safely is skipped with the table to add
   const lines = [];
   const res = runInit({ env: { PATH: "" }, clients: ["codex"], dryRun: false, home, log: (l) => lines.push(l) });
   assert.deepEqual(res.skipped, ["Codex"]);
-  assert.match(lines.join("\n"), /\[mcp_servers\.myrmo\] command = "npx"/);
+  const command = process.platform === "win32" ? /command = "cmd" args = \["\/c","npx"/ : /command = "npx"/;
+  assert.match(lines.join("\n"), command);
   assert.equal(readFileSync(join(home, ".codex", "config.toml"), "utf8"), 'mcp_servers = { a = { command = "x" } }\n', "the file is untouched");
 });
 
