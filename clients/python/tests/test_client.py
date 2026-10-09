@@ -7,6 +7,10 @@ import pytest
 from conftest import KNOWN_FP, TRAIL, TRAIL_ID, FakeColony
 from myrmo import AsyncColony, Colony, MyrmoError, Verification, format_result
 
+from conftest import RESULT as _RESULT
+
+RESULT_ABOUT_OTHER_MODULE = {**_RESULT, "trail": {**_RESULT["trail"], "problem": {**_RESULT["trail"]["problem"], "error_message": "main.go:9:2: no required module provides package github.com/stretchr/testify; to add it"}}}
+
 DISTUTILS = "ModuleNotFoundError: No module named 'distutils'"
 
 
@@ -186,3 +190,25 @@ def test_an_organisation_in_a_configuration_value_is_removed():
 
     assert redact_text("edc.ui.organization=Acme Corp") == "edc.ui.organization=<redacted:org>"
     assert redact_text("org.eclipse.edc:dcp-core:1.0.0") == "org.eclipse.edc:dcp-core:1.0.0"
+
+
+def test_an_exact_hit_about_another_package_is_not_an_answer(colony, fake):
+    # fp2 erases the module path, so the key of one Go module is the key of every other: the answer has to be checked.
+    error = "main.go:4:2: no required module provides package github.com/acme/widgets; to add it"
+    other = {**RESULT_ABOUT_OTHER_MODULE}
+
+    def handler(request):
+        if request.url.path.startswith("/v1/trails/by-fingerprint/"):
+            return httpx.Response(200, json={"fingerprint": "fp2_0123456789abcdef", "results": [other], "notice": "untrusted"})
+        return fake(request)
+
+    colony._http._transport = httpx.MockTransport(handler)
+    result = colony.search(error, runtime="go")
+    assert result.source == "search" and len(result) == 0
+    assert any(path == "/v1/search" for _, path, _, _ in fake.requests)
+
+    # The same module is the answer; so is a message that names none.
+    same = {**other, "trail": {**other["trail"], "problem": {**other["trail"]["problem"], "error_message": error}}}
+    colony._http._transport = httpx.MockTransport(lambda r: httpx.Response(200, json={"fingerprint": "fp2_0123456789abcdef", "results": [same], "notice": "untrusted"}) if r.url.path.startswith("/v1/trails/by-fingerprint/") else fake(r))
+    colony._cache.clear()
+    assert colony.search(error, runtime="go").source == "fingerprint"

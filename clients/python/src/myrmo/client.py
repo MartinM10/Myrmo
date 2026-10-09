@@ -21,6 +21,7 @@ import httpx
 from .config import agent_identity, publish_choice
 from .environment import detect_environment, parse_package
 from .fingerprint import fingerprint2, guess_error_type
+from .names import names_conflict
 from .redact import Report, possible_names, redact_text, redact_value
 
 #: The public colony. Override with MYRMO_URL or the `url` argument.
@@ -72,6 +73,16 @@ class SearchResult:
     def __getitem__(self, i: int) -> Hit:
         return self.hits[i]
 
+
+
+def _same_names(exact: Optional["SearchResult"], error: str) -> Optional["SearchResult"]:
+    """The exact hits that do not name another package than the error asked about (see names.py), or None when none is left."""
+    if not exact or not exact.hits:
+        return exact
+    keep = [h for h in exact.hits if not names_conflict(error, str((h.trail.get("problem") or {}).get("error_message", "")))]
+    if len(keep) == len(exact.hits):
+        return exact
+    return SearchResult(exact.fingerprint, keep, exact.notice, exact.source, exact.raw) if keep else None
 
 def _hits(results: Sequence[Dict[str, Any]]) -> List[Hit]:
     return [Hit(r["trail_id"], r["match"], r["strength"], r["outcomes"], r["risk"], r["trail"]) for r in results]
@@ -287,7 +298,7 @@ class Colony(_Base):
         error = redact_text(error)
         error_type = error_type or guess_error_type(error)
         fp = fingerprint2(error)
-        exact = self.lookup(fp, model)
+        exact = _same_names(self.lookup(fp, model), error)
         if exact and exact.hits:
             return exact
         body = self._search_body(error, error_type, runtime, runtime_version, packages, limit, min_strength)
@@ -421,7 +432,7 @@ class AsyncColony(_Base):
         error = redact_text(error)
         error_type = error_type or guess_error_type(error)
         fp = fingerprint2(error)
-        exact = await self.lookup(fp, model)
+        exact = _same_names(await self.lookup(fp, model), error)
         if exact and exact.hits:
             return exact
         body = self._search_body(error, error_type, runtime, runtime_version, packages, limit, min_strength)

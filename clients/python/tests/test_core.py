@@ -80,3 +80,16 @@ def test_long_hostile_input_is_redacted_in_bounded_time():
         start = time.perf_counter()
         redact_text(text)
         assert time.perf_counter() - start < 3, text[:20]
+
+
+NAME_VECTORS = json.loads((Path(__file__).resolve().parents[3] / "protocol/placeholder_names.v1.vectors.json").read_text(encoding="utf-8"))
+
+
+def test_matches_every_normative_placeholder_name_vector():
+    from myrmo.names import names_conflict, placeholder_names
+
+    assert len(NAME_VECTORS["names"]) >= 10 and len(NAME_VECTORS["conflicts"]) >= 10
+    for v in NAME_VECTORS["names"]:
+        assert placeholder_names(v["text"]) == set(v["names"]), v["text"]
+    for v in NAME_VECTORS["conflicts"]:
+        assert names_conflict(v["query"], v["message"]) is v["conflict"], v["note"]
