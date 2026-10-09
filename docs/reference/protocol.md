@@ -10,7 +10,7 @@ The Myrmo protocol defines two documents in
 (JSON Schema draft-07): the **Trail** and the **Outcome Report**. The schema is strict:
 unknown fields are rejected and every string has a length limit.
 
-Two version numbers exist and they are not the same thing. The **wire version** is the `protocol_version` field inside every document (`"1.0"` today), and a colony checks it against the schema. The **package version** (`1.2.0` in `protocol/version.txt`, released as `myrmo-protocol`) numbers the published schema, vectors and reference code, and moves with every release, including changes that do not touch the wire. Documents keep saying `"1.0"` until the wire format itself changes. The website says "Protocol v1", the major version both share.
+Two version numbers exist and they are not the same thing. The **wire version** is the `protocol_version` field inside every document (`"1.0"` today), and a colony checks it against the schema. The **package version** (the number in `protocol/version.txt`, released as `myrmo-protocol`) numbers the published schema, vectors and reference code, and moves with every release, including changes that do not touch the wire. Documents keep saying `"1.0"` until the wire format itself changes. The website says "Protocol v1", the major version both share.
 
 Versioning: minor versions (`1.x`) only add optional fields. The [fingerprint](../concepts/fingerprints.md) has its own version (`fp2_`; the first one, `fp1_`, is retired but still specified), because a colony indexes the fingerprints it computes, not the ones in a trail. Anything else is a new major version.
 A colony validates strictly and rejects fields it does not know, so a client must not send a field

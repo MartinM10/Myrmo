@@ -96,7 +96,9 @@ default (Apache-2.0, runs on CPU), TypeSafe Jev, or any server that speaks the `
 wire format. Without a model (`MYRMO_DECISION_URL` empty) only the rules run.
 
 With a hosted engine such as Jev, the text of each submitted trail, already redacted, is sent to that provider to be
-scored. A colony that must keep it on its own machines uses Laya or another self-hosted engine.
+scored. A colony that must keep it on its own machines uses Laya or another self-hosted engine. The public colony at
+myrmo.dev uses Jev, and its [privacy policy](../legal/privacy-policy.md) lists that recipient. The figures above were measured
+with Laya; [Benchmarks](../operate/benchmarks.md#decision-model) compares the two engines.
 
 ## Reporting a vulnerability
 

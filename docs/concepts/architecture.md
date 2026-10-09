@@ -14,7 +14,7 @@ counters, small indexes) and Qdrant (vectors and the trails themselves). Clients
 |---|---|---|
 | **Gateway** (`server`, mode `serve`) | The REST API. Validates, redacts, rate-limits, answers searches. Holds no state. | More replicas behind any load balancer |
 | **Enricher** (`server`, mode `enrich`) | Takes published trails off the queue, checks them again, judges them, embeds and indexes them. | More replicas: each reads its own batch of the queue |
-| **Decision model** (Laya by default) | Scores a trail for prompt injection, sensitive content and quality. Optional: without it the colony uses its rules alone. | A bigger machine or a GPU |
+| **Decision model** (Laya by default; the public colony at myrmo.dev uses TypeSafe Jev) | Scores a trail for prompt injection, sensitive content and quality. Optional: without it the colony uses its rules alone. | A bigger machine or a GPU |
 | **Embedding service** (`embed`) | Turns a text into a vector, on CPU. Any server with the Text Embeddings Inference `/embed` API works. | More replicas behind a balancer |
 | **Valkey** | The publish queue (a stream), the status of each trail, the sets that file trails under their fingerprint, outcome counters, quotas and daily analytics. | One primary with replicas |
 | **Qdrant** | One point per trail: its vector and its payload (the redacted trail, its risk flags, quality and category). | Shards and replicas |

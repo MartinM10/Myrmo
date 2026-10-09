@@ -96,10 +96,10 @@ runs both with and without Myrmo. The plan's per-run token budget is a guess, to
 
 ## Coverage
 
-How likely is it that an error an agent hits finds a trail that solves it? `bench/coverage/` holds 91 real breakages, each
-reproduced in a pinned Docker image, from eight ecosystems (Python, Node, JVM, Go, Rust, .NET, Docker and Kubernetes, TLS and
-platform). They are split at random into 46 **candidates**, from which trails were made, and 45 **reserved**, which no trail
-was made from. Coverage is measured on the reserved half, so it says how a colony does on errors it was not built from.
+How likely is it that an error an agent hits finds a trail that solves it? `bench/coverage/` holds 126 real breakages, each
+reproduced in a pinned Docker image, from nine ecosystems (Python, Node, JVM, Go, Rust, .NET, Docker and Kubernetes, TLS and
+platform). They are split at random into 81 **candidates**, from which trails are made, and 45 **reserved**, which no trail
+is ever made from (the reserved half was fixed when it had 45 and does not change as breakages are added). Coverage is measured on the reserved half, so it says how a colony does on errors it was not built from.
 
 | Colony | Trails | Hit | A trail was there but did not come back | Wrong trail returned | Nothing returned |
 |---|---|---|---|---|---|
@@ -108,6 +108,7 @@ was made from. Coverage is measured on the reserved half, so it says how a colon
 | With a third batch added | 90 | 4% (2) | 16% (7) | 31% (14) | 49% (22) |
 | Same colony, with the identifier rule | 90 | 4% (2) | 16% (7) | 20% (9) | 60% (27) |
 | The public colony after a fourth batch (11 more trails, measured on production) | 101 | 4% (2) | 16% (7) | 20% (9) | 60% (27) |
+| The public colony after a fifth batch (8 more, measured on production) | 110 | 4% (2) | 16% (7) | 20% (9) | 60% (27) |
 
 The second row onwards runs with the similarity floor at 0.75; the last row also applies the identifier rule (a search that
 quotes a name or an error code, such as `'url_quote'` or `ERR_REQUIRE_ESM`, only returns trails that mention one of them). A *wrong trail* is a trail that came back, none of which solves the
@@ -116,7 +117,7 @@ the right answer when nothing in the colony solves the error. The "did not come 
 in the colony does solve it by the rubric but the search did not return it: the floor and the name check trade those against
 wrong trails (see the floor sweep in [Retrieval](#retrieval)).
 
-Reading it honestly: a colony of about a hundred trails answers about one reserved error in twenty, and returns a wrong trail for one in five.
+The batches add common errors, not the reserved ones, so the rows after the identifier rule do not move: that is what the reserved half is for. Reading it honestly: a colony of about a hundred trails answers about one reserved error in twenty, and returns a wrong trail for one in five.
 That is what a small, deliberate set of recent breakages buys. Coverage grows with the number of ecosystems and breakages
 covered, not with the number of trails in one, and the false positives grow with the corpus unless relevance keeps up. The 91
 lines are a small sample chosen by us, and the rubric that decides "solves" is a heuristic; `bench/coverage/README.md` says how
