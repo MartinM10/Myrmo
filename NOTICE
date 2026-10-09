@@ -1,0 +1,7 @@
+Myrmo
+Copyright Myrmo contributors
+
+Third-party models used by the hosted and self-hosted colony:
+
+- BAAI/bge-small-en-v1.5 (text embeddings, deploy/embed): MIT License,
+  https://huggingface.co/BAAI/bge-small-en-v1.5

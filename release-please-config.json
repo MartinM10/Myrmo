@@ -35,7 +35,12 @@
       "release-type": "node",
       "component": "mcp",
       "package-name": "myrmo-mcp",
-      "extra-files": ["src/server.ts", "/plugins/myrmo/scripts/launch-mcp.mjs"]
+      "extra-files": [
+        "src/server.ts",
+        "/plugins/myrmo/scripts/launch-mcp.mjs",
+        { "type": "json", "path": "server.json", "jsonpath": "$.version" },
+        { "type": "json", "path": "server.json", "jsonpath": "$.packages[0].version" }
+      ]
     },
     "clients/python": {
       "release-type": "python",
