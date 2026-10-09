@@ -40,4 +40,13 @@ PROBES = [
       "cd /w && go build ./... 2>&1", r"replacement directory .* does not exist",
       {"go": "1.22.5"}, "https://raw.githubusercontent.com/golang/go/go1.23.0/src/cmd/go/alldocs.go",
       "replace", "BSD-3-Clause", must=(r"replace", r"replacement directory|go mod edit -dropreplace|go\.work")),
+    P("go-build-no-go-mod", "go", "golang:1.22", r"""mkdir /w && printf 'package main\nfunc main() {}\n' > /w/main.go""",
+      "cd /w && go build 2>&1", r"go\.mod file not found",
+      {"go": "1.22"}, "https://raw.githubusercontent.com/golang/go/master/src/cmd/go/internal/modload/init.go",
+      "go.mod file not found", "BSD-3-Clause", must=(r"go\.mod", r"go mod init")),
+    P("go-import-cycle", "go", "golang:1.22",
+      r"""mkdir -p /w/a /w/b && cd /w && go mod init example.com/cyc >/dev/null 2>&1 && printf 'package a\nimport _ "example.com/cyc/b"\n' > a/a.go && printf 'package b\nimport _ "example.com/cyc/a"\n' > b/b.go""",
+      "cd /w && go build ./... 2>&1", r"import cycle not allowed",
+      {"go": "1.22"}, "https://raw.githubusercontent.com/golang/go/master/src/cmd/go/internal/load/pkg.go",
+      "import cycle not allowed", "BSD-3-Clause", must=(r"import cycle", r"package|interface|move|break")),
 ]

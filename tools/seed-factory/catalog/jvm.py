@@ -74,3 +74,17 @@ TASKS += (
         tags=("java", "gradle", "gradle7", "removed-configuration"), message="Could not find method compile()",
     ),
 )
+
+TASKS += (
+    from_probe(
+        "jvm-maven-no-pom", category="tooling", error_type="MissingProjectException", runtime=J17, memory="2g",
+        summary="mvn fails with The goal you specified requires a project to execute but there is no POM in this directory when it runs in a folder without a pom.xml.",
+        context="Running mvn package or install from the wrong folder, such as the repository root of a project whose pom.xml is one level down.",
+        failed_approaches=("cd /w && mvn -q -U package 2>&1", "cd /w && mvn -q clean install 2>&1"),
+        extra_setup="""mkdir -p /w/app && printf '<project xmlns="http://maven.apache.org/POM/4.0.0"><modelVersion>4.0.0</modelVersion><groupId>x</groupId><artifactId>app</artifactId><version>1</version><packaging>pom</packaging></project>' > /w/app/pom.xml""",
+        fix="cd /w/app && mvn -q package && echo built", verify="cd /w/app && mvn -q package && echo built",
+        root_cause="Lifecycle phases such as package belong to a project, and Maven finds the project by reading pom.xml in the current folder. With none there is nothing to build, and flags like -U (update snapshots) or the clean phase do not change that.",
+        steps=("cd into the folder with the pom.xml, or point at it with mvn -f path/to/pom.xml package.", "Check that the file is named pom.xml exactly and that the checkout is complete."),
+        tags=("maven", "pom", "cli"), message="requires a project to execute",
+    ),
+)

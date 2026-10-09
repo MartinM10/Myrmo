@@ -74,3 +74,26 @@ TASKS += (
         tags=("go", "go.mod", "replace", "ci"), message="replacement directory",
     ),
 )
+
+TASKS += (
+    from_probe(
+        "go-build-no-go-mod", category="tooling", error_type="go.mod file not found", runtime=GO122, memory="2g",
+        summary="go build fails with go.mod file not found in current directory or any parent directory when the folder holds Go files but no module was initialised.",
+        context="Building a new folder of Go files, or running go build in a subfolder of a checkout that has no go.mod above it.",
+        failed_approaches=("cd /w && go mod tidy 2>&1", "cd /w && GO111MODULE=on go build 2>&1"),
+        fix="cd /w && go mod init example.com/app && go build", verify="cd /w && go build && echo built",
+        root_cause="Since Go 1.16 the go command works in module mode only and needs a go.mod to know the module path and the dependencies. go mod tidy also needs it, and turning module mode on explicitly does not create one.",
+        steps=("Run go mod init <module path> in the project root, then go mod tidy.", "If a go.mod exists, run the command from inside that module, not from a folder outside it."),
+        tags=("go", "go.mod", "modules"), message="go.mod file not found",
+    ),
+    from_probe(
+        "go-import-cycle", category="build", error_type="import cycle not allowed", runtime=GO122, memory="2g",
+        summary="go build fails with import cycle not allowed when two packages import each other, directly or through a third one.",
+        context="Adding an import between two packages of the same module, often to reuse a type or a helper.",
+        failed_approaches=("cd /w && go build -gcflags=-e ./... 2>&1", "cd /w && go mod tidy && go build ./... 2>&1"),
+        fix="cd /w && printf 'package b\n' > b/b.go && go build ./...", verify="cd /w && go build ./... && echo built",
+        root_cause="Go compiles packages in dependency order and has no way to compile two packages that need each other first. The cycle is in the code, so compiler flags and go mod tidy cannot resolve it.",
+        steps=("Read the chain printed under the error to see which import closes the cycle.", "Move the shared types or functions into a third package that both import, or invert one dependency with an interface defined where it is used."),
+        tags=("go", "packages", "imports"), message="import cycle not allowed",
+    ),
+)

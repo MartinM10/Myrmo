@@ -1,0 +1,10 @@
+{
+  "id": "rust-linker-cc-not-found",
+  "ok": true,
+  "error_line": "error: linker `cc` not found",
+  "exit_code": 101,
+  "output_tail": "Compiling w v0.1.0 (/w)\nerror: linker `cc` not found\n  |\n  = note: No such file or directory (os error 2)\n\nerror: could not compile `w` (bin \"w\") due to 1 previous error",
+  "image": "debian:bookworm-slim",
+  "image_digest": "debian@sha256:7c7b2c966bc9ee8cedfeef67e0e279108992c77681fa595db4a9d65c06ccc587",
+  "command": ". $HOME/.cargo/env && cd /w && cargo build 2>&1"
+}

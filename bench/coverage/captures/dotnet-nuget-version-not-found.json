@@ -1,0 +1,10 @@
+{
+  "id": "dotnet-nuget-version-not-found",
+  "ok": true,
+  "error_line": "error: NU1102: Unable to find package Newtonsoft.Json with version (>= 99.0.0)",
+  "exit_code": 1,
+  "output_tail": "Determining projects to restore...\n  Writing /tmp/tmpJHDPFh.tmp\ninfo : X.509 certificate chain validation will use the fallback certificate bundle at '/usr/share/dotnet/sdk/8.0.425/trustedroots/codesignctl.pem'.\ninfo : X.509 certificate chain validation will use the fallback certificate bundle at '/usr/share/dotnet/sdk/8.0.425/trustedroots/timestampctl.pem'.\ninfo : Adding PackageReference for package 'Newtonsoft.Json' into project '/tmp/w/w.csproj'.\ninfo : Restoring packages for /tmp/w/w.csproj...\ninfo :   GET https://api.nuget.org/v3-flatcontainer/newtonsoft.json/index.json\ninfo :   OK https://api.nuget.org/v3-flatcontainer/newtonsoft.json/index.json 133ms\nerror: NU1102: Unable to find package Newtonsoft.Json with version (>= 99.0.0)\nerror:   - Found 86 version(s) in nuget.org [ Nearest version: 14.0.1-beta2 ]\nerror: Package 'Newtonsoft.Json' is incompatible with 'all' frameworks in project '/tmp/w/w.csproj'.",
+  "image": "mcr.microsoft.com/dotnet/sdk:8.0",
+  "image_digest": "mcr.microsoft.com/dotnet/sdk@sha256:ec9c0a0dc5f60adc2065762050638dd5ed5facfc53716d4580a42d86027c8e80",
+  "command": "cd w && dotnet add package Newtonsoft.Json --version 99.0.0 2>&1"
+}

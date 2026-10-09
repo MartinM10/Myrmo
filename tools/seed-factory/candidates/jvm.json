@@ -124,5 +124,26 @@
     },
     "status": "reproduced",
     "reason": ""
+  },
+  {
+    "id": "jvm-maven-no-pom",
+    "error_line": "[ERROR] The goal you specified requires a project to execute but there is no POM in this directory (/w). Please verify you invoked Maven from the correct directory. -> [Help 1]",
+    "versions": {
+      "maven": "3.9",
+      "jdk": "17"
+    },
+    "source": {
+      "url": "https://raw.githubusercontent.com/apache/maven/maven-3.9.x/maven-core/src/main/java/org/apache/maven/lifecycle/MissingProjectException.java",
+      "licence": "Apache-2.0"
+    },
+    "score": {
+      "recent": false,
+      "environment": false,
+      "transferable": true,
+      "reproducible": true,
+      "total": 2
+    },
+    "status": "reproduced",
+    "reason": ""
   }
 ]

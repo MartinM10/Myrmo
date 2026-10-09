@@ -61,4 +61,8 @@ PROBES = [
       "cd /w && /opt/gradle-8.10.2/bin/gradle --no-daemon help 2>&1", r"Could not find method compile\(\)",
       {"gradle": "8.10.2", "jdk": "17"}, "https://raw.githubusercontent.com/gradle/gradle/master/README.md",
       "Gradle", "Apache-2.0", must=(r"compile\(\)|compile", r"implementation|api")),
+    P("jvm-maven-no-pom", "jvm", "maven:3.9-eclipse-temurin-17", "mkdir /w",
+      "cd /w && mvn -q package 2>&1", r"requires a project to execute but there is no POM",
+      {"maven": "3.9", "jdk": "17"}, "https://raw.githubusercontent.com/apache/maven/maven-3.9.x/maven-core/src/main/java/org/apache/maven/lifecycle/MissingProjectException.java",
+      "a project is required but not present", "Apache-2.0", must=(r"pom\.xml|POM", r"directory|cd |-f ")),
 ]

@@ -283,3 +283,16 @@ TASKS += (
         tags=("python", "pip", "dependency-resolver", "version-conflict"), message="conflicting dependencies",
     ),
 )
+
+TASKS += (
+    from_probe(
+        "py-pip-no-matching-distribution", category="dependency", error_type="No matching distribution found", runtime=PY312, memory="512m",
+        summary="pip install fails with Could not find a version that satisfies the requirement and No matching distribution found when the pinned version does not exist or does not support this Python.",
+        context="Installing a requirements file with a pin that was mistyped, yanked, or published only for other Python versions.",
+        failed_approaches=("pip install --upgrade pip >/dev/null 2>&1; pip install requests==999.0.0 2>&1", "pip install --index-url https://pypi.org/simple requests==999.0.0 2>&1"),
+        fix="pip install requests==2.32.3", verify="""python -c "import requests; print(requests.__version__)" """,
+        root_cause="pip lists the versions it can see for this interpreter in the message. A pin to a version that is not among them cannot be satisfied, and upgrading pip or naming the official index changes nothing. The same message appears when every release requires a newer Python than the one running.",
+        steps=("Read the versions pip lists after from versions and pin one of them, or drop the pin.", "If the list is empty or ends too early, check the Python version (python --version) against the package's supported versions, and the index URL if you use a private mirror."),
+        tags=("pip", "requirements", "versions"), message="Could not find a version that satisfies the requirement",
+    ),
+)

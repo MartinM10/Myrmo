@@ -1,0 +1,10 @@
+{
+  "id": "rust-offline-registry-empty",
+  "ok": true,
+  "error_line": "error: no matching package named `serde` found",
+  "exit_code": 101,
+  "output_tail": "error: no matching package named `serde` found\nlocation searched: registry `crates-io`\nrequired by package `w v0.1.0 (/w)`\nAs a reminder, you're using offline mode (--offline) which can sometimes cause surprising resolution failures, if this error is too confusing you may wish to retry without the offline flag.",
+  "image": "rust:1.82",
+  "image_digest": "rust@sha256:d9c3c6f1264a547d84560e06ffd79ed7a799ce0bff0980b26cf10d29af888377",
+  "command": "cd /w && cargo build --offline 2>&1"
+}

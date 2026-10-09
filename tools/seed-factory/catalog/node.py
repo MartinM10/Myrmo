@@ -104,3 +104,26 @@ TASKS += (
         tags=("typescript", "esm", "nodenext", "ts2835"), message="error TS2835",
     ),
 )
+
+TASKS += (
+    from_probe(
+        "node-cannot-find-module-relative", category="runtime", error_type="Error: Cannot find module", runtime=NODE20, memory="512m",
+        summary="node fails with Error: Cannot find module './missing' (code MODULE_NOT_FOUND) when a relative require points at a file that does not exist at that path.",
+        context="Running a script after moving, renaming or not committing a file it requires, or from a build output folder that lacks it.",
+        failed_approaches=("cd /w && node --preserve-symlinks index.js 2>&1", "cd /w && NODE_PATH=/w node index.js 2>&1"),
+        fix="""cd /w && echo "module.exports = 1" > missing.js && node index.js && echo ok""", verify="cd /w && node index.js && echo ok",
+        root_cause="A require that starts with ./ or ../ is resolved against the folder of the file that calls it, trying the exact name and then the .js, .json and .node extensions and an index file. If none exist, the error is raised; NODE_PATH only affects bare package names and symlink flags do not create files.",
+        steps=("Check the path against the folder of the requiring file, including letter case (Linux is case sensitive) and the extension.", "If the file is generated or compiled, run that build step first, and make sure it is part of the deployed files."),
+        tags=("node", "require", "module-not-found"), message="Cannot find module",
+    ),
+    from_probe(
+        "node-eaddrinuse", category="network", error_type="Error: listen EADDRINUSE", runtime=NODE20, memory="512m",
+        summary="node fails with Error: listen EADDRINUSE: address already in use :::3000 when a server tries to listen on a port that another process, often an earlier run of the same app, still holds.",
+        context="Starting a dev server or test that listens on a fixed port while a previous instance is still running.",
+        failed_approaches=("""node -e "const n=require('net');n.createServer().listen(3000,()=>n.createServer().listen(3000,'0.0.0.0'))" 2>&1""", """node -e "const n=require('net');n.createServer().listen(3000,()=>n.createServer().listen(3000,'127.0.0.1'))" 2>&1"""),
+        fix="""node -e "const n=require('net');n.createServer().listen(3000,()=>n.createServer().listen(3001,()=>{console.log('ok');process.exit(0)}))" """, verify="true",
+        root_cause="Only one socket can listen on a port at a time. A server bound to all addresses also blocks the same port on a specific address, so changing the host to 0.0.0.0 or 127.0.0.1 does not help; the second listener needs a different port or the first one has to stop.",
+        steps=("Find the process holding the port (lsof -i :3000 or ss -ltnp) and stop it, or", "listen on another port, or on port 0 so the system picks a free one and report the port it chose."),
+        tags=("node", "port", "eaddrinuse", "server"), message="EADDRINUSE",
+    ),
+)

@@ -76,4 +76,12 @@ PROBES = [
       "cd /w && npx tsc 2>&1", r"error TS2835",
       {"typescript": "5.6.3", "node": "20"}, "https://raw.githubusercontent.com/microsoft/TypeScript/v5.6.3/src/compiler/diagnosticMessages.json",
       "Relative import paths need explicit file extensions", "Apache-2.0", must=(r"TS2835|explicit file extensions", r"\.js")),
+    P("node-cannot-find-module-relative", "node", "node:20-slim", """mkdir /w && echo "require('./missing')" > /w/index.js""",
+      "cd /w && node index.js 2>&1", r"Error: Cannot find module",
+      {"node": "20"}, "https://raw.githubusercontent.com/nodejs/node/main/doc/api/errors.md",
+      "MODULE_NOT_FOUND", "MIT", must=(r"Cannot find module|MODULE_NOT_FOUND", r"path|file|extension|exist")),
+    P("node-eaddrinuse", "node", "node:20-slim", "true",
+      """node -e "const n=require('net');n.createServer().listen(3000,()=>n.createServer().listen(3000))" 2>&1""", r"Error: listen EADDRINUSE",
+      {"node": "20"}, "https://raw.githubusercontent.com/nodejs/node/main/doc/api/errors.md",
+      "EADDRINUSE", "MIT", must=(r"EADDRINUSE|address already in use", r"port|process|kill|lsof")),
 ]

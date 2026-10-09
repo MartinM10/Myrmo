@@ -40,5 +40,66 @@
     },
     "status": "reproduced",
     "reason": ""
+  },
+  {
+    "id": "dotnet-msbuild-no-project-file",
+    "error_line": "MSB1003: Specify a project or solution file. The current working directory does not contain a project or solution file.",
+    "versions": {
+      "dotnet_sdk": "8.0"
+    },
+    "source": {
+      "url": "https://raw.githubusercontent.com/dotnet/msbuild/main/src/MSBuild/Resources/Strings.resx",
+      "licence": "MIT"
+    },
+    "score": {
+      "recent": false,
+      "environment": false,
+      "transferable": true,
+      "reproducible": true,
+      "total": 2
+    },
+    "status": "reproduced",
+    "reason": ""
+  },
+  {
+    "id": "dotnet-no-restore-assets-missing",
+    "error_line": "error NETSDK1004: Assets file '/tmp/w/obj/project.assets.json' not found. Run a NuGet package restore to generate this file. [/tmp/w/w.csproj]",
+    "versions": {
+      "dotnet_sdk": "8.0"
+    },
+    "source": {
+      "url": "https://raw.githubusercontent.com/dotnet/sdk/main/src/Tasks/Common/Resources/Strings.resx",
+      "licence": "MIT"
+    },
+    "score": {
+      "recent": false,
+      "environment": false,
+      "transferable": true,
+      "reproducible": true,
+      "total": 2
+    },
+    "status": "reproduced",
+    "reason": ""
+  },
+  {
+    "id": "dotnet-nuget-version-not-found",
+    "error_line": "error: NU1102: Unable to find package Newtonsoft.Json with version (>= 99.0.0)",
+    "versions": {
+      "dotnet_sdk": "8.0",
+      "package": "Newtonsoft.Json"
+    },
+    "source": {
+      "url": "https://raw.githubusercontent.com/NuGet/NuGet.Client/dev/src/NuGet.Core/NuGet.Common/Errors/NuGetLogCode.cs",
+      "licence": "Apache-2.0"
+    },
+    "score": {
+      "recent": false,
+      "environment": false,
+      "transferable": true,
+      "reproducible": true,
+      "total": 2
+    },
+    "status": "reproduced",
+    "reason": ""
   }
 ]

@@ -1,0 +1,10 @@
+{
+  "id": "node-cannot-find-module-relative",
+  "ok": true,
+  "error_line": "Error: Cannot find module './missing'",
+  "exit_code": 1,
+  "output_tail": "node:internal/modules/cjs/loader:1210\n  throw err;\n  ^\n\nError: Cannot find module './missing'\nRequire stack:\n- /w/index.js\n    at Module._resolveFilename (node:internal/modules/cjs/loader:1207:15)\n    at Module._load (node:internal/modules/cjs/loader:1038:27)\n    at Module.require (node:internal/modules/cjs/loader:1289:19)\n    at require (node:internal/modules/helpers:182:18)\n    at Object.<anonymous> (/w/index.js:1:1)\n    at Module._compile (node:internal/modules/cjs/loader:1521:14)\n    at Module._extensions..js (node:internal/modules/cjs/loader:1623:10)\n    at Module.load (node:internal/modules/cjs/loader:1266:32)\n    at Module._load (node:internal/modules/cjs/loader:1091:12)\n    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:164:12) {\n  code: 'MODULE_NOT_FOUND',\n  requireStack: [ '/w/index.js' ]\n}\n\nNode.js v20.20.2",
+  "image": "node:20-slim",
+  "image_digest": "node@sha256:2cf067cfed83d5ea958367df9f966191a942351a2df77d6f0193e162b5febfc0",
+  "command": "cd /w && node index.js 2>&1"
+}
