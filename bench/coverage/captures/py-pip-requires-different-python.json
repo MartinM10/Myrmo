@@ -1,0 +1,10 @@
+{
+  "id": "py-pip-requires-different-python",
+  "ok": true,
+  "error_line": "ERROR: Package 'newpkg' requires a different Python: 3.10.22 not in '>=3.12'",
+  "exit_code": 1,
+  "output_tail": "Processing /w\n  Installing build dependencies: started\n  Installing build dependencies: finished with status 'done'\n  Getting requirements to build wheel: started\n  Getting requirements to build wheel: finished with status 'done'\n  Preparing metadata (pyproject.toml): started\n  Preparing metadata (pyproject.toml): finished with status 'done'\nERROR: Package 'newpkg' requires a different Python: 3.10.22 not in '>=3.12'\n\n[notice] A new release of pip is available: 23.0.1 -> 26.2.1\n[notice] To update, run: pip install --upgrade pip",
+  "image": "python:3.10-slim",
+  "image_digest": "python@sha256:6ff506466f8b1e981719b468cc0023b8ef000b983cdec0eafe119d01f379e31d",
+  "command": "cd /w && pip install . 2>&1"
+}

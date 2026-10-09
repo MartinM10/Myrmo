@@ -1,0 +1,10 @@
+{
+  "id": "go-get-unknown-revision",
+  "ok": true,
+  "error_line": "go: github.com/stretchr/testify@v9.9.9: invalid version: unknown revision v9.9.9",
+  "exit_code": 1,
+  "output_tail": "go: github.com/stretchr/testify@v9.9.9: invalid version: unknown revision v9.9.9",
+  "image": "golang:1.22",
+  "image_digest": "golang@sha256:1cf6c45ba39db9fd6db16922041d074a63c935556a05c5ccb62d181034df7f02",
+  "command": "cd /w && go get github.com/stretchr/testify@v9.9.9 2>&1"
+}

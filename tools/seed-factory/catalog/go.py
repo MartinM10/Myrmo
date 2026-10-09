@@ -110,3 +110,26 @@ TASKS += (
         tags=("go", "sqlite", "cgo", "docker", "static-binary"), message="requires cgo to work",
     ),
 )
+
+TASKS += (
+    from_probe(
+        "go-get-unknown-revision", category="dependency", error_type="invalid version: unknown revision", runtime=GO122, memory="2g",
+        summary="go get fails with invalid version: unknown revision v9.9.9 when the tag or branch asked for does not exist in the repository of the module.",
+        context="Adding a dependency with a version that was mistyped, not tagged yet, or only on a fork or a private repository.",
+        failed_approaches=("cd /w && GOFLAGS=-mod=mod go get github.com/stretchr/testify@v9.9.9 2>&1", "cd /w && GOPROXY=direct go get github.com/stretchr/testify@v9.9.9 2>&1"),
+        fix="cd /w && go get github.com/stretchr/testify@v1.9.0", verify="cd /w && grep testify go.mod",
+        root_cause="The go command resolves the version against the tags of the repository, through the proxy or directly with GOPROXY=direct. A version that is not a tag, branch or commit of the repository cannot be resolved by any proxy setting.",
+        steps=("List the versions that exist: go list -m -versions github.com/stretchr/testify, and pick one (or use @latest).", "For a commit or a branch use @<commit> or @<branch>; for a private repository set GOPRIVATE and credentials."),
+        tags=("go", "go-get", "versions", "modules"), message="unknown revision",
+    ),
+    from_probe(
+        "go-modules-disabled-by-env", category="configuration", error_type="modules disabled by GO111MODULE=off", runtime=GO122, memory="2g",
+        summary="go mod and go get fail with go: modules disabled by GO111MODULE=off when the environment variable was left set to off, often in a CI image or a shell profile from the GOPATH days.",
+        context="Running go mod tidy or go get in a module on a machine or a container that still exports GO111MODULE=off.",
+        failed_approaches=("cd /w && GO111MODULE=off go mod init example.com/app 2>&1", "cd /w && GO111MODULE=off go env -w GOFLAGS=-mod=mod 2>&1 && GO111MODULE=off go mod tidy 2>&1"),
+        fix="cd /w && env -u GO111MODULE go mod tidy && echo ok", verify="cd /w && env -u GO111MODULE go mod tidy && echo ok",
+        root_cause="GO111MODULE=off turns module mode off and the module commands refuse to run without it. Setting other flags does not override the variable; it has to be unset or set to on (the default since Go 1.16 is on).",
+        steps=("Unset it: unset GO111MODULE, and remove it from the shell profile, the Dockerfile ENV or the CI configuration.", "Check what is set with go env GO111MODULE and the environment of the job."),
+        tags=("go", "go111module", "gopath", "ci", "docker"), message="modules disabled by GO111MODULE=off",
+    ),
+)

@@ -339,6 +339,48 @@
     "reason": ""
   },
   {
+    "id": "py-pip-require-hashes-mismatch",
+    "error_line": "ERROR: THESE PACKAGES DO NOT MATCH THE HASHES FROM THE REQUIREMENTS FILE. If you have updated the package versions, please update the hashes. Otherwise, examine the package contents carefully; someone may have tampered with them.",
+    "versions": {
+      "python": "3.12",
+      "pip": "24"
+    },
+    "source": {
+      "url": "https://raw.githubusercontent.com/pypa/pip/main/docs/html/topics/secure-installs.md",
+      "licence": "MIT"
+    },
+    "score": {
+      "recent": false,
+      "environment": false,
+      "transferable": true,
+      "reproducible": true,
+      "total": 2
+    },
+    "status": "reproduced",
+    "reason": ""
+  },
+  {
+    "id": "py-pip-requires-different-python",
+    "error_line": "ERROR: Package 'newpkg' requires a different Python: 3.10.22 not in '>=3.12'",
+    "versions": {
+      "python": "3.10",
+      "requires-python": ">=3.12"
+    },
+    "source": {
+      "url": "https://raw.githubusercontent.com/pypa/pip/main/src/pip/_internal/resolution/legacy/resolver.py",
+      "licence": "MIT"
+    },
+    "score": {
+      "recent": false,
+      "environment": false,
+      "transferable": true,
+      "reproducible": true,
+      "total": 2
+    },
+    "status": "reproduced",
+    "reason": ""
+  },
+  {
     "id": "py-playwright-browsers-missing",
     "error_line": "playwright._impl._errors.Error: BrowserType.launch: Executable doesn't exist at /root/.cache/ms-playwright/chromium-1140/chrome-linux/chrome",
     "versions": {
@@ -389,6 +431,27 @@
     },
     "source": {
       "url": "https://raw.githubusercontent.com/pydantic/pydantic/v2.9.2/docs/migration.md",
+      "licence": "MIT"
+    },
+    "score": {
+      "recent": false,
+      "environment": false,
+      "transferable": true,
+      "reproducible": true,
+      "total": 2
+    },
+    "status": "reproduced",
+    "reason": ""
+  },
+  {
+    "id": "py-pytest-src-layout-not-installed",
+    "error_line": "E   ModuleNotFoundError: No module named 'mypkg'",
+    "versions": {
+      "python": "3.12",
+      "pytest": "8"
+    },
+    "source": {
+      "url": "https://raw.githubusercontent.com/pytest-dev/pytest/main/doc/en/explanation/goodpractices.rst",
       "licence": "MIT"
     },
     "score": {

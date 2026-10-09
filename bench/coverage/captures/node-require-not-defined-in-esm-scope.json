@@ -1,0 +1,10 @@
+{
+  "id": "node-require-not-defined-in-esm-scope",
+  "ok": true,
+  "error_line": "ReferenceError: require is not defined in ES module scope, you can use import instead",
+  "exit_code": 1,
+  "output_tail": "file:///w/index.js:1\nconst os = require('os');\n           ^\n\nReferenceError: require is not defined in ES module scope, you can use import instead\nThis file is being treated as an ES module because it has a '.js' file extension and '/w/package.json' contains \"type\": \"module\". To treat it as a CommonJS script, rename it to use the '.cjs' file extension.\n    at file:///w/index.js:1:12\n    at ModuleJob.run (node:internal/modules/esm/module_job:325:25)\n    at async ModuleLoader.import (node:internal/modules/esm/loader:606:24)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v20.20.2",
+  "image": "node:20-slim",
+  "image_digest": "node@sha256:2cf067cfed83d5ea958367df9f966191a942351a2df77d6f0193e162b5febfc0",
+  "command": "cd /w && node index.js 2>&1"
+}

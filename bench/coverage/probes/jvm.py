@@ -65,4 +65,9 @@ PROBES = [
       "cd /w && mvn -q package 2>&1", r"requires a project to execute but there is no POM",
       {"maven": "3.9", "jdk": "17"}, "https://raw.githubusercontent.com/apache/maven/maven-3.9.x/maven-core/src/main/java/org/apache/maven/lifecycle/MissingProjectException.java",
       "a project is required but not present", "Apache-2.0", must=(r"pom\.xml|POM", r"directory|cd |-f ")),
+    P("jvm-maven-unknown-lifecycle-phase", "jvm", "maven:3.9-eclipse-temurin-17",
+      r"""mkdir /w && printf '<project xmlns="http://maven.apache.org/POM/4.0.0"><modelVersion>4.0.0</modelVersion><groupId>x</groupId><artifactId>app</artifactId><version>1</version><packaging>pom</packaging></project>' > /w/pom.xml""",
+      "cd /w && mvn -q pakage 2>&1", r"Unknown lifecycle phase",
+      {"maven": "3.9", "jdk": "17"}, "https://raw.githubusercontent.com/apache/maven/maven-3.9.x/maven-core/src/main/java/org/apache/maven/lifecycle/LifecyclePhaseNotFoundException.java",
+      "phase", "Apache-2.0", must=(r"Unknown lifecycle phase|lifecycle phase", r"typo|mvn (package|install|verify|test)|valid|spell")),
 ]

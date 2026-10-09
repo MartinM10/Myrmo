@@ -1,0 +1,10 @@
+{
+  "id": "py-pytest-src-layout-not-installed",
+  "ok": true,
+  "error_line": "E   ModuleNotFoundError: No module named 'mypkg'",
+  "exit_code": 2,
+  "output_tail": "==================================== ERRORS ====================================\n_______________________ ERROR collecting tests/test_f.py _______________________\nImportError while importing test module '/w/tests/test_f.py'.\nHint: make sure your test modules/packages have valid Python names.\nTraceback:\n/usr/local/lib/python3.12/importlib/__init__.py:90: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\ntests/test_f.py:1: in <module>\n    from mypkg import f\nE   ModuleNotFoundError: No module named 'mypkg'\n=========================== short test summary info ============================\nERROR tests/test_f.py\n!!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!\n1 error in 0.12s",
+  "image": "python:3.12-slim",
+  "image_digest": "python@sha256:05cda9777409a9c3ffddd94a4c476b79f0769a0b4857f0c7ed9226b6800b0d6f",
+  "command": "cd /w && pytest -q 2>&1"
+}

@@ -83,3 +83,16 @@ TASKS += (
         tags=("rust", "cargo", "lockfile", "ci", "locked"), message="needs to be updated but --locked was passed",
     ),
 )
+
+TASKS += (
+    from_probe(
+        "rust-z-flag-needs-nightly", category="tooling", error_type="the -Z flag is only accepted on the nightly channel", runtime={"name": "rust", "version": "1.82"}, memory="2g",
+        summary="cargo fails with error: the -Z flag is only accepted on the nightly channel of Cargo, but this is the stable channel, when a command or a CI script passes -Z or unstable options.",
+        context="Running a cargo command copied from a guide that uses -Z unstable-options, -Z build-std or -Z minimal-versions, on the stable toolchain.",
+        failed_approaches=("cd /w && RUSTC_BOOTSTRAP=0 cargo build -Z unstable-options 2>&1", "cd /w && cargo build --config 'unstable.unstable-options=true' -Z unstable-options 2>&1"),
+        fix="cd /w && cargo build && echo built", verify="cd /w && cargo build 2>&1 | tail -n 2",
+        root_cause="The -Z flags are Cargo's unstable options and only a nightly Cargo accepts them. Environment variables or config keys do not turn them on for the stable channel, so the command has to run on nightly or lose the flag.",
+        steps=("If you need the unstable feature, install nightly (rustup toolchain install nightly) and run cargo +nightly build -Z ...; pin the nightly date in rust-toolchain.toml for CI.", "Otherwise drop the flag: most features have a stable equivalent or are not needed for a normal build."),
+        tags=("rust", "cargo", "nightly", "unstable", "rustup"), message="the `-Z` flag is only accepted on the nightly channel",
+    ),
+)

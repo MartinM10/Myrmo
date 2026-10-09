@@ -83,6 +83,26 @@
     "reason": ""
   },
   {
+    "id": "go-get-unknown-revision",
+    "error_line": "go: github.com/stretchr/testify@v9.9.9: invalid version: unknown revision v9.9.9",
+    "versions": {
+      "go": "1.22"
+    },
+    "source": {
+      "url": "https://raw.githubusercontent.com/golang/go/master/src/cmd/go/internal/modfetch/codehost/codehost.go",
+      "licence": "BSD-3-Clause"
+    },
+    "score": {
+      "recent": false,
+      "environment": false,
+      "transferable": true,
+      "reproducible": true,
+      "total": 2
+    },
+    "status": "reproduced",
+    "reason": ""
+  },
+  {
     "id": "go-import-cycle",
     "error_line": "imports example.com/cyc/a: import cycle not allowed",
     "versions": {
@@ -90,6 +110,26 @@
     },
     "source": {
       "url": "https://raw.githubusercontent.com/golang/go/master/src/cmd/go/internal/load/pkg.go",
+      "licence": "BSD-3-Clause"
+    },
+    "score": {
+      "recent": false,
+      "environment": false,
+      "transferable": true,
+      "reproducible": true,
+      "total": 2
+    },
+    "status": "reproduced",
+    "reason": ""
+  },
+  {
+    "id": "go-modules-disabled-by-env",
+    "error_line": "go: modules disabled by GO111MODULE=off; see 'go help modules'",
+    "versions": {
+      "go": "1.22"
+    },
+    "source": {
+      "url": "https://raw.githubusercontent.com/golang/go/master/src/cmd/go/internal/modload/init.go",
       "licence": "BSD-3-Clause"
     },
     "score": {
