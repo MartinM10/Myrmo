@@ -1,0 +1,60 @@
+{
+ "per_key": 5600,
+ "rows": [
+  {
+   "family": "no required module provides package",
+   "fingerprint": "fp2_cf0e2de18c7d3d2d",
+   "status": 200,
+   "first_request_ms": 708.836447000067,
+   "cached_ms": 0.874108000061824,
+   "response_kb": 9.0234375,
+   "strangers": 55,
+   "wrong": 55,
+   "p50_ms": 1.300564000302984
+  },
+  {
+   "family": "pull access denied",
+   "fingerprint": "fp2_52e85b907b0f49e9",
+   "status": 200,
+   "first_request_ms": 662.7381230000537,
+   "cached_ms": 0.7309459997486556,
+   "response_kb": 9.3857421875,
+   "strangers": 62,
+   "wrong": 62,
+   "p50_ms": 1.2921400002596783
+  },
+  {
+   "family": "unable to access",
+   "fingerprint": "fp2_d6eb179328e8d392",
+   "status": 200,
+   "first_request_ms": 607.6590660004513,
+   "cached_ms": 0.8486180004183552,
+   "response_kb": 9.998046875,
+   "strangers": 71,
+   "wrong": 71,
+   "p50_ms": 1.4928700002201367
+  },
+  {
+   "family": "E404",
+   "fingerprint": "fp2_6b4ad49eccf79f30",
+   "status": 200,
+   "first_request_ms": 591.8891159999475,
+   "cached_ms": 0.7796769996275543,
+   "response_kb": 8.3037109375,
+   "strangers": 54,
+   "wrong": 54,
+   "p50_ms": 1.3617350000458828
+  },
+  {
+   "family": "FileNotFoundError",
+   "fingerprint": "fp2_1dcc683d73d2b876",
+   "status": 200,
+   "first_request_ms": 549.6972399996594,
+   "cached_ms": 0.9195909997288254,
+   "response_kb": 8.5615234375,
+   "strangers": 58,
+   "wrong": 58,
+   "p50_ms": 1.3198950000514742
+  }
+ ]
+}
