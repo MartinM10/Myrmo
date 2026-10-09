@@ -58,7 +58,9 @@ export default defineConfig({
   },
 
   markdown: {
-    theme: { light: "github-light", dark: "vitesse-dark" },
+    // Code blocks stay dark in both site themes (see --vp-code-block-bg), so they use one dark
+    // syntax theme; a light one would paint dark tokens on the dark block.
+    theme: "vitesse-dark",
   },
 
   themeConfig: {

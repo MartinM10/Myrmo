@@ -225,3 +225,10 @@
     .VPFeature { animation: myrmo-rise linear backwards; animation-timeline: view(); animation-range: entry 0% entry 40%; }
   }
 }
+
+/* Code contrast: vitesse-dark paints punctuation (#666) and quoted-string quotes at half
+ * opacity, too faint on the dark block. Lift them to a readable level. */
+.vp-doc div[class*="language-"] span[style*="#666666"] { color: #a39a88 !important; }
+.vp-doc div[class*="language-"] span[style*="#B8A96577"] { color: #b8a965cc !important; }
+.vp-doc div[class*="language-"] span[style*="#C98A7D77"] { color: #c98a7dcc !important; }
+.vp-doc div[class*="language-"] span[style*="#4C9A91"] { color: #5fb3a9 !important; }
