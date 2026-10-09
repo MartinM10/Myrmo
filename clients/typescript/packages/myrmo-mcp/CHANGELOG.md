@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.14.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.13.0...mcp-v0.14.0) (2026-10-09)
+
+
+### Features
+
+* **mcp:** list myrmo-mcp in the official MCP registry and test the plugin on macOS and Windows ([328c2c3](https://github.com/MartinM10/Myrmo/commit/328c2c3ba114ed5c913eb9191b21e89cf68703de))
+* **mcp:** official MCP registry listing; CI on macOS and Windows ([cd5d192](https://github.com/MartinM10/Myrmo/commit/cd5d192069476eb374e1c5e218fca079dda89042))
+
+
+### Documentation
+
+* say protocol v1 in the introduction; test: Codex init test on win32 ([ac73f3b](https://github.com/MartinM10/Myrmo/commit/ac73f3b103c33b2f9484bf9b280364aa64a7fced))
+
 ## [0.13.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.12.0...mcp-v0.13.0) (2026-10-08)
 
 

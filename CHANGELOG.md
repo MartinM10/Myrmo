@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.18.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.17.3...platform-v0.18.0) (2026-10-09)
+
+
+### Features
+
+* **mcp:** list myrmo-mcp in the official MCP registry and test the plugin on macOS and Windows ([328c2c3](https://github.com/MartinM10/Myrmo/commit/328c2c3ba114ed5c913eb9191b21e89cf68703de))
+* **mcp:** official MCP registry listing; CI on macOS and Windows ([cd5d192](https://github.com/MartinM10/Myrmo/commit/cd5d192069476eb374e1c5e218fca079dda89042))
+
+
+### Bug fixes
+
+* **docs:** readable code blocks in the light theme ([7d49615](https://github.com/MartinM10/Myrmo/commit/7d4961514ec6b9bacec92ef01496cc13c53576f5))
+* **docs:** readable code blocks in the light theme and softer punctuation in both ([a49532d](https://github.com/MartinM10/Myrmo/commit/a49532d24ae0e90987b3fcde233739ac96096629))
+* **web:** hero title descenders, crawling ants ([4d3e5b3](https://github.com/MartinM10/Myrmo/commit/4d3e5b338b4d3c848d09eafd1d9171ba5448ab76))
+* **web:** stop clipping descenders in the hero title and add crawling ants ([a383e71](https://github.com/MartinM10/Myrmo/commit/a383e710d0a4da2b18abc9a38c1ac34545a01491))
+
+
+### Documentation
+
+* say protocol v1 in the introduction, not v1.1 ([ffc3e1d](https://github.com/MartinM10/Myrmo/commit/ffc3e1de610343424de34b341a39db69b832b564))
+* say protocol v1 in the introduction; test: Codex init test on win32 ([ac73f3b](https://github.com/MartinM10/Myrmo/commit/ac73f3b103c33b2f9484bf9b280364aa64a7fced))
+
 ## [0.17.3](https://github.com/MartinM10/Myrmo/compare/platform-v0.17.2...platform-v0.17.3) (2026-10-09)
 
 
