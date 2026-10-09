@@ -13,7 +13,8 @@
       "error": "docker: Error response from daemon: driver failed programming external connectivity on endpoint web: Bind for 0.0.0.0:80 failed: port is already allocated.",
       "runtime": "docker",
       "related": [
-        "OSError"
+        "OSError",
+        "Error: listen EADDRINUSE"
       ]
     },
     {
@@ -80,7 +81,8 @@
       "error": "Error: listen EADDRINUSE: address already in use :::3000",
       "runtime": "node",
       "related": [
-        "OSError"
+        "OSError",
+        "Error: listen EADDRINUSE"
       ]
     },
     {
@@ -131,7 +133,8 @@
       "error": "nginx: [emerg] bind() to 0.0.0.0:443 failed (98: Address already in use)",
       "runtime": "nginx",
       "related": [
-        "OSError"
+        "OSError",
+        "Error: listen EADDRINUSE"
       ]
     },
     {
