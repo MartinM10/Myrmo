@@ -34,4 +34,8 @@ PROBES = [
       ". $HOME/.cargo/env && cd /w && cargo build 2>&1", r"linker `cc` not found",
       {"os": "debian-slim", "rustup": "stable"}, "https://raw.githubusercontent.com/rust-lang/book/main/src/ch01-01-installation.md",
       "install a C compiler", "MIT OR Apache-2.0", must=(r"linker|cc", r"build-essential|gcc|apt")),
+    P("rust-locked-lockfile-needs-update", "rust", "rust:1.82", "cargo new -q /w --bin && rm -f /w/Cargo.lock",
+      "cd /w && cargo build --locked 2>&1", r"lock file .* needs to be updated but --locked was passed",
+      {"cargo": "1.82"}, "https://raw.githubusercontent.com/rust-lang/cargo/master/doc/book/src/commands/cargo-build.md",
+      "--locked", "MIT OR Apache-2.0", must=(r"--locked|lock ?file", r"cargo (generate-lockfile|update|build)|commit Cargo\.lock|Cargo\.lock")),
 ]

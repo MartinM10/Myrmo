@@ -20,5 +20,27 @@
     },
     "status": "reproduced",
     "reason": ""
+  },
+  {
+    "id": "platform-pip-alpine-gcc-missing",
+    "error_line": "error: [Errno 2] No such file or directory: 'gcc'",
+    "versions": {
+      "python": "3.12",
+      "os": "alpine",
+      "libc": "musl"
+    },
+    "source": {
+      "url": "https://raw.githubusercontent.com/pypa/manylinux/main/README.rst",
+      "licence": "MIT"
+    },
+    "score": {
+      "recent": false,
+      "environment": true,
+      "transferable": true,
+      "reproducible": true,
+      "total": 3
+    },
+    "status": "reproduced",
+    "reason": ""
   }
 ]

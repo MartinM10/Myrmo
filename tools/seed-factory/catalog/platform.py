@@ -12,3 +12,16 @@ TASKS = (
         tags=("alpine", "musl", "glibc", "node", "docker"), message="not found",
     ),
 )
+
+TASKS += (
+    from_probe(
+        "platform-pip-alpine-gcc-missing", category="platform", error_type="No such file or directory: 'gcc'", runtime={"name": "python", "version": "3.12"}, memory="2g",
+        summary="pip install fails on an Alpine image with error: [Errno 2] No such file or directory: 'gcc' while building a wheel for a package that has no musl wheel for this Python.",
+        context="Installing a pinned, older release of a package with a C extension in python:3.12-alpine or another musl image, where pip has to compile it.",
+        failed_approaches=("pip install --upgrade pip setuptools wheel >/dev/null 2>&1; pip install bitarray==2.0.0 2>&1", "pip install --no-build-isolation bitarray==2.0.0 2>&1"),
+        fix="pip install bitarray", verify="""python -c "import bitarray; print(bitarray.__version__)" """,
+        root_cause="pip uses a prebuilt wheel when the package publishes one for this platform and Python. Alpine uses musl, so only musllinux wheels fit, and an old pinned release has none for Python 3.12: pip then builds from source, which needs a C compiler that the Alpine Python image does not include. Upgrading pip does not add one.",
+        steps=("Prefer a release that publishes a musllinux wheel for your Python (often the latest): drop or raise the pin.", "Or install the build tools in the image (apk add --no-cache build-base, and the library headers the package needs) before pip install, or use a Debian-based slim image where manylinux wheels apply."),
+        tags=("pip", "alpine", "musl", "wheel", "docker", "gcc"), message="No such file or directory: 'gcc'",
+    ),
+)

@@ -1,0 +1,10 @@
+{
+  "id": "dotnet-msbuild-more-than-one-project",
+  "ok": true,
+  "error_line": "MSB1011: Specify which project or solution file to use because this folder contains more than one project or solution file.",
+  "exit_code": 1,
+  "output_tail": "MSBUILD : error MSB1011: Specify which project or solution file to use because this folder contains more than one project or solution file.",
+  "image": "mcr.microsoft.com/dotnet/sdk:8.0",
+  "image_digest": "mcr.microsoft.com/dotnet/sdk@sha256:ec9c0a0dc5f60adc2065762050638dd5ed5facfc53716d4580a42d86027c8e80",
+  "command": "cd w && dotnet build 2>&1"
+}

@@ -193,4 +193,8 @@ TestClient(Starlette())
       "pip install requests==999.0.0 2>&1", r"Could not find a version that satisfies the requirement",
       {"python": "3.12", "pip": "24"}, "https://raw.githubusercontent.com/pypa/pip/main/src/pip/_internal/resolution/resolvelib/factory.py",
       "No matching distribution found for", "MIT", must=(r"No matching distribution|Could not find a version", r"version|index|python")),
+    P("py-pip-externally-managed-environment", "python", "debian:bookworm-slim", "apt-get update -qq >/dev/null && apt-get install -y -qq python3-pip >/dev/null",
+      "pip install requests 2>&1", r"error: externally-managed-environment",
+      {"python": "3.11", "os": "debian-12"}, "https://raw.githubusercontent.com/python/peps/main/peps/pep-0668.rst",
+      "externally-managed", "CC0-1.0", must=(r"externally-managed", r"venv|virtualenv|pipx|break-system-packages")),
 ]

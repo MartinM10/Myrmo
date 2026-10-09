@@ -1,0 +1,10 @@
+{
+  "id": "dotnet-csproj-merge-conflict-markers",
+  "ok": true,
+  "error_line": "error MSB4025: The project file could not be loaded. Name cannot begin with the '<' character, hexadecimal value 0x3C. Line 3, position 4.",
+  "exit_code": 1,
+  "output_tail": "/tmp/w/w.csproj(3,4): error MSB4025: The project file could not be loaded. Name cannot begin with the '<' character, hexadecimal value 0x3C. Line 3, position 4.\n\nBuild FAILED.\n\n/tmp/w/w.csproj(3,4): error MSB4025: The project file could not be loaded. Name cannot begin with the '<' character, hexadecimal value 0x3C. Line 3, position 4.\n    0 Warning(s)\n    1 Error(s)\n\nTime Elapsed 00:00:00.07",
+  "image": "mcr.microsoft.com/dotnet/sdk:8.0",
+  "image_digest": "mcr.microsoft.com/dotnet/sdk@sha256:ec9c0a0dc5f60adc2065762050638dd5ed5facfc53716d4580a42d86027c8e80",
+  "command": "dotnet build w 2>&1"
+}

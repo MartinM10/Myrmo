@@ -70,3 +70,16 @@ TASKS += (
         tags=("rust", "linker", "docker", "debian"), message="linker `cc` not found",
     ),
 )
+
+TASKS += (
+    from_probe(
+        "rust-locked-lockfile-needs-update", category="build", error_type="the lock file needs to be updated but --locked was passed", runtime={"name": "rust", "version": "1.82"}, memory="2g",
+        summary="cargo build --locked fails because the lock file needs to be updated but --locked was passed, when Cargo.lock is missing or does not match Cargo.toml.",
+        context="A CI step or Docker build that runs cargo build --locked on a checkout where Cargo.lock was not committed, or was not updated after a dependency change.",
+        failed_approaches=("cd /w && cargo build --locked --offline 2>&1", "cd /w && cargo update --locked 2>&1"),
+        fix="cd /w && cargo generate-lockfile && cargo build --locked", verify="cd /w && cargo build --locked 2>&1 | tail -n 2",
+        root_cause="--locked tells cargo to use Cargo.lock exactly as it is and fail when it would have to change it, which includes creating it. Without a committed, current lock file there is nothing to be exact about, and --offline or cargo update --locked cannot write one.",
+        steps=("Generate and commit the lock file: cargo generate-lockfile (or any cargo build), then commit Cargo.lock; applications and binaries should always commit it.", "After editing Cargo.toml, run cargo update -w or cargo build without --locked once locally and commit the new Cargo.lock."),
+        tags=("rust", "cargo", "lockfile", "ci", "locked"), message="needs to be updated but --locked was passed",
+    ),
+)

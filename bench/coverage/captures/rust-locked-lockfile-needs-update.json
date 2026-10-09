@@ -1,0 +1,10 @@
+{
+  "id": "rust-locked-lockfile-needs-update",
+  "ok": true,
+  "error_line": "error: the lock file /w/Cargo.lock needs to be updated but --locked was passed to prevent this",
+  "exit_code": 101,
+  "output_tail": "error: the lock file /w/Cargo.lock needs to be updated but --locked was passed to prevent this\nIf you want to try to generate the lock file without accessing the network, remove the --locked flag and use --offline instead.",
+  "image": "rust:1.82",
+  "image_digest": "rust@sha256:d9c3c6f1264a547d84560e06ffd79ed7a799ce0bff0980b26cf10d29af888377",
+  "command": "cd /w && cargo build --locked 2>&1"
+}

@@ -59,3 +59,46 @@ TASKS += (
         tags=("dotnet", "msbuild", "cli", "project"), message="MSB1003",
     ),
 )
+
+TASKS += (
+    from_probe(
+        "dotnet-csproj-merge-conflict-markers", category="build", error_type="MSB4025", runtime={"name": "dotnet", "version": "8.0"}, memory="2g",
+        summary="dotnet build fails with MSB4025, The project file could not be loaded, and a message about an unexpected character, when a .csproj still holds git merge conflict markers.",
+        context="Building right after a merge or rebase that left <<<<<<< or >>>>>>> lines in a project file.",
+        failed_approaches=("dotnet restore /tmp/w 2>&1", "dotnet clean /tmp/w 2>&1"),
+        fix="sed -i '/<<<<<<< HEAD/d' /tmp/w/w.csproj && dotnet build /tmp/w", verify="dotnet build /tmp/w --no-restore 2>&1 | tail -n 3",
+        root_cause="A project file is XML, and the conflict markers git writes (<<<<<<<, =======, >>>>>>>) are not. MSBuild has to parse the file before it can do anything, so every command that loads the project (restore, build, clean) fails with the same error.",
+        steps=("Open the .csproj, look for the marker lines (git diff --check lists them) and resolve the conflict by keeping the right side.", "Delete all of the markers, not only the first, and check that the XML is well formed before building again."),
+        tags=("dotnet", "msbuild", "git", "merge-conflict", "csproj"), message="MSB4025",
+    ),
+    from_probe(
+        "dotnet-cs0246-missing-package-reference", category="dependency", error_type="CS0246", runtime={"name": "dotnet", "version": "8.0"}, memory="2g",
+        summary="dotnet build fails with CS0246 or CS0234, The type or namespace name could not be found (are you missing a using directive or an assembly reference), for a library such as Newtonsoft.Json that the project never references.",
+        context="Adding a using for a NuGet library, or copying code that uses one, into a project that has no PackageReference for it.",
+        failed_approaches=("dotnet restore /tmp/w 2>&1 && dotnet build /tmp/w --no-restore 2>&1", "dotnet build /tmp/w -p:LangVersion=latest 2>&1"),
+        fix="cd /tmp/w && dotnet add package Newtonsoft.Json --version 13.0.3 && dotnet build", verify="dotnet build /tmp/w --no-restore 2>&1 | tail -n 3",
+        root_cause="A using directive only names a namespace that must already be in a referenced assembly. The SDK references the framework libraries; anything from NuGet needs a PackageReference in the project, and restoring or changing the language version does not add it.",
+        steps=("Add the package: dotnet add package <Name>, then build again.", "If the type is in the framework, check the target framework and the implicit usings instead of adding a package."),
+        tags=("dotnet", "nuget", "packagereference", "csharp"), message="CS0246",
+    ),
+    from_probe(
+        "dotnet-msbuild-more-than-one-project", category="tooling", error_type="MSB1011", runtime={"name": "dotnet", "version": "8.0"}, memory="2g",
+        summary="dotnet build fails with MSB1011, Specify which project or solution file to use because this folder contains more than one project or solution file.",
+        context="Running dotnet build or restore in a folder that holds two project files, or a project and a solution.",
+        failed_approaches=("cd /tmp/w && dotnet build -c Release 2>&1", "cd /tmp/w && dotnet restore 2>&1"),
+        fix="cd /tmp/w && dotnet build w.csproj", verify="cd /tmp/w && dotnet build w.csproj --no-restore 2>&1 | tail -n 3",
+        root_cause="With no argument the dotnet CLI picks the one project or solution file in the current folder. When there are several it refuses to guess, and a configuration or another option does not say which one.",
+        steps=("Pass the file: dotnet build MyApp.csproj, or the solution to build everything.", "Keep one project or solution file per folder, or add a solution file and always build that."),
+        tags=("dotnet", "msbuild", "cli", "solution"), message="MSB1011",
+    ),
+    from_probe(
+        "dotnet-nuget-service-index-unreachable", category="network", error_type="NU1301", runtime={"name": "dotnet", "version": "8.0"}, memory="2g",
+        summary="dotnet restore fails with NU1301, Unable to load the service index for source, when a nuget.config lists a feed that cannot be reached.",
+        context="Restoring in a machine or container that cannot reach a private NuGet feed named in nuget.config, or with a typo in its URL.",
+        failed_approaches=("cd /tmp/w && dotnet nuget locals all --clear && dotnet restore 2>&1", "cd /tmp/w && dotnet restore --ignore-failed-sources 2>&1"),
+        fix="cd /tmp/w && rm nuget.config && dotnet restore", verify="cd /tmp/w && dotnet restore 2>&1 | tail -n 2",
+        root_cause="Restore asks each configured source for its service index first. If one cannot be reached, restore reports NU1301 and fails, whether the package is in the cache or on another source. The cache and the flag that ignores failed sources do not change that for the packages that only that feed has.",
+        steps=("Check the source URL and that the machine can reach it (proxy, VPN, credentials, DNS).", "If the feed is not needed here, remove it from nuget.config or build with a config that lists only reachable sources."),
+        tags=("dotnet", "nuget", "feed", "network", "docker"), message="NU1301",
+    ),
+)

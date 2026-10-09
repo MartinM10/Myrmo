@@ -1,0 +1,10 @@
+{
+  "id": "platform-pip-alpine-gcc-missing",
+  "ok": true,
+  "error_line": "error: [Errno 2] No such file or directory: 'gcc'",
+  "exit_code": 1,
+  "output_tail": "ls for collected packages: bitarray\n  Building wheel for bitarray (pyproject.toml): started\n  Building wheel for bitarray (pyproject.toml): finished with status 'error'\n  error: subprocess-exited-with-error\n  \n  × Building wheel for bitarray (pyproject.toml) did not run successfully.\n  │ exit code: 1\n  ╰─> [14 lines of output]\n      /tmp/pip-build-env-ctom9ov0/overlay/lib/python3.12/site-packages/setuptools/dist.py:765: SetuptoolsDeprecationWarning: License classifiers are deprecated.\n      !!\n      \n              ********************************************************************************\n              Please consider removing the following classifiers in favor of a SPDX license expression:\n      \n              License :: OSI Approved :: Python Software Foundation License\n      \n              See https://packaging.python.org/en/latest/guides/writing-pyproject-toml/#license for details.\n              ********************************************************************************\n      \n      !!\n        self._finalize_license_expression()\n      error: [Errno 2] No such file or directory: 'gcc'\n      [end of output]\n  \n  note: This error originates from a subprocess, and is likely not a problem with pip.\n  ERROR: Failed building wheel for bitarray\nFailed to build bitarray\n\n[notice] A new release of pip is available: 25.0.1 -> 26.2.1\n[notice] To update, run: pip install --upgrade pip\nERROR: Failed to build installable wheels for some pyproject.toml based projects (bitarray)",
+  "image": "python:3.12-alpine",
+  "image_digest": "python@sha256:1b668429b3511ab407d8e00648891631b0b1a4d7e15e3ca70f38ab5b91ad4ab4",
+  "command": "pip install bitarray==2.0.0 2>&1"
+}

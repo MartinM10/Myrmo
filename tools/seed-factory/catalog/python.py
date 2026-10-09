@@ -296,3 +296,16 @@ TASKS += (
         tags=("pip", "requirements", "versions"), message="Could not find a version that satisfies the requirement",
     ),
 )
+
+TASKS += (
+    from_probe(
+        "py-pip-externally-managed-environment", category="tooling", error_type="externally-managed-environment", runtime={"name": "python", "version": "3.11"}, memory="2g",
+        summary="pip install fails with error: externally-managed-environment on Debian 12, Ubuntu 23.04 and later, and recent Fedora, because the system Python is managed by the OS package manager.",
+        context="Running pip install against the system Python of a recent Debian or Ubuntu image, or machine, outside a virtual environment.",
+        failed_approaches=("pip install --upgrade pip 2>&1", "pip install --user requests 2>&1"),
+        fix="apt-get install -y -qq python3-venv >/dev/null && python3 -m venv /tmp/venv && /tmp/venv/bin/pip install requests", verify="""/tmp/venv/bin/python -c "import requests; print(requests.__version__)" """,
+        root_cause="Distributions mark their Python as externally managed (PEP 668) with an EXTERNALLY-MANAGED file, so that pip does not overwrite files the system packages own. pip refuses every install into that interpreter, including upgrading pip and --user installs.",
+        steps=("Create a virtual environment and install into it: python3 -m venv .venv && .venv/bin/pip install <package>. On Debian and Ubuntu that needs the python3-venv package.", "For a command-line tool use pipx; for a system-wide package use the distribution's own (apt install python3-<name>). --break-system-packages exists but can break the system tools."),
+        tags=("pip", "pep668", "venv", "debian", "ubuntu", "docker"), message="externally-managed-environment",
+    ),
+)

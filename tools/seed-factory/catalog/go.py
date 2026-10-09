@@ -97,3 +97,16 @@ TASKS += (
         tags=("go", "packages", "imports"), message="import cycle not allowed",
     ),
 )
+
+TASKS += (
+    from_probe(
+        "go-sqlite3-cgo-disabled", category="build", error_type="requires cgo to work", runtime=GO122, memory="2g",
+        summary="A Go program that uses mattn/go-sqlite3 starts and prints Binary was compiled with CGO_ENABLED=0, go-sqlite3 requires cgo to work, because it was built without cgo.",
+        context="Building a static binary for a scratch or Alpine image with CGO_ENABLED=0, and running a program that opens a SQLite database through go-sqlite3.",
+        failed_approaches=("cd /w && CGO_ENABLED=0 go build -tags sqlite_omit_load_extension -o app . && ./app 2>&1", """cd /w && CGO_ENABLED=0 go build -ldflags="-s -w" -o app . && ./app 2>&1"""),
+        fix="cd /w && CGO_ENABLED=1 go build -o app . && ./app", verify="cd /w && CGO_ENABLED=1 go build -o app . && ./app",
+        root_cause="go-sqlite3 wraps the C SQLite library, so it needs cgo and a C compiler at build time. With CGO_ENABLED=0 the package compiles a stub that only reports this error at run time, and build tags or linker flags do not bring the C code back.",
+        steps=("Build with cgo: CGO_ENABLED=1 and a C compiler in the build image (gcc, and musl-dev on Alpine); link statically with -ldflags '-linkmode external -extldflags -static' if the image has no libc.", "Or use a pure Go SQLite driver (modernc.org/sqlite) and keep CGO_ENABLED=0."),
+        tags=("go", "sqlite", "cgo", "docker", "static-binary"), message="requires cgo to work",
+    ),
+)
