@@ -209,6 +209,70 @@ pub fn distinctive(query: &str, error_type: &str) -> HashSet<String> {
         .collect()
 }
 
+/// A quoted word that reads as a name in code (`url_quote`, `np.float`, `--legacy-peer-deps`) and not as a value that
+/// differs per machine: a URL, an address, a host name, a path or a number.
+fn is_identifier_shaped(word: &str) -> bool {
+    const DOMAIN_ENDINGS: [&str; 10] = [
+        "com", "org", "net", "io", "dev", "example", "local", "internal", "corp", "lan",
+    ];
+    (3..=64).contains(&word.len())
+        && word.starts_with(|c: char| c.is_alphabetic() || c == '-' || c == '_')
+        && word.chars().any(|c| c.is_alphabetic())
+        && word
+            .chars()
+            .all(|c| c.is_alphanumeric() || matches!(c, '_' | '-' | '.'))
+        && word
+            .rsplit_once('.')
+            .is_none_or(|(_, last)| !DOMAIN_ENDINGS.contains(&last))
+}
+
+/// The identifiers a query names: whatever is quoted (`'url_quote'`, `` `regex` ``) and codes such as `TS2835`,
+/// `E0554`, `ERR_REQUIRE_ESM` or `NETSDK1045`. Two errors that name different identifiers are different errors, even
+/// when the rest of the sentence is the same and they sit in the same family.
+pub fn identifiers(query: &str) -> HashSet<String> {
+    let mut found = HashSet::new();
+    let text = without_paths(query);
+    for (start, c) in text.char_indices() {
+        if !matches!(c, '\'' | '"' | '`') {
+            continue;
+        }
+        // A quote that opens a quoted name is not preceded by a letter (it is not an apostrophe: `didn't`).
+        if text[..start]
+            .chars()
+            .next_back()
+            .is_some_and(char::is_alphabetic)
+        {
+            continue;
+        }
+        if let Some(end) = text[start + 1..].find(c) {
+            let inner = &text[start + 1..start + 1 + end];
+            let word = inner.trim().to_lowercase();
+            let single = !word.contains(char::is_whitespace);
+            if single && is_identifier_shaped(&word) && !is_generic(&word) {
+                found.insert(word);
+            }
+        }
+    }
+    for token in text.split(|c: char| !(c.is_ascii_alphanumeric() || c == '_')) {
+        let code = token.len() >= 5
+            && ((token.starts_with("ERR_")
+                && token[4..]
+                    .chars()
+                    .all(|c| c.is_ascii_uppercase() || c.is_ascii_digit() || c == '_'))
+                || (token.len() <= 10
+                    && token.chars().take_while(char::is_ascii_uppercase).count() >= 1
+                    && token.chars().skip_while(char::is_ascii_uppercase).count() >= 3
+                    && token
+                        .chars()
+                        .skip_while(char::is_ascii_uppercase)
+                        .all(|c| c.is_ascii_digit())));
+        if code {
+            found.insert(token.to_lowercase());
+        }
+    }
+    found
+}
+
 /// Every word a stored trail is about.
 fn trail_words(trail: &Value) -> HashSet<String> {
     let mut text = String::new();
@@ -239,6 +303,34 @@ fn trail_words(trail: &Value) -> HashSet<String> {
         }
     }
     words(&text).into_iter().collect()
+}
+
+/// All the text a trail says about its problem and its fix, for looking up a name in it.
+fn trail_text(trail: &Value) -> String {
+    let mut text = String::new();
+    for path in [
+        "/problem/error_message",
+        "/problem/summary",
+        "/problem/task_context",
+        "/problem/error_type",
+        "/solution/root_cause",
+    ] {
+        if let Some(s) = trail.pointer(path).and_then(Value::as_str) {
+            text.push_str(s);
+            text.push(' ');
+        }
+    }
+    for step in trail
+        .pointer("/solution/steps")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(Value::as_str)
+    {
+        text.push_str(step);
+        text.push(' ');
+    }
+    text
 }
 
 /// The share of the words of the longer message that two messages must have in common to be one template: three
@@ -364,6 +456,14 @@ impl<'a> Asked<'a> {
         if similarity >= HIGH_CONFIDENCE {
             return true;
         }
+        // The query names identifiers (quoted names, error codes) and the trail mentions none of them: another error.
+        let named = identifiers(self.query);
+        if !named.is_empty() {
+            let text = trail_text(trail).to_lowercase();
+            if !named.iter().any(|id| text.contains(id.as_str())) {
+                return false;
+            }
+        }
         let wanted = distinctive(self.query, self.error_type);
         if wanted.is_empty() {
             return true; // nothing specific was asked, so similarity is all there is to go on
@@ -406,6 +506,56 @@ mod tests {
         let unrelated = json!({"problem": {"error_message": "ImportError: cannot import name 'url_quote' from 'werkzeug.urls'", "summary": "A module moved", "task_context": "Running python from /usr/local/lib/python3.12/site-packages"}, "solution": {"root_cause": "Removed in 3.0"}});
         assert!(!Asked::new(flask, "ImportError").is_relevant(&unrelated, 0.77));
         let _ = werkzeug;
+    }
+
+    #[test]
+    fn quoted_names_and_error_codes_are_identifiers() {
+        let ids = identifiers(
+            "ImportError: cannot import name 'JSONEncoder' from 'flask.json' (/usr/lib/x.py)",
+        );
+        assert!(
+            ids.contains("jsonencoder") && ids.contains("flask.json"),
+            "{ids:?}"
+        );
+        let codes = identifiers(
+            "b.ts(1,19): error TS2835: Relative import; Error [ERR_REQUIRE_ESM]; error[E0554]; NETSDK1045",
+        );
+        for code in ["ts2835", "err_require_esm", "e0554", "netsdk1045"] {
+            assert!(codes.contains(code), "{code} in {codes:?}");
+        }
+        assert!(
+            identifiers("it didn't work and the file isn't there").is_empty(),
+            "an apostrophe is not a quote"
+        );
+        assert!(
+            identifiers("something went wrong with 'a b c'").is_empty(),
+            "a quoted phrase is not a name"
+        );
+        for value in [
+            "Get \"http://localhost:49633/version\": connection refused",
+            "no alternative certificate subject name matches target host name '5.15.2.1'",
+            "unable to access 'https://intranet.example:61381/repo.git/'",
+            "could not resolve 'registry.internal'",
+            "cannot open '/etc/app.conf'",
+        ] {
+            assert!(
+                identifiers(value).is_empty(),
+                "a value that changes per machine is not a name: {value}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_trail_that_names_none_of_the_identifiers_asked_about_is_another_error() {
+        let asked = "Error [ERR_REQUIRE_ASYNC_MODULE]: require() cannot be used on an ESM graph with top-level await";
+        let other = json!({"problem": {"error_message": "TypeError [ERR_IMPORT_ATTRIBUTE_MISSING]: Module needs an import attribute", "summary": "A JSON import in an ES module needs an attribute"}, "solution": {"root_cause": "Node follows the import attributes proposal"}});
+        let same = json!({"problem": {"error_message": "Error [ERR_REQUIRE_ASYNC_MODULE]: require() cannot be used on an ESM graph", "summary": "require of an ES module with top-level await"}, "solution": {"root_cause": "Use import()"}});
+        assert!(!Asked::new(asked, "").is_relevant(&other, 0.80));
+        assert!(Asked::new(asked, "").is_relevant(&same, 0.80));
+        assert!(
+            Asked::new(asked, "").is_relevant(&other, 0.95),
+            "a near-identical match is not second-guessed"
+        );
     }
 
     #[test]

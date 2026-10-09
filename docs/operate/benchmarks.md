@@ -89,14 +89,17 @@ was made from. Coverage is measured on the reserved half, so it says how a colon
 |---|---|---|---|---|---|
 | The public colony on 2026-10-08, loaded locally | 30 | 0% | 2% (1 of 45) | 7% (3) | 91% (41) |
 | With 45 reproduced trails added | 75 | 4% (2) | 16% (7) | 18% (8) | 62% (28) |
+| With a third batch added | 90 | 4% (2) | 16% (7) | 31% (14) | 49% (22) |
+| Same colony, with the identifier rule | 90 | 4% (2) | 16% (7) | 20% (9) | 60% (27) |
 
-The second row runs with the similarity floor at 0.75. A *wrong trail* is a trail that came back, none of which solves the
+The second row onwards runs with the similarity floor at 0.75; the last row also applies the identifier rule (a search that
+quotes a name or an error code, such as `'url_quote'` or `ERR_REQUIRE_ESM`, only returns trails that mention one of them). A *wrong trail* is a trail that came back, none of which solves the
 error; most are about the same family of problem (another certificate error, another NumPy 2 removal). "Nothing returned" is
 the right answer when nothing in the colony solves the error. The "did not come back" column counts the cases where something
 in the colony does solve it by the rubric but the search did not return it: the floor and the name check trade those against
 wrong trails (see the floor sweep in [Retrieval](#retrieval)).
 
-Reading it honestly: a colony of 75 trails answers about one reserved error in twenty, and returns a wrong trail for one in six.
+Reading it honestly: a colony of 90 trails answers about one reserved error in twenty, and returns a wrong trail for one in five.
 That is what a small, deliberate set of recent breakages buys. Coverage grows with the number of ecosystems and breakages
 covered, not with the number of trails in one, and the false positives grow with the corpus unless relevance keeps up. The 91
 lines are a small sample chosen by us, and the rubric that decides "solves" is a heuristic; `bench/coverage/README.md` says how
@@ -256,6 +259,13 @@ semantic answers (2%). The benchmark colony itself keeps running at 0.72, so tha
 Two more changes came from reading the false positives of a coverage run: a semantic hit no longer counts the parts of a
 file system path in the query (`/usr/local/lib/python3.12/site-packages/...`) as words in common, and a few filler words
 (`find`, `because`, `support`, `main`, `thread`, `attribute`, `object`) are no longer distinctive.
+
+The false positives of the third batch (14 of 45) were mostly neighbours in the same family: two Node errors that differ only in
+the `ERR_*` code, two Flask and Werkzeug import errors that differ in the name. The identifier rule takes those out (9 of 45)
+without losing a retrieval result: the same 110-trail corpus gives the same top-1 rates with and without it
+(`retrieval-20261009-identifiers`), and 5 of 39 errors that no trail covers get a wrong trail instead of 6. A first version
+treated any quoted word as a name and lost six searches whose quote held a URL, an address or a host name; those values change
+from one machine to the next and no longer count.
 
 ### Fingerprint keys
 
