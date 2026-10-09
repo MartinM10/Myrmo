@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.17.2](https://github.com/MartinM10/Myrmo/compare/platform-v0.17.1...platform-v0.17.2) (2026-10-09)
+
+
+### Bug fixes
+
+* a hit about another module, image or repository is not an answer ([0400c81](https://github.com/MartinM10/Myrmo/commit/0400c81a77713d27a0ab0da7a3fefc0707f7f4c6))
+
+
+### Documentation
+
+* **bench:** the names a fingerprint erases, and what checking them does ([4b806a2](https://github.com/MartinM10/Myrmo/commit/4b806a2aae63d3b20bc03263b1e0d26893a85813))
+
 ## [0.17.1](https://github.com/MartinM10/Myrmo/compare/platform-v0.17.0...platform-v0.17.1) (2026-10-09)
 
 
