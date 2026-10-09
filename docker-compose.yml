@@ -12,6 +12,7 @@ x-server-env: &server-env
   MYRMO_EMBED_URL: http://embed:80
   MYRMO_DECISION_URL: ${MYRMO_DECISION_URL-http://laya:8000/v1/systemone}
   MYRMO_DECISION_API_KEY: ${MYRMO_DECISION_API_KEY:-}
+  MYRMO_DECISION_MODEL: ${MYRMO_DECISION_MODEL:-}
   MYRMO_RATE_LIMIT: ${MYRMO_RATE_LIMIT:-120}
   # Local use: no publish quota, so test suites can publish freely. Production sets it (30).
   MYRMO_PUBLISH_LIMIT: ${MYRMO_PUBLISH_LIMIT:-0}

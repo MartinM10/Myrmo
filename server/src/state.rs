@@ -68,7 +68,8 @@ impl AppState {
             cfg.decision_url.clone(),
             cfg.decision_api_key.clone(),
             cfg.model_injection_gate,
-        );
+        )
+        .with_model(cfg.decision_model.clone());
 
         // The embedding model can take minutes to download on first start.
         let dimension = retry("embedding service", 200, || {

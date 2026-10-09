@@ -94,6 +94,8 @@ pub struct Decision {
     http: reqwest::Client,
     url: Option<String>,
     api_key: Option<String>,
+    /// Model id for engines that serve several and require one (for example `jev-latest`).
+    model: Option<String>,
     /// Whether the model's injection score counts towards rejecting a trail.
     model_gate: bool,
 }
@@ -109,8 +111,15 @@ impl Decision {
             http,
             url,
             api_key,
+            model: None,
             model_gate,
         }
+    }
+
+    /// Names the model to ask, for hosted engines that require it in every request.
+    pub fn with_model(mut self, model: Option<String>) -> Self {
+        self.model = model;
+        self
     }
 
     pub async fn judge(&self, trail: &Value) -> Judgement {
@@ -172,12 +181,22 @@ impl Decision {
         }
     }
 
+    /// The question set as sent: with the model id added when one is configured.
+    fn request_body(&self, questions: &Value) -> Value {
+        let mut body = questions.clone();
+        if let Some(model) = &self.model {
+            body["model"] = json!(model);
+        }
+        body
+    }
+
     async fn post(&self, url: &str, body: &Value) -> anyhow::Result<Value> {
+        let body = self.request_body(body);
         let mut req = self
             .http
             .post(url)
             .timeout(Duration::from_secs(60))
-            .json(body);
+            .json(&body);
         if let Some(key) = &self.api_key {
             req = req.bearer_auth(key);
         }
@@ -1114,6 +1133,17 @@ mod tests {
             .judge(&bad)
             .await;
         assert!(rules.injection >= INJECTION_THRESHOLD);
+    }
+
+    #[test]
+    fn the_configured_model_id_travels_with_every_request() {
+        let ask = json!({"state": "x", "questions": {}});
+        let plain = Decision::new(reqwest::Client::new(), None, None, false);
+        assert!(plain.request_body(&ask).get("model").is_none());
+        let hosted = plain.with_model(Some("jev-latest".into()));
+        let body = hosted.request_body(&ask);
+        assert_eq!(body["model"], "jev-latest");
+        assert_eq!(body["state"], "x");
     }
 
     #[test]

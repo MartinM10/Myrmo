@@ -15,6 +15,7 @@ pub struct Config {
     /// System One endpoint (`/v1/systemone`). `None` means deterministic heuristics only.
     pub decision_url: Option<String>,
     pub decision_api_key: Option<String>,
+    pub decision_model: Option<String>,
     /// Let the decision model's prompt-injection score reject trails. Off by default: measured on
     /// real trails it scores a bare command such as `pytest -q` at 0.91 and rejects roughly one
     /// legitimate trail in five, so it is recorded in the log for calibration and the
@@ -73,6 +74,7 @@ impl Config {
                 .to_string(),
             decision_url: var("MYRMO_DECISION_URL"),
             decision_api_key: var("MYRMO_DECISION_API_KEY"),
+            decision_model: var("MYRMO_DECISION_MODEL"),
             model_injection_gate: var("MYRMO_MODEL_INJECTION_GATE").is_some_and(|v| v == "1"),
             decision_fail_open: var("MYRMO_DECISION_FAIL_OPEN").is_some_and(|v| v == "1"),
             rate_limit_per_minute: get("MYRMO_RATE_LIMIT", "120").parse().unwrap_or(120),
