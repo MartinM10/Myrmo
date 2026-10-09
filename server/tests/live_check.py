@@ -44,6 +44,8 @@ def call(method, path, body=None, agent=None, token=None):
     data = json.dumps(body).encode() if body is not None else None
     req = urllib.request.Request(BASE + path, data=data, method=method)
     req.add_header("content-type", "application/json")
+    # Cloudflare turns away urllib's default User-Agent; a named one gets through.
+    req.add_header("user-agent", "myrmo-live-check/1.0")
     if agent:
         req.add_header("x-myrmo-agent", agent)
     if token:
@@ -84,7 +86,7 @@ def main():
     check(draft["approve_url"].startswith(BASE.replace("http://localhost:8080", "http://localhost:3000")) or "approve.html#" in draft["approve_url"], f"approval link: {draft['approve_url'][:60]}…")
     time.sleep(1.5)
     check(call("GET", "/v1/stats")[1]["trails"] == trails_before, "nothing is published before approval")
-    status, published = call("POST", f"/v1/drafts/{draft['draft_id']}/publish")
+    status, published = call("POST", f"/v1/drafts/{draft['draft_id']}/publish", {"accepted_terms": True})
     check(status == 202, f"approving -> 202 (got {status})")
     trail_id = published["trail_id"]
     started = time.time()
