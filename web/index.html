@@ -788,7 +788,7 @@
           <div class="bar-row"><span>with Myrmo</span><div class="track"><i class="with" style="width:${(b / max) * 100}%"></i></div><b>${fmt(b)}</b></div>
         </div></div>`;
     }).join("") + (value
-      ? `<p class="bench-meta">Run ${M.esc(value.run_id)} · ${M.esc(value.date)} · pioneer ${M.esc(value.pioneer)} · followers ${M.esc(value.followers.join(", "))} · ${value.tasks} tasks × ${value.repetitions} repetitions</p>`
+      ? `<p class="bench-meta">Run ${M.esc(value.run_id)} · ${M.esc(value.date)} · agent ${M.esc(value.agent || "claude-code")} · pioneer ${M.esc(value.pioneer)} · followers ${M.esc(value.followers.join(", "))} · ${value.tasks} tasks × ${value.repetitions} repetitions</p>`
       : `<div class="pending-note"><span class="pill warn">first public run pending</span><span>Bars fill in from the first published run.</span></div>`);
 
     const rows = document.getElementById("load-rows");
