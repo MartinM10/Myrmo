@@ -1,0 +1,10 @@
+{
+  "id": "dotnet-cs0246-missing-package-reference",
+  "ok": true,
+  "error_line": "error CS0246: The type or namespace name 'Newtonsoft' could not be found (are you missing a using directive or an assembly reference?) [/tmp/w/w.csproj]",
+  "exit_code": 1,
+  "output_tail": "Determining projects to restore...\n  Restored /tmp/w/w.csproj (in 82 ms).\n/tmp/w/Program.cs(1,7): error CS0246: The type or namespace name 'Newtonsoft' could not be found (are you missing a using directive or an assembly reference?) [/tmp/w/w.csproj]\n\nBuild FAILED.\n\n/tmp/w/Program.cs(1,7): error CS0246: The type or namespace name 'Newtonsoft' could not be found (are you missing a using directive or an assembly reference?) [/tmp/w/w.csproj]\n    0 Warning(s)\n    1 Error(s)\n\nTime Elapsed 00:00:02.57",
+  "image": "mcr.microsoft.com/dotnet/sdk:8.0",
+  "image_digest": "mcr.microsoft.com/dotnet/sdk@sha256:ec9c0a0dc5f60adc2065762050638dd5ed5facfc53716d4580a42d86027c8e80",
+  "command": "dotnet build w 2>&1"
+}

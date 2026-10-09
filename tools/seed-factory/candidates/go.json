@@ -143,6 +143,27 @@
     "reason": ""
   },
   {
+    "id": "go-sqlite3-cgo-disabled",
+    "error_line": "Binary was compiled with 'CGO_ENABLED=0', go-sqlite3 requires cgo to work. This is a stub",
+    "versions": {
+      "go": "1.22",
+      "go-sqlite3": "1.14.22"
+    },
+    "source": {
+      "url": "https://raw.githubusercontent.com/mattn/go-sqlite3/master/README.md",
+      "licence": "MIT"
+    },
+    "score": {
+      "recent": false,
+      "environment": false,
+      "transferable": true,
+      "reproducible": true,
+      "total": 2
+    },
+    "status": "reproduced",
+    "reason": ""
+  },
+  {
     "id": "go-vendor-inconsistent",
     "error_line": "go: inconsistent vendoring in /w:",
     "versions": {

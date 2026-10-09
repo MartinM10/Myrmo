@@ -83,6 +83,26 @@
     "reason": ""
   },
   {
+    "id": "rust-locked-lockfile-needs-update",
+    "error_line": "error: the lock file /w/Cargo.lock needs to be updated but --locked was passed to prevent this",
+    "versions": {
+      "cargo": "1.82"
+    },
+    "source": {
+      "url": "https://raw.githubusercontent.com/rust-lang/cargo/master/doc/book/src/commands/cargo-build.md",
+      "licence": "MIT OR Apache-2.0"
+    },
+    "score": {
+      "recent": false,
+      "environment": false,
+      "transferable": true,
+      "reproducible": true,
+      "total": 2
+    },
+    "status": "reproduced",
+    "reason": ""
+  },
+  {
     "id": "rust-musl-target-missing",
     "error_line": "= note: the `x86_64-unknown-linux-musl` target may not be installed",
     "versions": {

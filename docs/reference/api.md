@@ -53,6 +53,11 @@ client falls back to a search; one of no known version is a `400`.
 
 The response has the same shape as [`POST /v1/search`](#search).
 
+The lookup carries no query, so it cannot tell two errors apart whose only difference is a name the fingerprint erases (a Go
+module, an image, a repository). The SDKs check each hit against the error they hold and fall back to the search, which the
+colony checks itself ([names the key erases](../concepts/fingerprints.md#names-the-key-erases)). A key keeps at most 64 trails
+(`MYRMO_MAX_PER_FINGERPRINT`); a trail left out of a full key is still found by search.
+
 ## Search
 
 ```http

@@ -63,5 +63,10 @@
     "id": "node-esbuild-wrong-platform",
     "status": "rejected",
     "reason": "does not reproduce: esbuild 0.24 runs with the binary of another platform installed through --os/--cpu"
+  },
+  {
+    "id": "platform-node-spawn-enoexec",
+    "status": "rejected",
+    "reason": "does not fail: node falls back to /bin/sh for a file without a shebang (execvp), so the command succeeds"
   }
 ]

@@ -12,7 +12,7 @@ untrusted data for a model, and a session helper that counts failed attempts and
 Lookup order, cheapest first, in both SDKs:
 
 1. **In-process cache** (60 s by default). An agent stuck in a loop asks the same thing many times.
-2. **`GET /v1/trails/by-fingerprint/{fp}`**, computed locally from the error line (`fingerprint2`) and cacheable by any CDN. A colony that predates fp2 answers `400`, which the SDKs treat as "no exact answer".
+2. **`GET /v1/trails/by-fingerprint/{fp}`**, computed locally from the error line (`fingerprint2`) and cacheable by any CDN. A colony that predates fp2 answers `400`, which the SDKs treat as "no exact answer". Since 0.10.1 an exact hit that names another module, image or repository than the error asked about is dropped and the search runs ([names the key erases](../concepts/fingerprints.md#names-the-key-erases)).
 3. **`POST /v1/search`**, only when the colony has no exact match.
 
 ## Publishing without a prompt

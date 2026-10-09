@@ -1,0 +1,10 @@
+{
+  "id": "dotnet-nuget-service-index-unreachable",
+  "ok": true,
+  "error_line": "/tmp/w/w.csproj : error NU1301: Unable to load the service index for source http://127.0.0.1:9/v3/index.json.",
+  "exit_code": 1,
+  "output_tail": "Determining projects to restore...\n/tmp/w/w.csproj : warning NU1504: Duplicate 'PackageReference' items found. Remove the duplicate items or use the Update functionality to ensure a consistent restore behavior. The duplicate 'PackageReference' items are: Newtonsoft.Json *, Newtonsoft.Json 13.0.3.\n/tmp/w/w.csproj : warning NU1803: You are running the 'restore' operation with an 'HTTP' source, 'http://127.0.0.1:9/v3/index.json'. Non-HTTPS access will be removed in a future version. Consider migrating to an 'HTTPS' source.\n/tmp/w/w.csproj : error NU1301: Unable to load the service index for source http://127.0.0.1:9/v3/index.json.\n  Failed to restore /tmp/w/w.csproj (in 5.85 sec).",
+  "image": "mcr.microsoft.com/dotnet/sdk:8.0",
+  "image_digest": "mcr.microsoft.com/dotnet/sdk@sha256:ec9c0a0dc5f60adc2065762050638dd5ed5facfc53716d4580a42d86027c8e80",
+  "command": "cd /tmp/w && dotnet restore 2>&1"
+}

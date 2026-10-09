@@ -11,4 +11,8 @@ PROBES = [
       "/opt/node-v18.20.4-linux-x64/bin/node -v 2>&1", r"not found",
       {"node": "18.20.4", "os": "alpine:3.20", "libc": "musl"}, "https://raw.githubusercontent.com/nodejs/node/v18.20.4/BUILDING.md",
       "musl", "MIT", must=(r"musl|gcompat|libstdc\+\+|alpine", r"node")),
+    P("platform-pip-alpine-gcc-missing", "platform", "python:3.12-alpine", "true",
+      "pip install bitarray==2.0.0 2>&1", r"No such file or directory: 'gcc'",
+      {"python": "3.12", "os": "alpine", "libc": "musl"}, "https://raw.githubusercontent.com/pypa/manylinux/main/README.rst",
+      "musllinux", "MIT", must=(r"gcc|compiler|build", r"apk add|build-base|musl|wheel")),
 ]

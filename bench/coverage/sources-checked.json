@@ -264,6 +264,12 @@
     "ok": true
   },
   {
+    "id": "py-pip-externally-managed-environment",
+    "url": "https://raw.githubusercontent.com/python/peps/main/peps/pep-0668.rst",
+    "licence": "CC0-1.0",
+    "ok": true
+  },
+  {
     "id": "node-eslint9-no-flat-config",
     "url": "https://raw.githubusercontent.com/eslint/eslint/v9.15.0/docs/src/use/configure/migration-guide.md",
     "licence": "MIT",
@@ -516,6 +522,12 @@
     "ok": true
   },
   {
+    "id": "go-sqlite3-cgo-disabled",
+    "url": "https://raw.githubusercontent.com/mattn/go-sqlite3/master/README.md",
+    "licence": "MIT",
+    "ok": true
+  },
+  {
     "id": "rust-edition2024-old-cargo",
     "url": "https://raw.githubusercontent.com/rust-lang/cargo/master/doc/book/src/reference/unstable.md",
     "licence": "MIT OR Apache-2.0",
@@ -564,6 +576,12 @@
     "ok": true
   },
   {
+    "id": "rust-locked-lockfile-needs-update",
+    "url": "https://raw.githubusercontent.com/rust-lang/cargo/master/doc/book/src/commands/cargo-build.md",
+    "licence": "MIT OR Apache-2.0",
+    "ok": true
+  },
+  {
     "id": "dotnet-sdk8-targets-net9",
     "url": "https://raw.githubusercontent.com/dotnet/sdk/main/src/Tasks/Common/Resources/Strings.resx",
     "licence": "MIT",
@@ -597,6 +615,30 @@
     "id": "dotnet-msbuild-no-project-file",
     "url": "https://raw.githubusercontent.com/dotnet/msbuild/main/src/MSBuild/Resources/Strings.resx",
     "licence": "MIT",
+    "ok": true
+  },
+  {
+    "id": "dotnet-csproj-merge-conflict-markers",
+    "url": "https://raw.githubusercontent.com/dotnet/msbuild/main/src/Build/Resources/Strings.resx",
+    "licence": "MIT",
+    "ok": true
+  },
+  {
+    "id": "dotnet-cs0246-missing-package-reference",
+    "url": "https://raw.githubusercontent.com/dotnet/roslyn/main/src/Compilers/CSharp/Portable/CSharpResources.resx",
+    "licence": "MIT",
+    "ok": true
+  },
+  {
+    "id": "dotnet-msbuild-more-than-one-project",
+    "url": "https://raw.githubusercontent.com/dotnet/msbuild/main/src/MSBuild/Resources/Strings.resx",
+    "licence": "MIT",
+    "ok": true
+  },
+  {
+    "id": "dotnet-nuget-service-index-unreachable",
+    "url": "https://raw.githubusercontent.com/NuGet/NuGet.Client/dev/src/NuGet.Core/NuGet.Common/Errors/NuGetLogCode.cs",
+    "licence": "Apache-2.0",
     "ok": true
   },
   {
@@ -704,6 +746,12 @@
   {
     "id": "platform-node-glibc-binary-on-alpine",
     "url": "https://raw.githubusercontent.com/nodejs/node/v18.20.4/BUILDING.md",
+    "licence": "MIT",
+    "ok": true
+  },
+  {
+    "id": "platform-pip-alpine-gcc-missing",
+    "url": "https://raw.githubusercontent.com/pypa/manylinux/main/README.rst",
     "licence": "MIT",
     "ok": true
   }

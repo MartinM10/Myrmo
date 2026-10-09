@@ -49,4 +49,9 @@ PROBES = [
       "cd /w && go build ./... 2>&1", r"import cycle not allowed",
       {"go": "1.22"}, "https://raw.githubusercontent.com/golang/go/master/src/cmd/go/internal/load/pkg.go",
       "import cycle not allowed", "BSD-3-Clause", must=(r"import cycle", r"package|interface|move|break")),
+    P("go-sqlite3-cgo-disabled", "go", "golang:1.22",
+      r"""mkdir /w && cd /w && go mod init example.com/db >/dev/null 2>&1 && printf 'package main\nimport (\n"database/sql"\n"fmt"\n"os"\n_ "github.com/mattn/go-sqlite3"\n)\nfunc main() {\ndb, _ := sql.Open("sqlite3", ":memory:")\nif err := db.Ping(); err != nil {\nfmt.Println(err)\nos.Exit(1)\n}\nfmt.Println("ok")\n}\n' > main.go && go get github.com/mattn/go-sqlite3@v1.14.22 >/dev/null 2>&1 && CGO_ENABLED=0 go build -o app .""",
+      "cd /w && ./app 2>&1", r"requires cgo to work",
+      {"go": "1.22", "go-sqlite3": "1.14.22"}, "https://raw.githubusercontent.com/mattn/go-sqlite3/master/README.md",
+      "CGO_ENABLED", "MIT", must=(r"cgo|CGO_ENABLED", r"CGO_ENABLED=1|gcc|enable")),
 ]
