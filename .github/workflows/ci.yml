@@ -126,6 +126,28 @@ jobs:
           print("skill example valid")
           EOF
 
+  platforms:
+    name: Plugin and MCP on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: clients/typescript/package-lock.json
+      - run: npm ci
+        working-directory: clients/typescript
+      - run: npm run build
+        working-directory: clients/typescript
+      - run: npm test
+        working-directory: clients/typescript
+      - run: node --test "plugins/myrmo/test/*.test.mjs"
+
   seed-factory:
     name: Seed factory
     runs-on: ubuntu-latest
