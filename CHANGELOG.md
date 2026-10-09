@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.16.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.15.0...platform-v0.16.0) (2026-10-09)
+
+
+### Features
+
+* **server:** MYRMO_DECISION_MODEL names the model for hosted decision engines ([e1b29cf](https://github.com/MartinM10/Myrmo/commit/e1b29cf35a429552b5c83523972e23c05dbbe9bd))
+
+
+### Bug fixes
+
+* **deploy:** let the origin lock accept the machine itself and private networks ([d060020](https://github.com/MartinM10/Myrmo/commit/d060020fdf165dacbf02f4aa74c35b0561d2624e))
+* **deploy:** let the origin lock accept the machine itself and private networks ([1d87bf0](https://github.com/MartinM10/Myrmo/commit/1d87bf06cbc30999dab0e762e56012497e7ccbaa))
+* **server:** a search that names an identifier only returns trails that mention one ([3f2ef2b](https://github.com/MartinM10/Myrmo/commit/3f2ef2ba4cc425a6871efe1965208987dad10ef2))
+* **server:** identifier rule in relevance and MYRMO_DECISION_MODEL ([133b601](https://github.com/MartinM10/Myrmo/commit/133b60117b7b168a01c77b384ac0ce36107557c3))
+
+
+### Documentation
+
+* name the hosted decision engine among the recipients of redacted trail text ([2cdb6fa](https://github.com/MartinM10/Myrmo/commit/2cdb6fa14a21ebec0277e2db44e2c60736046d39))
+
 ## [0.15.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.14.0...platform-v0.15.0) (2026-10-08)
 
 
