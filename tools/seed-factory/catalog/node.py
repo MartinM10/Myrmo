@@ -81,3 +81,26 @@ TASKS += (
         tags=("node", "prisma", "docker", "openssl"), message="Unable to require",
     ),
 )
+
+TASKS += (
+    from_probe(
+        "node-typescript-module-nodenext-mismatch", category="configuration", error_type="TS5110", runtime=NODE20, memory="1g",
+        summary="TypeScript 5.2 and later require module to be NodeNext whenever moduleResolution is NodeNext, and tsc stops with TS5110 when tsconfig sets them differently.",
+        context="Running tsc after setting moduleResolution to nodenext (or upgrading a config) while module stayed esnext.",
+        failed_approaches=("cd /w && npx tsc --noEmit --moduleResolution node16 2>&1", "cd /w && npx tsc --noEmit --skipLibCheck 2>&1"),
+        fix="""cd /w && sed -i 's/"module":"esnext"/"module":"nodenext"/' tsconfig.json""", verify="cd /w && npx tsc --noEmit && echo compiled",
+        root_cause="The Node-style module resolution modes (node16, nodenext) define how the code is emitted as well as how imports are found, so TypeScript checks that module matches them instead of letting the two disagree.",
+        steps=("Set module to NodeNext (or Node16) together with moduleResolution.", "If you bundle the code, use moduleResolution bundler with module esnext or preserve instead."),
+        tags=("typescript", "tsconfig", "nodenext", "ts5110"), message="error TS5110",
+    ),
+    from_probe(
+        "node-typescript-nodenext-import-extension", category="build", error_type="TS2835", runtime=NODE20, memory="1g",
+        summary="With module nodenext, TypeScript requires relative imports in ECMAScript modules to carry the file extension, and tsc reports TS2835 for an import written without .js.",
+        context="Compiling a project that moved to ES modules (type: module) and the nodenext setting.",
+        failed_approaches=("""cd /w && echo "import { a } from './a.ts'; console.log(a);" > b.ts && npx tsc 2>&1""", "cd /w && npx tsc --moduleResolution bundler 2>&1"),
+        fix="""cd /w && echo "import { a } from './a.js'; console.log(a);" > b.ts""", verify="cd /w && npx tsc && echo compiled",
+        root_cause="Node's ES module loader does not guess extensions, so under nodenext TypeScript demands the path that will exist at run time: the emitted .js file, even though the source is a.ts.",
+        steps=("Write the .js extension in the import (./a.js); TypeScript maps it to a.ts.", "Do not write .ts unless allowImportingTsExtensions is on and you do not emit.", "A bundler handles extensions itself: with one, moduleResolution bundler removes the requirement."),
+        tags=("typescript", "esm", "nodenext", "ts2835"), message="error TS2835",
+    ),
+)

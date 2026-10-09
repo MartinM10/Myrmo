@@ -1,0 +1,10 @@
+{
+  "id": "go-generics-old-language-version",
+  "ok": true,
+  "error_line": "./main.go:2:10: type parameter requires go1.18 or later (-lang was set to go1.16; check go.mod)",
+  "exit_code": 1,
+  "output_tail": "# w\n./main.go:2:10: type parameter requires go1.18 or later (-lang was set to go1.16; check go.mod)\n./main.go:2:12: predeclared any requires go1.18 or later (-lang was set to go1.16; check go.mod)\n./main.go:3:19: implicit function instantiation requires go1.18 or later (-lang was set to go1.16; check go.mod)",
+  "image": "golang:1.22.5",
+  "image_digest": "golang@sha256:86a3c48a61915a8c62c0e1d7594730399caa3feb73655dfe96c7bc17710e96cf",
+  "command": "cd /w && go build ./... 2>&1"
+}

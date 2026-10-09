@@ -148,6 +148,28 @@
     "reason": ""
   },
   {
+    "id": "py-httpx028-starlette-testclient",
+    "error_line": "TypeError: Client.__init__() got an unexpected keyword argument 'app'",
+    "versions": {
+      "starlette": "0.27.0",
+      "httpx": "0.28.1",
+      "python": "3.12"
+    },
+    "source": {
+      "url": "https://raw.githubusercontent.com/encode/httpx/0.28.0/CHANGELOG.md",
+      "licence": "BSD-3-Clause"
+    },
+    "score": {
+      "recent": false,
+      "environment": false,
+      "transferable": true,
+      "reproducible": true,
+      "total": 2
+    },
+    "status": "reproduced",
+    "reason": ""
+  },
+  {
     "id": "py-jinja31-markup",
     "error_line": "ImportError: cannot import name 'Markup' from 'jinja2' (/usr/local/lib/python3.12/site-packages/jinja2/__init__.py)",
     "versions": {
@@ -157,6 +179,175 @@
     "source": {
       "url": "https://raw.githubusercontent.com/pallets/jinja/3.1.4/CHANGES.rst",
       "licence": "BSD-3-Clause"
+    },
+    "score": {
+      "recent": false,
+      "environment": false,
+      "transferable": true,
+      "reproducible": true,
+      "total": 2
+    },
+    "status": "reproduced",
+    "reason": ""
+  },
+  {
+    "id": "py-numpy2-cast-removed",
+    "error_line": "AttributeError: `np.cast` was removed in the NumPy 2.0 release. Use `np.asarray(arr, dtype=dtype)` instead.",
+    "versions": {
+      "numpy": "2.0.2",
+      "python": "3.12"
+    },
+    "source": {
+      "url": "https://raw.githubusercontent.com/numpy/numpy/v2.0.0/doc/source/numpy_2_0_migration_guide.rst",
+      "licence": "BSD-3-Clause"
+    },
+    "score": {
+      "recent": false,
+      "environment": false,
+      "transferable": true,
+      "reproducible": true,
+      "total": 2
+    },
+    "status": "reproduced",
+    "reason": ""
+  },
+  {
+    "id": "py-numpy2-product-removed",
+    "error_line": "AttributeError: module 'numpy' has no attribute 'product'",
+    "versions": {
+      "numpy": "2.0.2",
+      "python": "3.12"
+    },
+    "source": {
+      "url": "https://raw.githubusercontent.com/numpy/numpy/v2.0.0/doc/source/numpy_2_0_migration_guide.rst",
+      "licence": "BSD-3-Clause"
+    },
+    "score": {
+      "recent": false,
+      "environment": false,
+      "transferable": true,
+      "reproducible": true,
+      "total": 2
+    },
+    "status": "reproduced",
+    "reason": ""
+  },
+  {
+    "id": "py-pandas2-datetime-attribute",
+    "error_line": "AttributeError: module 'pandas' has no attribute 'datetime'. Did you mean: 'to_datetime'?",
+    "versions": {
+      "pandas": "2.2.2",
+      "python": "3.12"
+    },
+    "source": {
+      "url": "https://raw.githubusercontent.com/pandas-dev/pandas/v2.2.2/doc/source/whatsnew/v2.0.0.rst",
+      "licence": "BSD-3-Clause"
+    },
+    "score": {
+      "recent": false,
+      "environment": false,
+      "transferable": true,
+      "reproducible": true,
+      "total": 2
+    },
+    "status": "reproduced",
+    "reason": ""
+  },
+  {
+    "id": "py-pandas2-iteritems",
+    "error_line": "AttributeError: 'DataFrame' object has no attribute 'iteritems'. Did you mean: 'isetitem'?",
+    "versions": {
+      "pandas": "2.2.2",
+      "python": "3.12"
+    },
+    "source": {
+      "url": "https://raw.githubusercontent.com/pandas-dev/pandas/v2.2.2/doc/source/whatsnew/v2.0.0.rst",
+      "licence": "BSD-3-Clause"
+    },
+    "score": {
+      "recent": false,
+      "environment": false,
+      "transferable": true,
+      "reproducible": true,
+      "total": 2
+    },
+    "status": "reproduced",
+    "reason": ""
+  },
+  {
+    "id": "py-pip-conflicting-dependencies",
+    "error_line": "ERROR: Cannot install requests==2.25.1 and urllib3>=2 because these package versions have conflicting dependencies.",
+    "versions": {
+      "pip": "25",
+      "requests": "2.25.1",
+      "python": "3.12"
+    },
+    "source": {
+      "url": "https://raw.githubusercontent.com/pypa/pip/25.0/docs/html/topics/dependency-resolution.md",
+      "licence": "MIT"
+    },
+    "score": {
+      "recent": false,
+      "environment": false,
+      "transferable": true,
+      "reproducible": true,
+      "total": 2
+    },
+    "status": "reproduced",
+    "reason": ""
+  },
+  {
+    "id": "py-playwright-browsers-missing",
+    "error_line": "playwright._impl._errors.Error: BrowserType.launch: Executable doesn't exist at /root/.cache/ms-playwright/chromium-1140/chrome-linux/chrome",
+    "versions": {
+      "playwright": "1.48.0",
+      "python": "3.12"
+    },
+    "source": {
+      "url": "https://raw.githubusercontent.com/microsoft/playwright/main/packages/playwright-core/src/server/registry/index.ts",
+      "licence": "Apache-2.0"
+    },
+    "score": {
+      "recent": false,
+      "environment": false,
+      "transferable": true,
+      "reproducible": true,
+      "total": 2
+    },
+    "status": "reproduced",
+    "reason": ""
+  },
+  {
+    "id": "py-poetry2-lock-out-of-sync",
+    "error_line": "pyproject.toml changed significantly since poetry.lock was last generated. Run `poetry lock` to fix the lock file.",
+    "versions": {
+      "poetry": "2.1.1",
+      "python": "3.12"
+    },
+    "source": {
+      "url": "https://raw.githubusercontent.com/python-poetry/poetry/2.1.1/docs/cli.md",
+      "licence": "MIT"
+    },
+    "score": {
+      "recent": false,
+      "environment": false,
+      "transferable": true,
+      "reproducible": true,
+      "total": 2
+    },
+    "status": "reproduced",
+    "reason": ""
+  },
+  {
+    "id": "py-pydantic2-root-validator-skip",
+    "error_line": "pydantic.errors.PydanticUserError: If you use `@root_validator` with pre=False (the default) you MUST specify `skip_on_failure=True`. Note that `@root_validator` is deprecated and should be replaced with `@model_validator`.",
+    "versions": {
+      "pydantic": "2.9.2",
+      "python": "3.12"
+    },
+    "source": {
+      "url": "https://raw.githubusercontent.com/pydantic/pydantic/v2.9.2/docs/migration.md",
+      "licence": "MIT"
     },
     "score": {
       "recent": false,
@@ -199,6 +390,48 @@
     "source": {
       "url": "https://raw.githubusercontent.com/yaml/pyyaml/6.0/CHANGES",
       "licence": "MIT"
+    },
+    "score": {
+      "recent": false,
+      "environment": false,
+      "transferable": true,
+      "reproducible": true,
+      "total": 2
+    },
+    "status": "reproduced",
+    "reason": ""
+  },
+  {
+    "id": "py-scipy114-simps",
+    "error_line": "ImportError: cannot import name 'simps' from 'scipy.integrate' (/usr/local/lib/python3.12/site-packages/scipy/integrate/__init__.py). Did you mean: 'simpson'?",
+    "versions": {
+      "scipy": "1.14.1",
+      "python": "3.12"
+    },
+    "source": {
+      "url": "https://raw.githubusercontent.com/scipy/scipy/v1.14.0/doc/source/release/1.14.0-notes.rst",
+      "licence": "BSD-3-Clause"
+    },
+    "score": {
+      "recent": false,
+      "environment": false,
+      "transferable": true,
+      "reproducible": true,
+      "total": 2
+    },
+    "status": "reproduced",
+    "reason": ""
+  },
+  {
+    "id": "py-sklearn-load-boston-removed",
+    "error_line": "`load_boston` has been removed from scikit-learn since version 1.2.",
+    "versions": {
+      "scikit-learn": "1.5.2",
+      "python": "3.12"
+    },
+    "source": {
+      "url": "https://raw.githubusercontent.com/scikit-learn/scikit-learn/1.5.2/doc/whats_new/v1.0.rst",
+      "licence": "BSD-3-Clause"
     },
     "score": {
       "recent": false,
@@ -272,6 +505,27 @@
     },
     "status": "rejected",
     "reason": "the fix downloads several gigabytes of CUDA wheels, more than a factory container can hold"
+  },
+  {
+    "id": "py-uv-locked-lockfile-stale",
+    "error_line": "error: The lockfile at `uv.lock` needs to be updated, but `--locked` was provided. To update the lockfile, run `uv lock`.",
+    "versions": {
+      "uv": "0.5.0",
+      "python": "3.12"
+    },
+    "source": {
+      "url": "https://raw.githubusercontent.com/astral-sh/uv/0.5.0/docs/concepts/projects.md",
+      "licence": "MIT OR Apache-2.0"
+    },
+    "score": {
+      "recent": false,
+      "environment": false,
+      "transferable": true,
+      "reproducible": true,
+      "total": 2
+    },
+    "status": "reproduced",
+    "reason": ""
   },
   {
     "id": "py-werkzeug3-url-quote",

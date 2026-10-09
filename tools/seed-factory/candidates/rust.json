@@ -42,6 +42,26 @@
     "reason": ""
   },
   {
+    "id": "rust-feature-on-stable",
+    "error_line": "error[E0554]: `#![feature]` may not be used on the stable release channel",
+    "versions": {
+      "cargo": "1.82"
+    },
+    "source": {
+      "url": "https://raw.githubusercontent.com/rust-lang/rustup/master/doc/user-guide/src/concepts/channels.md",
+      "licence": "MIT OR Apache-2.0"
+    },
+    "score": {
+      "recent": false,
+      "environment": false,
+      "transferable": true,
+      "reproducible": true,
+      "total": 2
+    },
+    "status": "reproduced",
+    "reason": ""
+  },
+  {
     "id": "rust-musl-target-missing",
     "error_line": "= note: the `x86_64-unknown-linux-musl` target may not be installed",
     "versions": {

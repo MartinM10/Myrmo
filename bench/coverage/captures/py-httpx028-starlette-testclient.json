@@ -1,0 +1,10 @@
+{
+  "id": "py-httpx028-starlette-testclient",
+  "ok": true,
+  "error_line": "TypeError: Client.__init__() got an unexpected keyword argument 'app'",
+  "exit_code": 1,
+  "output_tail": "Traceback (most recent call last):\n  File \"<string>\", line 4, in <module>\n  File \"/usr/local/lib/python3.12/site-packages/starlette/testclient.py\", line 399, in __init__\n    super().__init__(\nTypeError: Client.__init__() got an unexpected keyword argument 'app'",
+  "image": "python:3.12-slim",
+  "image_digest": "python@sha256:05cda9777409a9c3ffddd94a4c476b79f0769a0b4857f0c7ed9226b6800b0d6f",
+  "command": "python -c \"\nfrom starlette.applications import Starlette\nfrom starlette.testclient import TestClient\nTestClient(Starlette())\n\" 2>&1"
+}

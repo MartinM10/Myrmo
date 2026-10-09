@@ -56,4 +56,9 @@ PROBES = [
       "cd /w && javac A.java 2>&1", r"package javax\.xml\.bind does not exist",
       {"jdk": "17"}, "https://raw.githubusercontent.com/jakartaee/jaxb-api/master/README.md",
       "jakarta.xml.bind", "BSD-3-Clause", must=(r"javax\.xml\.bind", r"jakarta\.xml\.bind|jaxb-api|jaxb-runtime")),
+    P("jvm-gradle-compile-configuration-removed", "jvm", "eclipse-temurin:17-jdk",
+      r'''apt-get update -qq && apt-get install -y -qq curl unzip >/dev/null && mkdir /w && cd /w && curl -fsSLo /tmp/g.zip https://services.gradle.org/distributions/gradle-8.10.2-bin.zip && unzip -q /tmp/g.zip -d /opt && printf 'plugins { id "java" }\nrepositories { mavenCentral() }\ndependencies { compile "com.google.guava:guava:33.0.0-jre" }\n' > build.gradle && printf 'rootProject.name="w"\n' > settings.gradle''',
+      "cd /w && /opt/gradle-8.10.2/bin/gradle --no-daemon help 2>&1", r"Could not find method compile\(\)",
+      {"gradle": "8.10.2", "jdk": "17"}, "https://raw.githubusercontent.com/gradle/gradle/master/README.md",
+      "Gradle", "Apache-2.0", must=(r"compile\(\)|compile", r"implementation|api")),
 ]

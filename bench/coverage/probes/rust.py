@@ -21,4 +21,8 @@ PROBES = [
       "cargo build --target x86_64-unknown-linux-musl 2>&1", r"target may not be installed",
       {"cargo": "1.82"}, "https://raw.githubusercontent.com/rust-lang/rustup/master/doc/user-guide/src/cross-compilation.md",
       "rustup target add", "MIT OR Apache-2.0", must=(r"musl", r"rustup target add")),
+    P("rust-feature-on-stable", "rust", "rust:1.82", r'''cargo new -q /w --bin && printf '#![feature(let_chains)]\nfn main() {}\n' > /w/src/main.rs''',
+      "cd /w && cargo build 2>&1", r"may not be used on the stable release channel",
+      {"cargo": "1.82"}, "https://raw.githubusercontent.com/rust-lang/rustup/master/doc/user-guide/src/concepts/channels.md",
+      "nightly", "MIT OR Apache-2.0", must=(r"#!\[feature|feature", r"nightly")),
 ]

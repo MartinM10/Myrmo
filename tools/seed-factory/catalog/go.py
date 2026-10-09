@@ -51,3 +51,26 @@ TASKS += (
         tags=("go", "vendor", "go.mod"), message="inconsistent vendoring",
     ),
 )
+
+TASKS += (
+    from_probe(
+        "go-generics-old-language-version", category="build", error_type="type parameter requires go1.18 or later", runtime=GO122, memory="2g",
+        summary="Go reports that type parameters need go1.18 or later when go.mod still declares an older language version, even though the installed toolchain is recent.",
+        context="Building a module whose go directive was never raised, after adding code that uses generics.",
+        failed_approaches=("cd /w && go vet ./... 2>&1", "cd /w && go build -gcflags=-G=3 ./... 2>&1"),
+        fix="cd /w && go mod edit -go=1.22 && go build ./...", verify="cd /w && go build ./... && echo built",
+        root_cause="The go line of go.mod selects the language version the compiler accepts for the module (-lang). A module that says go 1.16 is compiled as Go 1.16 whatever toolchain builds it, and generics arrived in 1.18.",
+        steps=("Raise the go directive: go mod edit -go=1.22 (or the version you build with).", "Check that the code still builds: the language version also changes loop variable semantics from 1.22."),
+        tags=("go", "generics", "go.mod", "language-version"), message="type parameter requires go1.18 or later",
+    ),
+    from_probe(
+        "go-replace-directory-missing", category="dependency", error_type="replacement directory does not exist", runtime=GO122, memory="2g",
+        summary="go build fails with replacement directory does not exist when go.mod has a replace directive that points at a local path missing on this machine, as in a fresh clone or a CI job.",
+        context="Building a module that was developed with a replace to a sibling checkout (../lib) that is not present.",
+        failed_approaches=("cd /w && go mod tidy 2>&1", "cd /w && go mod download 2>&1"),
+        fix="cd /w && go mod edit -dropreplace github.com/google/uuid && go mod tidy && go build ./...", verify="cd /w && go build ./... && echo built",
+        root_cause="A replace directive that names a directory takes precedence over the published module, so the build needs that directory. It exists only on the machine of whoever wrote the line.",
+        steps=("Remove the replace (go mod edit -dropreplace <module>) and depend on a published version, or", "check out the sibling repository at the expected relative path, or use a go.work file for local development instead of committing a replace."),
+        tags=("go", "go.mod", "replace", "ci"), message="replacement directory",
+    ),
+)

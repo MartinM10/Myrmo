@@ -1,0 +1,10 @@
+{
+  "id": "py-pip-conflicting-dependencies",
+  "ok": true,
+  "error_line": "ERROR: Cannot install requests==2.25.1 and urllib3>=2 because these package versions have conflicting dependencies.",
+  "exit_code": 1,
+  "output_tail": "Collecting requests==2.25.1\n  Downloading requests-2.25.1-py2.py3-none-any.whl.metadata (4.2 kB)\nCollecting urllib3>=2\n  Downloading urllib3-2.8.0-py3-none-any.whl.metadata (7.4 kB)\nCollecting chardet<5,>=3.0.2 (from requests==2.25.1)\n  Downloading chardet-4.0.0-py2.py3-none-any.whl.metadata (3.5 kB)\nCollecting idna<3,>=2.5 (from requests==2.25.1)\n  Downloading idna-2.10-py2.py3-none-any.whl.metadata (9.1 kB)\nINFO: pip is looking at multiple versions of requests to determine which version is compatible with other requirements. This could take a while.\nERROR: Cannot install requests==2.25.1 and urllib3>=2 because these package versions have conflicting dependencies.\n\nThe conflict is caused by:\n    The user requested urllib3>=2\n    requests 2.25.1 depends on urllib3<1.27 and >=1.21.1\n\nTo fix this you could try to:\n1. loosen the range of package versions you've specified\n2. remove package versions to allow pip to attempt to solve the dependency conflict\n\n\n[notice] A new release of pip is available: 25.0.1 -> 26.2.1\n[notice] To update, run: pip install --upgrade pip\nERROR: ResolutionImpossible: for help visit https://pip.pypa.io/en/latest/topics/dependency-resolution/#dealing-with-dependency-conflicts",
+  "image": "python:3.12-slim",
+  "image_digest": "python@sha256:05cda9777409a9c3ffddd94a4c476b79f0769a0b4857f0c7ed9226b6800b0d6f",
+  "command": "pip install \"requests==2.25.1\" \"urllib3>=2\" 2>&1"
+}

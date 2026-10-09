@@ -42,6 +42,27 @@
     "reason": ""
   },
   {
+    "id": "go-generics-old-language-version",
+    "error_line": "./main.go:2:10: type parameter requires go1.18 or later (-lang was set to go1.16; check go.mod)",
+    "versions": {
+      "go": "1.22.5",
+      "go.mod": "1.16"
+    },
+    "source": {
+      "url": "https://raw.githubusercontent.com/golang/go/go1.23.0/src/cmd/go/alldocs.go",
+      "licence": "BSD-3-Clause"
+    },
+    "score": {
+      "recent": false,
+      "environment": false,
+      "transferable": true,
+      "reproducible": true,
+      "total": 2
+    },
+    "status": "reproduced",
+    "reason": ""
+  },
+  {
     "id": "go-private-module-no-credentials",
     "error_line": "fatal: could not read Username for 'https://github.com': terminal prompts disabled",
     "versions": {
@@ -49,6 +70,46 @@
     },
     "source": {
       "url": "https://raw.githubusercontent.com/golang/go/go1.23.0/src/cmd/go/alldocs.go",
+      "licence": "BSD-3-Clause"
+    },
+    "score": {
+      "recent": false,
+      "environment": false,
+      "transferable": true,
+      "reproducible": true,
+      "total": 2
+    },
+    "status": "reproduced",
+    "reason": ""
+  },
+  {
+    "id": "go-replace-directory-missing",
+    "error_line": "main.go:2:16: github.com/google/uuid@v1.6.0: replacement directory ../uuid does not exist",
+    "versions": {
+      "go": "1.22.5"
+    },
+    "source": {
+      "url": "https://raw.githubusercontent.com/golang/go/go1.23.0/src/cmd/go/alldocs.go",
+      "licence": "BSD-3-Clause"
+    },
+    "score": {
+      "recent": false,
+      "environment": false,
+      "transferable": true,
+      "reproducible": true,
+      "total": 2
+    },
+    "status": "reproduced",
+    "reason": ""
+  },
+  {
+    "id": "go-vendor-inconsistent",
+    "error_line": "go: inconsistent vendoring in /w:",
+    "versions": {
+      "go": "1.22.5"
+    },
+    "source": {
+      "url": "https://raw.githubusercontent.com/golang/go/go1.23.0/src/cmd/go/internal/modload/vendor.go",
       "licence": "BSD-3-Clause"
     },
     "score": {

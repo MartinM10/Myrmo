@@ -1,5 +1,26 @@
 [
   {
+    "id": "tls-curl-hostname-mismatch",
+    "error_line": "curl: (60) SSL: no alternative certificate subject name matches target host name '127.0.0.1'",
+    "versions": {
+      "curl": "7.88",
+      "os": "debian-12"
+    },
+    "source": {
+      "url": "https://raw.githubusercontent.com/openssl/openssl/openssl-3.0/crypto/x509/x509_txt.c",
+      "licence": "Apache-2.0"
+    },
+    "score": {
+      "recent": false,
+      "environment": true,
+      "transferable": true,
+      "reproducible": true,
+      "total": 3
+    },
+    "status": "reproduced",
+    "reason": ""
+  },
+  {
     "id": "tls-git-private-ca",
     "error_line": "fatal: unable to access 'https://intranet.example:8443/repo.git/': server certificate verification failed. CAfile: none CRLfile: none",
     "versions": {

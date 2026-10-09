@@ -1,0 +1,10 @@
+{
+  "id": "jvm-gradle-compile-configuration-removed",
+  "ok": true,
+  "error_line": "> Could not find method compile() for arguments [com.google.guava:guava:33.0.0-jre] on object of type org.gradle.api.internal.artifacts.dsl.dependencies.DefaultDependencyHandler.",
+  "exit_code": 1,
+  "output_tail": "Welcome to Gradle 8.10.2!\n\nHere are the highlights of this release:\n - Support for Java 23\n - Faster configuration cache\n - Better configuration cache reports\n\nFor more details see https://docs.gradle.org/8.10.2/release-notes.html\n\nTo honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.10.2/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.\nDaemon will be stopped at the end of the build \n\nFAILURE: Build failed with an exception.\n\n* Where:\nBuild file '/w/build.gradle' line: 3\n\n* What went wrong:\nA problem occurred evaluating root project 'w'.\n> Could not find method compile() for arguments [com.google.guava:guava:33.0.0-jre] on object of type org.gradle.api.internal.artifacts.dsl.dependencies.DefaultDependencyHandler.\n\n* Try:\n> Run with --stacktrace option to get the stack trace.\n> Run with --info or --debug option to get more log output.\n> Run with --scan to get full insights.\n> Get more help at https://help.gradle.org.\n\nBUILD FAILED in 4s",
+  "image": "eclipse-temurin:17-jdk",
+  "image_digest": "eclipse-temurin@sha256:5d6042fb8cdc14d614e4e421f52e3211fc5aeadddce44cbf9de8ed37c791f824",
+  "command": "cd /w && /opt/gradle-8.10.2/bin/gradle --no-daemon help 2>&1"
+}

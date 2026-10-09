@@ -1,0 +1,10 @@
+{
+  "id": "rust-feature-on-stable",
+  "ok": true,
+  "error_line": "error[E0554]: `#![feature]` may not be used on the stable release channel",
+  "exit_code": 101,
+  "output_tail": "Compiling w v0.1.0 (/w)\nerror[E0554]: `#![feature]` may not be used on the stable release channel\n --> src/main.rs:1:1\n  |\n1 | #![feature(let_chains)]\n  | ^^^^^^^^^^^^^^^^^^^^^^^\n\nFor more information about this error, try `rustc --explain E0554`.\nerror: could not compile `w` (bin \"w\") due to 1 previous error",
+  "image": "rust:1.82",
+  "image_digest": "rust@sha256:d9c3c6f1264a547d84560e06ffd79ed7a799ce0bff0980b26cf10d29af888377",
+  "command": "cd /w && cargo build 2>&1"
+}
