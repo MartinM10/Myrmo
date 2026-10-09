@@ -154,6 +154,22 @@ there is one list to keep up to date) and optionally from addresses you name wit
 nothing: read the rules, then apply them with `bash deploy/lock-origin.sh | sudo nft -f -`, and remove them with
 `sudo nft delete table inet myrmo_origin`. SSH and every other port stay as they are. Do it from a session you can lose
 without being locked out, and check afterwards that `https://myrmo.dev` still answers. Deploys over SSH are not affected.
+The rules also accept the machine itself and private networks (containers, the cloud network), so health checks from the
+server keep working.
+
+To apply them safely, load them and schedule their removal first, test, then cancel the removal:
+
+```bash
+sudo nft -f /tmp/origin.nft && sudo systemd-run --on-active=300 --unit=origin-rollback /usr/sbin/nft delete table inet myrmo_origin
+curl -s https://myrmo.dev/readyz                                  # through Cloudflare: 200
+curl -sk -m 8 --resolve myrmo.dev:443:ORIGIN-IP https://myrmo.dev/readyz   # straight to the origin: times out
+sudo systemctl stop origin-rollback.timer                         # keep the rules
+```
+
+They do not survive a reboot by themselves. To keep them, put the file in `/etc/myrmo/origin.nft` and enable a one-shot unit
+that runs `nft -f` on it (with `ExecStartPre=-nft delete table inet myrmo_origin` so a restart is idempotent). Cloudflare's
+ranges change rarely; regenerate the file from `deploy/Caddyfile.myrmo` when they do. The reverse proxy must be the one in
+`deploy/Caddyfile.myrmo`: it trusts only those ranges for the client address, which the per-address limits depend on.
 
 A removed trail can stay in Cloudflare's cache for up to five minutes. To clear it sooner, purge its
 URL (Caching, Configuration, Custom Purge).
