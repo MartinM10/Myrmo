@@ -1,0 +1,10 @@
+{
+  "id": "py-pydantic2-root-validator-skip",
+  "ok": true,
+  "error_line": "pydantic.errors.PydanticUserError: If you use `@root_validator` with pre=False (the default) you MUST specify `skip_on_failure=True`. Note that `@root_validator` is deprecated and should be replaced with `@model_validator`.",
+  "exit_code": 1,
+  "output_tail": "<string>:5: PydanticDeprecatedSince20: Pydantic V1 style `@root_validator` validators are deprecated. You should migrate to Pydantic V2 style `@model_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.9/migration/\nTraceback (most recent call last):\n  File \"<string>\", line 3, in <module>\n  File \"<string>\", line 5, in M\n  File \"/usr/local/lib/python3.12/site-packages/pydantic/deprecated/class_validators.py\", line 234, in root_validator\n    return root_validator()(*__args)  # type: ignore\n           ^^^^^^^^^^^^^^^^\n  File \"/usr/local/lib/python3.12/site-packages/pydantic/deprecated/class_validators.py\", line 240, in root_validator\n    raise PydanticUserError(\npydantic.errors.PydanticUserError: If you use `@root_validator` with pre=False (the default) you MUST specify `skip_on_failure=True`. Note that `@root_validator` is deprecated and should be replaced with `@model_validator`.\n\nFor further information visit https://errors.pydantic.dev/2.9/u/root-validator-pre-skip",
+  "image": "python:3.12-slim",
+  "image_digest": "python@sha256:05cda9777409a9c3ffddd94a4c476b79f0769a0b4857f0c7ed9226b6800b0d6f",
+  "command": "python -c \"\nfrom pydantic import BaseModel, root_validator\nclass M(BaseModel):\n    a: int\n    @root_validator\n    def check(cls, values):\n        return values\n\" 2>&1"
+}

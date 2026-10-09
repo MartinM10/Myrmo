@@ -1,0 +1,438 @@
+{
+  "summary": {
+    "split": "reserved",
+    "lines": 45,
+    "colony_trails": 90,
+    "per_ecosystem": {
+      "all": {
+        "silence": 22,
+        "miss": 7,
+        "false_positive": 14,
+        "hit": 2
+      },
+      "docker": {
+        "silence": 2,
+        "miss": 2
+      },
+      "dotnet": {
+        "miss": 1
+      },
+      "go": {
+        "false_positive": 2,
+        "hit": 1
+      },
+      "jvm": {
+        "miss": 3,
+        "silence": 3
+      },
+      "node": {
+        "silence": 2,
+        "false_positive": 4,
+        "miss": 1
+      },
+      "platform": {
+        "silence": 1
+      },
+      "python": {
+        "false_positive": 6,
+        "silence": 11
+      },
+      "rust": {
+        "silence": 1,
+        "false_positive": 1
+      },
+      "tls": {
+        "hit": 1,
+        "silence": 2,
+        "false_positive": 1
+      }
+    },
+    "hit_rate": 0.044,
+    "false_positive_rate": 0.311,
+    "silence_rate": 0.489
+  },
+  "rows": [
+    {
+      "id": "docker-compose-unknown-service-key",
+      "ecosystem": "docker",
+      "outcome": "silence",
+      "via": "search",
+      "returned": 0
+    },
+    {
+      "id": "docker-daemon-socket",
+      "ecosystem": "docker",
+      "outcome": "silence",
+      "via": "search",
+      "returned": 0
+    },
+    {
+      "id": "dotnet-runtime-version-missing",
+      "ecosystem": "dotnet",
+      "outcome": "miss",
+      "via": "search",
+      "returned": 0
+    },
+    {
+      "id": "go-install-latest-needs-newer-go",
+      "ecosystem": "go",
+      "outcome": "false_positive",
+      "via": "search",
+      "returned": 1
+    },
+    {
+      "id": "go-missing-gosum-entry",
+      "ecosystem": "go",
+      "outcome": "false_positive",
+      "via": "search",
+      "returned": 1
+    },
+    {
+      "id": "go-race-without-cgo",
+      "ecosystem": "go",
+      "outcome": "hit",
+      "via": "search",
+      "returned": 1
+    },
+    {
+      "id": "jvm-gradle85-jdk24",
+      "ecosystem": "jvm",
+      "outcome": "miss",
+      "via": "search",
+      "returned": 0
+    },
+    {
+      "id": "jvm-javac-release-newer-than-jdk",
+      "ecosystem": "jvm",
+      "outcome": "miss",
+      "via": "search",
+      "returned": 0
+    },
+    {
+      "id": "jvm-jaxb-removed-from-jdk",
+      "ecosystem": "jvm",
+      "outcome": "silence",
+      "via": "search",
+      "returned": 0
+    },
+    {
+      "id": "jvm-maven-http-repository-blocked",
+      "ecosystem": "jvm",
+      "outcome": "miss",
+      "via": "search",
+      "returned": 0
+    },
+    {
+      "id": "jvm-maven-java-home-invalid",
+      "ecosystem": "jvm",
+      "outcome": "silence",
+      "via": "search",
+      "returned": 0
+    },
+    {
+      "id": "jvm-maven-source-5",
+      "ecosystem": "jvm",
+      "outcome": "silence",
+      "via": "search",
+      "returned": 0
+    },
+    {
+      "id": "k8s-kubectl-apply-validate-no-cluster",
+      "ecosystem": "docker",
+      "outcome": "miss",
+      "via": "search",
+      "returned": 0
+    },
+    {
+      "id": "k8s-kubectl-no-kubeconfig",
+      "ecosystem": "docker",
+      "outcome": "miss",
+      "via": "search",
+      "returned": 0
+    },
+    {
+      "id": "node-eslint9-ext-flag",
+      "ecosystem": "node",
+      "outcome": "silence",
+      "via": "search",
+      "returned": 0
+    },
+    {
+      "id": "node-eslint9-no-flat-config",
+      "ecosystem": "node",
+      "outcome": "false_positive",
+      "via": "search",
+      "returned": 2
+    },
+    {
+      "id": "node-pnpm-outdated-lockfile",
+      "ecosystem": "node",
+      "outcome": "false_positive",
+      "via": "search",
+      "returned": 2
+    },
+    {
+      "id": "node-require-esm-async",
+      "ecosystem": "node",
+      "outcome": "false_positive",
+      "via": "search",
+      "returned": 1
+    },
+    {
+      "id": "node-tailwind4-cli",
+      "ecosystem": "node",
+      "outcome": "miss",
+      "via": "search",
+      "returned": 0
+    },
+    {
+      "id": "node-ts-unknown-file-extension",
+      "ecosystem": "node",
+      "outcome": "false_positive",
+      "via": "search",
+      "returned": 1
+    },
+    {
+      "id": "node-webpack5-no-polyfills",
+      "ecosystem": "node",
+      "outcome": "silence",
+      "via": "search",
+      "returned": 0
+    },
+    {
+      "id": "platform-node18-glibc-too-old",
+      "ecosystem": "platform",
+      "outcome": "silence",
+      "via": "search",
+      "returned": 0
+    },
+    {
+      "id": "py-flask3-json-encoder",
+      "ecosystem": "python",
+      "outcome": "false_positive",
+      "via": "search",
+      "returned": 2
+    },
+    {
+      "id": "py-numpy2-abi-pandas",
+      "ecosystem": "python",
+      "outcome": "false_positive",
+      "via": "search",
+      "returned": 3
+    },
+    {
+      "id": "py-numpy2-abi-scipy",
+      "ecosystem": "python",
+      "outcome": "false_positive",
+      "via": "search",
+      "returned": 1
+    },
+    {
+      "id": "py-numpy2-array-copy-false",
+      "ecosystem": "python",
+      "outcome": "silence",
+      "via": "search",
+      "returned": 0
+    },
+    {
+      "id": "py-numpy21-requires-newer-python",
+      "ecosystem": "python",
+      "outcome": "silence",
+      "via": "search",
+      "returned": 0
+    },
+    {
+      "id": "py-opencv-libgl-slim",
+      "ecosystem": "python",
+      "outcome": "silence",
+      "via": "search",
+      "returned": 0
+    },
+    {
+      "id": "py-pandas2-dataframe-append",
+      "ecosystem": "python",
+      "outcome": "silence",
+      "via": "search",
+      "returned": 0
+    },
+    {
+      "id": "py-pip-editable-without-project-file",
+      "ecosystem": "python",
+      "outcome": "silence",
+      "via": "search",
+      "returned": 0
+    },
+    {
+      "id": "py-poetry2-export",
+      "ecosystem": "python",
+      "outcome": "silence",
+      "via": "search",
+      "returned": 0
+    },
+    {
+      "id": "py-poetry2-shell",
+      "ecosystem": "python",
+      "outcome": "false_positive",
+      "via": "search",
+      "returned": 1
+    },
+    {
+      "id": "py-protobuf4-descriptors",
+      "ecosystem": "python",
+      "outcome": "silence",
+      "via": "search",
+      "returned": 0
+    },
+    {
+      "id": "py-pydantic2-basesettings",
+      "ecosystem": "python",
+      "outcome": "silence",
+      "via": "search",
+      "returned": 0
+    },
+    {
+      "id": "py-pydantic2-regex",
+      "ecosystem": "python",
+      "outcome": "false_positive",
+      "via": "search",
+      "returned": 1
+    },
+    {
+      "id": "py-python312-asyncore",
+      "ecosystem": "python",
+      "outcome": "silence",
+      "via": "search",
+      "returned": 0
+    },
+    {
+      "id": "py-python313-cgi",
+      "ecosystem": "python",
+      "outcome": "silence",
+      "via": "search",
+      "returned": 0
+    },
+    {
+      "id": "py-selenium4-executable-path",
+      "ecosystem": "python",
+      "outcome": "silence",
+      "via": "search",
+      "returned": 0
+    },
+    {
+      "id": "py-urllib3-v2-old-openssl",
+      "ecosystem": "python",
+      "outcome": "false_positive",
+      "via": "search",
+      "returned": 3
+    },
+    {
+      "id": "rust-edition2024-old-cargo",
+      "ecosystem": "rust",
+      "outcome": "silence",
+      "via": "search",
+      "returned": 0
+    },
+    {
+      "id": "rust-openssl-sys-no-pkgconfig",
+      "ecosystem": "rust",
+      "outcome": "false_positive",
+      "via": "search",
+      "returned": 1
+    },
+    {
+      "id": "tls-curl-private-ca",
+      "ecosystem": "tls",
+      "outcome": "hit",
+      "via": "search",
+      "returned": 3
+    },
+    {
+      "id": "tls-java-pkix-private-ca",
+      "ecosystem": "tls",
+      "outcome": "silence",
+      "via": "search",
+      "returned": 0
+    },
+    {
+      "id": "tls-node-fetch-private-ca",
+      "ecosystem": "tls",
+      "outcome": "false_positive",
+      "via": "search",
+      "returned": 1
+    },
+    {
+      "id": "tls-openssl3-ee-key-too-small",
+      "ecosystem": "tls",
+      "outcome": "silence",
+      "via": "search",
+      "returned": 0
+    }
+  ],
+  "dubious": [
+    {
+      "line": "go-missing-gosum-entry",
+      "trail_id": "c3601c25-cf38-49a7-976e-5f235b64e7e4",
+      "error": "main.go:2:16: github.com/google/uuid@v1.6.0: replacement directory ../uuid does not exist"
+    },
+    {
+      "line": "node-eslint9-no-flat-config",
+      "trail_id": "570c1604-638b-4440-9b4b-40aece1b69f8",
+      "error": "ESLint couldn't find the plugin \"eslint-plugin-react\"."
+    },
+    {
+      "line": "node-require-esm-async",
+      "trail_id": "3d2a2926-4e9e-4b4e-8a1b-49d0dda6445a",
+      "error": "TypeError [ERR_IMPORT_ATTRIBUTE_MISSING]: Module \"file:///w/x.json\" needs an import attribute of \"type: json\""
+    },
+    {
+      "line": "node-ts-unknown-file-extension",
+      "trail_id": "676f436d-3122-423a-b3cd-82ff8daad8fc",
+      "error": "b.ts(1,19): error TS2835: Relative import paths need explicit file extensions in ECMAScript imports when '--moduleResolu"
+    },
+    {
+      "line": "py-flask3-json-encoder",
+      "trail_id": "1ba373f6-21c9-4c15-b040-a6bfe44dbf65",
+      "error": "ImportError: cannot import name 'url_quote' from 'werkzeug.urls' (/usr/local/lib/python3.12/site-packages/werkzeug/urls."
+    },
+    {
+      "line": "py-numpy2-abi-pandas",
+      "trail_id": "67a59760-6648-4f48-965e-3c4b78f829be",
+      "error": "AttributeError: `np.float_` was removed in the NumPy 2.0 release. Use `np.float64` instead.. Did you mean: 'float16'?"
+    },
+    {
+      "line": "py-numpy2-abi-pandas",
+      "trail_id": "3855cad2-4ae9-4606-8338-9f2ec8887c52",
+      "error": "ERROR: No matching distribution found for numpy==1.24.4"
+    },
+    {
+      "line": "py-numpy2-abi-pandas",
+      "trail_id": "c16c3b57-b4af-49b9-8a31-b21eb82781fe",
+      "error": "AttributeError: `np.cast` was removed in the NumPy 2.0 release. Use `np.asarray(arr, dtype=dtype)` instead."
+    },
+    {
+      "line": "py-numpy2-abi-scipy",
+      "trail_id": "b8c986e4-2961-4872-8bca-eb127c8ca371",
+      "error": "ModuleNotFoundError: No module named 'distutils'"
+    },
+    {
+      "line": "py-poetry2-shell",
+      "trail_id": "d727f5da-c18e-4965-a3f4-0d223b3b6157",
+      "error": "pyproject.toml changed significantly since poetry.lock was last generated. Run `poetry lock` to fix the lock file."
+    },
+    {
+      "line": "py-urllib3-v2-old-openssl",
+      "trail_id": "1c844928-6f86-4924-a994-031272668282",
+      "error": "807BD2FAB07D0000:error:0308010C:digital envelope routines:inner_evp_generic_fetch:unsupported:../crypto/evp/evp_fetch.c:"
+    },
+    {
+      "line": "py-urllib3-v2-old-openssl",
+      "trail_id": "3e78ba34-b96b-4e52-80a0-c40ffbc563f5",
+      "error": "Unable to require(`/w/node_modules/.prisma/client/libquery_engine-debian-openssl-1.1.x.so.node`)."
+    },
+    {
+      "line": "rust-openssl-sys-no-pkgconfig",
+      "trail_id": "1c844928-6f86-4924-a994-031272668282",
+      "error": "807BD2FAB07D0000:error:0308010C:digital envelope routines:inner_evp_generic_fetch:unsupported:../crypto/evp/evp_fetch.c:"
+    }
+  ]
+}

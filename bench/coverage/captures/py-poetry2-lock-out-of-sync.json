@@ -1,0 +1,10 @@
+{
+  "id": "py-poetry2-lock-out-of-sync",
+  "ok": true,
+  "error_line": "pyproject.toml changed significantly since poetry.lock was last generated. Run `poetry lock` to fix the lock file.",
+  "exit_code": 1,
+  "output_tail": "Installing dependencies from lock file\n\npyproject.toml changed significantly since poetry.lock was last generated. Run `poetry lock` to fix the lock file.",
+  "image": "python:3.12-slim",
+  "image_digest": "python@sha256:05cda9777409a9c3ffddd94a4c476b79f0769a0b4857f0c7ed9226b6800b0d6f",
+  "command": "cd /tmp/demo && poetry install 2>&1"
+}

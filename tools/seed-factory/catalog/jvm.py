@@ -61,3 +61,16 @@ TASKS += (
         tags=("java", "gradle", "toolchain", "jdk"), message="Cannot find a Java installation",
     ),
 )
+
+TASKS += (
+    from_probe(
+        "jvm-gradle-compile-configuration-removed", category="build", error_type="Could not find method compile()", runtime={"name": "java", "version": "17"}, memory="3g",
+        summary="Gradle 7 and later fail with Could not find method compile() because the compile and runtime dependency configurations were removed; build scripts written for Gradle 6 still use them.",
+        context="Running an old project, or an old tutorial's build.gradle, with a current Gradle.",
+        failed_approaches=("cd /w && /opt/gradle-8.10.2/bin/gradle --no-daemon dependencies 2>&1", "cd /w && /opt/gradle-8.10.2/bin/gradle --no-daemon --offline build 2>&1"),
+        fix="""cd /w && sed -i 's/compile "/implementation "/' build.gradle""", verify="cd /w && /opt/gradle-8.10.2/bin/gradle --no-daemon -q help && echo ok",
+        root_cause="Gradle deprecated compile and runtime in 4.x and removed them in 7.0. implementation (for dependencies the module uses) and api (for those it exposes, with the java-library plugin) replace compile; runtimeOnly replaces runtime.",
+        steps=("Replace compile with implementation (or api for a library's public dependencies), testCompile with testImplementation, runtime with runtimeOnly.", "Or run the build with the Gradle version it was written for, through its wrapper, while you migrate."),
+        tags=("java", "gradle", "gradle7", "removed-configuration"), message="Could not find method compile()",
+    ),
+)

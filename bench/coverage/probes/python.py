@@ -136,4 +136,57 @@ with sync_playwright() as p:
     p.chromium.launch()" 2>&1''', r"Executable doesn't exist",
       {"playwright": "1.48.0", "python": "3.12"}, "https://raw.githubusercontent.com/microsoft/playwright/main/packages/playwright-core/src/server/registry/index.ts",
       "just installed or updated", "Apache-2.0", must=(r"playwright install", r"playwright|chromium")),
+    P("py-pydantic2-root-validator-skip", "python", "python:3.12-slim", "pip install -q pydantic==2.9.2",
+      r'''python -c "
+from pydantic import BaseModel, root_validator
+class M(BaseModel):
+    a: int
+    @root_validator
+    def check(cls, values):
+        return values
+" 2>&1''', r"you MUST specify `skip_on_failure=True`",
+      {"pydantic": "2.9.2", "python": "3.12"}, "https://raw.githubusercontent.com/pydantic/pydantic/v2.9.2/docs/migration.md",
+      "skip_on_failure", "MIT", must=(r"root_validator", r"skip_on_failure|model_validator")),
+    P("py-numpy2-product-removed", "python", "python:3.12-slim", "pip install -q numpy==2.0.2",
+      r'''python -c "import numpy as np; np.product([1, 2])" 2>&1''', r"module 'numpy' has no attribute 'product'",
+      {"numpy": "2.0.2", "python": "3.12"}, "https://raw.githubusercontent.com/numpy/numpy/v2.0.0/doc/source/numpy_2_0_migration_guide.rst",
+      "product", "BSD-3-Clause", must=(r"np\.product", r"np\.prod")),
+    P("py-numpy2-cast-removed", "python", "python:3.12-slim", "pip install -q numpy==2.0.2",
+      r'''python -c "import numpy as np; np.cast[np.float32]([1])" 2>&1''', r"was removed in the NumPy 2\.0 release",
+      {"numpy": "2.0.2", "python": "3.12"}, "https://raw.githubusercontent.com/numpy/numpy/v2.0.0/doc/source/numpy_2_0_migration_guide.rst",
+      "cast", "BSD-3-Clause", must=(r"np\.cast", r"asarray")),
+    P("py-pandas2-iteritems", "python", "python:3.12-slim", "pip install -q pandas==2.2.2",
+      r'''python -c "import pandas as pd; list(pd.DataFrame({'a': [1]}).iteritems())" 2>&1''', r"object has no attribute 'iteritems'",
+      {"pandas": "2.2.2", "python": "3.12"}, "https://raw.githubusercontent.com/pandas-dev/pandas/v2.2.2/doc/source/whatsnew/v2.0.0.rst",
+      "iteritems", "BSD-3-Clause", must=(r"iteritems", r"\.items\(\)|items")),
+    P("py-pandas2-datetime-attribute", "python", "python:3.12-slim", "pip install -q pandas==2.2.2",
+      r'''python -c "import pandas as pd; pd.datetime.now()" 2>&1''', r"has no attribute 'datetime'",
+      {"pandas": "2.2.2", "python": "3.12"}, "https://raw.githubusercontent.com/pandas-dev/pandas/v2.2.2/doc/source/whatsnew/v2.0.0.rst",
+      "pandas.datetime", "BSD-3-Clause", must=(r"pd\.datetime|pandas\.datetime", r"from datetime import|datetime\.datetime")),
+    P("py-sklearn-load-boston-removed", "python", "python:3.12-slim", "pip install -q scikit-learn==1.5.2",
+      r'''python -c "from sklearn.datasets import load_boston" 2>&1''', r"`load_boston` has been removed",
+      {"scikit-learn": "1.5.2", "python": "3.12"}, "https://raw.githubusercontent.com/scikit-learn/scikit-learn/1.5.2/doc/whats_new/v1.0.rst",
+      "load_boston", "BSD-3-Clause", must=(r"load_boston", r"fetch_california_housing|California|ethical")),
+    P("py-httpx028-starlette-testclient", "python", "python:3.12-slim", "pip install -q starlette==0.27.0 httpx==0.28.1",
+      r'''python -c "
+from starlette.applications import Starlette
+from starlette.testclient import TestClient
+TestClient(Starlette())
+" 2>&1''', r"unexpected keyword argument 'app'",
+      {"starlette": "0.27.0", "httpx": "0.28.1", "python": "3.12"}, "https://raw.githubusercontent.com/encode/httpx/0.28.0/CHANGELOG.md",
+      "app", "BSD-3-Clause", must=(r"unexpected keyword argument 'app'|TestClient", r"httpx")),
+    P("py-poetry2-lock-out-of-sync", "python", "python:3.12-slim",
+      r'''pip install -q poetry==2.1.1 && cd /tmp && poetry new -q demo && cd demo && poetry add -q six && sed -i 's/"six[^"]*"/"six>=1.16", "idna>=3"/' pyproject.toml''',
+      "cd /tmp/demo && poetry install 2>&1", r"pyproject.toml changed significantly since poetry.lock was last generated|poetry.lock is not consistent",
+      {"poetry": "2.1.1", "python": "3.12"}, "https://raw.githubusercontent.com/python-poetry/poetry/2.1.1/docs/cli.md",
+      "poetry lock", "MIT", must=(r"poetry lock", r"poetry\.lock|pyproject")),
+    P("py-uv-locked-lockfile-stale", "python", "python:3.12-slim",
+      r'''pip install -q uv==0.5.0 && cd /tmp && uv init -q demo && cd demo && uv add -q six && sed -i 's/"six[^"]*"/"six>=1.16", "idna>=3"/' pyproject.toml''',
+      "cd /tmp/demo && uv sync --locked 2>&1", r"needs to be updated, but `--locked` was provided",
+      {"uv": "0.5.0", "python": "3.12"}, "https://raw.githubusercontent.com/astral-sh/uv/0.5.0/docs/concepts/projects.md",
+      "--locked", "MIT OR Apache-2.0", must=(r"--locked|uv\.lock", r"uv lock")),
+    P("py-pip-conflicting-dependencies", "python", "python:3.12-slim", "true",
+      r'''pip install "requests==2.25.1" "urllib3>=2" 2>&1''', r"because these package versions have conflicting dependencies",
+      {"pip": "25", "requests": "2.25.1", "python": "3.12"}, "https://raw.githubusercontent.com/pypa/pip/25.0/docs/html/topics/dependency-resolution.md",
+      "ResolutionImpossible", "MIT", must=(r"conflicting dependencies|ResolutionImpossible", r"urllib3|requests")),
 ]

@@ -1,0 +1,10 @@
+{
+  "id": "py-pandas2-iteritems",
+  "ok": true,
+  "error_line": "AttributeError: 'DataFrame' object has no attribute 'iteritems'. Did you mean: 'isetitem'?",
+  "exit_code": 1,
+  "output_tail": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n  File \"/usr/local/lib/python3.12/site-packages/pandas/core/generic.py\", line 6299, in __getattr__\n    return object.__getattribute__(self, name)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAttributeError: 'DataFrame' object has no attribute 'iteritems'. Did you mean: 'isetitem'?",
+  "image": "python:3.12-slim",
+  "image_digest": "python@sha256:05cda9777409a9c3ffddd94a4c476b79f0769a0b4857f0c7ed9226b6800b0d6f",
+  "command": "python -c \"import pandas as pd; list(pd.DataFrame({'a': [1]}).iteritems())\" 2>&1"
+}

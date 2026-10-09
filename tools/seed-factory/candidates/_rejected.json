@@ -53,5 +53,15 @@
     "id": "dotnet-alpine-no-icu",
     "status": "rejected",
     "reason": "does not reproduce: the SDK image runs with ICU available"
+  },
+  {
+    "id": "rust-alpine-linker-cc-missing",
+    "status": "rejected",
+    "reason": "does not reproduce: rust:alpine already has a C linker"
+  },
+  {
+    "id": "node-esbuild-wrong-platform",
+    "status": "rejected",
+    "reason": "does not reproduce: esbuild 0.24 runs with the binary of another platform installed through --os/--cpu"
   }
 ]

@@ -1,0 +1,10 @@
+{
+  "id": "py-uv-locked-lockfile-stale",
+  "ok": true,
+  "error_line": "error: The lockfile at `uv.lock` needs to be updated, but `--locked` was provided. To update the lockfile, run `uv lock`.",
+  "exit_code": 2,
+  "output_tail": "Resolved 3 packages in 171ms\nerror: The lockfile at `uv.lock` needs to be updated, but `--locked` was provided. To update the lockfile, run `uv lock`.",
+  "image": "python:3.12-slim",
+  "image_digest": "python@sha256:05cda9777409a9c3ffddd94a4c476b79f0769a0b4857f0c7ed9226b6800b0d6f",
+  "command": "cd /tmp/demo && uv sync --locked 2>&1"
+}

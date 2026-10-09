@@ -34,3 +34,16 @@ TASKS = (
         tags=("rust", "musl", "rustup", "cross-compilation"), message="target may not be installed",
     ),
 )
+
+TASKS += (
+    from_probe(
+        "rust-feature-on-stable", category="build", error_type="E0554", runtime={"name": "rust", "version": "1.82"}, memory="2g",
+        summary="rustc refuses #![feature(...)] on the stable channel with error E0554, because unstable language features exist only on nightly.",
+        context="Building code or a dependency copied from a nightly-only project with a stable toolchain.",
+        failed_approaches=("cd /w && cargo +nightly build 2>&1", "cd /w && cargo build --release 2>&1"),
+        fix="""cd /w && printf 'fn main() {}\\n' > src/main.rs && cargo build""", verify="cd /w && cargo build && echo built",
+        root_cause="Feature gates are only honoured by the nightly compiler (or with RUSTC_BOOTSTRAP, which is unsupported). Stable rejects the attribute outright, whichever feature it names.",
+        steps=("Remove the feature gate and use the stabilised equivalent (many features have become stable: check the release notes of your Rust version).", "Or pin nightly for the project in rust-toolchain.toml and accept its instability.", "If the gate is in a dependency, upgrade it: most crates have dropped nightly requirements."),
+        tags=("rust", "nightly", "feature-gate", "e0554"), message="may not be used on the stable release channel",
+    ),
+)
