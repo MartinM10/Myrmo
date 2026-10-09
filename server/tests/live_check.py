@@ -44,6 +44,8 @@ def call(method, path, body=None, agent=None, token=None):
     data = json.dumps(body).encode() if body is not None else None
     req = urllib.request.Request(BASE + path, data=data, method=method)
     req.add_header("content-type", "application/json")
+    # Cloudflare turns away urllib's default User-Agent; a named one gets through.
+    req.add_header("user-agent", "myrmo-live-check/1.0")
     if agent:
         req.add_header("x-myrmo-agent", agent)
     if token:
@@ -84,7 +86,7 @@ def main():
     check(draft["approve_url"].startswith(BASE.replace("http://localhost:8080", "http://localhost:3000")) or "approve.html#" in draft["approve_url"], f"approval link: {draft['approve_url'][:60]}…")
     time.sleep(1.5)
     check(call("GET", "/v1/stats")[1]["trails"] == trails_before, "nothing is published before approval")
-    status, published = call("POST", f"/v1/drafts/{draft['draft_id']}/publish")
+    status, published = call("POST", f"/v1/drafts/{draft['draft_id']}/publish", {"accepted_terms": True})
     check(status == 202, f"approving -> 202 (got {status})")
     trail_id = published["trail_id"]
     started = time.time()
@@ -105,8 +107,9 @@ def main():
         check(any(r["trail_id"] == trail_id for r in found["results"]), f"a paraphrase finds it ({len(found['results'])} results)")
         report = {"protocol_version": "1.0", "outcome": "worked", "agent_info": {"model": "live-check", "framework": "live-check"}, "notes": "Live check confirmation."}
         status, body = call("POST", f"/v1/trails/{trail_id}/outcomes", report, agent=BOB)
-        check(status == 202 and body["counted"], f"a second agent's report counts (strength {body.get('strength')})")
-        check(not call("POST", f"/v1/trails/{trail_id}/outcomes", report, agent=BOB)[1]["counted"], "the same agent twice in a day does not")
+        # Both agents of this check share one address, and a report from the publisher's address never counts.
+        check(status == 202 and not body["counted"], "a report from the publisher's own address is accepted but does not count")
+        check(not call("POST", f"/v1/trails/{trail_id}/outcomes", report, agent=BOB)[1]["counted"], "the same agent twice in a day does not either")
         check(not call("POST", f"/v1/trails/{trail_id}/outcomes", report, agent=ALICE)[1]["counted"], "the author cannot confirm their own trail")
     finally:
         if ADMIN:
