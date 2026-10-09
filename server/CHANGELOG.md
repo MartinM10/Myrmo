@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.7.0](https://github.com/MartinM10/Myrmo/compare/server-v0.6.0...server-v0.7.0) (2026-10-09)
+
+
+### Features
+
+* **server:** MYRMO_DECISION_MODEL names the model for hosted decision engines ([e1b29cf](https://github.com/MartinM10/Myrmo/commit/e1b29cf35a429552b5c83523972e23c05dbbe9bd))
+
+
+### Bug fixes
+
+* **server:** a search that names an identifier only returns trails that mention one ([3f2ef2b](https://github.com/MartinM10/Myrmo/commit/3f2ef2ba4cc425a6871efe1965208987dad10ef2))
+* **server:** identifier rule in relevance and MYRMO_DECISION_MODEL ([133b601](https://github.com/MartinM10/Myrmo/commit/133b60117b7b168a01c77b384ac0ce36107557c3))
+
 ## [0.6.0](https://github.com/MartinM10/Myrmo/compare/server-v0.5.2...server-v0.6.0) (2026-10-08)
 
 
