@@ -1,0 +1,33 @@
+{
+  "about": "Names that fp2 erases and that tell two errors of one family apart: a Go module path, the repository of a git URL, a registry package, a container image. `names` lists what each text spells; `conflicts` says whether a query and a trail's error message name different things (both spell names and share none, where sharing is the same name, one inside the other, or the same last segment). Absolute paths, files and numbers are not names. The server (relevance.rs), the Python SDK and the JavaScript SDK must reproduce this file exactly.",
+  "names": [
+    {"text": "main.go:4:2: no required module provides package github.com/mekapugo/kefiva; to add it:\n\tgo get github.com/mekapugo/kefiva", "names": ["github.com/mekapugo/kefiva"]},
+    {"text": "fatal: unable to access 'https://git.gute-13.zedu.example.test/lulegire/getino.git/': SSL certificate problem", "names": ["git.gute-13.zedu.example.test/lulegire/getino"]},
+    {"text": "npm error 404 Not Found - GET https://registry.npmjs.org/sogugazo - Not found", "names": ["registry.npmjs.org/sogugazo"]},
+    {"text": "npm error 404 Not Found - GET https://registry.npmjs.org/@acme/widgets - Not found", "names": ["registry.npmjs.org/@acme/widgets"]},
+    {"text": "Error response from daemon: pull access denied for dokorise/getanu, repository does not exist", "names": ["dokorise/getanu"]},
+    {"text": "pull access denied for ghcr.io/acme/api:1.2.3, repository does not exist", "names": ["ghcr.io/acme/api"]},
+    {"text": "go: github.com/acme/widgets@v1.2.3: reading go.mod: 404 Not Found", "names": ["github.com/acme/widgets"]},
+    {"text": "fatal: unable to access 'https://user:secret@github.com/acme/widgets.git/': The requested URL returned error: 403", "names": ["github.com/acme/widgets"]},
+    {"text": "failed to pull localhost:5000/team/app:latest", "names": ["localhost:5000/team/app"]},
+    {"text": "FileNotFoundError: [Errno 2] No such file or directory: 'data/input.csv'", "names": []},
+    {"text": "thread panicked at src/main.rs:5:3", "names": []},
+    {"text": "error: cannot open /usr/local/lib/python3.12/site-packages/foo/bar.py", "names": []},
+    {"text": "ModuleNotFoundError: No module named 'flask'", "names": []},
+    {"text": "retry 3/4 failed", "names": []}
+  ],
+  "conflicts": [
+    {"query": "no required module provides package github.com/acme/widgets", "message": "no required module provides package github.com/stretchr/testify", "conflict": true, "note": "two Go modules"},
+    {"query": "no required module provides package github.com/stretchr/testify/assert", "message": "no required module provides package github.com/stretchr/testify", "conflict": false, "note": "one inside the other"},
+    {"query": "no required module provides package github.com/a/foo", "message": "no required module provides package gitlab.com/b/foo", "conflict": false, "note": "same last segment"},
+    {"query": "pull access denied for acme/api, repository does not exist", "message": "pull access denied for library/nginx, repository does not exist", "conflict": true, "note": "two images"},
+    {"query": "pull access denied for ghcr.io/acme/api:1.2.3", "message": "pull access denied for acme/api", "conflict": false, "note": "same image, with a registry and a tag"},
+    {"query": "npm error 404 Not Found - GET https://registry.npmjs.org/left-padd - Not found", "message": "npm error 404 Not Found - GET https://registry.npmjs.org/@acme/widgets - Not found", "conflict": true, "note": "two packages of one registry"},
+    {"query": "fatal: unable to access 'https://github.com/acme/widgets.git/': Could not resolve host", "message": "fatal: unable to access 'https://gitlab.example.org/team/other.git/': Could not resolve host", "conflict": true, "note": "two repositories"},
+    {"query": "fatal: unable to access 'https://user:token@github.com/acme/widgets.git/': 403", "message": "fatal: unable to access 'https://github.com/acme/widgets/': 403", "conflict": false, "note": "the same repository, with credentials and .git"},
+    {"query": "FileNotFoundError: [Errno 2] No such file or directory: 'data/input.csv'", "message": "FileNotFoundError: [Errno 2] No such file or directory: 'config/settings.json'", "conflict": false, "note": "files are not names"},
+    {"query": "error: cannot open /usr/local/lib/python3.12/site-packages/foo/bar.py", "message": "error: cannot open /opt/venv/lib/python3.11/site-packages/baz/qux.py", "conflict": false, "note": "absolute paths are the machine's"},
+    {"query": "no required module provides package github.com/acme/widgets", "message": "no required module provides package", "conflict": false, "note": "the trail spells no name"},
+    {"query": "go: go.mod file not found in current directory or any parent directory", "message": "go: go.mod file not found in current directory or any parent directory", "conflict": false, "note": "the query spells no name"}
+  ]
+}
