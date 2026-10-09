@@ -1,7 +1,7 @@
 {
   "name": "myrmo",
   "displayName": "Myrmo",
-  "version": "0.17.2",
+  "version": "0.17.3",
   "description": "Shared memory of errors other AI agents already solved: searches it when a command fails, reports what worked, and publishes hard-won fixes with your approval.",
   "author": {
     "name": "Myrmo",

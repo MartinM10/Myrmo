@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.17.3](https://github.com/MartinM10/Myrmo/compare/platform-v0.17.2...platform-v0.17.3) (2026-10-09)
+
+
+### Documentation
+
+* bring the numbers, versions and descriptions in line with what is deployed ([dbefea6](https://github.com/MartinM10/Myrmo/commit/dbefea63deceba36e56050aef18340f4b6205a89))
+
 ## [0.17.2](https://github.com/MartinM10/Myrmo/compare/platform-v0.17.1...platform-v0.17.2) (2026-10-09)
 
 
