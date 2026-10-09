@@ -169,9 +169,11 @@
 @keyframes shimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
 .js .hero h1:not(.split) { visibility: hidden; }
 .js .hero-copy > h1 { animation: none; }
-.hero h1 .w { display: inline-block; overflow: hidden; vertical-align: top; padding-bottom: 0.12em; margin-bottom: -0.12em; }
+.hero h1 .w { display: inline-block; overflow: hidden; vertical-align: top; padding-bottom: 0.3em; margin-bottom: -0.3em; }
 .hero h1 .w > span {
   display: inline-block;
+  padding-bottom: 0.25em;
+  margin-bottom: -0.25em;
   animation: word-up 0.8s cubic-bezier(0.2, 0.75, 0.2, 1) both;
   animation-delay: calc(var(--i) * 80ms + 120ms);
 }
@@ -319,6 +321,30 @@
 .js .closing:not(.in) .ecosystem span { opacity: 0; transform: translateY(8px); }
 .ecosystem span { transition: opacity 0.5s ease, transform 0.5s ease, color 0.2s; transition-delay: calc(var(--i) * 70ms + 0.4s); }
 .ecosystem span:hover { color: var(--amber-ink); }
+
+/* Colony hum: ants crawl along the hairline between sections, and the flow links march */
+@keyframes ants-right { to { background-position: 240px 0, -170px 0; } }
+.hero, .section { position: relative; }
+.hero::after, .section::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; bottom: -5px;
+  height: 11px;
+  pointer-events: none;
+  opacity: 0.7;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2220%22 height=%2211%22 viewBox=%220 0 14 8%22 preserveAspectRatio=%22xMidYMid meet%22%3E%3Cg%3E%3Cg stroke=%22%23d98a12%22 stroke-width=%22.7%22 stroke-linecap=%22round%22 fill=%22none%22%3E%3Cpath d=%22M6 4 3.5 1M7.5 4 7.5.6M8.5 4 10.5 1M6 4 3.5 7M7.5 4 7.5 7.4M8.5 4 10.5 7%22/%3E%3C/g%3E%3Cg fill=%22%23d98a12%22%3E%3Cellipse cx=%223%22 cy=%224%22 rx=%223%22 ry=%222%22/%3E%3Cellipse cx=%227.4%22 cy=%224%22 rx=%221.6%22 ry=%221.3%22/%3E%3Cellipse cx=%2211%22 cy=%224%22 rx=%221.8%22 ry=%221.5%22/%3E%3C/g%3E%3C/g%3E%3C/svg%3E"), url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2220%22 height=%2211%22 viewBox=%220 0 14 8%22 preserveAspectRatio=%22xMidYMid meet%22%3E%3Cg transform=%22translate%2814,0%29 scale%28-1,1%29%22%3E%3Cg stroke=%22%23d98a12%22 stroke-width=%22.7%22 stroke-linecap=%22round%22 fill=%22none%22%3E%3Cpath d=%22M6 4 3.5 1M7.5 4 7.5.6M8.5 4 10.5 1M6 4 3.5 7M7.5 4 7.5 7.4M8.5 4 10.5 7%22/%3E%3C/g%3E%3Cg fill=%22%23d98a12%22%3E%3Cellipse cx=%223%22 cy=%224%22 rx=%223%22 ry=%222%22/%3E%3Cellipse cx=%227.4%22 cy=%224%22 rx=%221.6%22 ry=%221.3%22/%3E%3Cellipse cx=%2211%22 cy=%224%22 rx=%221.8%22 ry=%221.5%22/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  background-repeat: repeat-x, repeat-x;
+  background-size: 240px 11px, 170px 11px;
+  background-position: 0 0, 0 0;
+  animation: ants-right 24s linear infinite;
+}
+@keyframes march { to { background-position: 6px 0; } }
+.node + .node::before {
+  border-top: 0;
+  height: 2px;
+  background: repeating-linear-gradient(90deg, var(--amber) 0 2px, transparent 2px 6px);
+  animation: march 0.5s linear infinite;
+}
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
