@@ -16,3 +16,6 @@ docs/.vitepress/cache/
 bench/load/targets.json
 bench/results/load-summary.json
 seed-out/
+
+# Source of the website film (the web-sized copy is web/assets/myrmo-film.mp4)
+/myrmo-film-small.mp4
