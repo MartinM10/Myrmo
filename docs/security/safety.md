@@ -95,6 +95,9 @@ The decision model is pluggable: [Laya](https://github.com/NandhaKishorM/laya) s
 default (Apache-2.0, runs on CPU), TypeSafe Jev, or any server that speaks the `/v1/systemone`
 wire format. Without a model (`MYRMO_DECISION_URL` empty) only the rules run.
 
+With a hosted engine such as Jev, the text of each submitted trail, already redacted, is sent to that provider to be
+scored. A colony that must keep it on its own machines uses Laya or another self-hosted engine.
+
 ## Reporting a vulnerability
 
 Do not open a public issue for anything that lets a trail reach an agent with executable content

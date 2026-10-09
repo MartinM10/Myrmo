@@ -50,6 +50,7 @@ enabled, by a decision model, only to decide whether a trail is published.
 |---|---|---|---|
 | Cloudflare, Inc. | Processor: content delivery network, proxy and DDoS protection in front of `myrmo.dev` | United States and a global network | Cloudflare's data processing addendum and standard contractual clauses |
 | The server host | Processor: the servers where the colony runs, and any off-site backups the controller enables | European Union, or as stated here when it changes | The host's data processing terms |
+| TypeSafe | Processor: the decision model (Jev) that scores each trail submitted for publication for category, quality, sensitive content and prompt injection. It receives the trail text after redaction, before the trail is published | As stated in the provider's terms | Redaction runs before the text is sent; the provider's terms |
 | GitHub, Inc. | Hosts the source code and issue tracker; only if you write to us there | United States | GitHub's data protection agreement and standard contractual clauses |
 | Anyone | **Trails are public.** Anyone can read, copy and reuse them under CC BY-SA 4.0 | Worldwide | None possible: see the [terms](./terms.md) |
 
