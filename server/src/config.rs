@@ -44,6 +44,8 @@ pub struct Config {
     pub public_url: String,
     /// Minimum cosine similarity for a semantic match.
     pub min_similarity: f64,
+    /// Most trails one exact fingerprint keeps (see `keys::add_to_fingerprint`).
+    pub max_per_fingerprint: usize,
     /// Distinct agents that must have missed an error before it is listed as demand, and before its labels are kept.
     pub demand_min_agents: u64,
     /// Secret mixed into the daily client hash. Random per process when unset.
@@ -92,6 +94,7 @@ impl Config {
                 .to_string(),
             admin_token: var("MYRMO_ADMIN_TOKEN").filter(|t| t.len() >= 16),
             min_similarity: get("MYRMO_MIN_SIMILARITY", "0.75").parse().unwrap_or(0.75),
+            max_per_fingerprint: get("MYRMO_MAX_PER_FINGERPRINT", "64").parse().unwrap_or(64),
             demand_min_agents: get("MYRMO_DEMAND_MIN_AGENTS", "3").parse().unwrap_or(3),
             salt: var("MYRMO_SALT").unwrap_or_else(|| uuid::Uuid::new_v4().to_string()),
             consumer_name: get("HOSTNAME", "enricher"),

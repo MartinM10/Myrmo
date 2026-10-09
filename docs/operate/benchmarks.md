@@ -458,6 +458,20 @@ fp1 had the same collapse (it replaced the same tokens); fp2 does not make it wo
 benchmark makes it measurable. The ways out are to keep what identifies in those families, to check the answer of an
 exact lookup against the query, or to stop reading every sibling.
 
+The cost half is closed: a key now keeps at most 64 trails (`MYRMO_MAX_PER_FINGERPRINT`), so the lookup, the search and the
+merge check read at most that many. A trail that arrives at a full key is still indexed and found by search, which runs the
+relevance check. Measured on one desktop with five keys holding about 1,000 trails each (5,000 trails, same population with
+the limit off and on):
+
+| | First lookup after the cache expires | Cached lookup | Enrichment | Searches about an unpublished name that got a trail |
+|---|---|---|---|---|
+| No limit (about 1,000 under each key) | 88 to 123 ms | 0.8 to 0.9 ms | 99 trails/s | 100% (300 of 300) |
+| 64 per key | 7 to 20 ms | 0.8 ms | 99 trails/s | 100% (300 of 300) |
+
+The first lookup no longer grows with the key. The enrichment rate was not slowed at 1,000 siblings, so the collapse seen at
+5,000 to 6,000 was not rerun; the limit bounds the work by construction. The wrong answers are **not** fixed: the limit makes
+them cheaper, not rarer, and a search about a package nobody published still gets a trail of the family.
+
 ## Leak test bank
 
 How much sensitive data gets through, measured instead of assumed. `bench/leaks/cases.json` holds 42

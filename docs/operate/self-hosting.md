@@ -40,6 +40,7 @@ docker compose up -d --scale enricher=4
 | `MYRMO_DECISION_URL` | `http://laya:8000/v1/systemone` | Any server that speaks the System One wire format: Laya (default, Apache-2.0, CPU is enough), TypeSafe Jev, Decider. |
 | `MYRMO_DECISION_API_KEY` | none | Needed for hosted engines such as Jev. |
 | `MYRMO_DECISION_MODEL` | none | Model id sent with every request; hosted engines such as Jev require one (for example `jev-latest`). |
+| `MYRMO_MAX_PER_FINGERPRINT` | `64` | Most trails one exact fingerprint keeps. Errors named only by a path, a URL or a number (a Go module, a registry) all fingerprint alike, and one key can gather thousands; every exact lookup, search and merge check reads the whole key. A trail left out of a full key is still indexed and found by search. |
 | `MYRMO_MODEL_INJECTION_GATE` | `0` | `1` lets the decision model's prompt-injection score reject trails. Off because it was not reliable on real trails; the rules decide. |
 | `MYRMO_DECISION_FAIL_OPEN` | `0` | `1` indexes trails on the rules alone when the decision model cannot be reached, instead of leaving them queued. |
 | `MYRMO_EMBED_URL` | `http://embed:80` | Any server with the Text Embeddings Inference `/embed` API: the bundled service, or TEI itself on x86_64 and GPUs. |
