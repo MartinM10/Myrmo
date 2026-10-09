@@ -36,3 +36,12 @@ test("guesses the error type from an error line", () => {
   assert.equal(guessErrorType("Something went wrong: details"), "");
   assert.equal(guessErrorType("no colon"), "");
 });
+
+const nameVectors = JSON.parse(readFileSync(new URL("../../../../../protocol/placeholder_names.v1.vectors.json", import.meta.url), "utf8"));
+
+test("matches every normative placeholder name vector", async () => {
+  const { placeholderNames, namesConflict } = await import("../dist/index.js");
+  assert.ok(nameVectors.names.length >= 10 && nameVectors.conflicts.length >= 10);
+  for (const v of nameVectors.names) assert.deepEqual([...placeholderNames(v.text)].sort(), [...v.names].sort(), v.text);
+  for (const v of nameVectors.conflicts) assert.equal(namesConflict(v.query, v.message), v.conflict, v.note);
+});
