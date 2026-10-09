@@ -30,6 +30,19 @@ pub fn environments(id: &str) -> String {
 pub fn fingerprint(fp: &str) -> String {
     format!("fp:{fp}")
 }
+/// Adds a trail to the ids kept under a fingerprint, unless the key already holds `max`. Errors whose only identity is
+/// a path, a URL or a number (a Go module, a registry, a file) all fingerprint alike, and one key can then gather
+/// thousands of trails that have nothing in common; every exact lookup, search and merge check reads the whole key.
+/// A trail left out is still indexed and found by search, which weighs what it says.
+pub fn add_to_fingerprint(pipe: &mut redis::Pipeline, fp: &str, id: &str, max: usize) {
+    pipe.cmd("EVAL")
+        .arg("if redis.call('SCARD', KEYS[1]) < tonumber(ARGV[2]) then return redis.call('SADD', KEYS[1], ARGV[1]) end return 0")
+        .arg(1)
+        .arg(fingerprint(fp))
+        .arg(id)
+        .arg(max)
+        .ignore();
+}
 /// Cached fingerprint lookup response (string, short TTL).
 pub fn fingerprint_cache(fp: &str) -> String {
     format!("cache:fp:{fp}")

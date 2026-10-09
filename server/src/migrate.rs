@@ -82,10 +82,7 @@ async fn move_sets(st: &AppState) -> Result<(usize, usize)> {
             let mut pipe = redis::pipe();
             for (id, payload) in st.qdrant.get(chunk).await? {
                 let fp = fingerprint::of_trail(&payload["trail"]);
-                pipe.cmd("SADD")
-                    .arg(keys::fingerprint(&fp))
-                    .arg(&id)
-                    .ignore();
+                keys::add_to_fingerprint(&mut pipe, &fp, &id, st.cfg.max_per_fingerprint);
                 pipe.cmd("HSET")
                     .arg(keys::trail(&id))
                     .arg("fingerprint")

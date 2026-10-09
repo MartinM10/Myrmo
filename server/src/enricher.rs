@@ -433,11 +433,9 @@ async fn enrich(st: &AppState, id: &str, mut trail: Value) -> Result<()> {
         "kind": "laid", "agent": agent_info, "trail_id": id,
         "text": format!("via {framework} laid trail {} after {failed_attempts} failed attempts", &id[..8]), "at": keys::iso(now)
     });
-    let _: () = redis::pipe()
-        .cmd("SADD")
-        .arg(keys::fingerprint(&fp))
-        .arg(id)
-        .ignore()
+    let mut index = redis::pipe();
+    keys::add_to_fingerprint(&mut index, &fp, id, st.cfg.max_per_fingerprint);
+    let _: () = index
         .cmd("DEL")
         .arg(keys::fingerprint_cache(&fp))
         .ignore()
