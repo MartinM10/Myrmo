@@ -538,9 +538,15 @@ searches per family about a name nobody published:
 
 A file path is the machine's, not a name, so that family is unchanged: the same fix (create the file, change the directory)
 often serves any path, which is why those answers are arguably not wrong. On the 121-trail retrieval corpus the same
-searches give the same results with and without the check (top-1 100, 100, 99, 92, 100 and 96% for the six variants, and
-8 of 39 errors that no trail covers still get a trail: that figure rose from 5 of 39 with the 11 trails of the fourth batch,
-before this change, and is the next thing to look at).
+searches give the same results with and without the check (top-1 100, 100, 99, 92, 100 and 96% for the six variants).
+
+Reading the negatives of that run showed that the hand-judged list in `bench/retrieval/negatives.json` had gone stale: it was
+written when no trail covered a port already in use under that error type, and the fourth batch added one (`Error: listen
+EADDRINUSE`), a fair answer to three of the queries. With the list updated, at the colony's default floor of 0.75 the run finds
+234 of 250 semantic positives on top, 8 of them with a different trail on top, and 2 of 46 negatives get a wrong trail, as
+before the batch. The 8 are mostly searches wrapped in a stack header and very short messages (`not found`, `No matching
+distribution found`), where a new trail of the same family competes with the one the corpus expects: the neighbours a growing
+colony has. Run `retrieval-20261009-negatives-rejudged` has the raw results.
 
 ## Leak test bank
 
