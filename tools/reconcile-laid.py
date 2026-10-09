@@ -10,8 +10,8 @@ run by the operator against the colony's Valkey (for example `docker compose exe
 It needs the operator token for `GET /v1/analytics` (it is only sent there) and reads the public feed, which holds
 every live trail. For each model label it compares the trails laid, per the counters, with the trails alive, and takes
 the difference off the newest days that have any. Models are labelled as the counters label them: the model a trail
-declared, lower-cased, and `seed` for a trail of the project's own seed framework laid after seeds had a label of
-their own; a seed laid before that is counted under the model it declared.
+declared, lower-cased. Seeds are one pool: `seed` and `seed-factory` are compared with the live trails of the model
+`seed-factory`, and the excess comes off the older label first.
 """
 from __future__ import annotations
 
@@ -71,9 +71,18 @@ def main() -> int:
             laid[model] = laid.get(model, 0) + int(counters.get("laid", 0))
     print(f"# live trails by model: {json.dumps(live, sort_keys=True)}")
     print(f"# counted as laid:      {json.dumps(laid, sort_keys=True)}")
+    # The labels `seed` and `seed-factory` count the same thing under two names (the server changed the label while seeds
+    # were being laid), and the live trails of the second are the seeds. They are compared as one pool, and the excess
+    # is taken off the older label first.
+    pool = ("seed-factory", "seed")
+    plan = [(m, laid.get(m, 0) - live.get(m, 0)) for m in sorted(laid) if m not in pool]
+    seed_excess = sum(laid.get(m, 0) for m in pool) - sum(live.get(m, 0) for m in pool)
+    for m in pool:
+        take = max(0, min(laid.get(m, 0), seed_excess))
+        plan.append((m, take))
+        seed_excess -= take
     commands = []
-    for model, counted in sorted(laid.items()):
-        excess = counted - live.get(model, 0)
+    for model, excess in plan:
         for day in days:
             if excess <= 0:
                 break

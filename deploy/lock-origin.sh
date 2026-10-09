@@ -44,6 +44,10 @@ table inet myrmo_origin {
   set allowed4 { type ipv4_addr; flags interval; elements = { $(join "${v4[@]}") } }
   set allowed6 { type ipv6_addr; flags interval; elements = { $(join "${v6[@]}") } }
   chain guard {
+    # The machine itself and its private networks (containers, the cloud network) are not the internet.
+    iifname "lo" accept
+    ip saddr { 127.0.0.0/8, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 } accept
+    ip6 saddr { ::1, fc00::/7 } accept
     ip saddr @allowed4 accept
     ip6 saddr @allowed6 accept
     counter drop
