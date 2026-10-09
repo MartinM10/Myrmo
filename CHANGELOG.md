@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.17.1](https://github.com/MartinM10/Myrmo/compare/platform-v0.17.0...platform-v0.17.1) (2026-10-09)
+
+
+### Documentation
+
+* **bench:** compare decision engines, and what a fourth batch does to coverage ([065db5c](https://github.com/MartinM10/Myrmo/commit/065db5ceb3dfb6566ede824b913cb0b7884d4330))
+* **bench:** fingerprint limit at 5,600 per key; LAYA_REPLICAS ([0688b5e](https://github.com/MartinM10/Myrmo/commit/0688b5ed475ca211d50114c5ed8c0c3b54fb99c6))
+* **bench:** the fingerprint limit at 5,600 trails per key; LAYA_REPLICAS keeps Laya stopped ([ae7512c](https://github.com/MartinM10/Myrmo/commit/ae7512cc9fdaf93fcf2441a906a4f520c47384db))
+
 ## [0.17.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.16.0...platform-v0.17.0) (2026-10-09)
 
 
