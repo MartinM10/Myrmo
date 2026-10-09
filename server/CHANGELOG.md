@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.7.1](https://github.com/MartinM10/Myrmo/compare/server-v0.7.0...server-v0.7.1) (2026-10-09)
+
+
+### Bug fixes
+
+* **server:** a fingerprint key keeps at most 64 trails ([c962d1a](https://github.com/MartinM10/Myrmo/commit/c962d1a03cd5947b6a00467e1617721c15c3f8cb))
+* **server:** a fingerprint key keeps at most 64 trails ([36a9419](https://github.com/MartinM10/Myrmo/commit/36a9419f7c05baa0ee71010da12abe81cf3c79fa))
+* **tests:** live check accepts the terms and names its User-Agent ([0585a4d](https://github.com/MartinM10/Myrmo/commit/0585a4d8a90e16b9c1510d66b38249fb9d30bf20))
+* **tests:** live check accepts the terms when it approves a draft and names its User-Agent ([19eccad](https://github.com/MartinM10/Myrmo/commit/19eccad6ea8453233b5a3ff505ac70449a68302b))
+* **tests:** live check expects that the publisher's own address cannot confirm its trail ([1ade18f](https://github.com/MartinM10/Myrmo/commit/1ade18f7d2d675ff99decf239f24dec59207ad29))
+
 ## [0.7.0](https://github.com/MartinM10/Myrmo/compare/server-v0.6.0...server-v0.7.0) (2026-10-09)
 
 
