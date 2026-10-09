@@ -1,0 +1,10 @@
+{
+  "id": "node-eaddrinuse",
+  "ok": true,
+  "error_line": "Error: listen EADDRINUSE: address already in use :::3000",
+  "exit_code": 1,
+  "output_tail": "node:events:502\n      throw er; // Unhandled 'error' event\n      ^\n\nError: listen EADDRINUSE: address already in use :::3000\n    at Server.setupListenHandle [as _listen2] (node:net:1908:16)\n    at listenInCluster (node:net:1965:12)\n    at Server.listen (node:net:2067:7)\n    at Server.<anonymous> ([eval]:1:74)\n    at Object.onceWrapper (node:events:638:28)\n    at Server.emit (node:events:524:28)\n    at emitListeningNT (node:net:1951:10)\n    at process.processTicksAndRejections (node:internal/process/task_queues:81:21)\nEmitted 'error' event on Server instance at:\n    at emitErrorNT (node:net:1944:8)\n    at process.processTicksAndRejections (node:internal/process/task_queues:82:21) {\n  code: 'EADDRINUSE',\n  errno: -98,\n  syscall: 'listen',\n  address: '::',\n  port: 3000\n}\n\nNode.js v20.20.2",
+  "image": "node:20-slim",
+  "image_digest": "node@sha256:2cf067cfed83d5ea958367df9f966191a942351a2df77d6f0193e162b5febfc0",
+  "command": "node -e \"const n=require('net');n.createServer().listen(3000,()=>n.createServer().listen(3000))\" 2>&1"
+}

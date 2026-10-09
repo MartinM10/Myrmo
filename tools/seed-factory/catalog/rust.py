@@ -47,3 +47,26 @@ TASKS += (
         tags=("rust", "nightly", "feature-gate", "e0554"), message="may not be used on the stable release channel",
     ),
 )
+
+TASKS += (
+    from_probe(
+        "rust-offline-registry-empty", category="dependency", error_type="no matching package named", runtime={"name": "rust", "version": "1.82"}, memory="2g",
+        summary="cargo build --offline fails with no matching package named serde found when the local registry cache is empty, as in a fresh CI runner or container.",
+        context="Building offline, or with net.offline set, on a machine that never downloaded the crates the project depends on.",
+        failed_approaches=("cd /w && cargo build --offline --locked 2>&1", "cd /w && cargo fetch --offline 2>&1"),
+        fix="cd /w && cargo fetch && cargo build --offline", verify="cd /w && cargo build --offline 2>&1 | tail -n 2",
+        root_cause="Offline mode resolves only from the local registry cache in CARGO_HOME. With nothing cached, no crate matches, and --locked or fetching offline cannot download what is missing.",
+        steps=("Run cargo fetch once with network access, or restore the CARGO_HOME registry from a cache, before building offline.", "To build with no network at all, vendor the dependencies with cargo vendor and point cargo at the vendor directory."),
+        tags=("rust", "cargo", "offline", "registry", "ci"), message="no matching package named",
+    ),
+    from_probe(
+        "rust-linker-cc-not-found", category="build", error_type="linker not found", runtime={"name": "rust", "version": "stable"}, memory="2g",
+        summary="cargo build fails with error: linker cc not found on a minimal Debian or Ubuntu image where Rust was installed but no C compiler or linker was.",
+        context="Building a Rust project in a slim container after installing the toolchain with rustup.",
+        failed_approaches=(". $HOME/.cargo/env && cd /w && cargo clean && cargo build 2>&1", """. $HOME/.cargo/env && cd /w && RUSTFLAGS="-C linker=gcc" cargo build 2>&1"""),
+        fix=". $HOME/.cargo/env && apt-get install -y -qq build-essential >/dev/null && cd /w && cargo build", verify=". $HOME/.cargo/env && cd /w && cargo build 2>&1 | tail -n 2",
+        root_cause="rustc compiles to object files but asks the system linker, by default cc, to produce the binary. A minimal image has no cc, and naming gcc as the linker fails the same way because gcc is not installed either.",
+        steps=("Install a C toolchain: apt-get install build-essential on Debian and Ubuntu, or the equivalent package on other systems.", "In a Dockerfile, install it in the same layer as the other build packages, before cargo build."),
+        tags=("rust", "linker", "docker", "debian"), message="linker `cc` not found",
+    ),
+)

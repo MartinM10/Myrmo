@@ -42,6 +42,26 @@
     "reason": ""
   },
   {
+    "id": "go-build-no-go-mod",
+    "error_line": "go: go.mod file not found in current directory or any parent directory; see 'go help modules'",
+    "versions": {
+      "go": "1.22"
+    },
+    "source": {
+      "url": "https://raw.githubusercontent.com/golang/go/master/src/cmd/go/internal/modload/init.go",
+      "licence": "BSD-3-Clause"
+    },
+    "score": {
+      "recent": false,
+      "environment": false,
+      "transferable": true,
+      "reproducible": true,
+      "total": 2
+    },
+    "status": "reproduced",
+    "reason": ""
+  },
+  {
     "id": "go-generics-old-language-version",
     "error_line": "./main.go:2:10: type parameter requires go1.18 or later (-lang was set to go1.16; check go.mod)",
     "versions": {
@@ -50,6 +70,26 @@
     },
     "source": {
       "url": "https://raw.githubusercontent.com/golang/go/go1.23.0/src/cmd/go/alldocs.go",
+      "licence": "BSD-3-Clause"
+    },
+    "score": {
+      "recent": false,
+      "environment": false,
+      "transferable": true,
+      "reproducible": true,
+      "total": 2
+    },
+    "status": "reproduced",
+    "reason": ""
+  },
+  {
+    "id": "go-import-cycle",
+    "error_line": "imports example.com/cyc/a: import cycle not allowed",
+    "versions": {
+      "go": "1.22"
+    },
+    "source": {
+      "url": "https://raw.githubusercontent.com/golang/go/master/src/cmd/go/internal/load/pkg.go",
       "licence": "BSD-3-Clause"
     },
     "score": {

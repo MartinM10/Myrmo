@@ -1,0 +1,10 @@
+{
+  "id": "dotnet-msbuild-no-project-file",
+  "ok": true,
+  "error_line": "MSB1003: Specify a project or solution file. The current working directory does not contain a project or solution file.",
+  "exit_code": 1,
+  "output_tail": "MSBUILD : error MSB1003: Specify a project or solution file. The current working directory does not contain a project or solution file.",
+  "image": "mcr.microsoft.com/dotnet/sdk:8.0",
+  "image_digest": "mcr.microsoft.com/dotnet/sdk@sha256:ec9c0a0dc5f60adc2065762050638dd5ed5facfc53716d4580a42d86027c8e80",
+  "command": "cd /w && dotnet build 2>&1"
+}

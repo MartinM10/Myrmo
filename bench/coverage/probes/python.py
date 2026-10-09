@@ -189,4 +189,8 @@ TestClient(Starlette())
       r'''pip install "requests==2.25.1" "urllib3>=2" 2>&1''', r"because these package versions have conflicting dependencies",
       {"pip": "25", "requests": "2.25.1", "python": "3.12"}, "https://raw.githubusercontent.com/pypa/pip/25.0/docs/html/topics/dependency-resolution.md",
       "ResolutionImpossible", "MIT", must=(r"conflicting dependencies|ResolutionImpossible", r"urllib3|requests")),
+    P("py-pip-no-matching-distribution", "python", "python:3.12-slim", "true",
+      "pip install requests==999.0.0 2>&1", r"Could not find a version that satisfies the requirement",
+      {"python": "3.12", "pip": "24"}, "https://raw.githubusercontent.com/pypa/pip/main/src/pip/_internal/resolution/resolvelib/factory.py",
+      "No matching distribution found for", "MIT", must=(r"No matching distribution|Could not find a version", r"version|index|python")),
 ]

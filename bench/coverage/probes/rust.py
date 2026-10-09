@@ -25,4 +25,13 @@ PROBES = [
       "cd /w && cargo build 2>&1", r"may not be used on the stable release channel",
       {"cargo": "1.82"}, "https://raw.githubusercontent.com/rust-lang/rustup/master/doc/user-guide/src/concepts/channels.md",
       "nightly", "MIT OR Apache-2.0", must=(r"#!\[feature|feature", r"nightly")),
+    P("rust-offline-registry-empty", "rust", "rust:1.82", "cargo new -q /w --bin && cd /w && cargo add serde@1 -q && rm -rf $CARGO_HOME/registry $CARGO_HOME/git",
+      "cd /w && cargo build --offline 2>&1", r"no matching package named|attempting to make an HTTP request",
+      {"cargo": "1.82"}, "https://raw.githubusercontent.com/rust-lang/cargo/master/doc/book/src/reference/config.md",
+      "do not access the network", "MIT OR Apache-2.0", must=(r"offline", r"cargo fetch|--offline|network|cache|registry")),
+    P("rust-linker-cc-not-found", "rust", "debian:bookworm-slim",
+      "apt-get update -qq >/dev/null && apt-get install -y -qq curl ca-certificates >/dev/null && curl -fsSL https://sh.rustup.rs | sh -s -- -y --profile minimal >/dev/null 2>&1 && . $HOME/.cargo/env && cargo new -q /w --bin",
+      ". $HOME/.cargo/env && cd /w && cargo build 2>&1", r"linker `cc` not found",
+      {"os": "debian-slim", "rustup": "stable"}, "https://raw.githubusercontent.com/rust-lang/book/main/src/ch01-01-installation.md",
+      "install a C compiler", "MIT OR Apache-2.0", must=(r"linker|cc", r"build-essential|gcc|apt")),
 ]

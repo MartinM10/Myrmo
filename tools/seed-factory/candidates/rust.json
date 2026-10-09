@@ -62,6 +62,27 @@
     "reason": ""
   },
   {
+    "id": "rust-linker-cc-not-found",
+    "error_line": "error: linker `cc` not found",
+    "versions": {
+      "os": "debian-slim",
+      "rustup": "stable"
+    },
+    "source": {
+      "url": "https://raw.githubusercontent.com/rust-lang/book/main/src/ch01-01-installation.md",
+      "licence": "MIT OR Apache-2.0"
+    },
+    "score": {
+      "recent": false,
+      "environment": false,
+      "transferable": true,
+      "reproducible": true,
+      "total": 2
+    },
+    "status": "reproduced",
+    "reason": ""
+  },
+  {
     "id": "rust-musl-target-missing",
     "error_line": "= note: the `x86_64-unknown-linux-musl` target may not be installed",
     "versions": {
@@ -69,6 +90,26 @@
     },
     "source": {
       "url": "https://raw.githubusercontent.com/rust-lang/rustup/master/doc/user-guide/src/cross-compilation.md",
+      "licence": "MIT OR Apache-2.0"
+    },
+    "score": {
+      "recent": false,
+      "environment": false,
+      "transferable": true,
+      "reproducible": true,
+      "total": 2
+    },
+    "status": "reproduced",
+    "reason": ""
+  },
+  {
+    "id": "rust-offline-registry-empty",
+    "error_line": "error: no matching package named `serde` found",
+    "versions": {
+      "cargo": "1.82"
+    },
+    "source": {
+      "url": "https://raw.githubusercontent.com/rust-lang/cargo/master/doc/book/src/reference/config.md",
       "licence": "MIT OR Apache-2.0"
     },
     "score": {

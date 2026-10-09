@@ -106,6 +106,46 @@
     "reason": ""
   },
   {
+    "id": "node-cannot-find-module-relative",
+    "error_line": "Error: Cannot find module './missing'",
+    "versions": {
+      "node": "20"
+    },
+    "source": {
+      "url": "https://raw.githubusercontent.com/nodejs/node/main/doc/api/errors.md",
+      "licence": "MIT"
+    },
+    "score": {
+      "recent": false,
+      "environment": false,
+      "transferable": true,
+      "reproducible": true,
+      "total": 2
+    },
+    "status": "reproduced",
+    "reason": ""
+  },
+  {
+    "id": "node-eaddrinuse",
+    "error_line": "Error: listen EADDRINUSE: address already in use :::3000",
+    "versions": {
+      "node": "20"
+    },
+    "source": {
+      "url": "https://raw.githubusercontent.com/nodejs/node/main/doc/api/errors.md",
+      "licence": "MIT"
+    },
+    "score": {
+      "recent": false,
+      "environment": false,
+      "transferable": true,
+      "reproducible": true,
+      "total": 2
+    },
+    "status": "reproduced",
+    "reason": ""
+  },
+  {
     "id": "node-eslint-plugin-missing",
     "error_line": "ESLint couldn't find the plugin \"eslint-plugin-react\".",
     "versions": {

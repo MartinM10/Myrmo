@@ -258,6 +258,12 @@
     "ok": true
   },
   {
+    "id": "py-pip-no-matching-distribution",
+    "url": "https://raw.githubusercontent.com/pypa/pip/main/src/pip/_internal/resolution/resolvelib/factory.py",
+    "licence": "MIT",
+    "ok": true
+  },
+  {
     "id": "node-eslint9-no-flat-config",
     "url": "https://raw.githubusercontent.com/eslint/eslint/v9.15.0/docs/src/use/configure/migration-guide.md",
     "licence": "MIT",
@@ -354,6 +360,18 @@
     "ok": true
   },
   {
+    "id": "node-cannot-find-module-relative",
+    "url": "https://raw.githubusercontent.com/nodejs/node/main/doc/api/errors.md",
+    "licence": "MIT",
+    "ok": true
+  },
+  {
+    "id": "node-eaddrinuse",
+    "url": "https://raw.githubusercontent.com/nodejs/node/main/doc/api/errors.md",
+    "licence": "MIT",
+    "ok": true
+  },
+  {
     "id": "jvm-lombok-jdk23",
     "url": "https://raw.githubusercontent.com/projectlombok/lombok/v1.18.34/doc/changelog.markdown",
     "licence": "MIT",
@@ -426,6 +444,12 @@
     "ok": true
   },
   {
+    "id": "jvm-maven-no-pom",
+    "url": "https://raw.githubusercontent.com/apache/maven/maven-3.9.x/maven-core/src/main/java/org/apache/maven/lifecycle/MissingProjectException.java",
+    "licence": "Apache-2.0",
+    "ok": true
+  },
+  {
     "id": "go-toolchain-local-too-new",
     "url": "https://raw.githubusercontent.com/golang/go/master/src/cmd/go/internal/toolchain/select.go",
     "licence": "BSD-3-Clause",
@@ -480,6 +504,18 @@
     "ok": true
   },
   {
+    "id": "go-build-no-go-mod",
+    "url": "https://raw.githubusercontent.com/golang/go/master/src/cmd/go/internal/modload/init.go",
+    "licence": "BSD-3-Clause",
+    "ok": true
+  },
+  {
+    "id": "go-import-cycle",
+    "url": "https://raw.githubusercontent.com/golang/go/master/src/cmd/go/internal/load/pkg.go",
+    "licence": "BSD-3-Clause",
+    "ok": true
+  },
+  {
     "id": "rust-edition2024-old-cargo",
     "url": "https://raw.githubusercontent.com/rust-lang/cargo/master/doc/book/src/reference/unstable.md",
     "licence": "MIT OR Apache-2.0",
@@ -516,6 +552,18 @@
     "ok": true
   },
   {
+    "id": "rust-offline-registry-empty",
+    "url": "https://raw.githubusercontent.com/rust-lang/cargo/master/doc/book/src/reference/config.md",
+    "licence": "MIT OR Apache-2.0",
+    "ok": true
+  },
+  {
+    "id": "rust-linker-cc-not-found",
+    "url": "https://raw.githubusercontent.com/rust-lang/book/main/src/ch01-01-installation.md",
+    "licence": "MIT OR Apache-2.0",
+    "ok": true
+  },
+  {
     "id": "dotnet-sdk8-targets-net9",
     "url": "https://raw.githubusercontent.com/dotnet/sdk/main/src/Tasks/Common/Resources/Strings.resx",
     "licence": "MIT",
@@ -530,6 +578,24 @@
   {
     "id": "dotnet-runtime-version-missing",
     "url": "https://raw.githubusercontent.com/dotnet/runtime/main/src/native/corehost/error_codes.h",
+    "licence": "MIT",
+    "ok": true
+  },
+  {
+    "id": "dotnet-no-restore-assets-missing",
+    "url": "https://raw.githubusercontent.com/dotnet/sdk/main/src/Tasks/Common/Resources/Strings.resx",
+    "licence": "MIT",
+    "ok": true
+  },
+  {
+    "id": "dotnet-nuget-version-not-found",
+    "url": "https://raw.githubusercontent.com/NuGet/NuGet.Client/dev/src/NuGet.Core/NuGet.Common/Errors/NuGetLogCode.cs",
+    "licence": "Apache-2.0",
+    "ok": true
+  },
+  {
+    "id": "dotnet-msbuild-no-project-file",
+    "url": "https://raw.githubusercontent.com/dotnet/msbuild/main/src/MSBuild/Resources/Strings.resx",
     "licence": "MIT",
     "ok": true
   },
