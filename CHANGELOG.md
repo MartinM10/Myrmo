@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.17.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.16.0...platform-v0.17.0) (2026-10-09)
+
+
+### Features
+
+* **bench:** MyrmoBench can run OpenCode agents ([5d065f4](https://github.com/MartinM10/Myrmo/commit/5d065f4b83346e7ce169d1ac2fb34b0b1263c1f0))
+* **bench:** MyrmoBench can run OpenCode agents, to measure cheaper follower models ([63c3080](https://github.com/MartinM10/Myrmo/commit/63c308018a6133a1d306df3d3718b18f237e3b12))
+
+
+### Bug fixes
+
+* **server:** a fingerprint key keeps at most 64 trails ([c962d1a](https://github.com/MartinM10/Myrmo/commit/c962d1a03cd5947b6a00467e1617721c15c3f8cb))
+* **server:** a fingerprint key keeps at most 64 trails ([36a9419](https://github.com/MartinM10/Myrmo/commit/36a9419f7c05baa0ee71010da12abe81cf3c79fa))
+
 ## [0.16.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.15.0...platform-v0.16.0) (2026-10-09)
 
 
