@@ -141,5 +141,25 @@
     },
     "status": "reproduced",
     "reason": ""
+  },
+  {
+    "id": "rust-z-flag-needs-nightly",
+    "error_line": "error: the `-Z` flag is only accepted on the nightly channel of Cargo, but this is the `stable` channel",
+    "versions": {
+      "cargo": "1.82"
+    },
+    "source": {
+      "url": "https://raw.githubusercontent.com/rust-lang/cargo/master/doc/book/src/reference/unstable.md",
+      "licence": "MIT OR Apache-2.0"
+    },
+    "score": {
+      "recent": false,
+      "environment": false,
+      "transferable": true,
+      "reproducible": true,
+      "total": 2
+    },
+    "status": "reproduced",
+    "reason": ""
   }
 ]

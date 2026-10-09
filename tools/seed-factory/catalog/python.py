@@ -309,3 +309,38 @@ TASKS += (
         tags=("pip", "pep668", "venv", "debian", "ubuntu", "docker"), message="externally-managed-environment",
     ),
 )
+
+TASKS += (
+    from_probe(
+        "py-pip-require-hashes-mismatch", category="dependency", error_type="HashMismatch", runtime=PY312, memory="512m",
+        summary="pip install --require-hashes stops with THESE PACKAGES DO NOT MATCH THE HASHES FROM THE REQUIREMENTS FILE when a pinned hash is not the one of the file pip downloaded.",
+        context="Installing from a hash-pinned requirements file after a version was bumped by hand, or with hashes generated for another platform or Python.",
+        failed_approaches=("pip install --require-hashes --no-cache-dir -r /tmp/req.txt 2>&1", "pip install --upgrade pip >/dev/null 2>&1; pip install --require-hashes -r /tmp/req.txt 2>&1"),
+        fix="printf 'requests==2.32.3\\n' > /tmp/req.txt && pip install -q requests==2.32.3 && pip install -q pip-tools && pip-compile --generate-hashes -q /tmp/req.txt -o /tmp/req-hashed.txt && pip install --require-hashes -r /tmp/req-hashed.txt",
+        verify="""python -c "import requests; print(requests.__version__)" """,
+        root_cause="In hash-checking mode pip compares the digest of every downloaded file with the hashes listed for that requirement and refuses the install when none matches. A hand-edited version, a wheel built for another platform or a stale file all give a hash that is not in the list; clearing the cache or upgrading pip cannot change that.",
+        steps=("Regenerate the file from the loose requirements with hashes for every file of the pinned version: pip-compile --generate-hashes (pip-tools), or uv pip compile --generate-hashes.", "If the hashes were made on another platform, generate them for all the platforms you install on, or install without --require-hashes for that environment."),
+        tags=("pip", "hashes", "requirements", "supply-chain"), message="DO NOT MATCH THE HASHES",
+    ),
+    from_probe(
+        "py-pytest-src-layout-not-installed", category="tooling", error_type="ModuleNotFoundError", runtime=PY312, memory="512m",
+        summary="pytest fails with ModuleNotFoundError: No module named for the project's own package when the code lives in a src layout and was never installed.",
+        context="Running pytest on a project whose package is under src/, in a fresh virtual environment or container where the project itself was not installed.",
+        failed_approaches=("cd /w && python -m pytest -q 2>&1", "cd /w && pytest -q --import-mode=importlib 2>&1"),
+        extra_setup="printf '[build-system]\\nrequires = [\"setuptools\"]\\nbuild-backend = \"setuptools.build_meta\"\\n[project]\\nname = \"mypkg\"\\nversion = \"1.0\"\\n[tool.setuptools.packages.find]\\nwhere = [\"src\"]\\n' > /w/pyproject.toml",
+        fix="cd /w && pip install -q -e . && pytest -q", verify="cd /w && pytest -q 2>&1 | tail -n 2",
+        root_cause="With a src layout the package is not next to the tests, so it is importable only once it is installed. pytest does not add src/ to the path, and a different import mode only changes how test files are found, not where the package is.",
+        steps=("Install the project in the environment before testing: pip install -e . (or pip install -e .[test]).", "Alternatively set pythonpath = [\"src\"] under [tool.pytest.ini_options], but the editable install tests the same layout users get."),
+        tags=("pytest", "src-layout", "packaging", "editable-install"), message="No module named 'mypkg'",
+    ),
+    from_probe(
+        "py-pip-requires-different-python", category="dependency", error_type="requires a different Python", runtime={"name": "python", "version": "3.10"}, memory="512m",
+        summary="pip install fails with ERROR: Package requires a different Python: 3.10 not in '>=3.12' when the package declares a minimum Python newer than the interpreter running pip.",
+        context="Installing a package, or a project of your own, that needs a newer Python than the one in the container or virtual environment.",
+        failed_approaches=("cd /w && pip install --upgrade pip setuptools >/dev/null 2>&1; pip install . 2>&1", "cd /w && pip install --no-deps . 2>&1"),
+        fix="cd /w && pip install --ignore-requires-python . && python -c \"import newpkg; print('installed')\"", verify="python -c \"import newpkg; print('installed')\"",
+        root_cause="The package's Requires-Python metadata says which interpreters it supports and pip refuses an install outside that range. Upgrading pip does not change the interpreter, and --no-deps only skips dependencies, not this check.",
+        steps=("Use an interpreter that satisfies the range: a newer base image or python version (pyenv, uv python install, conda).", "Or install an older release of the package that still supports your Python (pip install 'pkg<X'). --ignore-requires-python forces the install and can break at import time."),
+        tags=("pip", "requires-python", "version", "docker"), message="requires a different Python",
+    ),
+)

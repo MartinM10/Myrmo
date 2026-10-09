@@ -1,0 +1,10 @@
+{
+  "id": "rust-z-flag-needs-nightly",
+  "ok": true,
+  "error_line": "error: the `-Z` flag is only accepted on the nightly channel of Cargo, but this is the `stable` channel",
+  "exit_code": 101,
+  "output_tail": "error: the `-Z` flag is only accepted on the nightly channel of Cargo, but this is the `stable` channel\nSee https://doc.rust-lang.org/book/appendix-07-nightly-rust.html for more information about Rust release channels.",
+  "image": "rust:1.82",
+  "image_digest": "rust@sha256:d9c3c6f1264a547d84560e06ffd79ed7a799ce0bff0980b26cf10d29af888377",
+  "command": "cd /w && cargo build -Z unstable-options 2>&1"
+}

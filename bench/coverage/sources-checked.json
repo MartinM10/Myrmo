@@ -270,6 +270,24 @@
     "ok": true
   },
   {
+    "id": "py-pip-require-hashes-mismatch",
+    "url": "https://raw.githubusercontent.com/pypa/pip/main/docs/html/topics/secure-installs.md",
+    "licence": "MIT",
+    "ok": true
+  },
+  {
+    "id": "py-pytest-src-layout-not-installed",
+    "url": "https://raw.githubusercontent.com/pytest-dev/pytest/main/doc/en/explanation/goodpractices.rst",
+    "licence": "MIT",
+    "ok": true
+  },
+  {
+    "id": "py-pip-requires-different-python",
+    "url": "https://raw.githubusercontent.com/pypa/pip/main/src/pip/_internal/resolution/legacy/resolver.py",
+    "licence": "MIT",
+    "ok": true
+  },
+  {
     "id": "node-eslint9-no-flat-config",
     "url": "https://raw.githubusercontent.com/eslint/eslint/v9.15.0/docs/src/use/configure/migration-guide.md",
     "licence": "MIT",
@@ -378,6 +396,18 @@
     "ok": true
   },
   {
+    "id": "node-require-not-defined-in-esm-scope",
+    "url": "https://raw.githubusercontent.com/nodejs/node/main/doc/api/esm.md",
+    "licence": "MIT",
+    "ok": true
+  },
+  {
+    "id": "node-package-path-not-exported",
+    "url": "https://raw.githubusercontent.com/nodejs/node/main/doc/api/errors.md",
+    "licence": "MIT",
+    "ok": true
+  },
+  {
     "id": "jvm-lombok-jdk23",
     "url": "https://raw.githubusercontent.com/projectlombok/lombok/v1.18.34/doc/changelog.markdown",
     "licence": "MIT",
@@ -456,6 +486,12 @@
     "ok": true
   },
   {
+    "id": "jvm-maven-unknown-lifecycle-phase",
+    "url": "https://raw.githubusercontent.com/apache/maven/maven-3.9.x/maven-core/src/main/java/org/apache/maven/lifecycle/LifecyclePhaseNotFoundException.java",
+    "licence": "Apache-2.0",
+    "ok": true
+  },
+  {
     "id": "go-toolchain-local-too-new",
     "url": "https://raw.githubusercontent.com/golang/go/master/src/cmd/go/internal/toolchain/select.go",
     "licence": "BSD-3-Clause",
@@ -528,6 +564,18 @@
     "ok": true
   },
   {
+    "id": "go-get-unknown-revision",
+    "url": "https://raw.githubusercontent.com/golang/go/master/src/cmd/go/internal/modfetch/codehost/codehost.go",
+    "licence": "BSD-3-Clause",
+    "ok": true
+  },
+  {
+    "id": "go-modules-disabled-by-env",
+    "url": "https://raw.githubusercontent.com/golang/go/master/src/cmd/go/internal/modload/init.go",
+    "licence": "BSD-3-Clause",
+    "ok": true
+  },
+  {
     "id": "rust-edition2024-old-cargo",
     "url": "https://raw.githubusercontent.com/rust-lang/cargo/master/doc/book/src/reference/unstable.md",
     "licence": "MIT OR Apache-2.0",
@@ -578,6 +626,12 @@
   {
     "id": "rust-locked-lockfile-needs-update",
     "url": "https://raw.githubusercontent.com/rust-lang/cargo/master/doc/book/src/commands/cargo-build.md",
+    "licence": "MIT OR Apache-2.0",
+    "ok": true
+  },
+  {
+    "id": "rust-z-flag-needs-nightly",
+    "url": "https://raw.githubusercontent.com/rust-lang/cargo/master/doc/book/src/reference/unstable.md",
     "licence": "MIT OR Apache-2.0",
     "ok": true
   },

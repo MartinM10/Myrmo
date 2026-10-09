@@ -88,3 +88,16 @@ TASKS += (
         tags=("maven", "pom", "cli"), message="requires a project to execute",
     ),
 )
+
+TASKS += (
+    from_probe(
+        "jvm-maven-unknown-lifecycle-phase", category="tooling", error_type="Unknown lifecycle phase", runtime=J17, memory="2g",
+        summary="mvn fails with Unknown lifecycle phase pakage, You must specify a valid lifecycle phase or a goal in the format plugin-prefix:goal, when the phase name is mistyped or is not a Maven phase.",
+        context="Running mvn with a misspelled phase, or with a Gradle or npm task name, in a Maven project.",
+        failed_approaches=("cd /w && mvn -q -U pakage 2>&1", "cd /w && mvn -q clean pakage 2>&1"),
+        fix="cd /w && mvn -q package && echo built", verify="cd /w && mvn -q package && echo built",
+        root_cause="Maven takes each argument as a lifecycle phase (validate, compile, test, package, verify, install, deploy, clean...) or as plugin:goal. A word that is neither is rejected before anything runs, and options such as -U or an extra clean phase do not rename it.",
+        steps=("Fix the spelling: the phases are listed in the Maven lifecycle reference (validate, compile, test, package, verify, install, deploy).", "To run a plugin goal use plugin-prefix:goal, for example dependency:tree."),
+        tags=("maven", "lifecycle", "typo", "cli"), message="Unknown lifecycle phase",
+    ),
+)

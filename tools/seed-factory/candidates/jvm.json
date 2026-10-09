@@ -145,5 +145,26 @@
     },
     "status": "reproduced",
     "reason": ""
+  },
+  {
+    "id": "jvm-maven-unknown-lifecycle-phase",
+    "error_line": "[ERROR] Unknown lifecycle phase \"pakage\". You must specify a valid lifecycle phase or a goal in the format <plugin-prefix>:<goal> or <plugin-group-id>:<plugin-artifact-id>[:<plugin-version>]:<goal>. Available lifecycle phases are: pre-clean, clean, post-clean, validate, initialize, generate-sources, process-sources, generate-resources, process-resources, compile, process-classes, generate-test-sou",
+    "versions": {
+      "maven": "3.9",
+      "jdk": "17"
+    },
+    "source": {
+      "url": "https://raw.githubusercontent.com/apache/maven/maven-3.9.x/maven-core/src/main/java/org/apache/maven/lifecycle/LifecyclePhaseNotFoundException.java",
+      "licence": "Apache-2.0"
+    },
+    "score": {
+      "recent": false,
+      "environment": false,
+      "transferable": true,
+      "reproducible": true,
+      "total": 2
+    },
+    "status": "reproduced",
+    "reason": ""
   }
 ]

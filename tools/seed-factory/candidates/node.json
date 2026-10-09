@@ -167,6 +167,26 @@
     "reason": ""
   },
   {
+    "id": "node-package-path-not-exported",
+    "error_line": "Error [ERR_PACKAGE_PATH_NOT_EXPORTED]: Package subpath './lib/internal.js' is not defined by \"exports\" in /w/node_modules/libx/package.json",
+    "versions": {
+      "node": "20"
+    },
+    "source": {
+      "url": "https://raw.githubusercontent.com/nodejs/node/main/doc/api/errors.md",
+      "licence": "MIT"
+    },
+    "score": {
+      "recent": false,
+      "environment": false,
+      "transferable": true,
+      "reproducible": true,
+      "total": 2
+    },
+    "status": "reproduced",
+    "reason": ""
+  },
+  {
     "id": "node-prisma-openssl-slim",
     "error_line": "Unable to require(`/w/node_modules/.prisma/client/libquery_engine-debian-openssl-1.1.x.so.node`).",
     "versions": {
@@ -177,6 +197,26 @@
     "source": {
       "url": "https://raw.githubusercontent.com/prisma/prisma/5.22.0/packages/get-platform/src/getPlatform.ts",
       "licence": "Apache-2.0"
+    },
+    "score": {
+      "recent": false,
+      "environment": false,
+      "transferable": true,
+      "reproducible": true,
+      "total": 2
+    },
+    "status": "reproduced",
+    "reason": ""
+  },
+  {
+    "id": "node-require-not-defined-in-esm-scope",
+    "error_line": "ReferenceError: require is not defined in ES module scope, you can use import instead",
+    "versions": {
+      "node": "20"
+    },
+    "source": {
+      "url": "https://raw.githubusercontent.com/nodejs/node/main/doc/api/esm.md",
+      "licence": "MIT"
     },
     "score": {
       "recent": false,

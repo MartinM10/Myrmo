@@ -127,3 +127,26 @@ TASKS += (
         tags=("node", "port", "eaddrinuse", "server"), message="EADDRINUSE",
     ),
 )
+
+TASKS += (
+    from_probe(
+        "node-require-not-defined-in-esm-scope", category="runtime", error_type="ReferenceError", runtime=NODE20, memory="512m",
+        summary="node fails with ReferenceError: require is not defined in ES module scope, you can use import instead, when a file is treated as an ES module because package.json has type module.",
+        context="Running a CommonJS-style script in a project whose package.json sets type to module, or after renaming a file to .mjs.",
+        failed_approaches=("cd /w && node --experimental-require-module index.js 2>&1", "cd /w && node --input-type=commonjs index.js 2>&1"),
+        fix="cd /w && mv index.js index.cjs && node index.cjs", verify="cd /w && node index.cjs",
+        root_cause="With type module in the nearest package.json every .js file is an ES module, where require does not exist. Flags that change the module type of stdin or add experimental loading do not apply to a file that is already classified as ESM.",
+        steps=("Rename the file to .cjs to keep CommonJS, or rewrite it with import (import os from 'node:os').", "In an ES module use createRequire(import.meta.url) when you need require for one CommonJS-only package."),
+        tags=("node", "esm", "commonjs", "package-json"), message="require is not defined in ES module scope",
+    ),
+    from_probe(
+        "node-package-path-not-exported", category="api_contract", error_type="ERR_PACKAGE_PATH_NOT_EXPORTED", runtime=NODE20, memory="512m",
+        summary="node fails with Error ERR_PACKAGE_PATH_NOT_EXPORTED: Package subpath is not defined by exports in package.json, when code imports a deep path that the package no longer exposes.",
+        context="Importing pkg/lib/internal.js or a similar deep path after the package added an exports map in a newer version.",
+        failed_approaches=("cd /w && node --preserve-symlinks index.js 2>&1", "cd /w && NODE_OPTIONS=--no-experimental-require-module node index.js 2>&1"),
+        fix="""cd /w && printf "require('libx');\\n" > index.js && node index.js && echo ok""", verify="cd /w && node index.js && echo ok",
+        root_cause="Once a package.json has an exports field, only the subpaths listed there can be imported from outside the package; every other file is private, even though it is on disk. Resolver flags do not change what the package chooses to export.",
+        steps=("Import a path the package exports (check its exports field and README), usually the package root.", "If you need an internal file, ask the maintainers to export it, or pin the older version before the exports map, or use a patch tool; do not copy files out of node_modules."),
+        tags=("node", "exports", "package-json", "module-resolution"), message="ERR_PACKAGE_PATH_NOT_EXPORTED",
+    ),
+)
