@@ -521,9 +521,26 @@ The first lookup no longer grows with the key. The collapse of enrichment shows 
 | No limit (5,500 to 5,700 under each key) | 550 to 709 ms | 903 s | 31 trails/s (3/s) | 100% (300 of 300) |
 | 64 per key | 7 to 20 ms | 277 s | 101 trails/s (41/s) | 100% (300 of 300) |
 
-Indexing the same trails takes a third of the time, and the cached lookups are unchanged. The wrong answers are **not**
-fixed: the limit makes them cheaper, not rarer, and a search about a package nobody published still gets a trail of the
-family.
+Indexing the same trails takes a third of the time, and the cached lookups are unchanged. The limit makes the wrong
+answers cheaper, not rarer; what makes them rarer is the next change.
+
+**Checking the names the key erases.** The SDKs and the colony now compare the module, image or repository two messages name
+([Fingerprints](../concepts/fingerprints.md#names-the-key-erases)). With 5,000 colliding trails (64 under each key) and 300
+searches per family about a name nobody published:
+
+| Family | Searches that got a trail (all wrong), before | After |
+|---|---|---|
+| no required module provides package (Go modules) | 100% (55 of 55) | 0% (0 of 55) |
+| pull access denied (images) | 100% (62 of 62) | 0% (0 of 62) |
+| unable to access (git URLs) | 100% (71 of 71) | 0% (0 of 71) |
+| E404 (registry packages) | 100% (54 of 54) | 0% (0 of 54) |
+| FileNotFoundError (file paths) | 100% (58 of 58) | 100% (58 of 58) |
+
+A file path is the machine's, not a name, so that family is unchanged: the same fix (create the file, change the directory)
+often serves any path, which is why those answers are arguably not wrong. On the 121-trail retrieval corpus the same
+searches give the same results with and without the check (top-1 100, 100, 99, 92, 100 and 96% for the six variants, and
+8 of 39 errors that no trail covers still get a trail: that figure rose from 5 of 39 with the 11 trails of the fourth batch,
+before this change, and is the next thing to look at).
 
 ## Leak test bank
 

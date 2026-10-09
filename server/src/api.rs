@@ -630,7 +630,11 @@ async fn search(
         // A semantic hit must be about the same thing, not only phrased like it.
         .filter(|c| {
             let (via, score) = scores[&c.id];
-            via == "fingerprint" || asked.is_relevant(&c.payload["trail"], score)
+            if via == "fingerprint" {
+                !asked.path_names_conflict(&c.payload["trail"])
+            } else {
+                asked.is_relevant(&c.payload["trail"], score)
+            }
         })
         .map(|c| {
             let (via, score) = scores[&c.id];

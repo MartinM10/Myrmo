@@ -8,6 +8,7 @@
 import { agentIdentity, publishChoice } from "./config.js";
 import { detectEnvironment, parsePackage } from "./environment.js";
 import { fingerprint2, guessErrorType } from "./fingerprint.js";
+import { namesConflict } from "./names.js";
 import { possibleNames, redactText, redactValue, type RedactionReport } from "./redact.js";
 import type { AgentInfo, DraftResult, DraftState, Environment, Hit, Outcome, PublishMode, PublishResult, SearchQuery, SearchResult, Trail, Validation } from "./types.js";
 
@@ -204,8 +205,11 @@ export class Colony {
     const errorType = query.errorType ?? guessErrorType(error);
     const fp = fingerprint2(error);
 
-    const exact = await this.lookup(fp, query.model);
-    if (exact && exact.hits.length > 0) return exact;
+    // fp2 erases the module path, image or repository an error names: an exact hit about another one is no answer.
+    const found = await this.lookup(fp, query.model);
+    const kept = found?.hits.filter((hit) => !namesConflict(error, String(hit.trail?.problem?.error_message ?? ""))) ?? [];
+    const exact = found && kept.length > 0 ? (kept.length === found.hits.length ? found : { ...found, hits: kept }) : null;
+    if (exact) return exact;
 
     const environment: Environment = {
       ...detectEnvironment(),

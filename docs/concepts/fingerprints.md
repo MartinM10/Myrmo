@@ -102,6 +102,22 @@ when it is not cached. Very short generic messages (`permission denied`) can col
 the same way. The lookup returns the trails with their own runtime and error type, so the agent can see
 whether the environment fits, and a semantic search ranks by environment overlap.
 
+## Names the key erases
+
+fp2 replaces paths, URLs and numbers by placeholders, so errors whose only identity is one of them (a Go module path, a
+container image, a git or registry URL) share a key: every `no required module provides package <module>` is one fingerprint.
+An exact lookup would answer with a trail about another package. So the SDKs check each exact hit against the error they
+were asked about: they read the names both messages spell (a host-and-path such as `github.com/acme/widgets`, an image such as
+`library/nginx`, a registry package) and drop the hit when both spell names and share none. Sharing means the same name, one
+inside the other, or the same last segment. Absolute paths, files and numbers are the machine's and are not names. The
+colony applies the same check to every hit of a search, exact or semantic.
+
+The function is [`placeholder_names`](https://github.com/MartinM10/Myrmo/blob/main/server/src/relevance.rs), ported to the
+Python and JavaScript SDKs, and its vectors in
+[`protocol/placeholder_names.v1.vectors.json`](https://github.com/MartinM10/Myrmo/blob/main/protocol/placeholder_names.v1.vectors.json)
+are normative for the three. A client that does not implement it still works: it only keeps showing the exact hit about
+another package, as before, unless it searches.
+
 ## Conformance
 
 The reference implementation is

@@ -273,6 +273,99 @@ pub fn identifiers(query: &str) -> HashSet<String> {
     found
 }
 
+/// File extensions that make a slash-separated token a file, not the name of a module or an image.
+const FILE_EXTENSIONS: &[&str] = &[
+    "py", "js", "mjs", "cjs", "ts", "tsx", "jsx", "rs", "go", "java", "kt", "c", "h", "cc", "cpp",
+    "hpp", "cs", "rb", "php", "json", "yaml", "yml", "toml", "lock", "xml", "csv", "txt", "md",
+    "ini", "cfg", "conf", "sh", "log", "html", "css", "sql", "whl", "gz", "zip", "tar", "so",
+    "dll", "exe", "pem", "crt", "key",
+];
+
+/// The names a message spells inside what the fingerprint turns into a placeholder: the module path of a Go package
+/// (`github.com/stretchr/testify`), the repository in a git URL, a registry package (`registry.npmjs.org/left-pad`),
+/// an image (`library/nginx`). They are what tells two errors of one family apart, and the fingerprint erases them.
+/// Absolute paths, files and numbers, which differ from one machine to the next, are not names.
+/// `protocol/placeholder_names.v1.vectors.json` is normative; the SDKs port this function.
+pub fn placeholder_names(text: &str) -> HashSet<String> {
+    text.split(|c: char| c.is_whitespace() || "'\"`()[]<>,;=".contains(c))
+        .filter_map(placeholder_name)
+        .collect()
+}
+
+fn placeholder_name(raw: &str) -> Option<String> {
+    let mut token = raw.to_lowercase();
+    if let Some(i) = token.find("://") {
+        token = token[i + 3..].to_string();
+    }
+    if let Some(i) = token.find(['?', '#']) {
+        token.truncate(i);
+    }
+    // user:password@host/path: the credentials are not part of the name.
+    if let Some(at) = token.find('@') {
+        let (head, tail) = (&token[..at], &token[at + 1..]);
+        if !head.is_empty() && !head.contains('/') && tail.contains('/') {
+            token = tail.to_string();
+        }
+    }
+    // name@1.2.3: the version is not part of the name.
+    if let Some(at) = token.rfind('@') {
+        let (head, tail) = (&token[..at], &token[at + 1..]);
+        if head.contains('/') && !tail.contains('/') {
+            token = head.to_string();
+        }
+    }
+    let punctuation = [':', '.', '/'];
+    let mut token = token.trim_end_matches(punctuation).to_string();
+    if let Some(stripped) = token.strip_suffix(".git") {
+        token = stripped.trim_end_matches(punctuation).to_string();
+    }
+    // An image tag, or a line and column (`main.rs:5:3`): a colon after the last slash ends the name.
+    if let Some(end) = token
+        .rfind('/')
+        .and_then(|slash| token[slash..].find(':').map(|colon| slash + colon))
+    {
+        token.truncate(end);
+    }
+    if !token.contains('/') || !token.starts_with(|c: char| c.is_ascii_alphanumeric()) {
+        return None;
+    }
+    let segments: Vec<&str> = token.split('/').collect();
+    if segments.len() > 8 || segments.iter().any(|segment| segment.is_empty()) {
+        return None;
+    }
+    let last = segments[segments.len() - 1];
+    if last
+        .rsplit_once('.')
+        .is_some_and(|(_, extension)| FILE_EXTENSIONS.contains(&extension))
+    {
+        return None;
+    }
+    let host = segments[0].split(':').next().unwrap_or_default();
+    let host_like = host == "localhost"
+        || (host.contains('.')
+            && host
+                .rsplit('.')
+                .next()
+                .is_some_and(|tld| tld.len() >= 2 && tld.chars().all(|c| c.is_ascii_alphabetic())));
+    let pair = segments.len() == 2 && !segments[0].contains('.');
+    ((host_like || pair) && token.chars().any(|c| c.is_ascii_alphabetic())).then_some(token)
+}
+
+/// Whether two sets of names share one: the same name, one inside the other (`github.com/a/b` and
+/// `github.com/a/b/assert`), or the same final segment (`github.com/a/foo` and `gitlab.com/b/foo`).
+fn share_a_name(a: &HashSet<String>, b: &HashSet<String>) -> bool {
+    a.iter().any(|x| {
+        b.iter().any(|y| {
+            x == y
+                || x.strip_prefix(y.as_str())
+                    .is_some_and(|rest| rest.starts_with('/'))
+                || y.strip_prefix(x.as_str())
+                    .is_some_and(|rest| rest.starts_with('/'))
+                || x.rsplit('/').next() == y.rsplit('/').next()
+        })
+    })
+}
+
 /// Every word a stored trail is about.
 fn trail_words(trail: &Value) -> HashSet<String> {
     let mut text = String::new();
@@ -447,10 +540,26 @@ impl<'a> Asked<'a> {
         nq.iter().any(|w| !nm.contains(w)) && nm.iter().any(|w| !nq.contains(w))
     }
 
+    /// An exact fingerprint hit is the same error by construction, except where the fingerprint erased the name: a Go
+    /// module path, an image, a registry URL all become one placeholder. True when the query and the trail's message
+    /// both spell such names and share none: another package, so another error.
+    pub fn path_names_conflict(&self, trail: &Value) -> bool {
+        let asked = placeholder_names(self.query);
+        if asked.is_empty() {
+            return false;
+        }
+        let have = placeholder_names(&fingerprint::message_for_problem(&trail["problem"]));
+        !have.is_empty() && !share_a_name(&asked, &have)
+    }
+
     /// Whether a semantic hit may be shown for this query.
     pub fn is_relevant(&self, trail: &Value, similarity: f64) -> bool {
         // Close in the embedding is not the same error: two messages that name different things are not one.
         if self.names_conflict(&fingerprint::message_for_problem(&trail["problem"])) {
+            return false;
+        }
+        // Nor are two that name another module, image or repository, the names the check above cannot see.
+        if self.path_names_conflict(trail) {
             return false;
         }
         if similarity >= HIGH_CONFIDENCE {
@@ -556,6 +665,37 @@ mod tests {
             Asked::new(asked, "").is_relevant(&other, 0.95),
             "a near-identical match is not second-guessed"
         );
+    }
+
+    #[test]
+    fn names_the_fingerprint_erases_tell_two_errors_apart() {
+        let vectors: Value = serde_json::from_str(include_str!(
+            "../../protocol/placeholder_names.v1.vectors.json"
+        ))
+        .unwrap();
+        for case in vectors["names"].as_array().unwrap() {
+            let text = case["text"].as_str().unwrap();
+            let expected: HashSet<String> = case["names"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|n| n.as_str().unwrap().to_string())
+                .collect();
+            assert_eq!(placeholder_names(text), expected, "{text:?}");
+        }
+        for case in vectors["conflicts"].as_array().unwrap() {
+            let (query, message) = (
+                case["query"].as_str().unwrap(),
+                case["message"].as_str().unwrap(),
+            );
+            let trail = json!({"problem": {"error_message": message}});
+            assert_eq!(
+                Asked::new(query, "").path_names_conflict(&trail),
+                case["conflict"].as_bool().unwrap(),
+                "{}: {query:?} against {message:?}",
+                case["note"].as_str().unwrap()
+            );
+        }
     }
 
     #[test]
