@@ -107,6 +107,7 @@ was made from. Coverage is measured on the reserved half, so it says how a colon
 | With 45 reproduced trails added | 75 | 4% (2) | 16% (7) | 18% (8) | 62% (28) |
 | With a third batch added | 90 | 4% (2) | 16% (7) | 31% (14) | 49% (22) |
 | Same colony, with the identifier rule | 90 | 4% (2) | 16% (7) | 20% (9) | 60% (27) |
+| The public colony after a fourth batch (11 more trails, measured on production) | 101 | 4% (2) | 16% (7) | 20% (9) | 60% (27) |
 
 The second row onwards runs with the similarity floor at 0.75; the last row also applies the identifier rule (a search that
 quotes a name or an error code, such as `'url_quote'` or `ERR_REQUIRE_ESM`, only returns trails that mention one of them). A *wrong trail* is a trail that came back, none of which solves the
@@ -115,11 +116,39 @@ the right answer when nothing in the colony solves the error. The "did not come 
 in the colony does solve it by the rubric but the search did not return it: the floor and the name check trade those against
 wrong trails (see the floor sweep in [Retrieval](#retrieval)).
 
-Reading it honestly: a colony of 90 trails answers about one reserved error in twenty, and returns a wrong trail for one in five.
+Reading it honestly: a colony of about a hundred trails answers about one reserved error in twenty, and returns a wrong trail for one in five.
 That is what a small, deliberate set of recent breakages buys. Coverage grows with the number of ecosystems and breakages
 covered, not with the number of trails in one, and the false positives grow with the corpus unless relevance keeps up. The 91
 lines are a small sample chosen by us, and the rubric that decides "solves" is a heuristic; `bench/coverage/README.md` says how
 it works.
+
+## Decision model
+
+The enricher asks a System One engine to categorise each trail, score its quality, and score prompt injection and sensitive
+content. `bench/decision/engine_eval.py` asks an engine the same questions the server asks, over two small labelled sets of the
+repository (63 injection texts and 37 benign ones; 30 trails with the category the project expects, 4 of them not yet confirmed
+by the owner), so engines can be compared with the colony's own wording. Run on 2026-10-09 with Laya (the bundled engine, on CPU,
+four requests at a time) and Jev (hosted):
+
+| | Laya | Jev |
+|---|---|---|
+| Category right (30 trails) | 5 | 18 |
+| Category right, without the 4 unconfirmed | 4 of 26 | 17 of 26 |
+| Injections caught at 0.5 (63) | 56 | 58 |
+| False alarms at 0.5 (37 benign) | 16 | 11 |
+| Injections caught at 0.9 | 42 | 47 |
+| False alarms at 0.9 | 4 | 3 |
+| Median call | 2,149 ms | 328 ms |
+
+Laya's category answers are close to chance and as confident when wrong (0.67) as when right (0.66); Jev's confidence is higher
+when right (0.86) than when wrong (0.77), which is what lets the server trust a category only above a confidence and a margin.
+Both are indications from small sets: 30 and 100 texts, no confidence intervals, a latency that depends on the machine for
+Laya. The rules, not the model, decide whether a trail is rejected for injection (`MYRMO_MODEL_INJECTION_GATE` is off), and
+these sets measure the model alone. The raw answers of that run were not kept: the script reproduces them.
+
+In production the time from submitting a trail to its being indexed was a median 12.9 s with Laya (16 trails of one batch,
+largest 15.1 s) and 2.3 s with Jev (11 trails of the next, largest 2.5 s). Publishing is still limited by the quota per address,
+and writing a reproducible task is the slow part of populating a colony; the engine was not the bottleneck there.
 
 ## Load
 
