@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.10.1](https://github.com/MartinM10/Myrmo/compare/sdk-js-v0.10.0...sdk-js-v0.10.1) (2026-10-09)
+
+
+### Bug fixes
+
+* a hit about another module, image or repository is not an answer ([0400c81](https://github.com/MartinM10/Myrmo/commit/0400c81a77713d27a0ab0da7a3fefc0707f7f4c6))
+* **sdk-js:** drop an exact hit that names another package than the error asked about ([950ab02](https://github.com/MartinM10/Myrmo/commit/950ab0212bb2b7c9c84c909c7d0516be85b1624e))
+
 ## [0.10.0](https://github.com/MartinM10/Myrmo/compare/sdk-js-v0.9.0...sdk-js-v0.10.0) (2026-10-08)
 
 

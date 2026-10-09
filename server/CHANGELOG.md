@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.7.2](https://github.com/MartinM10/Myrmo/compare/server-v0.7.1...server-v0.7.2) (2026-10-09)
+
+
+### Bug fixes
+
+* a hit about another module, image or repository is not an answer ([0400c81](https://github.com/MartinM10/Myrmo/commit/0400c81a77713d27a0ab0da7a3fefc0707f7f4c6))
+* **server:** a hit about another module, image or repository is not an answer ([ed51450](https://github.com/MartinM10/Myrmo/commit/ed514500fa2377ec535d10ce12384e7d409af583))
+
 ## [0.7.1](https://github.com/MartinM10/Myrmo/compare/server-v0.7.0...server-v0.7.1) (2026-10-09)
 
 

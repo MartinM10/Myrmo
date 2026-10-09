@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.4.0](https://github.com/MartinM10/Myrmo/compare/protocol-v1.3.0...protocol-v1.4.0) (2026-10-09)
+
+
+### Features
+
+* **protocol:** vectors for the names that fp2 erases ([6866a74](https://github.com/MartinM10/Myrmo/commit/6866a743d1384a5ccd75d9878d6656d33559962e))
+
+
+### Bug fixes
+
+* a hit about another module, image or repository is not an answer ([0400c81](https://github.com/MartinM10/Myrmo/commit/0400c81a77713d27a0ab0da7a3fefc0707f7f4c6))
+
 ## [1.3.0](https://github.com/MartinM10/Myrmo/compare/protocol-v1.2.0...protocol-v1.3.0) (2026-10-08)
 
 
