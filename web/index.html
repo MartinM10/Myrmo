@@ -162,16 +162,58 @@
     padding: clamp(64px, 9vw, 120px) var(--gutter);
     border-bottom: 1px solid var(--wall);
   }
-  .film { max-width: 960px; margin: 0; }
+  /* The film sits on a stage: a pheromone glow and trails that converge on the window */
+  #film { overflow-x: clip; }
+  #film .section-head { justify-self: center; text-align: center; justify-items: center; }
+  .film { position: relative; width: 100%; max-width: 1000px; margin: 0 auto; isolation: isolate; }
+  .film::before {
+    content: "";
+    position: absolute;
+    inset: -14% -10%;
+    z-index: -2;
+    background: radial-gradient(ellipse at center, rgba(var(--amber-glow), 0.26), transparent 62%);
+    filter: blur(26px);
+    animation: stage-breathe 7s ease-in-out infinite;
+  }
+  .film-trails { position: absolute; left: -16%; right: -16%; top: -18%; bottom: -18%; width: 132%; height: 136%; z-index: -1; pointer-events: none; overflow: visible; }
+  .film-trails path { fill: none; stroke: var(--amber); stroke-width: 2; stroke-linecap: round; stroke-dasharray: 1 9; opacity: 0.55; animation: film-march 2.4s linear infinite; }
+  .film-trails path:nth-child(even) { opacity: 0.35; animation-duration: 3.4s; }
+  .film-trails circle { fill: var(--amber); opacity: 0.7; }
   .film video {
     display: block;
     width: 100%;
     aspect-ratio: 16 / 9;
     background: #000;
-    border: 1px solid var(--wall);
-    border-radius: var(--radius);
+    border: 1px solid color-mix(in srgb, var(--amber) 45%, var(--wall));
+    border-radius: 10px;
+    box-shadow: 0 0 0 6px rgba(var(--amber-glow), 0.08), 0 30px 90px -30px rgba(var(--amber-glow), 0.55);
   }
-  .film figcaption { margin-top: 12px; color: var(--dust); font-size: var(--t-sm); }
+  .film figcaption { margin-top: 18px; text-align: center; color: var(--dust); font-size: var(--t-sm); }
+  @keyframes stage-breathe { 0%, 100% { opacity: 0.75; transform: scale(1); } 50% { opacity: 1; transform: scale(1.04); } }
+  @keyframes film-march { to { stroke-dashoffset: -20; } }
+  /* Back to the top: appears once the hero is behind you */
+  .to-top {
+    position: fixed;
+    right: clamp(14px, 2.5vw, 28px);
+    bottom: clamp(14px, 2.5vw, 28px);
+    z-index: 40;
+    display: grid;
+    place-items: center;
+    width: 46px;
+    height: 46px;
+    color: var(--amber-ink);
+    background: var(--tunnel);
+    border: 1px solid color-mix(in srgb, var(--amber) 55%, var(--wall));
+    border-radius: 50%;
+    box-shadow: 0 8px 24px -10px rgba(var(--amber-glow), 0.6);
+    opacity: 0;
+    transform: translateY(12px);
+    pointer-events: none;
+    transition: opacity 0.3s ease, transform 0.3s ease, background-color 0.2s, box-shadow 0.2s;
+  }
+  .to-top.show { opacity: 1; transform: none; pointer-events: auto; }
+  .to-top:hover { background: color-mix(in srgb, var(--amber) 18%, var(--tunnel)); box-shadow: 0 10px 30px -8px rgba(var(--amber-glow), 0.85); }
+  .to-top svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
   .section-head { display: grid; gap: 14px; max-width: 60ch; }
   .section-head h2 { font-size: var(--t-2xl); font-stretch: 87.5%; }
   .section-head p:not(.eyebrow) { color: var(--dust); font-size: var(--t-lg); line-height: 1.5; }
@@ -499,6 +541,16 @@
       <h2 id="film-title">Every agent starts from zero. It does not have to.</h2>
     </div>
     <figure class="film">
+      <svg class="film-trails" viewBox="0 0 1320 680" preserveAspectRatio="none" aria-hidden="true">
+        <path d="M0,90 C180,60 260,210 420,230 S560,300 660,340"/>
+        <path d="M0,330 C140,350 240,300 380,330 S560,340 660,340"/>
+        <path d="M20,620 C200,600 300,470 450,440 S580,380 660,340"/>
+        <path d="M1320,80 C1140,110 1060,200 900,240 S760,300 660,340"/>
+        <path d="M1320,350 C1180,330 1080,390 940,360 S760,345 660,340"/>
+        <path d="M1300,630 C1130,610 1030,480 880,450 S740,380 660,340"/>
+        <circle cx="0" cy="90" r="4"/><circle cx="0" cy="330" r="4"/><circle cx="20" cy="620" r="4"/>
+        <circle cx="1320" cy="80" r="4"/><circle cx="1320" cy="350" r="4"/><circle cx="1300" cy="630" r="4"/>
+      </svg>
       <video controls preload="none" playsinline poster="assets/myrmo-film-poster.jpg" aria-label="Myrmo in one minute: agents everywhere hit the same errors every day, until one finds the way and leaves a trail others can follow.">
         <source src="assets/myrmo-film.mp4" type="video/mp4">
         Your browser cannot play this video. <a href="assets/myrmo-film.mp4">Download it</a>.
@@ -761,9 +813,24 @@
   <a href="https://github.com/MartinM10/Myrmo/blob/main/LICENSING.md">Apache-2.0 · AGPL-3.0 · CC BY-SA 4.0</a>
 </footer>
 
+<a class="to-top" id="to-top" href="#" aria-label="Back to the top"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg></a>
+
 <script src="assets/common.js"></script>
 <script src="assets/motion.js"></script>
 <script src="assets/bench-results.js"></script>
+<script>
+  (function () {
+    var b = document.getElementById("to-top");
+    if (!b) return;
+    var shown = false;
+    function update() {
+      var on = window.scrollY > Math.max(600, window.innerHeight * 0.8);
+      if (on !== shown) { shown = on; b.classList.toggle("show", on); }
+    }
+    window.addEventListener("scroll", update, { passive: true });
+    update();
+  })();
+</script>
 <script>
 (() => {
   "use strict";
