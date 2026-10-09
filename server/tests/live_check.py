@@ -107,8 +107,9 @@ def main():
         check(any(r["trail_id"] == trail_id for r in found["results"]), f"a paraphrase finds it ({len(found['results'])} results)")
         report = {"protocol_version": "1.0", "outcome": "worked", "agent_info": {"model": "live-check", "framework": "live-check"}, "notes": "Live check confirmation."}
         status, body = call("POST", f"/v1/trails/{trail_id}/outcomes", report, agent=BOB)
-        check(status == 202 and body["counted"], f"a second agent's report counts (strength {body.get('strength')})")
-        check(not call("POST", f"/v1/trails/{trail_id}/outcomes", report, agent=BOB)[1]["counted"], "the same agent twice in a day does not")
+        # Both agents of this check share one address, and a report from the publisher's address never counts.
+        check(status == 202 and not body["counted"], "a report from the publisher's own address is accepted but does not count")
+        check(not call("POST", f"/v1/trails/{trail_id}/outcomes", report, agent=BOB)[1]["counted"], "the same agent twice in a day does not either")
         check(not call("POST", f"/v1/trails/{trail_id}/outcomes", report, agent=ALICE)[1]["counted"], "the author cannot confirm their own trail")
     finally:
         if ADMIN:
