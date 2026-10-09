@@ -484,9 +484,17 @@ the limit off and on):
 | No limit (about 1,000 under each key) | 88 to 123 ms | 0.8 to 0.9 ms | 99 trails/s | 100% (300 of 300) |
 | 64 per key | 7 to 20 ms | 0.8 ms | 99 trails/s | 100% (300 of 300) |
 
-The first lookup no longer grows with the key. The enrichment rate was not slowed at 1,000 siblings, so the collapse seen at
-5,000 to 6,000 was not rerun; the limit bounds the work by construction. The wrong answers are **not** fixed: the limit makes
-them cheaper, not rarer, and a search about a package nobody published still gets a trail of the family.
+The first lookup no longer grows with the key. The collapse of enrichment shows up with bigger keys: 28,000 colliding trails
+(about 5,600 under each of the five keys), same machine and population, limit off and on:
+
+| | First lookup after the cache expires | Time to index 28,000 trails | Enrichment, overall (at the end) | Searches about an unpublished name that got a trail |
+|---|---|---|---|---|
+| No limit (5,500 to 5,700 under each key) | 550 to 709 ms | 903 s | 31 trails/s (3/s) | 100% (300 of 300) |
+| 64 per key | 7 to 20 ms | 277 s | 101 trails/s (41/s) | 100% (300 of 300) |
+
+Indexing the same trails takes a third of the time, and the cached lookups are unchanged. The wrong answers are **not**
+fixed: the limit makes them cheaper, not rarer, and a search about a package nobody published still gets a trail of the
+family.
 
 ## Leak test bank
 

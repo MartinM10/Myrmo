@@ -98,6 +98,9 @@ services:
     volumes:
       - laya-models:/models
     restart: unless-stopped
+    # Set LAYA_REPLICAS=0 to keep it stopped (and its models) while a hosted engine answers instead.
+    deploy:
+      replicas: ${LAYA_REPLICAS:-1}
 
 volumes:
   valkey-data:
