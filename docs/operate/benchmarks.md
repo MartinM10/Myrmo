@@ -72,10 +72,26 @@ With `ANTHROPIC_API_KEY` the runs are billed per token; with `CLAUDE_CODE_OAUTH_
 quota of a Claude subscription and cost no money, but 44 agent sessions can use up a plan's usage window, so spread them over
 days. In that case the cost the runner shows is notional and `--approved-usd` only works as a brake.
 
+To measure cheaper models as followers, run OpenCode instead (`--agent opencode`). It takes models as `<provider>/<model>`
+(`opencode models` lists them once you are signed in; an OpenCode Go subscription gives `opencode-go/<id>`) and the key in
+`OPENCODE_API_KEY`:
+
+```bash
+export OPENCODE_API_KEY=...
+python bench/myrmobench/run.py plan --agent opencode --pioneer opencode-go/<id> --followers opencode-go/<id>
+python bench/myrmobench/run.py run  --agent opencode --pioneer opencode-go/<id> --followers opencode-go/<id> \
+    --execute --approved-usd 15 --tasks uv-path --repetitions 2
+```
+
+The agent has the same tools as the Claude Code runs (shell, files) and no web access, and Myrmo is its only MCP server in the
+"with" condition. Models without a known price are costed at an assumed, deliberately high price, so the ceiling and the
+spending brake never come out too low; where the agent reports no cost, the brake counts tokens at that price. Results of
+different agents are different runs: the published numbers name the agent and the models.
+
 `run` does nothing without `--execute` and `--approved-usd`, refuses an amount below the plan's ceiling, and stops when
 the cost the agent CLI reports reaches the approved amount. Each run starts from a fresh container that has the agent
-installed; the hidden `check.sh` is copied in only after the agent has finished. Only the Claude Code agent is
-implemented; Gemini CLI is not. Tokens count input, output and cache. `publish_results.py` refuses a run without follower
+installed; the hidden `check.sh` is copied in only after the agent has finished. Two agents are implemented, Claude Code
+and [OpenCode](https://opencode.ai); Gemini CLI is not. Tokens count input, output and cache. `publish_results.py` refuses a run without follower
 runs both with and without Myrmo. The plan's per-run token budget is a guess, to be replaced by the first measured run.
 
 ## Coverage

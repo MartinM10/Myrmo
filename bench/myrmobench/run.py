@@ -36,6 +36,8 @@ TASKS_DIR = HERE / "tasks"
 RESULTS = ROOT / "bench" / "results"
 
 CLAUDE_CODE_VERSION = "latest"  # pinned in the run's environment.json; `latest` is resolved when the image is built
+OPENCODE_VERSION = "latest"
+AGENTS = ("claude-code", "opencode")
 MCP_VERSION_FILE = ROOT / "clients/typescript/packages/myrmo-mcp/package.json"
 
 #: USD per million tokens (input, output), from the published prices of the models. Cache reads are not priced here: the
@@ -44,6 +46,9 @@ PRICES = {
     "claude-opus-5-5": (4.0, 20.0),
     "claude-sonnet-5-5": (2.0, 10.0),
 }
+#: USD per million tokens (input, output) assumed for a model that is not listed above, such as the `opencode-go/<id>`
+#: ones: a deliberately high figure, so that the ceiling and the spending brake are never too low.
+ASSUMED_PRICE = (3.0, 15.0)
 #: What one run of an agent on one of these small tasks is expected to use. A guess, to be replaced by the first
 #: measured run: generous on purpose, so that the number to approve is a ceiling.
 TOKENS_PER_RUN = {"input": 600_000, "output": 30_000}
@@ -64,9 +69,8 @@ class Task:
     ready: str
     path: Path = field(compare=False)
 
-    @property
-    def agent_tag(self) -> str:
-        return f"{self.image_tag}-agent"
+    def agent_tag(self, agent: str = "claude-code") -> str:
+        return f"{self.image_tag}-agent" + ("" if agent == "claude-code" else f"-{agent}")
 
 
 def load_tasks(only: list[str] | None = None) -> list[Task]:
@@ -88,12 +92,16 @@ def load_tasks(only: list[str] | None = None) -> list[Task]:
 
 # --- the plan ---------------------------------------------------------------------------------------------------------
 
+def price_of(model: str) -> tuple[float, float]:
+    return PRICES.get(model, ASSUMED_PRICE)
+
+
 def plan(tasks: int, followers: list[str], pioneer: str, repetitions: int) -> dict:
     """Runs and the most they should cost. Per task: one pioneer run, then every follower `repetitions` times,
     without Myrmo and with it."""
     runs = {"pioneer": {pioneer: tasks}}
     runs["followers"] = {m: tasks * repetitions * 2 for m in followers}
-    per_run = lambda model: (TOKENS_PER_RUN["input"] * PRICES[model][0] + TOKENS_PER_RUN["output"] * PRICES[model][1]) / 1e6
+    per_run = lambda model: (TOKENS_PER_RUN["input"] * price_of(model)[0] + TOKENS_PER_RUN["output"] * price_of(model)[1]) / 1e6
     cost = per_run(pioneer) * tasks + sum(per_run(m) * n for m, n in runs["followers"].items())
     total = tasks + sum(runs["followers"].values())
     return {"tasks": tasks, "runs": total, "by_role": runs, "estimated_usd_ceiling": round(cost, 2),
@@ -122,6 +130,36 @@ def parse_claude_stream(text: str) -> dict:
         "input_tokens", "output_tokens", "cache_creation_input_tokens", "cache_read_input_tokens"))
     return {"tokens": tokens, "cost_usd": float(result.get("total_cost_usd") or 0.0), "turns": int(result.get("num_turns") or 0),
             "failed_attempts": failed, "agent_error": bool(result.get("is_error")) or not result}
+
+
+def parse_opencode_events(text: str) -> dict:
+    """Metrics from `opencode run --format json`: one JSON event per line (`step_start`, `text`, `reasoning`, `tool_use`,
+    `step_finish`, `error`), each with a `part`. A failed attempt is a `tool_use` whose state is `error`; tokens and cost
+    are summed over the `step_finish` parts, one per model step. A run with no step finished, or with an `error` event,
+    counts as an agent error."""
+    failed = steps = 0
+    tokens, cost, errored = 0, 0.0, False
+    for line in text.splitlines():
+        try:
+            event = json.loads(line)
+        except ValueError:
+            continue
+        if not isinstance(event, dict):
+            continue
+        part = event.get("part") if isinstance(event.get("part"), dict) else {}
+        kind = event.get("type")
+        if kind == "tool_use" and (part.get("state") or {}).get("status") == "error":
+            failed += 1
+        elif kind == "step_finish":
+            steps += 1
+            used = part.get("tokens") or {}
+            cache = used.get("cache") or {}
+            tokens += sum(int(used.get(k) or 0) for k in ("input", "output", "reasoning")) + sum(
+                int(cache.get(k) or 0) for k in ("read", "write"))
+            cost += float(part.get("cost") or 0.0)
+        elif kind == "error":
+            errored = True
+    return {"tokens": tokens, "cost_usd": cost, "turns": steps, "failed_attempts": failed, "agent_error": errored or steps == 0}
 
 
 def summarize(runs: list[dict]) -> dict:
@@ -201,10 +239,34 @@ def dry_run_one(task: Task) -> list[str]:
 
 # --- real runs --------------------------------------------------------------------------------------------------------
 
+def put(container: str, path: str, text: str) -> None:
+    """Write a file inside the container, creating its folder; the text goes through stdin, never the command line."""
+    sh("docker", "exec", "-i", container, "sh", "-c", f'mkdir -p "$(dirname {path})" && cat > {path}', input_text=text)
+
+
 def mcp_config(colony: str, publish: str, agent_id: str) -> dict:
     version = json.loads(MCP_VERSION_FILE.read_text(encoding="utf-8"))["version"]
     return {"mcpServers": {"myrmo": {"command": "npx", "args": ["-y", f"myrmo-mcp@{version}"],
             "env": {"MYRMO_URL": colony, "MYRMO_PUBLISH": publish, "MYRMO_AGENT_ID": agent_id, "MYRMO_MIN_FAILED_ATTEMPTS": "1"}}}}
+
+
+#: What an OpenCode agent may do: the same tools as the Claude Code runs, and no web. The container is the sandbox.
+OPENCODE_PERMISSION = {"bash": "allow", "edit": "allow", "read": "allow", "glob": "allow", "grep": "allow", "list": "allow",
+                       "webfetch": "deny", "websearch": "deny", "external_directory": "deny"}
+
+
+def opencode_config(with_myrmo: bool, mcp: dict) -> dict:
+    """The agent's whole configuration: no updates, no sharing, and Myrmo as the only MCP server when the run has it."""
+    config = {"$schema": "https://opencode.ai/config.json", "autoupdate": False, "share": "disabled"}
+    if with_myrmo:
+        server = mcp["mcpServers"]["myrmo"]
+        config["mcp"] = {"myrmo": {"type": "local", "command": [server["command"], *server["args"]],
+                                   "environment": server["env"], "enabled": True}}
+    return config
+
+
+def opencode_command(task: Task, model: str) -> list[str]:
+    return ["opencode", "run", task.prompt, "--model", model, "--format", "json"]
 
 
 def claude_command(task: Task, model: str, with_myrmo: bool) -> list[str]:
@@ -218,23 +280,32 @@ def claude_command(task: Task, model: str, with_myrmo: bool) -> list[str]:
     return command
 
 
-def run_agent(task: Task, model: str, role: str, condition: str, colony: str, repetition: int, env: list[str]) -> dict:
+def run_agent(task: Task, model: str, role: str, condition: str, colony: str, repetition: int, env: list[str],
+              agent: str = "claude-code") -> dict:
     """One run: a fresh container from the agent image, the agent works in it, the hidden check decides."""
     with_myrmo = condition == "with"
     # Reach the colony on the host from inside the container.
-    name = start(task, task.agent_tag, ("--add-host", "host.docker.internal:host-gateway"))
+    name = start(task, task.agent_tag(agent), ("--add-host", "host.docker.internal:host-gateway"))
     started = time.time()
     try:
-        if with_myrmo:
-            cfg = mcp_config(colony.replace("localhost", "host.docker.internal"), "auto" if role == "pioneer" else "off",
-                             f"bench-{role}-{uuid.uuid4().hex[:8]}")
-            sh("docker", "exec", "-i", name, "sh", "-c", "cat > /tmp/mcp.json", input_text=json.dumps(cfg))
+        mcp = mcp_config(colony.replace("localhost", "host.docker.internal"), "auto" if role == "pioneer" else "off",
+                         f"bench-{role}-{uuid.uuid4().hex[:8]}")
         exec_env = [x for e in env for x in ("-e", e)]
-        done = sh("docker", "exec", *exec_env, name, *claude_command(task, model, with_myrmo),
-                  check=False, timeout=task.max_minutes * 60)
+        if agent == "opencode":
+            put(name, "/tmp/opencode.json", json.dumps(opencode_config(with_myrmo, mcp)))
+            # The key goes where `opencode auth` would have put it, in the throwaway container only.
+            key = dict(e.split("=", 1) for e in env).get("OPENCODE_API_KEY", "")
+            put(name, "/root/.local/share/opencode/auth.json", json.dumps({model.split("/")[0]: {"type": "api", "key": key}}))
+            exec_env = ["-e", "OPENCODE_CONFIG=/tmp/opencode.json", "-e", f"OPENCODE_PERMISSION={json.dumps(OPENCODE_PERMISSION)}"]
+            command, parse = opencode_command(task, model), parse_opencode_events
+        else:
+            if with_myrmo:
+                put(name, "/tmp/mcp.json", json.dumps(mcp))
+            command, parse = claude_command(task, model, with_myrmo), parse_claude_stream
+        done = sh("docker", "exec", *exec_env, name, *command, check=False, timeout=task.max_minutes * 60)
         seconds = time.time() - started
         passed, why = check(task, name)
-        metrics = parse_claude_stream(done.stdout)
+        metrics = parse(done.stdout)
         return {"task": task.id, "model": model, "role": role, "condition": condition, "repetition": repetition,
                 "success": passed, "check": why, "seconds": round(seconds, 1), **metrics}
     except subprocess.TimeoutExpired:
@@ -245,9 +316,27 @@ def run_agent(task: Task, model: str, role: str, condition: str, colony: str, re
         stop(name)
 
 
+def choose_models(args: argparse.Namespace) -> dict:
+    """The pioneer and the followers: Claude models by default, or whatever `opencode models` lists for OpenCode."""
+    if args.agent == "opencode":
+        if not args.pioneer or not args.followers:
+            raise SystemExit("with --agent opencode, give --pioneer and --followers as <provider>/<model>, "
+                             "for example opencode-go/<id> (`opencode models` lists them)")
+        bad = [m for m in [args.pioneer, *args.followers] if "/" not in m]
+        if bad:
+            raise SystemExit(f"{bad}: an OpenCode model is <provider>/<model>")
+        return {"pioneer": args.pioneer, "followers": args.followers}
+    models = {"pioneer": args.pioneer or "claude-opus-5-5", "followers": args.followers or ["claude-sonnet-5-5"]}
+    bad = [m for m in [models["pioneer"], *models["followers"]] if m not in PRICES]
+    if bad:
+        raise SystemExit(f"{bad}: not a model with a known price; known: {sorted(PRICES)}")
+    return models
+
+
 def cmd_run(args: argparse.Namespace) -> int:
     tasks = load_tasks(args.tasks)
-    p = plan(len(tasks), args.followers, args.pioneer, args.repetitions)
+    models = choose_models(args)
+    p = plan(len(tasks), models["followers"], models["pioneer"], args.repetitions)
     if not args.execute or args.approved_usd is None:
         print(json.dumps(p, indent=2))
         print("\nNothing was run. This spends money: add --execute and --approved-usd <the most you accept to spend>.")
@@ -256,28 +345,32 @@ def cmd_run(args: argparse.Namespace) -> int:
         print(f"The plan's ceiling is ${p['estimated_usd_ceiling']} and you approved ${args.approved_usd}. Raise it or run less.")
         return 2
     import os
-    env = [f"{k}={os.environ[k]}" for k in ("ANTHROPIC_API_KEY", "CLAUDE_CODE_OAUTH_TOKEN") if os.environ.get(k)]
+    keys = ("OPENCODE_API_KEY",) if args.agent == "opencode" else ("ANTHROPIC_API_KEY", "CLAUDE_CODE_OAUTH_TOKEN")
+    env = [f"{k}={os.environ[k]}" for k in keys if os.environ.get(k)]
     if not env:
-        print("Set ANTHROPIC_API_KEY or CLAUDE_CODE_OAUTH_TOKEN.")
+        print("Set " + " or ".join(keys) + ".")
         return 2
     run_id = "myrmobench-" + datetime.now(timezone.utc).strftime("%Y%m%d-%H%M")
     out = RESULTS / run_id
     out.mkdir(parents=True, exist_ok=True)
-    (out / "environment.json").write_text(json.dumps({"plan": p, "colony": args.colony, "pioneer": args.pioneer,
-                                                      "followers": args.followers, "claude_code": args.claude_code_version}, indent=2))
+    (out / "environment.json").write_text(json.dumps({"plan": p, "colony": args.colony, "agent": args.agent,
+                                                      "pioneer": models["pioneer"], "followers": models["followers"],
+                                                      "claude_code": args.claude_code_version, "opencode": args.opencode_version}, indent=2))
     spent, runs = 0.0, []
     for task in tasks:
         build(task)
-        sh("docker", "build", "-t", task.agent_tag, "-f", str(HERE / "agent.Dockerfile"), "--build-arg", f"BASE={task.image_tag}",
-           "--build-arg", f"CLAUDE_CODE_VERSION={args.claude_code_version}", str(HERE))
-        plan_for_task = [(args.pioneer, "pioneer", "with", 0)] + [
-            (m, "follower", c, r) for m in args.followers for r in range(args.repetitions) for c in ("without", "with")]
+        sh("docker", "build", "-t", task.agent_tag(args.agent), "-f", str(HERE / "agent.Dockerfile"), "--build-arg", f"BASE={task.image_tag}",
+           "--build-arg", f"AGENT={args.agent}", "--build-arg", f"CLAUDE_CODE_VERSION={args.claude_code_version}",
+           "--build-arg", f"OPENCODE_VERSION={args.opencode_version}", str(HERE))
+        plan_for_task = [(models["pioneer"], "pioneer", "with", 0)] + [
+            (m, "follower", c, r) for m in models["followers"] for r in range(args.repetitions) for c in ("without", "with")]
         for model, role, condition, rep in plan_for_task:
             if spent >= args.approved_usd:
                 print(f"Stopped: ${spent:.2f} spent of ${args.approved_usd} approved.")
                 break
-            row = run_agent(task, model, role, condition, args.colony, rep, env)
-            spent += row["cost_usd"]
+            row = run_agent(task, model, role, condition, args.colony, rep, env, args.agent)
+            # A subscription agent may report no cost: the brake then counts the tokens at the assumed price.
+            spent += max(row["cost_usd"], row["tokens"] * price_of(model)[0] / 1e6)
             runs.append(row)
             with (out / "runs.jsonl").open("a", encoding="utf-8") as f:
                 f.write(json.dumps(row) + "\n")
@@ -297,21 +390,24 @@ def main(argv: list[str] | None = None) -> int:
         s = sub.add_parser(name)
         s.add_argument("--tasks", nargs="*", help="only these task ids")
         if name in ("plan", "run"):
-            s.add_argument("--pioneer", default="claude-opus-5-5", choices=sorted(PRICES))
-            s.add_argument("--followers", nargs="+", default=["claude-sonnet-5-5"], choices=sorted(PRICES))
+            s.add_argument("--agent", choices=AGENTS, default="claude-code", help="the agent CLI that does the work")
+            s.add_argument("--pioneer", help="default claude-opus-5-5; with --agent opencode, <provider>/<model>")
+            s.add_argument("--followers", nargs="+", help="default claude-sonnet-5-5; with --agent opencode, <provider>/<model> each")
             s.add_argument("--repetitions", type=int, default=5)
         if name == "run":
             s.add_argument("--execute", action="store_true", help="really run the agents (spends money)")
             s.add_argument("--approved-usd", type=float, help="the most the person who pays accepts to spend")
             s.add_argument("--colony", default="http://localhost:8080", help="an empty colony for the run")
             s.add_argument("--claude-code-version", default=CLAUDE_CODE_VERSION)
+            s.add_argument("--opencode-version", default=OPENCODE_VERSION)
     args = parser.parse_args(argv)
     if args.command == "list":
         for t in load_tasks(args.tasks):
             print(f"{t.id:18} {t.title}")
         return 0
     if args.command == "plan":
-        print(json.dumps(plan(len(load_tasks(args.tasks)), args.followers, args.pioneer, args.repetitions), indent=2))
+        models = choose_models(args)
+        print(json.dumps(plan(len(load_tasks(args.tasks)), models["followers"], models["pioneer"], args.repetitions), indent=2))
         return 0
     if args.command == "dry-run":
         failed = 0

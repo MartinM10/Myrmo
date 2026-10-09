@@ -51,6 +51,59 @@ def test_a_claude_stream_gives_tokens_cost_and_failed_attempts():
     assert run.parse_claude_stream("")["agent_error"] is True
 
 
+def test_an_opencode_stream_gives_tokens_cost_and_failed_attempts():
+    lines = [
+        {"type": "step_start", "part": {"type": "step-start"}},
+        {"type": "tool_use", "part": {"type": "tool", "tool": "bash", "state": {"status": "error", "error": "uv: not found"}}},
+        {"type": "tool_use", "part": {"type": "tool", "tool": "bash", "state": {"status": "completed", "output": "ok"}}},
+        {"type": "text", "part": {"type": "text", "text": "done"}},
+        {"type": "step_finish", "part": {"cost": 0.01, "tokens": {"input": 100, "output": 50, "reasoning": 5, "cache": {"read": 40, "write": 10}}}},
+        {"type": "step_finish", "part": {"cost": 0.02, "tokens": {"input": 10, "output": 5, "cache": {"read": 0, "write": 0}}}},
+    ]
+    m = run.parse_opencode_events("\n".join(json.dumps(x) for x in lines) + "\nnot json\n[1]")
+    assert m == {"tokens": 220, "cost_usd": pytest.approx(0.03), "turns": 2, "failed_attempts": 1, "agent_error": False}
+    assert run.parse_opencode_events("")["agent_error"] is True
+    assert run.parse_opencode_events(json.dumps({"type": "error", "error": {"name": "ApiError"}}))["agent_error"] is True
+    # What opencode 1.18 really prints, with exit code 0, when the model cannot be reached.
+    real = '{"type":"error","timestamp":1791536285524,"sessionID":"ses_x","error":{"name":"UnknownError","data":{"message":"Unexpected server error."}}}'
+    assert run.parse_opencode_events(real)["agent_error"] is True
+    one = [{"type": "step_finish", "part": {"tokens": {"input": 1}}}, {"type": "error", "error": {}}]
+    assert run.parse_opencode_events("\n".join(json.dumps(x) for x in one))["agent_error"] is True
+
+
+def test_opencode_gets_myrmo_only_in_the_with_condition_and_no_web():
+    task = run.load_tasks(["uv-path"])[0]
+    mcp = run.mcp_config("http://colony", "off", "bench-1")
+    without = run.opencode_config(False, mcp)
+    assert "mcp" not in without and without["autoupdate"] is False and without["share"] == "disabled"
+    server = run.opencode_config(True, mcp)["mcp"]["myrmo"]
+    assert server["type"] == "local" and server["command"][0] == "npx" and server["command"][2].startswith("myrmo-mcp@")
+    assert server["environment"]["MYRMO_PUBLISH"] == "off"
+    assert run.OPENCODE_PERMISSION["webfetch"] == "deny" and run.OPENCODE_PERMISSION["websearch"] == "deny"
+    command = run.opencode_command(task, "opencode-go/some-model")
+    assert command[:2] == ["opencode", "run"] and command[command.index("--format") + 1] == "json"
+    assert command[command.index("--model") + 1] == "opencode-go/some-model"
+
+
+def test_models_are_chosen_per_agent_and_unknown_ones_are_priced_high():
+    def args(agent, pioneer=None, followers=None):
+        return run.argparse.Namespace(agent=agent, pioneer=pioneer, followers=followers)
+
+    assert run.choose_models(args("claude-code")) == {"pioneer": "claude-opus-5-5", "followers": ["claude-sonnet-5-5"]}
+    with pytest.raises(SystemExit):
+        run.choose_models(args("claude-code", "gpt-x"))
+    with pytest.raises(SystemExit):
+        run.choose_models(args("opencode"))
+    with pytest.raises(SystemExit):
+        run.choose_models(args("opencode", "opencode-go/a", ["b"]))
+    models = run.choose_models(args("opencode", "opencode-go/a", ["opencode-go/b"]))
+    cheap = run.plan(4, models["followers"], models["pioneer"], 5)
+    assert cheap["runs"] == 44 and cheap["estimated_usd_ceiling"] > 0
+    assert run.price_of("opencode-go/a") == run.ASSUMED_PRICE
+    task = run.load_tasks(["uv-path"])[0]
+    assert task.agent_tag() != task.agent_tag("opencode") and task.agent_tag().endswith("-agent")
+
+
 def test_the_summary_compares_with_and_without_myrmo():
     def r(condition, success, tokens, failed, seconds):
         return {"role": "follower", "condition": condition, "success": success, "tokens": tokens,
@@ -88,3 +141,4 @@ def test_a_run_without_both_conditions_is_not_published(tmp_path):
         (run_dir / name).write_text((tmp_path / name).read_text())
     section = publish_results.value_section(run_dir)
     assert section["date"] == "2026-11-01" and section["repetitions"] == 1 and set(section["tasks"]) == {"uv-path"}
+    assert section["agent"] == "claude-code", "a run from before the agent was recorded was Claude Code"

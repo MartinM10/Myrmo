@@ -30,6 +30,7 @@ def value_section(run_dir: Path) -> dict:
     return {
         "run_id": run_dir.name,
         "date": run_dir.name.split("-")[1][:4] + "-" + run_dir.name.split("-")[1][4:6] + "-" + run_dir.name.split("-")[1][6:8],
+        "agent": env.get("agent", "claude-code"),
         "pioneer": env["pioneer"],
         "followers": env["followers"],
         "tasks": sorted({r["task"] for r in runs}),
