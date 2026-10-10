@@ -3,12 +3,14 @@
 // uses unless Git Bash is installed) and after Myrmo searches, and it only ever adds one short note to the model's
 // context. It sends nothing anywhere, never blocks, and stays quiet when a note would not be worth the tokens.
 //
-// Three moments, because a colony only grows if agents both look things up and give back what they learn:
+// Four moments, because a colony only grows if agents both look things up and give back what they learn:
 //   1. A command FAILS: remind the agent to search Myrmo before it tries a fix, with the last error line.
 //   2. A command ends with exit 0 but its OUTPUT looks like an error (a pipe, a loop or `|| true` hide the exit
 //      code): the same reminder.
 //   3. A command that failed earlier now SUCCEEDS and Myrmo had no trail for it: the agent has probably just solved
 //      something nobody had, so it is reminded to publish it (the user still sees and approves what is sent).
+//   4. A command that failed earlier now SUCCEEDS and Myrmo had returned trails for it: the agent is reminded to report
+//      what happened with them (myrmo_report), which is what makes good trails rise and stale ones fade.
 //
 // Switch it off with `npx myrmo-mcp config hook off`, or keep only the reminders after a failure with
 // `config hook failures`; MYRMO_HOOK=off|failures does the same for one session. Tunables: MYRMO_HOOK_MIN_SECONDS
@@ -24,6 +26,9 @@ const PROBES = /^\s*(?:sudo\s+)?(?:grep|egrep|fgrep|rg|ag|diff|cmp|test|\[|\[\[|
 const PS_PROBES = /^\s*(?:select-string|sls|get-childitem|gci|dir|get-content|gc|type|test-path|where-object|get-command|gcm|get-item|get-process|get-location|write-host|write-output|compare-object|diff)\b/i;
 const SHELLS = new Set(["Bash", "PowerShell"]);
 const SEARCH_TOOL = /^mcp__.*myrmo_search$/;
+const REPORT_TOOL = /^mcp__.*myrmo_report$/;
+// The id each trail is listed under in a search reply (`## Trail 1 of 2 · id <uuid>`).
+const TRAIL_ID = /^## Trail \d+ of \d+ · id ([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/gim;
 // Exit codes that mean a person or the system stopped the command: interrupt, timeout, kill, terminate.
 const STOPPED = new Set([124, 130, 137, 143]);
 
@@ -174,14 +179,20 @@ export function decide(input, { now = Date.now(), state = {}, env = process.env,
   const tool = input?.tool_name;
 
   // 3a. Myrmo had no trail for an error: remember it, so that a later fix can be offered for publishing.
+  // 4a. Myrmo returned trails: remember their ids, so that a later fix can be followed by a report on them.
   if (SEARCH_TOOL.test(String(tool))) {
     const reply = textOf(input.tool_response);
     if (/No trail in the Myrmo colony matches/.test(reply)) {
       return quiet({ ...state, nomatch: { at: now, line: String(input.tool_input?.error ?? "").slice(0, 240) } });
     }
-    if (/<myrmo_trails/.test(reply)) return quiet({ ...state, nomatch: null });
+    if (/<myrmo_trails/.test(reply)) {
+      const ids = [...new Set([...reply.matchAll(TRAIL_ID)].map((m) => m[1].toLowerCase()))].slice(0, 5);
+      return quiet({ ...state, nomatch: null, found: ids.length ? { at: now, ids } : null });
+    }
     return quiet(state);
   }
+  // 4b. The agent reported: nothing left to remind.
+  if (REPORT_TOOL.test(String(tool))) return quiet(state.found ? { ...state, found: null } : state);
   if (!SHELLS.has(tool)) return quiet(state);
 
   const command = String(input.tool_input?.command ?? "");
@@ -228,6 +239,17 @@ export function decide(input, { now = Date.now(), state = {}, env = process.env,
       `Describe where the error happened (say so if it was inside a container) and keep out names of people, companies, customers and internal systems. ` +
       `Skip it if the fix was obvious or specific to this project.`;
     return { note, state: { ...state, nomatch: { ...nomatch, nudged: true }, count: (state.count ?? 0) + 1 } };
+  }
+
+  // 4c. A command that failed earlier now works, and Myrmo had returned trails for it: ask for the outcome.
+  const found = state.found;
+  if (found && !found.nudged && now - found.at < 45 * 60_000 && state.failed && commandKey(command) === state.failed.key && !spent) {
+    const note =
+      `Myrmo: the command that failed earlier now succeeds, and Myrmo had returned trails for that error (${found.ids.join(", ")}). ` +
+      `Call myrmo_report once for the trail you followed: worked if it gave you the fix, partially_worked if it helped only in part, ` +
+      `failed if you tried it and it did not help, not_applicable if it was about something else. ` +
+      `It takes one call and is how good trails rise and stale ones fade. Skip it if you already reported.`;
+    return { note, state: { ...state, found: { ...found, nudged: true }, count: (state.count ?? 0) + 1 } };
   }
 
   // 2. Exit 0, but the output looks like an error.
