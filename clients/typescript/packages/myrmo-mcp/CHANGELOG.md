@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.15.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.14.1...mcp-v0.15.0) (2026-10-10)
+
+
+### Features
+
+* **mcp:** `init` sets Myrmo up for Antigravity, rules included ([be87335](https://github.com/MartinM10/Myrmo/commit/be8733590e50c950f2315a6fa5b2cc9751d40388))
+* **mcp:** init sets Myrmo up for Antigravity, rules included ([02d1593](https://github.com/MartinM10/Myrmo/commit/02d1593b680d8542d6a61cc5180437c18bc1d4b2))
+
 ## [0.14.1](https://github.com/MartinM10/Myrmo/compare/mcp-v0.14.0...mcp-v0.14.1) (2026-10-10)
 
 

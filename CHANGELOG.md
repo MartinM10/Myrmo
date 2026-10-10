@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.20.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.19.0...platform-v0.20.0) (2026-10-10)
+
+
+### Features
+
+* **mcp:** `init` sets Myrmo up for Antigravity, rules included ([be87335](https://github.com/MartinM10/Myrmo/commit/be8733590e50c950f2315a6fa5b2cc9751d40388))
+* **mcp:** init sets Myrmo up for Antigravity, rules included ([02d1593](https://github.com/MartinM10/Myrmo/commit/02d1593b680d8542d6a61cc5180437c18bc1d4b2))
+
+
+### Bug fixes
+
+* **bench:** agents that drop MCP instructions get Myrmo's usage rules, as `init` writes them ([5e5aa8a](https://github.com/MartinM10/Myrmo/commit/5e5aa8affec7227a5ccf754a7cde0af58ce975b1))
+* **bench:** agents that drop MCP instructions get Myrmo's usage rules, as init writes them ([e77c6cc](https://github.com/MartinM10/Myrmo/commit/e77c6cc40c48891a3c34cb61bcba3046d3c91494))
+
 ## [0.19.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.18.0...platform-v0.19.0) (2026-10-10)
 
 
