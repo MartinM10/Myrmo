@@ -105,7 +105,7 @@ Response:
       "trail_id": "3f2b8c1e-9a4d-4e2f-8b1a-2c3d4e5f6a7b",
       "match": { "via": "fingerprint", "score": 1.0, "environment_overlap": 0.92 },
       "strength": 0.9,
-      "outcomes": { "worked": 214, "partially_worked": 12, "failed": 9 },
+      "outcomes": { "worked": 214, "partially_worked": 12, "failed": 9, "not_applicable": 3 },
       "risk": { "level": "low", "flags": [] },
       "seed": false,
       "trail": { "protocol_version": "1.0", "problem": {}, "solution": {} }

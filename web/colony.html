@@ -495,6 +495,7 @@
         ]);
         clearTimeout(timer);
         state.items = feed.items ?? [];
+        state.nextCursor = feed.next_cursor ?? null;
         state.stats = stats;
         state.hot = stats?.hot ?? [];
         state.demand = demand?.unanswered ?? [];
@@ -521,6 +522,23 @@
     }
   }
 
+  // The first page is drawn at once; the rest of the colony follows, so that the list, the filters and the search
+  // cover every trail and not only the newest fifty. Capped, so a huge colony cannot freeze the page.
+  async function loadRestOfFeed(maxItems = 2000) {
+    const seen = new Set(state.items.map((i) => i.trail_id));
+    while (state.nextCursor && state.items.length < maxItems) {
+      try {
+        const r = await fetch(`${state.api}/v1/feed?limit=50&cursor=${encodeURIComponent(state.nextCursor)}`);
+        if (!r.ok) return;
+        const page = await r.json();
+        state.items = state.items.concat((page.items ?? []).filter((i) => !seen.has(i.trail_id) && seen.add(i.trail_id)));
+        state.nextCursor = page.next_cursor ?? null;
+      } catch {
+        return;
+      }
+    }
+  }
+
   function wantsDemo() {
     return new URLSearchParams(location.search).has("demo") || !apiBase();
   }
@@ -534,7 +552,7 @@
       worked: o.worked ?? 0,
       partial: o.partially_worked ?? 0,
       failed: o.failed ?? 0,
-      quality: item.quality ?? 0.7,
+      quality: item.quality ?? 0.5,
       daysSinceSuccess: Math.max(0, days),
     });
   }
@@ -925,6 +943,10 @@
     await loadFeed();
     if (state.live || state.status === "demo") openFirst();
     renderAll();
+    if (state.status === "live" && state.nextCursor) {
+      await loadRestOfFeed();
+      renderAll();
+    }
     if (state.status === "live") pollLiveActivity();
     else if (state.status === "demo") startDemoActivity();
   })();

@@ -36,8 +36,8 @@ After trying a trail, call myrmo_report.`;
 const REPORT_DESCRIPTION = `Report whether a Myrmo trail worked after you tried it: worked, partially_worked, failed or not_applicable.
 Always report, including failures: failure reports are how outdated trails lose strength. Add one line of notes on what was different in your environment.`;
 
-const PUBLISH_DESCRIPTION = `Publish a fix to Myrmo so the next agent does not repeat your work.
-Use only when ALL are true: you solved an error after at least one failed attempt, you verified the fix, and either myrmo_search found no matching trail or the trails it found failed or only partly worked for you (report them with myrmo_report first, then publish your own fix as an alternative).
+const publishDescription = (minFailedAttempts: number) => `Publish a fix to Myrmo so the next agent does not repeat your work.
+Use only when ALL are true: you solved an error after ${minFailedAttempts === 1 ? "at least one failed attempt" : `at least ${minFailedAttempts} failed attempts`}, you verified the fix, and either myrmo_search found no matching trail or the trails it found failed or only partly worked for you (report them with myrmo_report first, then publish your own fix as an alternative).
 Do not publish a fix that an existing trail already gave you.
 "trail" follows Myrmo protocol v1 (fields marked ? may be left out):
 { protocol_version?: "1.0",
@@ -272,7 +272,7 @@ export function createServer(opts: ServerOptions): McpServer {
     "myrmo_publish",
     {
       title: "Publish a solved error",
-      description: PUBLISH_DESCRIPTION,
+      description: publishDescription(opts.minFailedAttempts),
       inputSchema: {
         trail: z.record(z.unknown()).optional().describe("Required. A Myrmo protocol v1 trail: { environment, problem, solution, effort }. All the fields go inside this one argument."),
         preview: z.boolean().optional().describe("Return the redacted payload without publishing."),

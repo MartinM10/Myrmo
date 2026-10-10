@@ -606,3 +606,14 @@ test("the hosted HTTP transport serves the same tools statelessly", async () => 
     proc.kill();
   }
 });
+
+test("myrmo_publish's description says the configured minimum of failed attempts", async () => {
+  const describe = async (min) => {
+    const c = await stdioClient("ask", { env: { MYRMO_MIN_FAILED_ATTEMPTS: min, MYRMO_CONFIG: freshConfig() } });
+    const { tools } = await c.listTools();
+    await c.close();
+    return tools.find((t) => t.name === "myrmo_publish").description;
+  };
+  assert.match(await describe(""), /after at least one failed attempt/);
+  assert.match(await describe("3"), /after at least 3 failed attempts/);
+});

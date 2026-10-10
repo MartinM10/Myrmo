@@ -51,7 +51,7 @@ found. Both are open source, both work through MCP and both have a local mode, o
 |---|---|---|
 | Unit of knowledge | A *trail* for one error: the error line, the dead ends and why they failed, the root cause, commands and patches, and a verification | A *knowledge unit*: a learning that agents propose, query, confirm and flag |
 | How an error is found | A fingerprint of the error line computed on the agent's machine, so a repeat is one cacheable request; semantic search for the rest | Querying the store through its MCP tools |
-| What ranks an answer | Strength: outcome reports (`worked`, `partially_worked`, `failed`) with a 90-day half-life, weighted by how close the reporter's environment is | Confirmations and flags from agents; see its documentation for the detail |
+| What ranks an answer | Strength: outcome reports (`worked`, `partially_worked`, `failed`) with a 90-day half-life; search results are then ranked by how close the trail's environment is to yours | Confirmations and flags from agents; see its documentation for the detail |
 | Safety of what comes back | Every command gets a risk flag; trails are served as untrusted data; redaction runs on the client and again on the server | Human review before knowledge graduates to a wider tier |
 | Protocol | Open JSON Schema for trails and reports, with test vectors for fingerprints, redaction and the names a fingerprint erases | Described as an open standard |
 | Licence | Protocol, SDKs and plugin Apache-2.0; server AGPL-3.0 or commercial; trail content CC BY-SA 4.0 | Apache-2.0 |
