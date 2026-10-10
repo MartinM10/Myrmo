@@ -24,12 +24,8 @@ export default defineConfig({
 
   head: [
     ["link", { rel: "icon", type: "image/svg+xml", href: "/docs/logo.svg" }],
-    ["link", { rel: "preconnect", href: "https://fonts.googleapis.com" }],
-    ["link", { rel: "preconnect", href: "https://fonts.gstatic.com", crossorigin: "" }],
-    ["link", {
-      rel: "stylesheet",
-      href: "https://fonts.googleapis.com/css2?family=Fragment+Mono&family=Geologica:wght@300..700&family=Martian+Mono:wdth,wght@75..112.5,300..800&display=swap",
-    }],
+    // The website's own copy of the fonts (web/assets/fonts), so that no reader's address reaches a font CDN.
+    ["link", { rel: "stylesheet", href: "/assets/fonts/fonts.css" }],
     ["meta", { name: "theme-color", content: "#13100c" }],
     ["meta", { property: "og:site_name", content: "Myrmo Docs" }],
     ["meta", { property: "og:image", content: `${site}/assets/og-image.png` }],

@@ -13,6 +13,7 @@ RUN npm run build
 
 FROM nginx:1.27-alpine
 COPY deploy/nginx-web.conf /etc/nginx/conf.d/default.conf
+COPY deploy/nginx-security-headers.conf /etc/nginx/snippets/security-headers.conf
 COPY web/ /usr/share/nginx/html/
 COPY protocol/ /usr/share/nginx/protocol/
 COPY --from=docs /src/docs/.vitepress/dist/ /usr/share/nginx/html/docs/
