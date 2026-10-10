@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.14.1](https://github.com/MartinM10/Myrmo/compare/mcp-v0.14.0...mcp-v0.14.1) (2026-10-10)
+
+
+### Bug fixes
+
+* bring the protocol, MCP server, plugin, docs and website in line with each other ([283dccc](https://github.com/MartinM10/Myrmo/commit/283dccc2a21c2895e5d179df106eae3eaaf8334b))
+* bring the protocol, MCP server, plugin, docs and website in line with each other ([19f7ceb](https://github.com/MartinM10/Myrmo/commit/19f7cebf2639e532125d5bea765a0e857da2d29c))
+* **mcp:** a publishing choice made with `config` applies at once, and a refusal says how to choose ([830ec89](https://github.com/MartinM10/Myrmo/commit/830ec893f85eb5084336049d0fc9198759c077ef))
+* **mcp:** a publishing choice made with config applies at once, and a refusal says how to choose ([51c1862](https://github.com/MartinM10/Myrmo/commit/51c18628e3f613bb1030b47a08fa762980a35b2f))
+
 ## [0.14.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.13.0...mcp-v0.14.0) (2026-10-09)
 
 

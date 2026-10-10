@@ -9,12 +9,12 @@
     "source": "github",
     "subfolder": "clients/typescript/packages/myrmo-mcp"
   },
-  "version": "0.14.0",
+  "version": "0.14.1",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "myrmo-mcp",
-      "version": "0.14.0",
+      "version": "0.14.1",
       "transport": {
         "type": "stdio"
       },

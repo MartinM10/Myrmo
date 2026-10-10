@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.7.3](https://github.com/MartinM10/Myrmo/compare/server-v0.7.2...server-v0.7.3) (2026-10-10)
+
+
+### Bug fixes
+
+* **server:** believe X-Forwarded-For only from trusted proxies, and keep checks out of public stats ([b817463](https://github.com/MartinM10/Myrmo/commit/b8174631dcd6677811b4548d422a22a37de4ea0c))
+* **server:** believe X-Forwarded-For only from trusted proxies, and keep checks out of public stats ([9322fbd](https://github.com/MartinM10/Myrmo/commit/9322fbd2556a27eb4eb30e2da075d15d3ca5aea5))
+
 ## [0.7.2](https://github.com/MartinM10/Myrmo/compare/server-v0.7.1...server-v0.7.2) (2026-10-09)
 
 
