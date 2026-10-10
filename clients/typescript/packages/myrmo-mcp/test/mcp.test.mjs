@@ -398,6 +398,22 @@ test("choosing to publish without accepting the terms publishes nothing and save
   await client.close();
 });
 
+test("a choice saved with `config` while the server runs applies at once, without a restart", async () => {
+  const config = freshConfig();
+  let asked = 0;
+  const client = await stdioClient("", { ...unchosen(config), answer: async () => (asked++, { action: "decline" }) });
+  const before = published();
+  const first = textOf(await client.callTool({ name: "myrmo_publish", arguments: { trail } }));
+  assert.match(first, /did not choose/);
+  assert.match(first, /npx myrmo-mcp config publish auto\|ask\|off/, "the agent can tell the user how to choose");
+  assert.equal(asked, 1);
+  writeFileSync(config, JSON.stringify({ publish: "auto" }));
+  await client.callTool({ name: "myrmo_publish", arguments: { trail } });
+  assert.equal(published(), before + 1, "the running server read the new choice");
+  assert.equal(asked, 1, "and did not ask again");
+  await client.close();
+});
+
 test("choosing 'never' sends nothing and is remembered", async () => {
   const config = freshConfig();
   const client = await stdioClient("", { ...unchosen(config), answer: async () => ({ action: "accept", content: { choice: "off" } }) });

@@ -74,7 +74,18 @@ if (args[0] === "init") {
 if (flag("--http")) {
   await serveHttp(Number(option("--port", process.env.PORT ?? "3333")), option("--host", "0.0.0.0"));
 } else {
-  const server = createServer({ colony: new Colony({ publish: publishMode }), publishMode, publishChosen, minFailedAttempts, fillLocalEnvironment: true, allowHighRisk });
+  const server = createServer({
+    colony: new Colony({ publish: publishMode }),
+    publishMode,
+    publishChosen,
+    readPublishChoice: () => {
+      const current = publishChoice();
+      return { mode: current.mode, chosen: current.source !== "default" };
+    },
+    minFailedAttempts,
+    fillLocalEnvironment: true,
+    allowHighRisk,
+  });
   await server.connect(new StdioServerTransport());
 }
 
