@@ -102,9 +102,9 @@ export function minFailedAttempts(explicit?: number): { value: number; source: S
 
 /** What `myrmo-mcp config` can change: its name, what it does, the values it takes, and the default. */
 export const SETTINGS = [
-  { key: "publish", file: "publish", values: "ask | auto | off", default: "ask (asked the first time an agent wants to publish)", about: "Whether agents may publish fixes for you. ask shows you each one first." },
+  { key: "publish", file: "publish", values: "ask | auto | off", default: "not chosen: nothing is published until you are asked, the first time an agent wants to publish", about: "Whether agents may publish fixes for you. ask shows you each one first." },
   { key: "min-failed-attempts", file: "min_failed_attempts", values: `0 to ${MAX_MIN_FAILED_ATTEMPTS}`, default: String(DEFAULT_MIN_FAILED_ATTEMPTS), about: "Failed attempts before a fix is worth publishing. Higher means fewer, more selective trails." },
-  { key: "hook", file: "hook", values: "on | failures | off", default: "on", about: "Claude Code plugin reminders. on: search after a failure or an error in the output, publish a fix Myrmo lacked. failures: only after a failed command." },
+  { key: "hook", file: "hook", values: "on | failures | off", default: "on", about: "Claude Code plugin reminders. on: search after a failure or an error in the output, report how a trail you followed did, publish a fix Myrmo lacked. failures: only after a failed command." },
   { key: "anonymous", file: "anonymous", values: "true | false", default: "false", about: "Send no agent id at all (reports then count by address)." },
 ] as const;
 
@@ -125,7 +125,7 @@ export function settingsReport(): SettingRow[] {
   const hookEnv = process.env.MYRMO_HOOK?.trim().toLowerCase();
   const anonEnv = process.env.MYRMO_ANONYMOUS?.trim().toLowerCase();
   const rows: Record<string, { value: string; source: SettingSource }> = {
-    publish: { value: publish.source === "default" ? "ask" : publish.mode, source: publish.source },
+    publish: { value: publish.source === "default" ? "not chosen" : publish.mode, source: publish.source },
     "min-failed-attempts": { value: String(attempts.value), source: attempts.source },
     hook: hookEnv === "on" || hookEnv === "failures" || hookEnv === "off" ? { value: hookEnv, source: "env" } : file.hook ? { value: file.hook, source: "file" } : { value: "on", source: "default" },
     anonymous: anonEnv ? { value: String(["1", "true"].includes(anonEnv)), source: "env" } : file.anonymous !== undefined ? { value: String(file.anonymous), source: "file" } : { value: "false", source: "default" },

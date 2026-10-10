@@ -28,7 +28,7 @@ def rows():
 
 def test_with_no_file_every_setting_has_its_default():
     r = rows()
-    assert (r["publish"]["value"], r["publish"]["source"]) == ("ask", "default")
+    assert (r["publish"]["value"], r["publish"]["source"]) == ("not chosen", "default")
     assert (r["min-failed-attempts"]["value"], r["min-failed-attempts"]["source"]) == ("1", "default")
     assert (r["hook"]["value"], r["anonymous"]["value"]) == ("on", "false")
     assert all(x["source"] == "default" for x in r.values())

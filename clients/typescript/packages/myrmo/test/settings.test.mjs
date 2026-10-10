@@ -38,7 +38,7 @@ afterEach(() => {
 
 test("with no file every setting has its default", () => {
   const rows = Object.fromEntries(settingsReport().map((r) => [r.key, r]));
-  assert.equal(rows.publish.value, "ask");
+  assert.equal(rows.publish.value, "not chosen", "nobody chose: the clients publish nothing until the user is asked");
   assert.equal(rows.publish.source, "default");
   assert.equal(rows["min-failed-attempts"].value, "1");
   assert.equal(rows.hook.value, "on");
