@@ -144,10 +144,38 @@ The agent has the same tools as the Claude Code runs (shell, files) and no web a
 spending brake never come out too low; where the agent reports no cost, the brake counts tokens at that price. Results of
 different agents are different runs: the published numbers name the agent and the models.
 
+To run Gemini CLI (`--agent gemini`), set `GEMINI_API_KEY` (an AI Studio key, billed or rate-limited by AI Studio) and name
+the models. Signing in with a personal Google account no longer works for Gemini CLI ("This client is no longer supported
+for Gemini Code Assist for individuals"); a Google AI plan is used through Antigravity instead, below. Gemini CLI needs a newer Node than some tasks run on, and a task's Node is part of
+its breakage, so the agent image carries its own Node for the `gemini` command only, off the `PATH`. As with the other
+agents, its web tools are switched off and every tool call is approved without asking: the container is the sandbox.
+
+```bash
+python bench/myrmobench/run.py run --agent gemini --pioneer <pro-model> --followers <flash-model> \
+    --conditions without --repetitions 2 --execute --approved-usd 20
+```
+
+To use a Google AI plan (Pro or Ultra), run the Antigravity CLI (`--agent antigravity`). Its models include Gemini Flash and
+Pro, Claude and the open GPT-OSS (`agy models` lists them). Sign in once, into a Docker volume and not on the host: the
+command prints a Google link; after signing in, the browser fails to open a `localhost` address, which is expected: paste
+that whole address back into the terminal, then quit with `/quit`.
+
+```bash
+docker build -t myrmobench/agy bench/myrmobench/agy
+docker run -it --rm -v myrmobench-agy:/root/.gemini myrmobench/agy
+python bench/myrmobench/run.py run --agent antigravity --pioneer gemini-3.1-pro-high \
+    --followers gemini-3.8-flash-low gpt-oss-120b-medium --conditions without --repetitions 2 --execute --approved-usd 40
+```
+
+Each run copies the sign-in from the volume into its throwaway container. Two differences with the other agents: its web
+tools (`search_web`, `read_url_content`, the browser) cannot be switched off from its settings, so they are available in
+every condition and each run records how often the agent used them (`web_tool_calls`); and agy reports no exit code for a
+command, so a failed attempt is a command whose output reads like an error, an estimate.
+
 `run` does nothing without `--execute` and `--approved-usd`, refuses an amount below the plan's ceiling, and stops when
 the cost the agent CLI reports reaches the approved amount. Each run starts from a fresh container that has the agent
-installed; the hidden `check.sh` is copied in only after the agent has finished. Two agents are implemented, Claude Code
-and [OpenCode](https://opencode.ai); Gemini CLI is not. Tokens count input, output and cache. `publish_results.py` refuses a run without follower
+installed; the hidden `check.sh` is copied in only after the agent has finished. Four agents are implemented: Claude Code,
+[OpenCode](https://opencode.ai), Gemini CLI (`--agent gemini`) and Antigravity (`--agent antigravity`). Tokens count input, output and cache. `publish_results.py` refuses a run without follower
 runs both with and without Myrmo. The plan's per-run token budget is a guess, to be replaced by the first measured run.
 
 ## Coverage

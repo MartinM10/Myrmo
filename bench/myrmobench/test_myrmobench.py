@@ -214,3 +214,63 @@ def test_the_unseen_condition_is_summarised_and_published(tmp_path):
     section = publish_results.value_section(run_dir)
     assert section["unseen"]["median_tokens"] == 1100 and section["with"]["median_tokens"] == 400
     assert section["repetitions"] == 1 and section["colony_trails_at_start"] == 119 and section["pioneers_published"] == 1
+
+
+def test_gemini_gets_myrmo_only_when_the_run_has_it_and_no_web():
+    mcp = run.mcp_config("http://colony", "off", "bench-1")
+    without = run.gemini_settings(False, mcp, api_key=False)
+    assert without["mcpServers"] == {} and without["security"]["auth"]["selectedType"] == "oauth-personal"
+    assert set(run.GEMINI_EXCLUDED_TOOLS) <= set(without["tools"]["exclude"])
+    connected = run.gemini_settings(True, mcp, api_key=True)
+    assert connected["mcpServers"]["myrmo"]["env"]["MYRMO_PUBLISH"] == "off"
+    assert connected["security"]["auth"]["selectedType"] == "gemini-api-key"
+    command = run.gemini_command(run.load_tasks(["uv-path"])[0], "gemini-flash-x")
+    assert command[:2] == ["gemini", "-p"] and command[command.index("--output-format") + 1] == "stream-json"
+    assert command[command.index("--approval-mode") + 1] == "yolo" and command[command.index("--model") + 1] == "gemini-flash-x"
+
+
+def test_a_gemini_stream_gives_tokens_and_failed_attempts():
+    lines = [
+        {"type": "init", "model": "gemini-flash-x"},
+        {"type": "tool_use", "tool_name": "run_shell_command"},
+        {"type": "tool_result", "status": "error", "output": "uv: not found"},
+        {"type": "tool_result", "status": "success", "output": "ok"},
+        {"type": "result", "status": "success", "stats": {"total_tokens": 1234, "input_tokens": 1000, "output_tokens": 234, "tool_calls": 2}},
+    ]
+    m = run.parse_gemini_stream("\n".join(json.dumps(x) for x in lines) + "\nnot json\n[1]")
+    assert m == {"tokens": 1234, "cost_usd": 0.0, "turns": 2, "failed_attempts": 1, "agent_error": False}
+    assert run.parse_gemini_stream("")["agent_error"] is True
+    failed = {"type": "result", "status": "error", "stats": {"input_tokens": 10, "output_tokens": 5}}
+    assert run.parse_gemini_stream(json.dumps(failed)) == {"tokens": 15, "cost_usd": 0.0, "turns": 0, "failed_attempts": 0, "agent_error": True}
+
+
+def test_gemini_models_are_named_by_the_person_who_runs_it():
+    args = lambda pioneer=None, followers=None: run.argparse.Namespace(agent="gemini", pioneer=pioneer, followers=followers)
+    with pytest.raises(SystemExit):
+        run.choose_models(args())
+    assert run.choose_models(args("gemini-pro-x", ["gemini-flash-x"])) == {"pioneer": "gemini-pro-x", "followers": ["gemini-flash-x"]}
+    assert run.price_of("gemini-flash-x") == run.ASSUMED_PRICE
+
+
+def test_an_antigravity_stream_gives_tokens_turns_and_estimated_failures():
+    # The shape agy 1.3.3 really prints (captured), with the tool output shortened.
+    lines = [
+        {"event": "init", "init": {"model": "gemini-3.8-flash-low", "tools": ["run_command", "search_web"]}},
+        {"event": "step_update", "step_update": {"step_index": 1, "state": "DONE", "step_type": "agent_response", "usage": {"total_tokens": 11843}}},
+        {"event": "step_update", "step_update": {"step_index": 2, "state": "ACTIVE", "step_type": "tool", "tool_name": "run_command"}},
+        {"event": "step_update", "step_update": {"step_index": 2, "state": "DONE", "step_type": "tool", "tool_name": "run_command",
+                                                 "tool_info": {"output": "ls: cannot access '/x': No such file or directory\r\n"}}},
+        {"event": "step_update", "step_update": {"step_index": 3, "state": "DONE", "step_type": "tool", "tool_name": "run_command",
+                                                 "tool_info": {"output": "DB OK 42\r\n"}}},
+        {"event": "step_update", "step_update": {"step_index": 4, "state": "DONE", "step_type": "tool", "tool_name": "search_web"}},
+        {"event": "result", "result": {"status": "SUCCESS", "num_turns": 1, "usage": {"total_tokens": 23781}}},
+    ]
+    m = run.parse_agy_stream("\n".join(json.dumps(x) for x in lines) + "\nexit=0")
+    assert m == {"tokens": 23781, "cost_usd": 0.0, "turns": 3, "failed_attempts": 1, "web_tool_calls": 1, "agent_error": False}
+    assert run.parse_agy_stream("")["agent_error"] is True
+    assert run.parse_agy_stream(json.dumps({"event": "result", "result": {"status": "ERROR"}}))["agent_error"] is True
+
+
+def test_output_from_a_container_is_read_as_utf8_on_every_platform():
+    out = run.sh(sys.executable, "-c", "import sys; sys.stdout.buffer.write('ok \u2713 \u00e9'.encode('utf-8'))")
+    assert out.stdout == "ok ✓ é"
