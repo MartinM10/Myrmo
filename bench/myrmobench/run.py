@@ -47,7 +47,7 @@ RESULTS = ROOT / "bench" / "results"
 CLAUDE_CODE_VERSION = "latest"  # pinned in the run's environment.json; `latest` is resolved when the image is built
 OPENCODE_VERSION = "latest"
 GEMINI_VERSION = "latest"
-AGENTS = ("claude-code", "opencode", "gemini")
+AGENTS = ("claude-code", "opencode", "gemini", "antigravity")
 #: The follower conditions, in the order they are reported. See the module docstring.
 CONDITIONS = ("without", "unseen", "with")
 MCP_VERSION_FILE = ROOT / "clients/typescript/packages/myrmo-mcp/package.json"
@@ -415,6 +415,51 @@ def gemini_credentials() -> str | None:
     return path.read_text(encoding="utf-8") if path.is_file() else None
 
 
+#: The Docker volume a person signs in to once (`docker run -it --rm -v myrmobench-agy:/root/.gemini myrmobench/agy`).
+AGY_VOLUME = "myrmobench-agy"
+#: Antigravity's tools that reach the web. Its settings do not switch them off, so they stay available in every condition
+#: (which keeps a comparison within one run fair) and each run counts how often the agent used them.
+AGY_WEB_TOOLS = {"search_web", "read_url_content", "open_browser_url", "read_browser_page", "browser_subagent"}
+#: How a failed command shows in agy's output: it reports no exit code, so a command whose output reads like an error
+#: counts as a failed attempt. An estimate, unlike the other agents' counts.
+AGY_ERROR = re.compile(r"(?im)^\s*(?:\S+:\s*)?(?:error|fatal|traceback|exception)\b|command not found|no such file|"
+                       r"cannot find|not found|permission denied|exit (?:status|code) [1-9]|\bfailed\b")
+
+
+def agy_command(task: Task, model: str) -> list[str]:
+    return ["agy", "-p", task.prompt, "--model", model, "--output-format", "stream-json", "--dangerously-skip-permissions"]
+
+
+def parse_agy_stream(text: str) -> dict:
+    """Metrics from `agy -p --output-format stream-json`: `step_update` events (one per step, `DONE` when finished, tool
+    steps carry `tool_name` and `tool_info.output`) and a final `result` with the run's `usage`."""
+    failed = turns = web = 0
+    result: dict = {}
+    for line in text.splitlines():
+        try:
+            event = json.loads(line)
+        except ValueError:
+            continue
+        if not isinstance(event, dict):
+            continue
+        if event.get("event") == "result":
+            result = event.get("result") or {}
+            continue
+        step = event.get("step_update") or {}
+        if step.get("step_type") != "tool" or step.get("state") == "ACTIVE":
+            continue
+        turns += 1
+        name = step.get("tool_name") or ""
+        web += name in AGY_WEB_TOOLS
+        output = str((step.get("tool_info") or {}).get("output") or "")
+        if step.get("state") not in ("DONE", None) or (name == "run_command" and AGY_ERROR.search(output)):
+            failed += 1
+    usage = result.get("usage") or {}
+    tokens = int(usage.get("total_tokens") or 0)
+    return {"tokens": tokens, "cost_usd": 0.0, "turns": turns, "failed_attempts": failed, "web_tool_calls": web,
+            "agent_error": not result or str(result.get("status", "")).upper() != "SUCCESS"}
+
+
 def claude_command(task: Task, model: str, with_myrmo: bool) -> list[str]:
     allowed = "Bash,Read,Edit,Write,Glob,Grep" + (",mcp__myrmo" if with_myrmo else "")
     command = ["claude", "-p", task.prompt, "--model", model, "--output-format", "stream-json", "--verbose",
@@ -431,7 +476,10 @@ def run_agent(task: Task, model: str, role: str, condition: str, colony: str, re
     """One run: a fresh container from the agent image, the agent works in it, the hidden check decides."""
     with_myrmo = condition != "without"
     # Reach the colony on the host from inside the container.
-    name = start(task, task.agent_tag(agent), ("--add-host", "host.docker.internal:host-gateway"))
+    extra = ("--add-host", "host.docker.internal:host-gateway")
+    if agent == "antigravity":
+        extra += ("-v", f"{AGY_VOLUME}:/seed:ro")
+    name = start(task, task.agent_tag(agent), extra)
     started = time.time()
     try:
         mcp = mcp_config(colony.replace("localhost", "host.docker.internal"), "auto" if role == "pioneer" else "off",
@@ -452,6 +500,13 @@ def run_agent(task: Task, model: str, role: str, condition: str, colony: str, re
                 put(name, "/root/.gemini/oauth_creds.json", gemini_credentials() or "{}")
             exec_env = ["-e", f"GEMINI_API_KEY={key}"] if key else []
             command, parse = gemini_command(task, model), parse_gemini_stream
+        elif agent == "antigravity":
+            # The sign-in, from the volume mounted read-only at /seed; then this run's own settings and MCP servers.
+            sh("docker", "exec", name, "sh", "-c", "mkdir -p /root/.gemini && cp -r /seed/. /root/.gemini/")
+            put(name, "/root/.gemini/antigravity-cli/settings.json", json.dumps({"trustedWorkspaces": ["/"]}))
+            put(name, "/root/.gemini/config/mcp_config.json",
+                json.dumps({"mcpServers": dict(mcp["mcpServers"]) if with_myrmo else {}}))
+            command, parse = agy_command(task, model), parse_agy_stream
         else:
             if with_myrmo:
                 put(name, "/tmp/mcp.json", json.dumps(mcp))
@@ -480,10 +535,10 @@ def choose_models(args: argparse.Namespace) -> dict:
         if bad:
             raise SystemExit(f"{bad}: an OpenCode model is <provider>/<model>")
         return {"pioneer": args.pioneer, "followers": args.followers}
-    if args.agent == "gemini":
+    if args.agent in ("gemini", "antigravity"):
         if not args.pioneer or not args.followers:
-            raise SystemExit("with --agent gemini, give --pioneer and --followers as Gemini model ids, for example "
-                             "a Pro model as pioneer and a Flash model as follower (`gemini` shows the ones your plan has)")
+            raise SystemExit(f"with --agent {args.agent}, give --pioneer and --followers as model ids "
+                             "(`agy models` or `gemini` shows the ones your plan has)")
         return {"pioneer": args.pioneer, "followers": args.followers}
     models = {"pioneer": args.pioneer or "claude-opus-5-5", "followers": args.followers or ["claude-sonnet-5-5"]}
     bad = [m for m in [models["pioneer"], *models["followers"]] if m not in PRICES]
@@ -508,7 +563,13 @@ def cmd_run(args: argparse.Namespace) -> int:
     keys = {"opencode": ("OPENCODE_API_KEY",), "gemini": ("GEMINI_API_KEY",)}.get(
         args.agent, ("ANTHROPIC_API_KEY", "CLAUDE_CODE_OAUTH_TOKEN"))
     env = [f"{k}={os.environ[k]}" for k in keys if os.environ.get(k)]
-    if not env and not (args.agent == "gemini" and gemini_credentials()):
+    if args.agent == "antigravity":
+        signed_in = sh("docker", "run", "--rm", "-v", f"{AGY_VOLUME}:/g:ro", "debian:bookworm-slim", "test", "-s",
+                       "/g/antigravity-cli/antigravity-oauth-token", check=False).returncode == 0
+        if not signed_in:
+            print(f"Sign in once: docker run -it --rm -v {AGY_VOLUME}:/root/.gemini myrmobench/agy")
+            return 2
+    elif not env and not (args.agent == "gemini" and gemini_credentials()):
         print("Set " + " or ".join(keys) + "." + (" Or sign in once with `gemini` (Sign in with Google)." if args.agent == "gemini" else ""))
         return 2
     run_id = "myrmobench-" + datetime.now(timezone.utc).strftime("%Y%m%d-%H%M")
@@ -521,8 +582,14 @@ def cmd_run(args: argparse.Namespace) -> int:
                                                       "claude_code": args.claude_code_version, "opencode": args.opencode_version,
                                                       "gemini": args.gemini_version}, indent=2))
     by_id = {t.id: t for t in tasks}
+    if args.agent == "antigravity":
+        sh("docker", "build", "-t", "myrmobench/agy", str(HERE / "agy"))
     for task in tasks:
         build(task)
+        if args.agent == "antigravity":
+            sh("docker", "build", "-t", task.agent_tag(args.agent), "-f", str(HERE / "agy" / "agent.Dockerfile"),
+               "--build-arg", f"BASE={task.image_tag}", str(HERE / "agy"))
+            continue
         sh("docker", "build", "-t", task.agent_tag(args.agent), "-f", str(HERE / "agent.Dockerfile"), "--build-arg", f"BASE={task.image_tag}",
            "--build-arg", f"AGENT={args.agent}", "--build-arg", f"CLAUDE_CODE_VERSION={args.claude_code_version}",
            "--build-arg", f"OPENCODE_VERSION={args.opencode_version}", "--build-arg", f"GEMINI_VERSION={args.gemini_version}",
