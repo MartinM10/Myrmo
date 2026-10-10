@@ -1,0 +1,31 @@
+{
+  "plan": {
+    "tasks": 4,
+    "runs": 8,
+    "conditions": [
+      "without"
+    ],
+    "by_role": {
+      "pioneer": {},
+      "followers": {
+        "claude-sonnet-5-5": 8
+      }
+    },
+    "estimated_usd_ceiling": 12.0,
+    "per_run_usd": {
+      "claude-sonnet-5-5": 1.5
+    }
+  },
+  "colony": "http://localhost:8080",
+  "agent": "claude-code",
+  "pioneer": "claude-opus-5-5",
+  "followers": [
+    "claude-sonnet-5-5"
+  ],
+  "colony_at_start": {
+    "trails": 119,
+    "seeded": null
+  },
+  "claude_code": "latest",
+  "opencode": "latest"
+}

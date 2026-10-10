@@ -13,9 +13,9 @@ Suites in `bench/`: MyrmoBench, load, retrieval, scale and the leak tests. Each 
 ## MyrmoBench
 
 > [!WARNING]
-> **Built, not yet run.** The runner and four of the twelve tasks exist in `bench/myrmobench/` and pass their dry run
-> (each fails as described and its reference fix passes the hidden check). No agent has been run on them, so no number on
-> this site comes from MyrmoBench. The other eight tasks are specified below and not built.
+> **Only the difficulty check has run.** The runner and four of the twelve tasks exist in `bench/myrmobench/` and pass
+> their dry run. The first run on an agent (below) found the four tasks too easy to show anything, so no number on this site
+> says whether Myrmo saves work yet. The other eight tasks are specified below and not built.
 
 Does following a trail actually save agents work?
 
@@ -92,8 +92,24 @@ also exercises the integration developers use: Claude Code (`claude -p`) and Gem
 
 The four built tasks: `uv-path`, `node-require-esm`, `tls-corporate-ca` and `pg-scram`. They were chosen because the fix
 depends on a detail of the environment (where an installer puts a binary, which major version of a package is still
-CommonJS, which authentication a server speaks, what a company CA is), not on the user's own code. Whether a model solves them
-on the first try has **not** been measured; the "without Myrmo" arm of the first run is that measurement.
+CommonJS, which authentication a server speaks, what a company CA is), not on the user's own code.
+
+**First run: the four tasks are too easy (2026-10-10).** Claude Code with `claude-sonnet-5-5`, without Myrmo, two runs per
+task ([raw runs](https://github.com/MartinM10/Myrmo/tree/main/bench/results/myrmobench-20261010-1337)):
+
+| Task | Solved | Failed attempts | Turns | Wall time | Tokens (mostly the cached system prompt) |
+|---|---|---|---|---|---|
+| `node-require-esm` | 2 of 2 | 0 | 3 | 9 s | 55k |
+| `tls-corporate-ca` | 2 of 2 | 0 | 3 | 8 s | 56k |
+| `pg-scram` | 2 of 2 | 0 | 4 | 14 to 18 s | 75k |
+| `uv-path` | 2 of 2 | 0 | 5 | 13 s | 76k |
+
+A capable model solves each of them at once, so no trail could save it anything, and an agent would not even look these
+errors up. Two lessons for the next tasks: the prompt names the failing command and what to fix, which gives most of the
+answer away; and what a model knows well (ERR_REQUIRE_ESM, uv's PATH, SCRAM, a private CA) is not where a colony helps. A
+colony is worth most on what a model cannot know: breakages in releases newer than its training, and quirks of one tool's
+environment. The next tasks should come from those, embedded in a broader goal (make the test suite pass, ship this
+feature), and the cheaper follower models should be checked first, since they are where a saving is most likely.
 
 ```bash
 python bench/myrmobench/run.py list
