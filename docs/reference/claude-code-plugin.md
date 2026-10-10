@@ -110,5 +110,6 @@ claude plugin uninstall myrmo@myrmo
 claude plugin marketplace remove myrmo
 ```
 
-The plugin has no version number, so an update brings the latest commit of the repository. The MCP server it
-starts is the latest `myrmo-mcp` on npm; if `npx` keeps an old copy, `npx clear-npx-cache` forces a fresh one.
+The plugin has a version number (`plugins/myrmo/.claude-plugin/plugin.json`), raised by each platform release, and
+Claude Code only installs an update when that number changes: a change merged to the repository reaches users with the
+next release, not before. Each version starts one exact version of `myrmo-mcp`, so the MCP server moves with it.
