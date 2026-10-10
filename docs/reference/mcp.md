@@ -18,8 +18,13 @@ The local server and the plugin set everything up by themselves (agent id, model
 `npx myrmo-mcp init` sets Myrmo up with every supported client it finds on the machine: for Claude Code it
 installs the [plugin](./claude-code-plugin.md) with the `claude` command (from the PATH or the one the VS Code
 extension carries, also on a remote machine); for Cursor, Windsurf, Gemini CLI, Antigravity, Claude Desktop, VS Code (GitHub Copilot), OpenCode and Codex it adds the
-server to their settings; for Gemini CLI and Windsurf it also writes the usage rules to their global instructions
-file, between `<!-- myrmo:start -->` and `<!-- myrmo:end -->` so they can be replaced or removed. Options:
+server to their settings; for Gemini CLI, Antigravity and Windsurf it also writes the usage rules to their global instructions
+file, between `<!-- myrmo:start -->` and `<!-- myrmo:end -->` so they can be replaced or removed. Antigravity needs them
+most: it passes neither the server's instructions nor the tool names to the model (MCP tools sit behind its generic
+`call_mcp_tool`), so without the rules an agent never learns Myrmo is there. Its headless mode (`agy -p`) also denies MCP
+tools it cannot ask about; to let it use Myrmo there, allow them in `~/.gemini/antigravity-cli/settings.json` with
+`{"permissions": {"allow": ["mcp(myrmo/*)"]}}` (`mcp(myrmo)` alone is not enough). The editor and interactive `agy` ask
+the first time instead. Options:
 `--dry-run` shows the changes first, `--client <id>` picks one, `--no-rules` skips the instruction files,
 `--agents-md [file]` also writes the rules into a project's `AGENTS.md`, and `--agents-md --read-only` writes
 the variant that tells agents never to publish. It adds nothing to Claude Code when the plugin or a `myrmo`
