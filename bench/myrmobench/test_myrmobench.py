@@ -269,3 +269,8 @@ def test_an_antigravity_stream_gives_tokens_turns_and_estimated_failures():
     assert m == {"tokens": 23781, "cost_usd": 0.0, "turns": 3, "failed_attempts": 1, "web_tool_calls": 1, "agent_error": False}
     assert run.parse_agy_stream("")["agent_error"] is True
     assert run.parse_agy_stream(json.dumps({"event": "result", "result": {"status": "ERROR"}}))["agent_error"] is True
+
+
+def test_output_from_a_container_is_read_as_utf8_on_every_platform():
+    out = run.sh(sys.executable, "-c", "import sys; sys.stdout.buffer.write('ok \u2713 \u00e9'.encode('utf-8'))")
+    assert out.stdout == "ok ✓ é"

@@ -209,7 +209,10 @@ def summarize(runs: list[dict]) -> dict:
 # --- docker -----------------------------------------------------------------------------------------------------------
 
 def sh(*args: str, check: bool = True, timeout: int | None = None, input_text: str | None = None) -> subprocess.CompletedProcess:
-    return subprocess.run(args, capture_output=True, text=True, check=check, timeout=timeout, input=input_text)
+    # The containers print UTF-8. Without an explicit encoding, Windows decodes with its ANSI code page, fails on the first
+    # character outside it (agy prints ✓), and the run's output is lost.
+    return subprocess.run(args, capture_output=True, text=True, encoding="utf-8", errors="replace", check=check,
+                          timeout=timeout, input=input_text)
 
 
 def build(task: Task) -> None:
