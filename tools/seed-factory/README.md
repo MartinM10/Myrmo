@@ -19,6 +19,19 @@ A trail earns its place only if both hold:
 catalog (they reproduce and make good tests) but the factory skips them unless `--include-excluded`.
 Add new tasks only when they pass both tests above.
 
+## Where new tasks come from: the breakage radar
+
+`radar.py` reads PyPI and npm for a watch list of widely used packages and lists, for the last N days, new majors, raised
+minimum Python or Node versions, packages that became ES-module-only, and withdrawn releases (`candidates/_radar.json`).
+These are the breakages a model trained earlier cannot know, which is where a trail is worth most: MyrmoBench showed a
+capable model solves the old, well-known ones at once. A lead is a place to look, not a trail: it becomes a task in
+`catalog/` only once it is reproduced in a pinned image and its fix passes, like any other. The registries are used for
+discovery only; nothing from them goes into a trail.
+
+```bash
+python tools/seed-factory/radar.py --days 120
+```
+
 ## Quality gates (`factory.validate`)
 
 Schema-valid; at least one real failed attempt; every dead end really exited non-zero; the fix and its

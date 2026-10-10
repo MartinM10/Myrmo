@@ -1,0 +1,322 @@
+{
+ "generated": "2026-10-10",
+ "days": 120,
+ "leads": [
+  {
+   "ecosystem": "npm",
+   "package": "typescript",
+   "version": "7.0.2",
+   "released": "2026-07-08",
+   "signal": "esm-only",
+   "detail": "no CommonJS entry any more: require() fails",
+   "source": "https://www.npmjs.com/package/typescript"
+  },
+  {
+   "ecosystem": "npm",
+   "package": "@babel/core",
+   "version": "8.0.0",
+   "released": "2026-06-16",
+   "signal": "esm-only",
+   "detail": "no CommonJS entry any more: require() fails",
+   "source": "https://www.npmjs.com/package/@babel/core"
+  },
+  {
+   "ecosystem": "pypi",
+   "package": "pydantic",
+   "version": "2.14.0",
+   "released": "2026-10-08",
+   "signal": "runtime-floor",
+   "detail": "requires Python 3.10.0 (was 3.9.0)",
+   "source": "https://pypi.org/project/pydantic/"
+  },
+  {
+   "ecosystem": "pypi",
+   "package": "sqlalchemy",
+   "version": "2.1.0",
+   "released": "2026-09-24",
+   "signal": "runtime-floor",
+   "detail": "requires Python 3.11.0 (was 3.7.0)",
+   "source": "https://pypi.org/project/sqlalchemy/"
+  },
+  {
+   "ecosystem": "npm",
+   "package": "vitest",
+   "version": "5.0.0",
+   "released": "2026-09-03",
+   "signal": "runtime-floor",
+   "detail": "requires Node 22.12.0 (was 20.0.0)",
+   "source": "https://www.npmjs.com/package/vitest"
+  },
+  {
+   "ecosystem": "pypi",
+   "package": "anthropic",
+   "version": "1.0.0",
+   "released": "2026-08-20",
+   "signal": "runtime-floor",
+   "detail": "requires Python 3.10.0 (was 3.9.0)",
+   "source": "https://pypi.org/project/anthropic/"
+  },
+  {
+   "ecosystem": "pypi",
+   "package": "openai",
+   "version": "2.49.0",
+   "released": "2026-07-27",
+   "signal": "runtime-floor",
+   "detail": "requires Python 3.10.0 (was 3.9.0)",
+   "source": "https://pypi.org/project/openai/"
+  },
+  {
+   "ecosystem": "npm",
+   "package": "chalk",
+   "version": "6.0.0",
+   "released": "2026-07-26",
+   "signal": "runtime-floor",
+   "detail": "requires Node 22.0.0 (was 12.17.0)",
+   "source": "https://www.npmjs.com/package/chalk"
+  },
+  {
+   "ecosystem": "npm",
+   "package": "playwright",
+   "version": "1.62.0",
+   "released": "2026-07-24",
+   "signal": "runtime-floor",
+   "detail": "requires Node 20.0.0 (was 18.0.0)",
+   "source": "https://www.npmjs.com/package/playwright"
+  },
+  {
+   "ecosystem": "npm",
+   "package": "nanoid",
+   "version": "6.0.0",
+   "released": "2026-07-12",
+   "signal": "runtime-floor",
+   "detail": "requires Node 22.0.0 (was 18.0.0)",
+   "source": "https://www.npmjs.com/package/nanoid"
+  },
+  {
+   "ecosystem": "npm",
+   "package": "typescript",
+   "version": "7.0.2",
+   "released": "2026-07-08",
+   "signal": "runtime-floor",
+   "detail": "requires Node 16.20.0 (was 14.17.0)",
+   "source": "https://www.npmjs.com/package/typescript"
+  },
+  {
+   "ecosystem": "pypi",
+   "package": "setuptools",
+   "version": "83.0.0",
+   "released": "2026-07-04",
+   "signal": "runtime-floor",
+   "detail": "requires Python 3.10.0 (was 3.9.0)",
+   "source": "https://pypi.org/project/setuptools/"
+  },
+  {
+   "ecosystem": "pypi",
+   "package": "numpy",
+   "version": "2.5.0",
+   "released": "2026-06-21",
+   "signal": "runtime-floor",
+   "detail": "requires Python 3.12.0 (was 3.11.0)",
+   "source": "https://pypi.org/project/numpy/"
+  },
+  {
+   "ecosystem": "pypi",
+   "package": "scipy",
+   "version": "1.18.0",
+   "released": "2026-06-19",
+   "signal": "runtime-floor",
+   "detail": "requires Python 3.12.0 (was 3.11.0)",
+   "source": "https://pypi.org/project/scipy/"
+  },
+  {
+   "ecosystem": "npm",
+   "package": "@babel/core",
+   "version": "8.0.0",
+   "released": "2026-06-16",
+   "signal": "runtime-floor",
+   "detail": "requires Node 22.18.0 (was 6.9.0)",
+   "source": "https://www.npmjs.com/package/@babel/core"
+  },
+  {
+   "ecosystem": "npm",
+   "package": "dotenv",
+   "version": "18.0.0",
+   "released": "2026-09-17",
+   "signal": "major",
+   "detail": "17.4.2 -> 18.0.0",
+   "source": "https://www.npmjs.com/package/dotenv"
+  },
+  {
+   "ecosystem": "npm",
+   "package": "vitest",
+   "version": "5.0.0",
+   "released": "2026-09-03",
+   "signal": "major",
+   "detail": "4.1.11 -> 5.0.0",
+   "source": "https://www.npmjs.com/package/vitest"
+  },
+  {
+   "ecosystem": "npm",
+   "package": "pnpm",
+   "version": "12.0.0",
+   "released": "2026-08-26",
+   "signal": "major",
+   "detail": "11.28.5 -> 12.0.0",
+   "source": "https://www.npmjs.com/package/pnpm"
+  },
+  {
+   "ecosystem": "pypi",
+   "package": "anthropic",
+   "version": "1.0.0",
+   "released": "2026-08-20",
+   "signal": "major",
+   "detail": "0.125.0 -> 1.0.0",
+   "source": "https://pypi.org/project/anthropic/"
+  },
+  {
+   "ecosystem": "pypi",
+   "package": "openai",
+   "version": "3.0.0",
+   "released": "2026-08-12",
+   "signal": "major",
+   "detail": "2.54.0 -> 3.0.0",
+   "source": "https://pypi.org/project/openai/"
+  },
+  {
+   "ecosystem": "pypi",
+   "package": "setuptools",
+   "version": "84.0.0",
+   "released": "2026-08-08",
+   "signal": "major",
+   "detail": "83.0.0 -> 84.0.0",
+   "source": "https://pypi.org/project/setuptools/"
+  },
+  {
+   "ecosystem": "pypi",
+   "package": "cryptography",
+   "version": "50.0.0",
+   "released": "2026-07-31",
+   "signal": "major",
+   "detail": "49.0.0 -> 50.0.0",
+   "source": "https://pypi.org/project/cryptography/"
+  },
+  {
+   "ecosystem": "npm",
+   "package": "openai",
+   "version": "7.0.0",
+   "released": "2026-07-27",
+   "signal": "major",
+   "detail": "6.49.0 -> 7.0.0",
+   "source": "https://www.npmjs.com/package/openai"
+  },
+  {
+   "ecosystem": "npm",
+   "package": "chalk",
+   "version": "6.0.0",
+   "released": "2026-07-26",
+   "signal": "major",
+   "detail": "5.6.2 -> 6.0.0",
+   "source": "https://www.npmjs.com/package/chalk"
+  },
+  {
+   "ecosystem": "npm",
+   "package": "better-sqlite3",
+   "version": "13.0.0",
+   "released": "2026-07-21",
+   "signal": "major",
+   "detail": "12.11.1 -> 13.0.0",
+   "source": "https://www.npmjs.com/package/better-sqlite3"
+  },
+  {
+   "ecosystem": "npm",
+   "package": "nanoid",
+   "version": "6.0.0",
+   "released": "2026-07-12",
+   "signal": "major",
+   "detail": "5.1.16 -> 6.0.0",
+   "source": "https://www.npmjs.com/package/nanoid"
+  },
+  {
+   "ecosystem": "npm",
+   "package": "typescript",
+   "version": "7.0.2",
+   "released": "2026-07-08",
+   "signal": "major",
+   "detail": "6.0.3 -> 7.0.2",
+   "source": "https://www.npmjs.com/package/typescript"
+  },
+  {
+   "ecosystem": "pypi",
+   "package": "setuptools",
+   "version": "83.0.0",
+   "released": "2026-07-04",
+   "signal": "major",
+   "detail": "82.0.1 -> 83.0.0",
+   "source": "https://pypi.org/project/setuptools/"
+  },
+  {
+   "ecosystem": "npm",
+   "package": "@babel/core",
+   "version": "8.0.0",
+   "released": "2026-06-16",
+   "signal": "major",
+   "detail": "7.29.7 -> 8.0.0",
+   "source": "https://www.npmjs.com/package/@babel/core"
+  },
+  {
+   "ecosystem": "pypi",
+   "package": "cryptography",
+   "version": "49.0.0",
+   "released": "2026-06-12",
+   "signal": "major",
+   "detail": "48.0.1 -> 49.0.0",
+   "source": "https://pypi.org/project/cryptography/"
+  },
+  {
+   "ecosystem": "npm",
+   "package": "pnpm",
+   "version": "11.13.0",
+   "released": "2026-07-13",
+   "signal": "yanked",
+   "detail": "This is a broken version. Please install pnpm v11.13.1 or newer",
+   "source": "https://www.npmjs.com/package/pnpm"
+  },
+  {
+   "ecosystem": "npm",
+   "package": "pnpm",
+   "version": "11.12.0",
+   "released": "2026-07-11",
+   "signal": "yanked",
+   "detail": "This release is broken. Please upgrade to v11.13.1 or newer.",
+   "source": "https://www.npmjs.com/package/pnpm"
+  },
+  {
+   "ecosystem": "npm",
+   "package": "eslint",
+   "version": "9.39.5",
+   "released": "2026-07-10",
+   "signal": "yanked",
+   "detail": "This version is no longer supported. Please see https://eslint.org/version-support for other options.",
+   "source": "https://www.npmjs.com/package/eslint"
+  },
+  {
+   "ecosystem": "pypi",
+   "package": "grpcio",
+   "version": "1.82.0",
+   "released": "2026-07-06",
+   "signal": "yanked",
+   "detail": "Bad protobuf dependency version specified; only 7.x should be supported https://github.com/grpc/grpc/issues/42906",
+   "source": "https://pypi.org/project/grpcio/"
+  },
+  {
+   "ecosystem": "pypi",
+   "package": "pandas",
+   "version": "3.0.4",
+   "released": "2026-06-28",
+   "signal": "yanked",
+   "detail": "Reported segfaults with datetime-related functionality",
+   "source": "https://pypi.org/project/pandas/"
+  }
+ ],
+ "errors": []
+}
