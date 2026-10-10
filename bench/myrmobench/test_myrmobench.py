@@ -274,3 +274,10 @@ def test_an_antigravity_stream_gives_tokens_turns_and_estimated_failures():
 def test_output_from_a_container_is_read_as_utf8_on_every_platform():
     out = run.sh(sys.executable, "-c", "import sys; sys.stdout.buffer.write('ok \u2713 \u00e9'.encode('utf-8'))")
     assert out.stdout == "ok ✓ é"
+
+
+def test_agents_that_drop_mcp_instructions_get_the_rules_init_writes():
+    if not run.MCP_DIST.is_file():
+        pytest.skip("the MCP server is not built")
+    rules = run.myrmo_rules()
+    assert rules.startswith("<!-- myrmo:start -->") and "myrmo_search" in rules and "myrmo_report" in rules

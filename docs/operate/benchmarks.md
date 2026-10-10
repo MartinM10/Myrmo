@@ -167,7 +167,11 @@ python bench/myrmobench/run.py run --agent antigravity --pioneer gemini-3.1-pro-
     --followers gemini-3.8-flash-low gpt-oss-120b-medium --conditions without --repetitions 2 --execute --approved-usd 40
 ```
 
-Each run copies the sign-in from the volume into its throwaway container. Two differences with the other agents: its web
+Each run copies the sign-in from the volume into its throwaway container. Antigravity and Gemini CLI do not pass an MCP
+server's instructions to the model, and Antigravity hides MCP tools behind one generic `call_mcp_tool`: in a first run of 36
+sessions with Myrmo connected, no agent searched it once. So in the conditions with Myrmo they get the usage rules that
+`npx myrmo-mcp init` writes to `~/.gemini/GEMINI.md`, which both read: the setup a user of these agents has. Two
+differences with the other agents: its web
 tools (`search_web`, `read_url_content`, the browser) cannot be switched off from its settings, so they are available in
 every condition and each run records how often the agent used them (`web_tool_calls`); and agy reports no exit code for a
 command, so a failed attempt is a command whose output reads like an error, an estimate.

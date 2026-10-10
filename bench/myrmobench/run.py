@@ -429,6 +429,24 @@ AGY_ERROR = re.compile(r"(?im)^\s*(?:\S+:\s*)?(?:error|fatal|traceback|exception
                        r"cannot find|not found|permission denied|exit (?:status|code) [1-9]|\bfailed\b")
 
 
+MCP_DIST = ROOT / "clients/typescript/packages/myrmo-mcp/dist/init.js"
+_RULES: list[str] = []
+
+
+def myrmo_rules() -> str:
+    """The usage rules `npx myrmo-mcp init` writes to ~/.gemini/GEMINI.md. Antigravity and Gemini CLI do not pass an MCP
+    server's instructions to the model, and Antigravity even hides the tools behind a generic `call_mcp_tool`: without
+    these rules the model never learns Myrmo is there (measured: no search in 36 runs). So the conditions with Myrmo get
+    what a user who ran `init` has."""
+    if not _RULES:
+        done = sh("node", "-e", f"import({json.dumps(MCP_DIST.as_uri())}).then(m => process.stdout.write(m.AGENTS_BLOCK))",
+                  check=False)
+        if done.returncode != 0 or "myrmo:start" not in done.stdout:
+            raise SystemExit("Build the MCP server first (cd clients/typescript && npm ci && npm run build): the rules come from it.")
+        _RULES.append(done.stdout)
+    return _RULES[0]
+
+
 def agy_command(task: Task, model: str) -> list[str]:
     return ["agy", "-p", task.prompt, "--model", model, "--output-format", "stream-json", "--dangerously-skip-permissions"]
 
@@ -498,6 +516,8 @@ def run_agent(task: Task, model: str, role: str, condition: str, colony: str, re
         elif agent == "gemini":
             key = dict(e.split("=", 1) for e in env).get("GEMINI_API_KEY", "")
             put(name, "/root/.gemini/settings.json", json.dumps(gemini_settings(with_myrmo, mcp, bool(key))))
+            if with_myrmo:
+                put(name, "/root/.gemini/GEMINI.md", myrmo_rules())
             if not key:
                 # The sign-in goes where `gemini` would have put it, in the throwaway container only.
                 put(name, "/root/.gemini/oauth_creds.json", gemini_credentials() or "{}")
@@ -509,6 +529,8 @@ def run_agent(task: Task, model: str, role: str, condition: str, colony: str, re
             put(name, "/root/.gemini/antigravity-cli/settings.json", json.dumps({"trustedWorkspaces": ["/"]}))
             put(name, "/root/.gemini/config/mcp_config.json",
                 json.dumps({"mcpServers": dict(mcp["mcpServers"]) if with_myrmo else {}}))
+            if with_myrmo:
+                put(name, "/root/.gemini/GEMINI.md", myrmo_rules())
             command, parse = agy_command(task, model), parse_agy_stream
         else:
             if with_myrmo:
