@@ -86,6 +86,13 @@ WRITE /out/task.json with exactly these fields (JSON, UTF-8):
 Each command runs with `sh -c` in a NEW container of {image} right after `setup`, so it must not rely on anything another
 command did. Use only POSIX sh. No placeholders like <path>. Keep commands short.
 
+QUALITY, or the task is refused at review even if it runs:
+- The fix is the one the package's authors intend (a supported runtime, the last compatible version, the renamed option),
+  never a workaround that forces an unsupported combination (--force, --legacy-peer-deps, ignoring engines).
+- The verification exercises the real use (run the tool or the test it is for), not only an import or a --version.
+- root_cause states only what you observed or what the release notes say; no guesses about internals.
+- steps are general advice another developer can follow, not a log of what you did here.
+
 MYRMO: the myrmo MCP server is connected (the public colony). Use it for every error you hit while you work, as your
 rules in GEMINI.md say: search before you try a fix, report what a trail did for you. Do NOT publish the breakage of this
 lead yourself: the seed factory publishes it once it has verified your task. Do publish any other hard error of tooling,
@@ -178,7 +185,8 @@ def draft(lead: dict, model: str, retry: str = "") -> tuple[dict | None, dict]:
 
 def run_factory(tid: str, batch: str) -> tuple[bool, str]:
     """Run one draft through the factory's gates; returns (valid, reason)."""
-    output = SEED_OUT / f"{batch}.jsonl"
+    # One output per task: the factory rewrites its output file, so a shared one kept only the last task's result.
+    output = SEED_OUT / f"{batch}-{tid}.jsonl"
     done = sh(sys.executable, str(HERE / "factory.py"), "--ids", tid, "--limit", "1", "--batch", batch,
               "--output", str(output), check=False, timeout=1800)
     try:
@@ -186,7 +194,12 @@ def run_factory(tid: str, batch: str) -> tuple[bool, str]:
     except ValueError:
         return False, (done.stderr or done.stdout)[-600:]
     invalid = summary.get("invalid") or []
-    return (not invalid and summary.get("valid_unique") == 1), (invalid[0]["reason"] if invalid else "")
+    valid = not invalid and summary.get("valid_unique") == 1
+    if valid:
+        # The batch's file gathers every valid trail, for review and for publisher.py.
+        with (SEED_OUT / f"{batch}.jsonl").open("a", encoding="utf-8") as f:
+            f.write(output.read_text(encoding="utf-8").strip() + "\n")
+    return valid, (invalid[0]["reason"] if invalid else "")
 
 
 def work(lead: dict, models: list[str], batch: str) -> dict:
