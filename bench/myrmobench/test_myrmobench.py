@@ -263,10 +263,13 @@ def test_an_antigravity_stream_gives_tokens_turns_and_estimated_failures():
         {"event": "step_update", "step_update": {"step_index": 3, "state": "DONE", "step_type": "tool", "tool_name": "run_command",
                                                  "tool_info": {"output": "DB OK 42\r\n"}}},
         {"event": "step_update", "step_update": {"step_index": 4, "state": "DONE", "step_type": "tool", "tool_name": "search_web"}},
+        {"event": "step_update", "step_update": {"step_index": 5, "state": "DONE", "step_type": "tool", "tool_name": "call_mcp_tool",
+                                                 "tool_info": {"parameters": {"ServerName": "myrmo", "ToolName": "myrmo_search"}, "output": "<myrmo_trails>"}}},
         {"event": "result", "result": {"status": "SUCCESS", "num_turns": 1, "usage": {"total_tokens": 23781}}},
     ]
     m = run.parse_agy_stream("\n".join(json.dumps(x) for x in lines) + "\nexit=0")
-    assert m == {"tokens": 23781, "cost_usd": 0.0, "turns": 3, "failed_attempts": 1, "web_tool_calls": 1, "agent_error": False}
+    assert m == {"tokens": 23781, "cost_usd": 0.0, "turns": 4, "failed_attempts": 1, "web_tool_calls": 1, "myrmo_calls": 1,
+                 "agent_error": False}
     assert run.parse_agy_stream("")["agent_error"] is True
     assert run.parse_agy_stream(json.dumps({"event": "result", "result": {"status": "ERROR"}}))["agent_error"] is True
 

@@ -454,7 +454,7 @@ def agy_command(task: Task, model: str) -> list[str]:
 def parse_agy_stream(text: str) -> dict:
     """Metrics from `agy -p --output-format stream-json`: `step_update` events (one per step, `DONE` when finished, tool
     steps carry `tool_name` and `tool_info.output`) and a final `result` with the run's `usage`."""
-    failed = turns = web = 0
+    failed = turns = web = myrmo = 0
     result: dict = {}
     for line in text.splitlines():
         try:
@@ -472,13 +472,15 @@ def parse_agy_stream(text: str) -> dict:
         turns += 1
         name = step.get("tool_name") or ""
         web += name in AGY_WEB_TOOLS
+        params = (step.get("tool_info") or {}).get("parameters") or {}
+        myrmo += name == "call_mcp_tool" and str(params.get("ServerName", "")).lower() == "myrmo"
         output = str((step.get("tool_info") or {}).get("output") or "")
         if step.get("state") not in ("DONE", None) or (name == "run_command" and AGY_ERROR.search(output)):
             failed += 1
     usage = result.get("usage") or {}
     tokens = int(usage.get("total_tokens") or 0)
     return {"tokens": tokens, "cost_usd": 0.0, "turns": turns, "failed_attempts": failed, "web_tool_calls": web,
-            "agent_error": not result or str(result.get("status", "")).upper() != "SUCCESS"}
+            "myrmo_calls": myrmo, "agent_error": not result or str(result.get("status", "")).upper() != "SUCCESS"}
 
 
 def claude_command(task: Task, model: str, with_myrmo: bool) -> list[str]:
