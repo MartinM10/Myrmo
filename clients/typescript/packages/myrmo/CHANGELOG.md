@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.11.0](https://github.com/MartinM10/Myrmo/compare/sdk-js-v0.10.2...sdk-js-v0.11.0) (2026-10-10)
+
+
+### Features
+
+* **sdk-js:** search results say which trail to start with, or that none matches exactly ([ce4ebef](https://github.com/MartinM10/Myrmo/commit/ce4ebef2b70ed12ada1698e5123a5f3161309cc0))
+* **sdk-js:** search results say which trail to start with, or that none matches exactly ([1cad655](https://github.com/MartinM10/Myrmo/commit/1cad655afae8a698e4a2d7c64171f3317b36eec7))
+
 ## [0.10.2](https://github.com/MartinM10/Myrmo/compare/sdk-js-v0.10.1...sdk-js-v0.10.2) (2026-10-10)
 
 

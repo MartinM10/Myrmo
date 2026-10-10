@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.21.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.20.1...platform-v0.21.0) (2026-10-10)
+
+
+### Features
+
+* **seed:** a breakage radar that finds recent releases likely to break builds ([0f16071](https://github.com/MartinM10/Myrmo/commit/0f160714821890eb6677f7574ae797f2a7fe7f84))
+* **seed:** a breakage radar that finds recent releases likely to break builds ([edfd5c8](https://github.com/MartinM10/Myrmo/commit/edfd5c89d4bc798f4d38a5f169c979fb8a832eac))
+* **seed:** a worker that turns breakage leads into tasks, with an agent that reproduces each one ([c755f9a](https://github.com/MartinM10/Myrmo/commit/c755f9a95265e72cb49f98fbcf7142c73fc26e0d))
+* **seed:** a worker that turns breakage leads into tasks, with an agent that reproduces each one ([b52a6e5](https://github.com/MartinM10/Myrmo/commit/b52a6e58e4d353fbbb5bc825880218cab3206e52))
+
+
+### Bug fixes
+
+* **seed:** each task keeps its factory output, and the worker states the quality a task needs ([891f741](https://github.com/MartinM10/Myrmo/commit/891f7412f13cfb4582b96a8211fbea1e1ae98705))
+* **seed:** each task keeps its factory output, and the worker states the quality a task needs ([fe2db01](https://github.com/MartinM10/Myrmo/commit/fe2db016258d44650bf81ddaf639445034211360))
+* **seed:** the factory reads container output as UTF-8, and the radar puts Python floors last ([4122f3e](https://github.com/MartinM10/Myrmo/commit/4122f3e13305ead802f9c5169c7f95532b31c703))
+* **seed:** the factory reads container output as UTF-8, and the radar puts Python floors last ([faca4f2](https://github.com/MartinM10/Myrmo/commit/faca4f215b363da85a51f68fce9afd4306d78aa3))
+
 ## [0.20.1](https://github.com/MartinM10/Myrmo/compare/platform-v0.20.0...platform-v0.20.1) (2026-10-10)
 
 
