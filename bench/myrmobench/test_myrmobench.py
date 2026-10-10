@@ -24,8 +24,9 @@ def test_every_task_is_complete_and_unique():
 
 def test_the_plan_counts_runs_and_gives_a_ceiling():
     p = run.plan(tasks=4, followers=["claude-sonnet-5-5"], pioneer="claude-opus-5-5", repetitions=5)
-    assert p["runs"] == 4 + 4 * 5 * 2
-    assert p["by_role"]["followers"] == {"claude-sonnet-5-5": 40}
+    assert p["runs"] == 4 + 4 * 5 * 3, "three conditions: without, unseen, with"
+    assert p["by_role"]["followers"] == {"claude-sonnet-5-5": 60}
+    assert p["conditions"] == ["without", "unseen", "with"]
     assert 0 < p["estimated_usd_ceiling"] < 1000
     two = run.plan(4, ["claude-sonnet-5-5", "claude-opus-5-5"], "claude-opus-5-5", 5)
     assert two["estimated_usd_ceiling"] > p["estimated_usd_ceiling"]
@@ -98,7 +99,7 @@ def test_models_are_chosen_per_agent_and_unknown_ones_are_priced_high():
         run.choose_models(args("opencode", "opencode-go/a", ["b"]))
     models = run.choose_models(args("opencode", "opencode-go/a", ["opencode-go/b"]))
     cheap = run.plan(4, models["followers"], models["pioneer"], 5)
-    assert cheap["runs"] == 44 and cheap["estimated_usd_ceiling"] > 0
+    assert cheap["runs"] == 64 and cheap["estimated_usd_ceiling"] > 0
     assert run.price_of("opencode-go/a") == run.ASSUMED_PRICE
     task = run.load_tasks(["uv-path"])[0]
     assert task.agent_tag() != task.agent_tag("opencode") and task.agent_tag().endswith("-agent")
@@ -142,3 +143,74 @@ def test_a_run_without_both_conditions_is_not_published(tmp_path):
     section = publish_results.value_section(run_dir)
     assert section["date"] == "2026-11-01" and section["repetitions"] == 1 and set(section["tasks"]) == {"uv-path"}
     assert section["agent"] == "claude-code", "a run from before the agent was recorded was Claude Code"
+
+
+def test_measuring_how_hard_the_tasks_are_needs_no_pioneer():
+    p = run.plan(4, ["claude-sonnet-5-5"], "claude-opus-5-5", 2, ("without",))
+    assert p["runs"] == 8 and p["by_role"]["pioneer"] == {}
+    assert "claude-opus-5-5" not in p["per_run_usd"]
+    assert all(s["condition"] == "without" for s in run.schedule(["a", "b"], "p", ["f"], 2, ("without",)))
+
+
+def test_no_pioneer_runs_until_every_run_that_must_not_see_its_trail_is_done():
+    steps = run.schedule(["a", "b"], "pioneer-model", ["f1", "f2"], 2)
+    roles = [(s["role"], s["condition"]) for s in steps]
+    first_pioneer = roles.index(("pioneer", "with"))
+    assert all(c in ("without", "unseen") for _, c in roles[:first_pioneer])
+    assert all(c == "with" for _, c in roles[first_pioneer:])
+    assert sum(r == "pioneer" for r, _ in roles) == 2
+    count = lambda c: sum(1 for s in steps if s["role"] == "follower" and s["condition"] == c)
+    assert count("without") == count("unseen") == count("with") == 2 * 2 * 2
+    # The two conditions before the pioneers alternate, so neither gets all the slow hours of an API.
+    assert [s["condition"] for s in steps[:4]] == ["without", "unseen", "without", "unseen"]
+
+
+def test_only_the_without_condition_runs_without_myrmo():
+    task = run.load_tasks(["uv-path"])[0]
+    for condition, connected in (("without", False), ("unseen", True), ("with", True)):
+        assert ("mcp__myrmo" in " ".join(run.claude_command(task, "m", condition != "without"))) is connected
+
+
+def test_the_public_trails_are_read_page_by_page(monkeypatch):
+    pages = {
+        None: {"items": [{"trail": {"id": 1}}, {"trail": {"id": 2}}, {"no": "trail"}], "next_cursor": "2"},
+        "2": {"items": [{"trail": {"id": 3}}], "next_cursor": None},
+    }
+    seen = []
+
+    def fake(url, body=None, timeout=60):
+        assert body is None, "reading the public colony never writes to it"
+        cursor = run.urllib.parse.parse_qs(run.urllib.parse.urlparse(url).query).get("cursor", [None])[0]
+        seen.append(cursor)
+        return pages[cursor]
+
+    monkeypatch.setattr(run, "http_json", fake)
+    assert [t["id"] for t in run.public_trails("https://colony.example/")] == [1, 2, 3]
+    assert seen == [None, "2"]
+
+
+def test_a_colony_that_already_holds_trails_is_not_seeded(monkeypatch):
+    monkeypatch.setattr(run, "colony_trails", lambda colony: 7)
+    with pytest.raises(SystemExit):
+        run.seed("https://colony.example", "http://localhost:8080")
+
+
+def test_the_unseen_condition_is_summarised_and_published(tmp_path):
+    import publish_results
+
+    def r(condition, tokens):
+        return {"task": "uv-path", "role": "follower", "condition": condition, "success": True, "tokens": tokens,
+                "failed_attempts": 0, "seconds": 1, "cost_usd": 0}
+    rows = [r("without", 1000), r("unseen", 1100), r("with", 400),
+            {"task": "uv-path", "role": "pioneer", "condition": "with", "success": True, "tokens": 9, "failed_attempts": 1,
+             "seconds": 9, "cost_usd": 1, "published": True}]
+    assert run.summarize(rows)["unseen"]["median_tokens"] == 1100
+    run_dir = tmp_path / "myrmobench-20261101-1200"
+    run_dir.mkdir()
+    env = {"pioneer": "p", "followers": ["f"], "colony_at_start": {"trails": 119},
+           "plan": {"tasks": 1, "conditions": ["without", "unseen", "with"], "by_role": {"followers": {"f": 3}}}}
+    (run_dir / "environment.json").write_text(json.dumps(env))
+    (run_dir / "runs.jsonl").write_text("".join(json.dumps(x) + "\n" for x in rows))
+    section = publish_results.value_section(run_dir)
+    assert section["unseen"]["median_tokens"] == 1100 and section["with"]["median_tokens"] == 400
+    assert section["repetitions"] == 1 and section["colony_trails_at_start"] == 119 and section["pioneers_published"] == 1

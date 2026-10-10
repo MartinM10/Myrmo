@@ -3,15 +3,21 @@
     python bench/myrmobench/run.py list                    # the tasks
     python bench/myrmobench/run.py plan                    # how many runs, with which models, what they would cost
     python bench/myrmobench/run.py dry-run                 # build every task, prove it fails, prove its fix passes
+    python bench/myrmobench/run.py seed --from https://myrmo.dev        # copy the public trails into the local colony
     python bench/myrmobench/run.py run --execute --approved-usd 40 ...   # spends money: see below
 
 Nothing here calls a paid API unless `run` is given `--execute` AND `--approved-usd`, the most the person who pays has
 agreed to spend. `plan` prints the number to approve. `dry-run` only needs Docker (and the network to build images).
+`seed` only reads the public colony and writes to the local one.
 
-The protocol (docs/operate/benchmarks.md):
-  1. A pioneer agent solves each task cold, with publishing on, against an empty colony.
-  2. Follower agents solve each task twice: without Myrmo, and with Myrmo connected to the colony the pioneer filled.
-  3. A hidden check.sh decides success. It is copied into the container only after the agent has finished.
+The protocol (docs/operate/benchmarks.md). Follower agents solve each task in three conditions:
+  without   no Myrmo.
+  unseen    Myrmo connected, but the colony has not seen this task's fix: it holds what it held before the run (the
+            public trails, after `seed`, or nothing). This is what an agent gets today for an error the colony does
+            not know, and it prices the cost of Myrmo when it cannot help: the instructions, a search, a wrong trail.
+  with      Myrmo connected, after a pioneer agent has solved the task with publishing on and left its trail.
+Every `without` and `unseen` run happens before any pioneer runs, so no pioneer's trail can leak into them. A hidden
+check.sh decides success; it is copied into the container only after the agent has finished.
 Metrics per run: success, tokens (all of them: input, output and cache), cost as the agent CLI reports it, failed
 attempts (failed tool calls) and wall time. Raw runs are kept in bench/results/myrmobench-<id>/runs.jsonl.
 """
@@ -25,6 +31,9 @@ import statistics
 import subprocess
 import sys
 import time
+import urllib.error
+import urllib.parse
+import urllib.request
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -38,6 +47,8 @@ RESULTS = ROOT / "bench" / "results"
 CLAUDE_CODE_VERSION = "latest"  # pinned in the run's environment.json; `latest` is resolved when the image is built
 OPENCODE_VERSION = "latest"
 AGENTS = ("claude-code", "opencode")
+#: The follower conditions, in the order they are reported. See the module docstring.
+CONDITIONS = ("without", "unseen", "with")
 MCP_VERSION_FILE = ROOT / "clients/typescript/packages/myrmo-mcp/package.json"
 
 #: USD per million tokens (input, output), from the published prices of the models. Cache reads are not priced here: the
@@ -96,16 +107,34 @@ def price_of(model: str) -> tuple[float, float]:
     return PRICES.get(model, ASSUMED_PRICE)
 
 
-def plan(tasks: int, followers: list[str], pioneer: str, repetitions: int) -> dict:
-    """Runs and the most they should cost. Per task: one pioneer run, then every follower `repetitions` times,
-    without Myrmo and with it."""
-    runs = {"pioneer": {pioneer: tasks}}
-    runs["followers"] = {m: tasks * repetitions * 2 for m in followers}
+def plan(tasks: int, followers: list[str], pioneer: str, repetitions: int,
+         conditions: tuple[str, ...] = CONDITIONS) -> dict:
+    """Runs and the most they should cost. Per task: every follower `repetitions` times in each condition, and one
+    pioneer run when the `with` condition is wanted."""
+    pioneers = tasks if "with" in conditions else 0
+    runs = {"pioneer": {pioneer: pioneers} if pioneers else {}}
+    runs["followers"] = {m: tasks * repetitions * len(conditions) for m in followers}
     per_run = lambda model: (TOKENS_PER_RUN["input"] * price_of(model)[0] + TOKENS_PER_RUN["output"] * price_of(model)[1]) / 1e6
-    cost = per_run(pioneer) * tasks + sum(per_run(m) * n for m, n in runs["followers"].items())
-    total = tasks + sum(runs["followers"].values())
-    return {"tasks": tasks, "runs": total, "by_role": runs, "estimated_usd_ceiling": round(cost, 2),
-            "per_run_usd": {m: round(per_run(m), 2) for m in {pioneer, *followers}}}
+    cost = per_run(pioneer) * pioneers + sum(per_run(m) * n for m, n in runs["followers"].items())
+    total = pioneers + sum(runs["followers"].values())
+    return {"tasks": tasks, "runs": total, "conditions": list(conditions), "by_role": runs,
+            "estimated_usd_ceiling": round(cost, 2),
+            "per_run_usd": {m: round(per_run(m), 2) for m in ({pioneer} if pioneers else set()) | set(followers)}}
+
+
+def schedule(task_ids: list[str], pioneer: str, followers: list[str], repetitions: int,
+             conditions: tuple[str, ...] = CONDITIONS) -> list[dict]:
+    """The runs in the order they happen. First every `without` and `unseen` run of every task, alternating so that a
+    slow hour of the model's API does not fall on one condition; then the pioneers; then the `with` runs. No pioneer's
+    trail is in the colony while a run that must not see it is going on."""
+    before = [c for c in ("without", "unseen") if c in conditions]
+    out = [{"task": t, "model": m, "role": "follower", "condition": c, "repetition": r}
+           for t in task_ids for r in range(repetitions) for m in followers for c in before]
+    if "with" in conditions:
+        out += [{"task": t, "model": pioneer, "role": "pioneer", "condition": "with", "repetition": 0} for t in task_ids]
+        out += [{"task": t, "model": m, "role": "follower", "condition": "with", "repetition": r}
+                for t in task_ids for r in range(repetitions) for m in followers]
+    return out
 
 
 # --- results ----------------------------------------------------------------------------------------------------------
@@ -163,9 +192,9 @@ def parse_opencode_events(text: str) -> dict:
 
 
 def summarize(runs: list[dict]) -> dict:
-    """Per condition (`without` or `with` Myrmo): success rate and medians over the follower runs."""
+    """Per condition (`without`, `unseen`, `with`): success rate and medians over the follower runs."""
     out = {}
-    for condition in ("without", "with"):
+    for condition in CONDITIONS:
         rows = [r for r in runs if r["role"] == "follower" and r["condition"] == condition]
         if not rows:
             continue
@@ -237,6 +266,67 @@ def dry_run_one(task: Task) -> list[str]:
     return problems
 
 
+# --- the local colony -------------------------------------------------------------------------------------------------
+
+USER_AGENT = "myrmobench/1.0"
+
+
+def http_json(url: str, body: dict | None = None, timeout: int = 60) -> dict:
+    data = None if body is None else json.dumps(body).encode()
+    req = urllib.request.Request(url, data=data, headers={"user-agent": USER_AGENT, "content-type": "application/json"})
+    return json.loads(urllib.request.urlopen(req, timeout=timeout).read() or b"{}")
+
+
+def public_trails(source: str) -> list[dict]:
+    """Every trail a colony shows in its feed, as it was published (redacted). Read-only."""
+    trails, cursor = [], None
+    while True:
+        query = urllib.parse.urlencode({"limit": "50", **({"cursor": cursor} if cursor else {})})
+        page = http_json(f"{source.rstrip('/')}/v1/feed?{query}")
+        trails += [item["trail"] for item in page.get("items", []) if isinstance(item.get("trail"), dict)]
+        cursor = page.get("next_cursor")
+        if not cursor:
+            return trails
+
+
+def colony_trails(colony: str) -> int:
+    return int(http_json(f"{colony.rstrip('/')}/v1/stats").get("trails") or 0)
+
+
+def wait_for_queue(colony: str, timeout: int = 600) -> bool:
+    """Until the colony has indexed everything it was sent (or `timeout` seconds pass)."""
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        try:
+            ready = http_json(f"{colony.rstrip('/')}/readyz", timeout=10)
+        except urllib.error.HTTPError as err:  # 503 while a dependency starts
+            ready = json.loads(err.read() or b"{}")
+        except OSError:
+            ready = {}
+        if ready.get("ready") and int(ready.get("queue_depth") or 0) == 0:
+            return True
+        time.sleep(2)
+    return False
+
+
+def seed(source: str, colony: str) -> dict:
+    """Copy the public trails of `source` into the (local) `colony`, so that a run searches a colony like the real one:
+    the right trail is not the only one there, and a wrong one can come back. Production is only read."""
+    if colony_trails(colony) > 0:
+        raise SystemExit(f"{colony} already holds trails: seed an empty colony (docker compose down -v, then up).")
+    trails = public_trails(source)
+    accepted, refused = 0, []
+    for trail in trails:
+        try:
+            http_json(f"{colony.rstrip('/')}/v1/trails", trail)
+            accepted += 1
+            time.sleep(0.6)  # under the colony's 120 requests per minute
+        except urllib.error.HTTPError as err:
+            refused.append(f"{err.code} {trail.get('problem', {}).get('error_type', '?')}")
+    wait_for_queue(colony)
+    return {"source": source, "read": len(trails), "accepted": accepted, "refused": refused, "indexed": colony_trails(colony)}
+
+
 # --- real runs --------------------------------------------------------------------------------------------------------
 
 def put(container: str, path: str, text: str) -> None:
@@ -283,7 +373,7 @@ def claude_command(task: Task, model: str, with_myrmo: bool) -> list[str]:
 def run_agent(task: Task, model: str, role: str, condition: str, colony: str, repetition: int, env: list[str],
               agent: str = "claude-code") -> dict:
     """One run: a fresh container from the agent image, the agent works in it, the hidden check decides."""
-    with_myrmo = condition == "with"
+    with_myrmo = condition != "without"
     # Reach the colony on the host from inside the container.
     name = start(task, task.agent_tag(agent), ("--add-host", "host.docker.internal:host-gateway"))
     started = time.time()
@@ -336,7 +426,8 @@ def choose_models(args: argparse.Namespace) -> dict:
 def cmd_run(args: argparse.Namespace) -> int:
     tasks = load_tasks(args.tasks)
     models = choose_models(args)
-    p = plan(len(tasks), models["followers"], models["pioneer"], args.repetitions)
+    conditions = tuple(args.conditions)
+    p = plan(len(tasks), models["followers"], models["pioneer"], args.repetitions, conditions)
     if not args.execute or args.approved_usd is None:
         print(json.dumps(p, indent=2))
         print("\nNothing was run. This spends money: add --execute and --approved-usd <the most you accept to spend>.")
@@ -353,29 +444,37 @@ def cmd_run(args: argparse.Namespace) -> int:
     run_id = "myrmobench-" + datetime.now(timezone.utc).strftime("%Y%m%d-%H%M")
     out = RESULTS / run_id
     out.mkdir(parents=True, exist_ok=True)
+    seeded = seed(args.seed_from, args.colony) if args.seed_from else None
     (out / "environment.json").write_text(json.dumps({"plan": p, "colony": args.colony, "agent": args.agent,
                                                       "pioneer": models["pioneer"], "followers": models["followers"],
+                                                      "colony_at_start": {"trails": colony_trails(args.colony), "seeded": seeded},
                                                       "claude_code": args.claude_code_version, "opencode": args.opencode_version}, indent=2))
-    spent, runs = 0.0, []
+    by_id = {t.id: t for t in tasks}
     for task in tasks:
         build(task)
         sh("docker", "build", "-t", task.agent_tag(args.agent), "-f", str(HERE / "agent.Dockerfile"), "--build-arg", f"BASE={task.image_tag}",
            "--build-arg", f"AGENT={args.agent}", "--build-arg", f"CLAUDE_CODE_VERSION={args.claude_code_version}",
            "--build-arg", f"OPENCODE_VERSION={args.opencode_version}", str(HERE))
-        plan_for_task = [(models["pioneer"], "pioneer", "with", 0)] + [
-            (m, "follower", c, r) for m in models["followers"] for r in range(args.repetitions) for c in ("without", "with")]
-        for model, role, condition, rep in plan_for_task:
-            if spent >= args.approved_usd:
-                print(f"Stopped: ${spent:.2f} spent of ${args.approved_usd} approved.")
-                break
-            row = run_agent(task, model, role, condition, args.colony, rep, env, args.agent)
-            # A subscription agent may report no cost: the brake then counts the tokens at the assumed price.
-            spent += max(row["cost_usd"], row["tokens"] * price_of(model)[0] / 1e6)
-            runs.append(row)
-            with (out / "runs.jsonl").open("a", encoding="utf-8") as f:
-                f.write(json.dumps(row) + "\n")
-            print(f"{task.id:18} {model:18} {role:8} {condition:8} {'PASS' if row['success'] else 'FAIL'} "
-                  f"{row['tokens']:>9} tokens ${row['cost_usd']:.3f}")
+    spent, runs = 0.0, []
+    for step in schedule([t.id for t in tasks], models["pioneer"], models["followers"], args.repetitions, conditions):
+        if spent >= args.approved_usd:
+            print(f"Stopped: ${spent:.2f} spent of ${args.approved_usd} approved.")
+            break
+        task, model, role = by_id[step["task"]], step["model"], step["role"]
+        before = colony_trails(args.colony) if role == "pioneer" else 0
+        row = run_agent(task, model, role, step["condition"], args.colony, step["repetition"], env, args.agent)
+        if role == "pioneer":
+            # A pioneer that found a trail, or whose fix merged into one, leaves no new trail: its task's `with` runs
+            # then measure the colony as it was, and the result says so.
+            wait_for_queue(args.colony)
+            row["published"] = colony_trails(args.colony) > before
+        # A subscription agent may report no cost: the brake then counts the tokens at the assumed price.
+        spent += max(row["cost_usd"], row["tokens"] * price_of(model)[0] / 1e6)
+        runs.append(row)
+        with (out / "runs.jsonl").open("a", encoding="utf-8") as f:
+            f.write(json.dumps(row) + "\n")
+        print(f"{task.id:18} {model:18} {role:8} {step['condition']:8} {'PASS' if row['success'] else 'FAIL'} "
+              f"{row['tokens']:>9} tokens ${row['cost_usd']:.3f}" + ("" if role != "pioneer" else f" published={row['published']}"))
     (out / "summary.json").write_text(json.dumps(summarize(runs), indent=2))
     print(f"\n${spent:.2f} spent. Results in {out.relative_to(ROOT)}; publish with publish_results.py.")
     return 0
@@ -386,18 +485,25 @@ def cmd_run(args: argparse.Namespace) -> int:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest="command", required=True)
-    for name in ("list", "plan", "dry-run", "run"):
+    for name in ("list", "plan", "dry-run", "run", "seed"):
         s = sub.add_parser(name)
+        if name == "seed":
+            s.add_argument("--from", dest="source", default="https://myrmo.dev", help="the colony whose public trails are copied (only read)")
+            s.add_argument("--colony", default="http://localhost:8080", help="the empty local colony to fill")
+            continue
         s.add_argument("--tasks", nargs="*", help="only these task ids")
         if name in ("plan", "run"):
             s.add_argument("--agent", choices=AGENTS, default="claude-code", help="the agent CLI that does the work")
             s.add_argument("--pioneer", help="default claude-opus-5-5; with --agent opencode, <provider>/<model>")
             s.add_argument("--followers", nargs="+", help="default claude-sonnet-5-5; with --agent opencode, <provider>/<model> each")
             s.add_argument("--repetitions", type=int, default=5)
+            s.add_argument("--conditions", nargs="+", choices=CONDITIONS, default=list(CONDITIONS),
+                           help="follower conditions; `--conditions without` alone measures how hard the tasks are")
         if name == "run":
             s.add_argument("--execute", action="store_true", help="really run the agents (spends money)")
             s.add_argument("--approved-usd", type=float, help="the most the person who pays accepts to spend")
-            s.add_argument("--colony", default="http://localhost:8080", help="an empty colony for the run")
+            s.add_argument("--colony", default="http://localhost:8080", help="a local colony for the run, empty or seeded")
+            s.add_argument("--seed-from", help="copy this colony's public trails into the local one first (for example https://myrmo.dev)")
             s.add_argument("--claude-code-version", default=CLAUDE_CODE_VERSION)
             s.add_argument("--opencode-version", default=OPENCODE_VERSION)
     args = parser.parse_args(argv)
@@ -407,7 +513,11 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.command == "plan":
         models = choose_models(args)
-        print(json.dumps(plan(len(load_tasks(args.tasks)), models["followers"], models["pioneer"], args.repetitions), indent=2))
+        print(json.dumps(plan(len(load_tasks(args.tasks)), models["followers"], models["pioneer"], args.repetitions,
+                              tuple(args.conditions)), indent=2))
+        return 0
+    if args.command == "seed":
+        print(json.dumps(seed(args.source, args.colony), indent=2))
         return 0
     if args.command == "dry-run":
         failed = 0
