@@ -115,9 +115,9 @@ def min_failed_attempts(explicit: Optional[int] = None) -> Tuple[int, str]:
 
 #: What `python -m myrmo config` can change: name, settings-file key, accepted values, default, what it does.
 SETTINGS = (
-    ("publish", "publish", "ask | auto | off", "ask (asked the first time an agent wants to publish)", "Whether agents may publish fixes for you. ask shows you each one first."),
+    ("publish", "publish", "ask | auto | off", "not chosen: nothing is published until you are asked, the first time an agent wants to publish", "Whether agents may publish fixes for you. ask shows you each one first."),
     ("min-failed-attempts", "min_failed_attempts", "0 to %d" % MAX_MIN_FAILED_ATTEMPTS, str(DEFAULT_MIN_FAILED_ATTEMPTS), "Failed attempts before a fix is worth publishing. Higher means fewer, more selective trails."),
-    ("hook", "hook", "on | failures | off", "on", "Claude Code plugin reminders. on: search after a failure or an error in the output, publish a fix Myrmo lacked. failures: only after a failed command."),
+    ("hook", "hook", "on | failures | off", "on", "Claude Code plugin reminders. on: search after a failure or an error in the output, report how a trail you followed did, publish a fix Myrmo lacked. failures: only after a failed command."),
     ("anonymous", "anonymous", "true | false", "false", "Send no agent id at all (reports then count by address)."),
 )
 
@@ -130,7 +130,7 @@ def settings_report() -> List[Dict[str, str]]:
     hook_env = os.environ.get("MYRMO_HOOK", "").strip().lower()
     anon_env = os.environ.get("MYRMO_ANONYMOUS", "").strip().lower()
     rows = {
-        "publish": ("ask" if publish_source == "default" else mode, publish_source),
+        "publish": ("not chosen" if publish_source == "default" else mode, publish_source),
         "min-failed-attempts": (str(attempts), attempts_source),
         "hook": (hook_env, "env") if hook_env in ("on", "failures", "off") else ((file["hook"], "file") if "hook" in file else ("on", "default")),
         "anonymous": (str(anon_env in ("1", "true")).lower(), "env") if anon_env else ((str(file["anonymous"]).lower(), "file") if "anonymous" in file else ("false", "default")),
