@@ -1,5 +1,44 @@
 # Changelog
 
+## [0.19.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.18.0...platform-v0.19.0) (2026-10-10)
+
+
+### Features
+
+* **bench:** measure the cost of a colony that cannot help, against a copy of the public one ([86c1472](https://github.com/MartinM10/Myrmo/commit/86c1472bfa48be2ebe4bde4b8dd89e40c0791781))
+* **bench:** MyrmoBench measures the cost of a colony that cannot help, against a copy of the public one ([ea31f02](https://github.com/MartinM10/Myrmo/commit/ea31f025cdaf8ea417189e5ea811e5f898dd1f22))
+* **bench:** MyrmoBench runs Antigravity CLI agents, the way to use a Google AI plan ([1bf6370](https://github.com/MartinM10/Myrmo/commit/1bf637064f4e1e6c7f9b0ac7ed0a3df708941df6))
+* **bench:** MyrmoBench runs Gemini CLI agents ([a11bd12](https://github.com/MartinM10/Myrmo/commit/a11bd1223311576dfb6e84ee7648a5beeb32fb04))
+* **bench:** MyrmoBench runs Gemini CLI and Antigravity agents ([ec710b7](https://github.com/MartinM10/Myrmo/commit/ec710b759e9e708688eb0b674e1f6285594d71af))
+* **plugin:** ask for a report when a fix follows a search that found trails ([3da5990](https://github.com/MartinM10/Myrmo/commit/3da59901c52d0daa13ea68e8ccc3fb68effd54eb))
+* **plugin:** the hook asks for a report when a fix follows a search that found trails ([4d59c7c](https://github.com/MartinM10/Myrmo/commit/4d59c7c25cdb7880afc24844b7b20c15dddf84d8))
+* **web:** a film section after the hero ([d3019ae](https://github.com/MartinM10/Myrmo/commit/d3019ae8f2b5bcf73dcfcc82493dbafef089f53a))
+* **web:** center the film on a stage and add a back-to-top button ([17be102](https://github.com/MartinM10/Myrmo/commit/17be10250c3c71a1690677f30de7b6dc45914f75))
+* **web:** film section after the hero ([b6e7f4d](https://github.com/MartinM10/Myrmo/commit/b6e7f4d4c0736c5d632fe5306f676495559ebe26))
+* **web:** film stage and back-to-top button ([5496ba9](https://github.com/MartinM10/Myrmo/commit/5496ba9e1802a8109ddd4a2e21379101bd848ced))
+
+
+### Bug fixes
+
+* **bench:** read container output as UTF-8, and give agy root certificates in images without them ([9c5374f](https://github.com/MartinM10/Myrmo/commit/9c5374f32d6b004449ccbff113a284cb86184f50))
+* bring the protocol, MCP server, plugin, docs and website in line with each other ([283dccc](https://github.com/MartinM10/Myrmo/commit/283dccc2a21c2895e5d179df106eae3eaaf8334b))
+* bring the protocol, MCP server, plugin, docs and website in line with each other ([19f7ceb](https://github.com/MartinM10/Myrmo/commit/19f7cebf2639e532125d5bea765a0e857da2d29c))
+* **sdk-js:** `config` says publishing is not chosen yet instead of showing "ask" ([3a50f60](https://github.com/MartinM10/Myrmo/commit/3a50f60005342d575258b84a4062700279959d94))
+* **sdk-js:** config says publishing is not chosen yet instead of showing "ask" ([a5e53bb](https://github.com/MartinM10/Myrmo/commit/a5e53bbbc4c38767ed9967dff44e028e067eb96c))
+* **server:** believe X-Forwarded-For only from trusted proxies, and keep checks out of public stats ([b817463](https://github.com/MartinM10/Myrmo/commit/b8174631dcd6677811b4548d422a22a37de4ea0c))
+* **server:** believe X-Forwarded-For only from trusted proxies, and keep checks out of public stats ([9322fbd](https://github.com/MartinM10/Myrmo/commit/9322fbd2556a27eb4eb30e2da075d15d3ca5aea5))
+* **web:** explain the strength chart in plain words ([2d00bf8](https://github.com/MartinM10/Myrmo/commit/2d00bf828e2b5a8c392cb9a1412ef6d51e14e9ae))
+* **web:** explain the strength chart in plain words ([2604374](https://github.com/MartinM10/Myrmo/commit/26043746c41e47c91a08546eebe3a193bc96c8d0))
+* **web:** serve the fonts from the site and send security headers ([34c65ed](https://github.com/MartinM10/Myrmo/commit/34c65ed8e95e82c12b847a12febcfee866c9fdc4))
+* **web:** serve the fonts from the site and send security headers ([c7b1bf6](https://github.com/MartinM10/Myrmo/commit/c7b1bf643f096d100ce2614aab93ecfb85137f67))
+
+
+### Documentation
+
+* list the plugin's report reminder in llms.txt ([c117b16](https://github.com/MartinM10/Myrmo/commit/c117b16127256a4491e1d3014bfdf42396c0a0af))
+* the plugin has a version, and users get a change with the next release ([4905878](https://github.com/MartinM10/Myrmo/commit/490587852bc9aa5ceba10804c6d263f36087c40a))
+* the plugin has a version, and users get a change with the next release ([96fe135](https://github.com/MartinM10/Myrmo/commit/96fe13525a0d7579572f5e54a9c953a045b85a42))
+
 ## [0.18.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.17.3...platform-v0.18.0) (2026-10-09)
 
 

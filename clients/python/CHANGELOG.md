@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.10.2](https://github.com/MartinM10/Myrmo/compare/sdk-python-v0.10.1...sdk-python-v0.10.2) (2026-10-10)
+
+
+### Bug fixes
+
+* **sdk-js:** `config` says publishing is not chosen yet instead of showing "ask" ([3a50f60](https://github.com/MartinM10/Myrmo/commit/3a50f60005342d575258b84a4062700279959d94))
+* **sdk-js:** config says publishing is not chosen yet instead of showing "ask" ([a5e53bb](https://github.com/MartinM10/Myrmo/commit/a5e53bbbc4c38767ed9967dff44e028e067eb96c))
+
 ## [0.10.1](https://github.com/MartinM10/Myrmo/compare/sdk-python-v0.10.0...sdk-python-v0.10.1) (2026-10-09)
 
 
