@@ -3,8 +3,9 @@
     python bench/myrmobench/publish_results.py bench/results/myrmobench-20261101-1200
 
 Reads runs.jsonl and environment.json of the run, and fills the `value` section of web/assets/bench-results.js, keeping
-the load results already there. It refuses a run that has no follower runs in both conditions: the website shows only
-numbers somebody measured.
+the load results already there. It refuses a run that has no follower runs with and without Myrmo: the website shows only
+numbers somebody measured. The `unseen` condition (Myrmo connected to a colony that does not know the task) is
+published too when the run has it.
 """
 
 from __future__ import annotations
@@ -25,19 +26,24 @@ def value_section(run_dir: Path) -> dict:
     runs = [json.loads(line) for line in (run_dir / "runs.jsonl").read_text(encoding="utf-8").splitlines() if line.strip()]
     env = json.loads((run_dir / "environment.json").read_text(encoding="utf-8"))
     summary = summarize(runs)
-    if set(summary) != {"without", "with"}:
+    if not {"without", "with"} <= set(summary):
         raise SystemExit("The run has no follower runs both with and without Myrmo: nothing to publish.")
-    return {
+    conditions = env["plan"].get("conditions", ["without", "with"])
+    section = {
         "run_id": run_dir.name,
         "date": run_dir.name.split("-")[1][:4] + "-" + run_dir.name.split("-")[1][4:6] + "-" + run_dir.name.split("-")[1][6:8],
         "agent": env.get("agent", "claude-code"),
         "pioneer": env["pioneer"],
         "followers": env["followers"],
         "tasks": sorted({r["task"] for r in runs}),
-        "repetitions": env["plan"]["by_role"]["followers"][env["followers"][0]] // (2 * env["plan"]["tasks"]),
-        "without": {k: v for k, v in summary["without"].items() if k != "runs"},
-        "with": {k: v for k, v in summary["with"].items() if k != "runs"},
+        "repetitions": env["plan"]["by_role"]["followers"][env["followers"][0]] // (len(conditions) * env["plan"]["tasks"]),
+        "colony_trails_at_start": (env.get("colony_at_start") or {}).get("trails"),
+        "pioneers_published": sum(bool(r.get("published")) for r in runs if r["role"] == "pioneer"),
     }
+    for condition in ("without", "unseen", "with"):
+        if condition in summary:
+            section[condition] = {k: v for k, v in summary[condition].items() if k != "runs"}
+    return section
 
 
 def main() -> None:

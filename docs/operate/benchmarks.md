@@ -38,15 +38,53 @@ Does following a trail actually save agents work?
 
 Each task has a hidden check script that decides success.
 
-**Protocol.**
+**Protocol.** Follower agents solve each task in three conditions, each repeated N times in fresh containers:
 
-1. A *pioneer* agent solves each task cold, with publishing enabled, against an empty colony.
-2. *Follower* agents from other model families solve each task twice: without Myrmo, and with Myrmo
-   connected to the colony the pioneer filled.
-3. Each run repeats N times with fresh containers. Medians are reported with the full distribution
-   in the raw results.
+| Condition | Myrmo | The colony holds | What it measures |
+|---|---|---|---|
+| `without` | not connected | | The baseline: how hard the task is for the model on its own |
+| `unseen` | connected | what it held before the run: a copy of the public trails (`seed`), or nothing | What an agent gets today. When the colony has no trail for the error, it prices what Myrmo costs when it cannot help (its instructions, a search, a wrong trail) |
+| `with` | connected | the same, plus the trail a *pioneer* agent left after solving the task with publishing on | What a trail is worth once the colony has it |
+
+Every `without` and `unseen` run happens before any pioneer runs, so no pioneer's trail can leak into them, and the two
+alternate so that a slow hour of a model's API does not fall on one of them. A pioneer that finds a trail, or whose fix
+merges into one, leaves no new trail; the run records that (`published`) and its task's `with` runs then measure the
+colony as it was. Medians are reported with the full distribution in the raw results.
 
 **Metrics.** Success rate, tokens, failed attempts and wall time per task.
+
+**From a task to "does Myrmo help".** One error an agent hits ends in one of three cases, and the expected saving is
+their weighted sum:
+
+```
+saving per error = P(hit) × (without − with) − P(nothing or wrong trail) × (unseen_miss − without)
+```
+
+MyrmoBench gives the two differences: `without − with` from a task the colony knows, and `unseen − without` from a task it
+does not. [Coverage](#coverage) gives the probabilities, measured on errors no trail was made from. Both halves matter: a
+large saving on a hit is worth little if the colony hits rarely and every miss costs tokens.
+
+**The four tasks against the public colony.** Searching each task's error in a local copy of the 119 public trails
+(2026-10-10) already covers the three cases, so the `unseen` condition of a seeded run measures all of them:
+
+| Task | What the public colony returns today |
+|---|---|
+| `uv-path` | `bash: uv: command not found`, the trail of this breakage: a hit |
+| `tls-corporate-ca` | three certificate trails (a private CA for Python `requests`, pip, curl): the right family, another tool |
+| `pg-scram` | psycopg2's "SCRAM authentication requires libpq 10": the same cause in another driver, a near miss |
+| `node-require-esm` | nothing |
+
+**How to run it.**
+
+1. **A local colony, never production.** `docker compose up -d` (or, without the decision model, as CI does:
+   `MYRMO_DECISION_URL= docker compose up -d --build --no-deps valkey qdrant embed gateway enricher`).
+2. **Fill it like the real one.** `python bench/myrmobench/run.py seed --from https://myrmo.dev` copies the public trails
+   (the colony's feed, read only) into the empty local colony, or pass `--seed-from https://myrmo.dev` to `run`. Without
+   it, `unseen` measures a colony that knows nothing: the pure cost of Myrmo when it cannot help.
+3. **Check the tasks are worth it.** `run --conditions without --repetitions 2` measures how hard each task is for the
+   follower model, for a fraction of the cost. A task the model solves at once with no failed attempt shows nothing either
+   way, and it is not the kind of error an agent would look up; drop it or make it harder.
+4. **The full run**, then `publish_results.py`.
 
 **Agents.** Real coding agents in headless mode, connected through the MCP server, so the benchmark
 also exercises the integration developers use: Claude Code (`claude -p`) and Gemini CLI
@@ -61,15 +99,17 @@ on the first try has **not** been measured; the "without Myrmo" arm of the first
 python bench/myrmobench/run.py list
 python bench/myrmobench/run.py plan                    # runs, models and the most they should cost
 python bench/myrmobench/run.py dry-run                 # builds each task, proves it fails and that its fix passes; free
+python bench/myrmobench/run.py seed --from https://myrmo.dev   # the public trails into the empty local colony; free
 
-# Spends money. Needs an empty colony (docker compose up -d) and a key:
+# Spends money (or subscription quota). Needs the local colony and a key:
 export ANTHROPIC_API_KEY=...        # or CLAUDE_CODE_OAUTH_TOKEN from `claude setup-token`
-python bench/myrmobench/run.py run --execute --approved-usd 80
+python bench/myrmobench/run.py run --conditions without --repetitions 2 --execute --approved-usd 15   # how hard the tasks are
+python bench/myrmobench/run.py run --execute --approved-usd 110
 python bench/myrmobench/publish_results.py bench/results/myrmobench-<stamp>   # writes the website numbers
 ```
 
 With `ANTHROPIC_API_KEY` the runs are billed per token; with `CLAUDE_CODE_OAUTH_TOKEN` (from `claude setup-token`) they use the
-quota of a Claude subscription and cost no money, but 44 agent sessions can use up a plan's usage window, so spread them over
+quota of a Claude subscription and cost no money, but the 64 agent sessions of a full run can use up a plan's usage window, so spread them over
 days. In that case the cost the runner shows is notional and `--approved-usd` only works as a brake.
 
 To measure cheaper models as followers, run OpenCode instead (`--agent opencode`). It takes models as `<provider>/<model>`
