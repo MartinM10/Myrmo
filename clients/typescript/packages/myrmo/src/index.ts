@@ -5,7 +5,7 @@ export { namesConflict, placeholderNames } from "./names.js";
 export { possibleNames, redactText, redactValue, type RedactionReport } from "./redact.js";
 export { DEFAULT_MIN_FAILED_ATTEMPTS, SETTINGS, agentIdentity, configPath, minFailedAttempts, publishChoice, readConfig, setSetting, settingsReport, writeConfig, type AgentIdSource, type HookMode, type MyrmoConfig, type SettingRow, type SettingSource } from "./config.js";
 export { detectEnvironment, parsePackage } from "./environment.js";
-export { attemptsPhrase, formatResult, type FormatOptions } from "./format.js";
+export { attemptsPhrase, formatResult, startHere, type FormatOptions } from "./format.js";
 export type * from "./types.js";
 
 import { Colony } from "./client.js";

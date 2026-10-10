@@ -96,3 +96,18 @@ test("a malformed fingerprint cannot inject into the envelope attribute", () => 
   const out = formatResult({ fingerprint: 'x"><b>', hits: [hit()], notice: "n", source: "search" });
   assert.match(out, /fingerprint="invalid"/);
 });
+
+test("the result says which trail to start with, or warns that none matches exactly", () => {
+  const exact = render(hit());
+  assert.match(exact, /START HERE: trail 1 was found by your exact error message/);
+  assert.match(exact, /Do first: step/);
+  const close = render(hit({ match: { via: "semantic", score: 0.93, environment_overlap: 0.8 } }));
+  assert.match(close, /START HERE: trail 1 is the closest match/);
+  for (const match of [{ via: "semantic", score: 0.8, environment_overlap: 0.9 }, { via: "semantic", score: 0.95, environment_overlap: 0.3 }]) {
+    const near = render(hit({ match }));
+    assert.match(near, /CAUTION: no trail matches your error exactly/, JSON.stringify(match));
+    assert.doesNotMatch(near, /START HERE/);
+  }
+  const lines = exact.split("\n");
+  assert.ok(lines.findIndex((l) => l.startsWith("START HERE")) < lines.findIndex((l) => l.startsWith("## Trail 1")), "before the trails");
+});
