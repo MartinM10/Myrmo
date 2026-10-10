@@ -76,4 +76,15 @@ def test_leads_are_ordered_by_how_telling_the_signal_is_then_newest_first():
         return {"releases": {"1.0.0": [pypi_file("2025-01-01", ">=3.8")],
                              "2.0.0": [pypi_file("2026-07-01" if package == "a" else "2026-09-01", ">=3.12")]}}
     leads, _ = radar.scan(120, now=NOW, fetcher=fetcher, watch={"pypi": ["a", "b"]})
-    assert [(l.signal, l.package) for l in leads] == [("runtime-floor", "b"), ("runtime-floor", "a"), ("major", "b"), ("major", "a")]
+    # A Python floor comes after a major (see test_a_raised_python_floor_comes_after_every_other_signal); newest first within each.
+    assert [(l.signal, l.package) for l in leads] == [("major", "b"), ("major", "a"), ("runtime-floor", "b"), ("runtime-floor", "a")]
+
+
+def test_a_raised_python_floor_comes_after_every_other_signal():
+    def fetcher(ecosystem, package):
+        if ecosystem == "pypi":
+            return {"releases": {"1.0.0": [pypi_file("2025-01-01", ">=3.8")], "1.1.0": [pypi_file("2026-09-01", ">=3.12")]}}
+        return {"time": {"1.0.0": "2025-01-01T00:00:00Z", "2.0.0": "2026-08-01T00:00:00Z"},
+                "versions": {"1.0.0": {}, "2.0.0": {"deprecated": "broken"}}}
+    leads, _ = radar.scan(120, now=NOW, fetcher=fetcher, watch={"pypi": ["p"], "npm": ["n"]})
+    assert [(l.ecosystem, l.signal) for l in leads] == [("npm", "yanked"), ("pypi", "runtime-floor")]

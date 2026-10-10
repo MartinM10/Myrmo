@@ -163,6 +163,14 @@ def fetch(ecosystem: str, package: str) -> dict:
 SIGNAL_ORDER = {"esm-only": 0, "runtime-floor": 1, "major": 2, "yanked": 3}
 
 
+def priority(lead: Lead) -> int:
+    """How telling a lead is. A raised Python floor comes last: pip names the Python version a release needs, so agents
+    fix it at a glance and the workers rightly skip it (seen on pydantic 2.14 and sqlalchemy 2.1)."""
+    if lead.ecosystem == "pypi" and lead.signal == "runtime-floor":
+        return 9
+    return SIGNAL_ORDER.get(lead.signal, 8)
+
+
 def scan(days: int, now: datetime | None = None, fetcher=fetch, watch: dict | None = None) -> tuple[list[Lead], list[str]]:
     since = (now or datetime.now(timezone.utc)) - timedelta(days=days)
     leads, errors = [], []
@@ -175,7 +183,7 @@ def scan(days: int, now: datetime | None = None, fetcher=fetch, watch: dict | No
                 errors.append(f"{ecosystem}/{package}: {err}")
     # The rarest, most telling signals first; within each, the newest first.
     leads.sort(key=lambda l: l.released, reverse=True)
-    leads.sort(key=lambda l: SIGNAL_ORDER.get(l.signal, 9))
+    leads.sort(key=priority)
     return leads, errors
 
 

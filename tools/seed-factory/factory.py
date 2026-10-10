@@ -72,7 +72,9 @@ def run(task: Task, command: str) -> dict:
     label = f"seed-factory.run={uuid.uuid4().hex}"
     docker_command = ["docker", "run", "--rm", "--init", "--label", label, "--cpus=1", f"--memory={task.memory}", task.image, "sh", "-c", full]
     try:
-        p = subprocess.run(docker_command, capture_output=True, text=True, timeout=TIMEOUT)
+        # Containers print UTF-8; without an explicit encoding Windows decodes with its ANSI code page and loses the
+        # whole output at the first character outside it.
+        p = subprocess.run(docker_command, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=TIMEOUT)
         if p.returncode == SETUP_FAILED and "seed-factory: setup failed" in p.stderr:
             raise SetupFailed(f"{task.task_id}: the setup failed")
         return {"command": command, "exit_code": p.returncode, "stdout": strip_noise(p.stdout)[-8000:], "stderr": strip_noise(p.stderr)[-8000:], "seconds": round(time.monotonic() - started, 3)}
