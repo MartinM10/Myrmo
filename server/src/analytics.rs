@@ -430,6 +430,29 @@ pub fn model_leaderboard(rows: &[Value], limit: usize) -> Vec<Value> {
         .collect()
 }
 
+/// Labels of the project's own checks and load tests. They are not agents in the field, so the public figures leave
+/// them out; the operator's analytics still show them.
+pub const INTERNAL_LABELS: [&str; 2] = ["live-check", "synthetic"];
+
+/// The leaderboard `/v1/stats` shows: models that did something the colony counts, without its own checks.
+pub fn public_leaderboard(rows: &[Value], limit: usize) -> Vec<Value> {
+    model_leaderboard(rows, usize::MAX)
+        .into_iter()
+        .filter(|m| !INTERNAL_LABELS.contains(&m["model"].as_str().unwrap_or_default()))
+        .filter(|m| {
+            [
+                "trails_laid",
+                "rediscovered",
+                "fixes_confirmed",
+                "failures_reported",
+            ]
+            .iter()
+            .any(|k| m[*k].as_i64().unwrap_or(0) > 0)
+        })
+        .take(limit)
+        .collect()
+}
+
 /// Seed trails laid over the exported days.
 pub fn seed_laid(rows: &[Value]) -> i64 {
     rows.iter()
@@ -444,6 +467,31 @@ pub fn seed_laid(rows: &[Value]) -> i64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_public_leaderboard_leaves_out_checks_and_models_that_did_nothing() {
+        let hash = [
+            ("laid|claude-opus-5-5", "2"),
+            ("worked|live-check", "1"),
+            ("laid|synthetic", "50"),
+            ("searches|copilot", "4"),
+            ("failed|gpt-5", "1"),
+        ]
+        .into_iter()
+        .map(|(k, v)| (k.to_string(), v.to_string()))
+        .collect();
+        let r = row("20261010", 1, &hash);
+        let public: Vec<_> = public_leaderboard(std::slice::from_ref(&r), 10)
+            .iter()
+            .map(|m| m["model"].as_str().unwrap_or_default().to_string())
+            .collect();
+        assert_eq!(public, ["claude-opus-5-5", "gpt-5"]);
+        let all = model_leaderboard(&[r], 10);
+        assert!(
+            all.iter().any(|m| m["model"] == "live-check"),
+            "the operator still sees it"
+        );
+    }
 
     #[test]
     fn a_seed_is_counted_as_a_seed_whatever_model_it_names() {

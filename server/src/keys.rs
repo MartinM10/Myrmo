@@ -43,6 +43,8 @@ pub fn add_to_fingerprint(pipe: &mut redis::Pipeline, fp: &str, id: &str, max: u
         .arg(max)
         .ignore();
 }
+/// Cached public summary of the last 30 days for `/v1/stats` (string, short TTL).
+pub const STATS_SUMMARY_CACHE: &str = "cache:summary";
 /// Cached fingerprint lookup response (string, short TTL).
 pub fn fingerprint_cache(fp: &str) -> String {
     format!("cache:fp:{fp}")

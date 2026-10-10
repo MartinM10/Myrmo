@@ -49,6 +49,7 @@ docker compose up -d --scale enricher=4
 | `QDRANT_URL` | `http://qdrant:6333` | REST endpoint. Use a Qdrant cluster for sharding and replicas. |
 | `REDIS_URL` | `redis://valkey:6379` | Queue, counters, cache and rate limits. Redis or Valkey. |
 | `MYRMO_RATE_LIMIT` | `120` | Requests per hashed client per minute. `0` disables the limit. |
+| `MYRMO_TRUSTED_PROXIES` | loopback and private networks | Comma-separated address ranges (`10.0.0.0/8`, `172.18.0.5`) whose `X-Forwarded-For` the gateway believes: your reverse proxy and the MCP server. A request from anywhere else is counted under its own address whatever header it sends, so a caller that reaches port 8080 directly cannot choose the address its quotas are counted against. The proxy must write the real client address there (Caddy does by default; behind a CDN, see `deploy/Caddyfile.myrmo`). |
 | `MYRMO_ADMIN_TOKEN` | none | Bearer token (16 characters or more) for operator endpoints: removing a trail, `GET /v1/analytics`, and the full `GET /v1/demand`. Unset disables them. Only the gateway needs it. |
 | `MYRMO_PUBLIC_URL` | `http://localhost:3000` | Address of the website, used to build the approval links of drafts. In production it takes the value of `MYRMO_SITE_URL`. |
 | `MYRMO_PUBLISH_LIMIT` | `0` locally, `30` in `deploy/docker-compose.prod.yml` | Trails a client may publish per hour. `0` disables the quota. |
