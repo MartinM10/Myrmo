@@ -1,0 +1,10 @@
+{
+  "without": {
+    "runs": 8,
+    "success_rate": 1.0,
+    "median_tokens": 65235.0,
+    "median_failed_attempts": 0.0,
+    "median_seconds": 11.2,
+    "median_cost_usd": 0.0243
+  }
+}
