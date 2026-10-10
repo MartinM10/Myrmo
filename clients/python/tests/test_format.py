@@ -67,3 +67,19 @@ def test_verification_commands_are_never_presented_as_pre_approved():
 
 def test_a_malformed_fingerprint_cannot_inject_into_the_envelope_attribute():
     assert 'fingerprint="invalid"' in render(hit(), fingerprint='x"><b>')
+
+
+def test_the_result_says_which_trail_to_start_with_or_warns_that_none_matches_exactly():
+    exact = hit()
+    exact.match = {"via": "fingerprint", "score": 1.0, "environment_overlap": None}
+    out = render(exact)
+    assert "START HERE: trail 1 was found by your exact error message" in out and "Do first:" in out
+    assert out.index("START HERE") < out.index("## Trail 1")
+    close = hit()
+    close.match = {"via": "semantic", "score": 0.93, "environment_overlap": 0.8}
+    assert "START HERE: trail 1 is the closest match" in render(close)
+    for match in ({"via": "semantic", "score": 0.8, "environment_overlap": 0.9}, {"via": "semantic", "score": 0.95, "environment_overlap": 0.3}):
+        near = hit()
+        near.match = match
+        out = render(near)
+        assert "CAUTION: no trail matches your error exactly" in out and "START HERE" not in out
