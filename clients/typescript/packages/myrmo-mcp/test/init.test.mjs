@@ -237,3 +237,18 @@ test("--client accepts the new ids", () => {
   for (const id of ["vscode", "opencode", "codex"]) assert.deepEqual(parseInitArgs(["--client", id]).clients, [id]);
   assert.match(parseInitArgs(["--client", "emacs"]), /vscode, opencode, codex/);
 });
+
+test("init sets up Antigravity: the server in its shared MCP file, and the rules it needs in GEMINI.md", () => {
+  const home = newHome();
+  mkdirSync(join(home, ".gemini", "config"), { recursive: true });
+  // Antigravity leaves an empty mcp_config.json behind until a server is added.
+  writeFileSync(join(home, ".gemini", "config", "mcp_config.json"), "");
+  const res = runInit({ env: { PATH: "" }, clients: ["antigravity"], dryRun: false, home, log: quiet });
+  assert.deepEqual(res.skipped, []);
+  assert.deepEqual(res.configured, ["Antigravity"]);
+  const servers = JSON.parse(readFileSync(join(home, ".gemini", "config", "mcp_config.json"), "utf8")).mcpServers;
+  assert.ok(servers.myrmo.args.some((a) => String(a).startsWith("myrmo-mcp@")) || servers.myrmo.args.join(" ").includes("myrmo-mcp@"));
+  const rules = readFileSync(join(home, ".gemini", "GEMINI.md"), "utf8");
+  assert.match(rules, /<!-- myrmo:start -->[\s\S]*myrmo_search[\s\S]*<!-- myrmo:end -->/);
+  assert.equal((rules.match(/myrmo:start/g) ?? []).length, 1, "one block even though Gemini CLI uses the same file");
+});

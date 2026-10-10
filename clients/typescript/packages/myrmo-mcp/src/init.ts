@@ -2,9 +2,9 @@
 //
 // For Claude Code it installs the plugin (the MCP server, a skill and a failure hook), using the
 // `claude` command from the PATH or the one the VS Code extension carries. For Cursor, Windsurf,
-// Gemini CLI, Claude Desktop, VS Code (GitHub Copilot), OpenCode and Codex it adds one "myrmo" entry
+// Gemini CLI, Antigravity, Claude Desktop, VS Code (GitHub Copilot), OpenCode and Codex it adds one "myrmo" entry
 // to each client's own settings file (everything else in the file stays as it is; each client has its
-// own shape, and Codex's file is TOML), and for Gemini CLI and Windsurf it also writes the usage rules
+// own shape, and Codex's file is TOML), and for Gemini CLI, Antigravity and Windsurf it also writes the usage rules
 // to their global instructions file, between markers, so it can be replaced or removed.
 // The server itself sends the usage rules to every client that passes MCP instructions on to the model.
 //
@@ -172,6 +172,8 @@ export function targets(home: string, platform: NodeJS.Platform = process.platfo
     { id: "cursor", name: "Cursor", file: join(home, ".cursor", "mcp.json"), marker: join(home, ".cursor"), kind: "mcpServers" },
     { id: "windsurf", name: "Windsurf", file: join(home, ".codeium", "windsurf", "mcp_config.json"), marker: join(home, ".codeium", "windsurf"), kind: "mcpServers" },
     { id: "gemini", name: "Gemini CLI", file: join(home, ".gemini", "settings.json"), marker: join(home, ".gemini"), kind: "mcpServers" },
+    // Antigravity (its editor and its `agy` CLI) shares one MCP file in ~/.gemini/config.
+    { id: "antigravity", name: "Antigravity", file: join(home, ".gemini", "config", "mcp_config.json"), marker: join(home, ".gemini", "config"), kind: "mcpServers" },
     { id: "claude-desktop", name: "Claude Desktop", file: desktop, marker: dirname(desktop), kind: "mcpServers" },
     { id: "vscode", name: "VS Code (GitHub Copilot)", file: join(vscodeUser, "mcp.json"), marker: vscodeUser, kind: "vscode" },
     { id: "opencode", name: "OpenCode", file: join(opencodeDir, opencodeFile), marker: opencodeDir, kind: "opencode" },
@@ -191,7 +193,7 @@ export interface InitOptions {
 }
 
 const CLAUDE_CODE = "claude-code";
-export const CLIENT_IDS = [CLAUDE_CODE, "cursor", "windsurf", "gemini", "claude-desktop", "vscode", "opencode", "codex"];
+export const CLIENT_IDS = [CLAUDE_CODE, "cursor", "windsurf", "gemini", "antigravity", "claude-desktop", "vscode", "opencode", "codex"];
 export const MARKETPLACE = "MartinM10/Myrmo";
 export const PLUGIN = "myrmo@myrmo";
 
@@ -244,6 +246,9 @@ export function installPlugin(bin: string): { ok: boolean; said: string } {
 export function rulesFiles(home: string): { id: string; name: string; file: string; marker: string }[] {
   return [
     { id: "gemini", name: "Gemini CLI", file: join(home, ".gemini", "GEMINI.md"), marker: join(home, ".gemini") },
+    // Antigravity reads the same file. It neither passes the server's instructions to the model nor names the tools (they sit
+    // behind a generic call_mcp_tool), so without these rules an agent never learns Myrmo is there.
+    { id: "antigravity", name: "Antigravity", file: join(home, ".gemini", "GEMINI.md"), marker: join(home, ".gemini", "config") },
     { id: "windsurf", name: "Windsurf", file: join(home, ".codeium", "windsurf", "memories", "global_rules.md"), marker: join(home, ".codeium", "windsurf") },
   ];
 }

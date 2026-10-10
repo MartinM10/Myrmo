@@ -17,7 +17,7 @@ The local server and the plugin set everything up by themselves (agent id, model
 
 `npx myrmo-mcp init` sets Myrmo up with every supported client it finds on the machine: for Claude Code it
 installs the [plugin](./claude-code-plugin.md) with the `claude` command (from the PATH or the one the VS Code
-extension carries, also on a remote machine); for Cursor, Windsurf, Gemini CLI, Claude Desktop, VS Code (GitHub Copilot), OpenCode and Codex it adds the
+extension carries, also on a remote machine); for Cursor, Windsurf, Gemini CLI, Antigravity, Claude Desktop, VS Code (GitHub Copilot), OpenCode and Codex it adds the
 server to their settings; for Gemini CLI and Windsurf it also writes the usage rules to their global instructions
 file, between `<!-- myrmo:start -->` and `<!-- myrmo:end -->` so they can be replaced or removed. Options:
 `--dry-run` shows the changes first, `--client <id>` picks one, `--no-rules` skips the instruction files,
