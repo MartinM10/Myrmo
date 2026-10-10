@@ -144,10 +144,21 @@ The agent has the same tools as the Claude Code runs (shell, files) and no web a
 spending brake never come out too low; where the agent reports no cost, the brake counts tokens at that price. Results of
 different agents are different runs: the published numbers name the agent and the models.
 
+To run Gemini CLI (`--agent gemini`), sign in once on the machine that runs the benchmark (`gemini`, then "Sign in with
+Google", with the account whose plan should pay) or set `GEMINI_API_KEY`, and name the models. The sign-in is copied into
+each throwaway container and nowhere else. Gemini CLI needs a newer Node than some tasks run on, and a task's Node is part of
+its breakage, so the agent image carries its own Node for the `gemini` command only, off the `PATH`. As with the other
+agents, its web tools are switched off and every tool call is approved without asking: the container is the sandbox.
+
+```bash
+python bench/myrmobench/run.py run --agent gemini --pioneer <pro-model> --followers <flash-model> \
+    --conditions without --repetitions 2 --execute --approved-usd 20
+```
+
 `run` does nothing without `--execute` and `--approved-usd`, refuses an amount below the plan's ceiling, and stops when
 the cost the agent CLI reports reaches the approved amount. Each run starts from a fresh container that has the agent
-installed; the hidden `check.sh` is copied in only after the agent has finished. Two agents are implemented, Claude Code
-and [OpenCode](https://opencode.ai); Gemini CLI is not. Tokens count input, output and cache. `publish_results.py` refuses a run without follower
+installed; the hidden `check.sh` is copied in only after the agent has finished. Three agents are implemented: Claude Code,
+[OpenCode](https://opencode.ai) and Gemini CLI (`--agent gemini`). Tokens count input, output and cache. `publish_results.py` refuses a run without follower
 runs both with and without Myrmo. The plan's per-run token budget is a guess, to be replaced by the first measured run.
 
 ## Coverage

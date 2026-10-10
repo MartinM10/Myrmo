@@ -46,7 +46,8 @@ RESULTS = ROOT / "bench" / "results"
 
 CLAUDE_CODE_VERSION = "latest"  # pinned in the run's environment.json; `latest` is resolved when the image is built
 OPENCODE_VERSION = "latest"
-AGENTS = ("claude-code", "opencode")
+GEMINI_VERSION = "latest"
+AGENTS = ("claude-code", "opencode", "gemini")
 #: The follower conditions, in the order they are reported. See the module docstring.
 CONDITIONS = ("without", "unseen", "with")
 MCP_VERSION_FILE = ROOT / "clients/typescript/packages/myrmo-mcp/package.json"
@@ -359,6 +360,61 @@ def opencode_command(task: Task, model: str) -> list[str]:
     return ["opencode", "run", task.prompt, "--model", model, "--format", "json"]
 
 
+#: Gemini CLI's own web tools: off, as in the other agents' runs. The container is the sandbox.
+GEMINI_EXCLUDED_TOOLS = ["google_web_search", "web_fetch"]
+#: Where Gemini CLI keeps a Google sign-in (`gemini`, then "Sign in with Google"), on the host.
+GEMINI_HOME = Path.home() / ".gemini"
+
+
+def gemini_settings(with_myrmo: bool, mcp: dict, api_key: bool) -> dict:
+    """Gemini CLI's settings: how it signs in, no web tools, and Myrmo as its only MCP server when the run has it. Both
+    the current and the older names of the keys are written, so the file works across CLI versions."""
+    auth = "gemini-api-key" if api_key else "oauth-personal"
+    settings = {"security": {"auth": {"selectedType": auth}}, "selectedAuthType": auth,
+                "tools": {"exclude": GEMINI_EXCLUDED_TOOLS}, "excludeTools": GEMINI_EXCLUDED_TOOLS,
+                "privacy": {"usageStatisticsEnabled": False}, "usageStatisticsEnabled": False}
+    settings["mcpServers"] = dict(mcp["mcpServers"]) if with_myrmo else {}
+    return settings
+
+
+def gemini_command(task: Task, model: str) -> list[str]:
+    # yolo: every tool call is approved without asking, which a headless run needs; the throwaway container is the sandbox.
+    return ["gemini", "-p", task.prompt, "--model", model, "--output-format", "stream-json", "--approval-mode", "yolo"]
+
+
+def parse_gemini_stream(text: str) -> dict:
+    """Metrics from `gemini -p --output-format stream-json`: one JSON event per line (`init`, `message`, `tool_use`,
+    `tool_result`, `error`, `result`). A failed attempt is a `tool_result` whose status is not `success`; tokens come
+    from the final `result` event's stats. No `result`, or a `result` that is an error, is an agent error."""
+    failed, result, errored = 0, {}, False
+    for line in text.splitlines():
+        try:
+            event = json.loads(line)
+        except ValueError:
+            continue
+        if not isinstance(event, dict):
+            continue
+        kind = event.get("type")
+        if kind == "tool_result" and str(event.get("status", "success")).lower() not in ("success", "ok"):
+            failed += 1
+        elif kind == "error" and str(event.get("severity", "error")).lower() == "error":
+            errored = True
+        elif kind == "result":
+            result = event
+    stats = result.get("stats") or {}
+    tokens = int(stats.get("total_tokens") or 0) or sum(int(stats.get(k) or 0) for k in ("input_tokens", "output_tokens"))
+    turns = int(stats.get("tool_calls") or 0)
+    ok = str(result.get("status", "success")).lower() == "success"
+    return {"tokens": tokens, "cost_usd": 0.0, "turns": turns, "failed_attempts": failed,
+            "agent_error": errored or not result or not ok}
+
+
+def gemini_credentials() -> str | None:
+    """The host's Google sign-in for Gemini CLI, copied into each throwaway container. None when there is none."""
+    path = GEMINI_HOME / "oauth_creds.json"
+    return path.read_text(encoding="utf-8") if path.is_file() else None
+
+
 def claude_command(task: Task, model: str, with_myrmo: bool) -> list[str]:
     allowed = "Bash,Read,Edit,Write,Glob,Grep" + (",mcp__myrmo" if with_myrmo else "")
     command = ["claude", "-p", task.prompt, "--model", model, "--output-format", "stream-json", "--verbose",
@@ -388,6 +444,14 @@ def run_agent(task: Task, model: str, role: str, condition: str, colony: str, re
             put(name, "/root/.local/share/opencode/auth.json", json.dumps({model.split("/")[0]: {"type": "api", "key": key}}))
             exec_env = ["-e", "OPENCODE_CONFIG=/tmp/opencode.json", "-e", f"OPENCODE_PERMISSION={json.dumps(OPENCODE_PERMISSION)}"]
             command, parse = opencode_command(task, model), parse_opencode_events
+        elif agent == "gemini":
+            key = dict(e.split("=", 1) for e in env).get("GEMINI_API_KEY", "")
+            put(name, "/root/.gemini/settings.json", json.dumps(gemini_settings(with_myrmo, mcp, bool(key))))
+            if not key:
+                # The sign-in goes where `gemini` would have put it, in the throwaway container only.
+                put(name, "/root/.gemini/oauth_creds.json", gemini_credentials() or "{}")
+            exec_env = ["-e", f"GEMINI_API_KEY={key}"] if key else []
+            command, parse = gemini_command(task, model), parse_gemini_stream
         else:
             if with_myrmo:
                 put(name, "/tmp/mcp.json", json.dumps(mcp))
@@ -416,6 +480,11 @@ def choose_models(args: argparse.Namespace) -> dict:
         if bad:
             raise SystemExit(f"{bad}: an OpenCode model is <provider>/<model>")
         return {"pioneer": args.pioneer, "followers": args.followers}
+    if args.agent == "gemini":
+        if not args.pioneer or not args.followers:
+            raise SystemExit("with --agent gemini, give --pioneer and --followers as Gemini model ids, for example "
+                             "a Pro model as pioneer and a Flash model as follower (`gemini` shows the ones your plan has)")
+        return {"pioneer": args.pioneer, "followers": args.followers}
     models = {"pioneer": args.pioneer or "claude-opus-5-5", "followers": args.followers or ["claude-sonnet-5-5"]}
     bad = [m for m in [models["pioneer"], *models["followers"]] if m not in PRICES]
     if bad:
@@ -436,10 +505,11 @@ def cmd_run(args: argparse.Namespace) -> int:
         print(f"The plan's ceiling is ${p['estimated_usd_ceiling']} and you approved ${args.approved_usd}. Raise it or run less.")
         return 2
     import os
-    keys = ("OPENCODE_API_KEY",) if args.agent == "opencode" else ("ANTHROPIC_API_KEY", "CLAUDE_CODE_OAUTH_TOKEN")
+    keys = {"opencode": ("OPENCODE_API_KEY",), "gemini": ("GEMINI_API_KEY",)}.get(
+        args.agent, ("ANTHROPIC_API_KEY", "CLAUDE_CODE_OAUTH_TOKEN"))
     env = [f"{k}={os.environ[k]}" for k in keys if os.environ.get(k)]
-    if not env:
-        print("Set " + " or ".join(keys) + ".")
+    if not env and not (args.agent == "gemini" and gemini_credentials()):
+        print("Set " + " or ".join(keys) + "." + (" Or sign in once with `gemini` (Sign in with Google)." if args.agent == "gemini" else ""))
         return 2
     run_id = "myrmobench-" + datetime.now(timezone.utc).strftime("%Y%m%d-%H%M")
     out = RESULTS / run_id
@@ -448,13 +518,15 @@ def cmd_run(args: argparse.Namespace) -> int:
     (out / "environment.json").write_text(json.dumps({"plan": p, "colony": args.colony, "agent": args.agent,
                                                       "pioneer": models["pioneer"], "followers": models["followers"],
                                                       "colony_at_start": {"trails": colony_trails(args.colony), "seeded": seeded},
-                                                      "claude_code": args.claude_code_version, "opencode": args.opencode_version}, indent=2))
+                                                      "claude_code": args.claude_code_version, "opencode": args.opencode_version,
+                                                      "gemini": args.gemini_version}, indent=2))
     by_id = {t.id: t for t in tasks}
     for task in tasks:
         build(task)
         sh("docker", "build", "-t", task.agent_tag(args.agent), "-f", str(HERE / "agent.Dockerfile"), "--build-arg", f"BASE={task.image_tag}",
            "--build-arg", f"AGENT={args.agent}", "--build-arg", f"CLAUDE_CODE_VERSION={args.claude_code_version}",
-           "--build-arg", f"OPENCODE_VERSION={args.opencode_version}", str(HERE))
+           "--build-arg", f"OPENCODE_VERSION={args.opencode_version}", "--build-arg", f"GEMINI_VERSION={args.gemini_version}",
+           str(HERE))
     spent, runs = 0.0, []
     for step in schedule([t.id for t in tasks], models["pioneer"], models["followers"], args.repetitions, conditions):
         if spent >= args.approved_usd:
@@ -506,6 +578,7 @@ def main(argv: list[str] | None = None) -> int:
             s.add_argument("--seed-from", help="copy this colony's public trails into the local one first (for example https://myrmo.dev)")
             s.add_argument("--claude-code-version", default=CLAUDE_CODE_VERSION)
             s.add_argument("--opencode-version", default=OPENCODE_VERSION)
+            s.add_argument("--gemini-version", default=GEMINI_VERSION)
     args = parser.parse_args(argv)
     if args.command == "list":
         for t in load_tasks(args.tasks):

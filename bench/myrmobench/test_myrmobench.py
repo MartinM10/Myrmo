@@ -214,3 +214,39 @@ def test_the_unseen_condition_is_summarised_and_published(tmp_path):
     section = publish_results.value_section(run_dir)
     assert section["unseen"]["median_tokens"] == 1100 and section["with"]["median_tokens"] == 400
     assert section["repetitions"] == 1 and section["colony_trails_at_start"] == 119 and section["pioneers_published"] == 1
+
+
+def test_gemini_gets_myrmo_only_when_the_run_has_it_and_no_web():
+    mcp = run.mcp_config("http://colony", "off", "bench-1")
+    without = run.gemini_settings(False, mcp, api_key=False)
+    assert without["mcpServers"] == {} and without["security"]["auth"]["selectedType"] == "oauth-personal"
+    assert set(run.GEMINI_EXCLUDED_TOOLS) <= set(without["tools"]["exclude"])
+    connected = run.gemini_settings(True, mcp, api_key=True)
+    assert connected["mcpServers"]["myrmo"]["env"]["MYRMO_PUBLISH"] == "off"
+    assert connected["security"]["auth"]["selectedType"] == "gemini-api-key"
+    command = run.gemini_command(run.load_tasks(["uv-path"])[0], "gemini-flash-x")
+    assert command[:2] == ["gemini", "-p"] and command[command.index("--output-format") + 1] == "stream-json"
+    assert command[command.index("--approval-mode") + 1] == "yolo" and command[command.index("--model") + 1] == "gemini-flash-x"
+
+
+def test_a_gemini_stream_gives_tokens_and_failed_attempts():
+    lines = [
+        {"type": "init", "model": "gemini-flash-x"},
+        {"type": "tool_use", "tool_name": "run_shell_command"},
+        {"type": "tool_result", "status": "error", "output": "uv: not found"},
+        {"type": "tool_result", "status": "success", "output": "ok"},
+        {"type": "result", "status": "success", "stats": {"total_tokens": 1234, "input_tokens": 1000, "output_tokens": 234, "tool_calls": 2}},
+    ]
+    m = run.parse_gemini_stream("\n".join(json.dumps(x) for x in lines) + "\nnot json\n[1]")
+    assert m == {"tokens": 1234, "cost_usd": 0.0, "turns": 2, "failed_attempts": 1, "agent_error": False}
+    assert run.parse_gemini_stream("")["agent_error"] is True
+    failed = {"type": "result", "status": "error", "stats": {"input_tokens": 10, "output_tokens": 5}}
+    assert run.parse_gemini_stream(json.dumps(failed)) == {"tokens": 15, "cost_usd": 0.0, "turns": 0, "failed_attempts": 0, "agent_error": True}
+
+
+def test_gemini_models_are_named_by_the_person_who_runs_it():
+    args = lambda pioneer=None, followers=None: run.argparse.Namespace(agent="gemini", pioneer=pioneer, followers=followers)
+    with pytest.raises(SystemExit):
+        run.choose_models(args())
+    assert run.choose_models(args("gemini-pro-x", ["gemini-flash-x"])) == {"pioneer": "gemini-pro-x", "followers": ["gemini-flash-x"]}
+    assert run.price_of("gemini-flash-x") == run.ASSUMED_PRICE
