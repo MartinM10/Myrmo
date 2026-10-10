@@ -1,5 +1,6 @@
 //! Runtime configuration, read once from environment variables.
 
+use crate::net::Cidr;
 use std::env;
 
 #[derive(Clone, Debug)]
@@ -25,6 +26,10 @@ pub struct Config {
     /// the model is what reads the parts of a trail the rules cannot understand, so without it
     /// trails wait in the queue instead of being published unchecked.
     pub decision_fail_open: bool,
+    /// Peers whose `X-Forwarded-For` is believed: the reverse proxy and the hosted MCP server. A request from any other
+    /// address is counted under that address, whatever header it sends, so a caller that reaches the gateway directly
+    /// cannot pick the address its quotas are counted against.
+    pub trusted_proxies: Vec<Cidr>,
     /// Requests per minute per hashed client. 0 disables rate limiting.
     pub rate_limit_per_minute: u64,
     /// Trails a hashed client may publish per hour. 0 disables the quota.
@@ -79,6 +84,10 @@ impl Config {
             decision_model: var("MYRMO_DECISION_MODEL"),
             model_injection_gate: var("MYRMO_MODEL_INJECTION_GATE").is_some_and(|v| v == "1"),
             decision_fail_open: var("MYRMO_DECISION_FAIL_OPEN").is_some_and(|v| v == "1"),
+            trusted_proxies: Cidr::parse_list(&get(
+                "MYRMO_TRUSTED_PROXIES",
+                crate::net::PRIVATE_NETWORKS,
+            )),
             rate_limit_per_minute: get("MYRMO_RATE_LIMIT", "120").parse().unwrap_or(120),
             publish_limit_per_hour: get("MYRMO_PUBLISH_LIMIT", "30").parse().unwrap_or(30),
             votes_per_address: get("MYRMO_VOTES_PER_ADDRESS", "3").parse().unwrap_or(3),

@@ -14,6 +14,7 @@ mod enricher;
 mod fingerprint;
 mod keys;
 mod migrate;
+mod net;
 mod norm;
 mod redact;
 mod relevance;

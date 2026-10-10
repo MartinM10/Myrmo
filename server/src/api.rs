@@ -178,13 +178,13 @@ async fn rate_limit(
     mut req: Request,
     next: Next,
 ) -> Response {
-    let address = req
-        .headers()
-        .get("x-forwarded-for")
-        .and_then(|v| v.to_str().ok())
-        .and_then(|v| v.split(',').next())
-        .map(|v| v.trim().to_string())
-        .unwrap_or_else(|| peer.ip().to_string());
+    let address = crate::net::client_address(
+        peer.ip(),
+        req.headers()
+            .get("x-forwarded-for")
+            .and_then(|v| v.to_str().ok()),
+        &st.cfg.trusted_proxies,
+    );
     let client = keys::client_key(&st.cfg.salt, &address);
     let declared_agent = req
         .headers()
@@ -1875,7 +1875,10 @@ async fn stats(State(st): State<AppState>) -> ApiResult<Json<Value>> {
         .query_async(&mut con)
         .await?;
     // Models and answer rate over the last 30 days. Cached briefly: this endpoint is public.
-    let summary: Value = match con.get::<_, Option<String>>("cache:summary").await? {
+    let summary: Value = match con
+        .get::<_, Option<String>>(keys::STATS_SUMMARY_CACHE)
+        .await?
+    {
         Some(cached) => serde_json::from_str(&cached).unwrap_or(Value::Null),
         None => {
             let rows = crate::analytics::export(&mut con, 30).await?;
@@ -1885,13 +1888,13 @@ async fn stats(State(st): State<AppState>) -> ApiResult<Json<Value>> {
                     .sum()
             };
             let summary = json!({
-                "models": crate::analytics::model_leaderboard(&rows, 10),
+                "models": crate::analytics::public_leaderboard(&rows, 10),
                 "seed_trails_30d": crate::analytics::seed_laid(&rows),
                 "searches_30d": total("searches"),
                 "answered_30d": total("search_hits"),
             });
             let _: () = redis::cmd("SET")
-                .arg("cache:summary")
+                .arg(keys::STATS_SUMMARY_CACHE)
                 .arg(summary.to_string())
                 .arg("EX")
                 .arg(60)
