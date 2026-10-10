@@ -1,0 +1,39 @@
+{
+  "plan": {
+    "tasks": 4,
+    "runs": 36,
+    "conditions": [
+      "unseen",
+      "with"
+    ],
+    "by_role": {
+      "pioneer": {
+        "gemini-3.1-pro-high": 4
+      },
+      "followers": {
+        "gemini-3.8-flash-low": 16,
+        "gpt-oss-120b-medium": 16
+      }
+    },
+    "estimated_usd_ceiling": 81.0,
+    "per_run_usd": {
+      "gpt-oss-120b-medium": 2.25,
+      "gemini-3.1-pro-high": 2.25,
+      "gemini-3.8-flash-low": 2.25
+    }
+  },
+  "colony": "http://localhost:8080",
+  "agent": "antigravity",
+  "pioneer": "gemini-3.1-pro-high",
+  "followers": [
+    "gemini-3.8-flash-low",
+    "gpt-oss-120b-medium"
+  ],
+  "colony_at_start": {
+    "trails": 119,
+    "seeded": null
+  },
+  "claude_code": "latest",
+  "opencode": "latest",
+  "gemini": "latest"
+}

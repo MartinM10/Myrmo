@@ -1,0 +1,18 @@
+{
+  "unseen": {
+    "runs": 16,
+    "success_rate": 0.75,
+    "median_tokens": 65326.5,
+    "median_failed_attempts": 2.0,
+    "median_seconds": 27.5,
+    "median_cost_usd": 0.0
+  },
+  "with": {
+    "runs": 16,
+    "success_rate": 0.75,
+    "median_tokens": 62111.5,
+    "median_failed_attempts": 1.5,
+    "median_seconds": 51.3,
+    "median_cost_usd": 0.0
+  }
+}

@@ -13,9 +13,9 @@ Suites in `bench/`: MyrmoBench, load, retrieval, scale and the leak tests. Each 
 ## MyrmoBench
 
 > [!WARNING]
-> **Only the difficulty check has run.** The runner and four of the twelve tasks exist in `bench/myrmobench/` and pass
-> their dry run. The first run on an agent (below) found the four tasks too easy to show anything, so no number on this site
-> says whether Myrmo saves work yet. The other eight tasks are specified below and not built.
+> **Measured, no saving shown yet.** The runner and four of the twelve tasks exist in `bench/myrmobench/`. Claude Sonnet
+> solves the four at once; cheaper models struggle with them, and a first full run with two of them (below) shows no saving
+> beyond noise, so no number on this site says Myrmo saves work. The other eight tasks are specified below and not built.
 
 Does following a trail actually save agents work?
 
@@ -110,6 +110,40 @@ answer away; and what a model knows well (ERR_REQUIRE_ESM, uv's PATH, SCRAM, a p
 colony is worth most on what a model cannot know: breakages in releases newer than its training, and quirks of one tool's
 environment. The next tasks should come from those, embedded in a broader goal (make the test suite pass, ship this
 feature), and the cheaper follower models should be checked first, since they are where a saving is most likely.
+
+**First full run, with cheaper followers (2026-10-10).** Antigravity CLI on a Google AI Pro plan, the same four tasks, a
+local colony seeded with the 119 public trails, `gemini-3.1-pro-high` as pioneer, Myrmo's usage rules in `GEMINI.md` in
+the conditions with Myrmo ([raw runs](https://github.com/MartinM10/Myrmo/tree/main/bench/results); `myrmobench-20261010-1509`
+and `-1518` hold the `without` runs, `-1548` the others; the four `node-require-esm` runs in `-1509` failed before the agent
+started, for want of root certificates in the image, and were redone in `-1518`). 88 follower runs:
+
+| Follower | Condition | Solved | Tokens, mean | Failed attempts, mean |
+|---|---|---|---|---|
+| `gemini-3.8-flash-low` | without | 8 of 8 | 137k | 2.00 |
+| | unseen | 16 of 16 | 130k | 1.75 |
+| | with | 16 of 16 | 125k | 1.56 |
+| `gpt-oss-120b-medium` | without | 4 of 8 | 15k | 0.88 |
+| | unseen | 9 of 16 | 19k | 1.25 |
+| | with | 8 of 16 | 18k | 1.00 |
+
+What it says, read honestly:
+
+- These tasks are hard enough for cheaper models: Flash spends 7 to 18 turns and about two failed attempts on each, and
+  GPT-OSS solves half of them. So there is room for a trail to save something, which Claude Sonnet left none of.
+- **No saving is shown yet.** Flash uses 9% fewer tokens and fewer failed attempts with the pioneer's trail, a trend
+  within the noise of 8 to 16 runs per cell. GPT-OSS gains nothing and uses more tokens with Myrmo (its search and the
+  trails it reads). On `pg-scram` it does worse with Myrmo (0 of 4 against 1 of 2), probably misled by the public trail for
+  the same cause in another driver (psycopg2 instead of pg8000); on `uv-path` the colony holds the right trail and it still
+  solves 1 of 4. A near miss can cost more than silence, and a weak model may not apply a right trail.
+- Only one of four pioneers left a trail (`pg-scram`): on the others it found an existing trail or solved without a failed
+  attempt, which by design is not worth publishing.
+- Two runners ran at once by mistake, which doubled the repetitions of the `unseen` and `with` conditions. Each run had its
+  own container, so success, tokens and failed attempts stand; wall times do not and are left out.
+- How many runs actually searched is not known for this run: the colony counted 41 searches over 72 runs with Myrmo
+  connected. Each run now records its Myrmo calls (`myrmo_calls`).
+
+Next: more repetitions per cell, tasks from breakages newer than the models, and a closer look at what makes a weak model
+follow a right trail and ignore a near miss (the relevance check and the way results are worded).
 
 ```bash
 python bench/myrmobench/run.py list
