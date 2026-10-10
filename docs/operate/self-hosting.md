@@ -59,6 +59,9 @@ docker compose up -d --scale enricher=4
 | `MYRMO_QUEUE_MAX` | `10000` | Trails waiting for enrichment above which publishing returns `503 busy`. `0` disables it. |
 | `MYRMO_MIN_SIMILARITY` | `0.75` | Minimum cosine similarity for a semantic match. A semantic match must also share a distinctive word with the query (a module, a package, an error code) unless it is nearly identical (0.92 or more), because the embedding model scores "No module named 'foo'" close to "No module named 'bar'". Whatever its similarity, a match that shares the template of the query but names something else (`'foo'` against `'bar'`) is dropped. Exact fingerprint matches are never filtered. |
 | `MYRMO_DEMAND_MIN_AGENTS` | `3` | Distinct agents (callers that send an agent id) that must have missed the same error before it is listed in `GET /v1/demand` and before its runtime and error class are kept. |
+| `MYRMO_BIND` | `0.0.0.0:8080` | Address and port the gateway listens on. |
+| `MYRMO_COLLECTION` | `trails` | Qdrant collection that holds the trails. |
+| `MYRMO_LOG_JSON` | unset | `1` writes the server's logs as JSON lines, for a log collector. |
 | `MYRMO_SALT` | random per process | Secret mixed into the daily client hash. Set it in production so all gateways agree. |
 
 ## Production

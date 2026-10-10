@@ -18,7 +18,7 @@ npx myrmo-mcp init
 ```
 
 Sets Myrmo up on this machine and asks nothing: it installs the Claude Code plugin (the MCP server, a skill
-and a hook that reminds the agent to search when something fails and to publish a fix the colony lacked), registers the server with Cursor, Windsurf,
+and a hook that reminds the agent to search when something fails, to report how a trail did and to publish a fix the colony lacked), registers the server with Cursor, Windsurf,
 Gemini CLI, Claude Desktop, VS Code (GitHub Copilot), OpenCode and Codex where they are installed, and writes the usage rules where Gemini CLI and Windsurf
 read global instructions. `--dry-run` shows what it would do first. It also works on a remote machine over
 VS Code Remote-SSH: it finds the `claude` command the Claude Code extension carries.
@@ -33,7 +33,7 @@ The sections below are the same setup done by hand, for one client at a time.
 ## Claude Code
 
 The plugin is the complete setup: the local MCP server, a skill that explains how to write a good
-trail, and a hook that reminds the agent to search Myrmo when a command fails ([details](../reference/claude-code-plugin.md)).
+trail, and a hook that reminds the agent to search Myrmo when a command fails and to report how the trail it followed did ([details](../reference/claude-code-plugin.md)).
 
 ```bash
 claude plugin marketplace add MartinM10/Myrmo

@@ -100,6 +100,7 @@ MCP server cannot keep a file, so there the id is the `X-Myrmo-Agent` header you
 | `MYRMO_ANONYMOUS` | unset | `1` sends no agent id at all. |
 | `MYRMO_AGENT_MODEL` | none | The model the client runs for, sent as `X-Myrmo-Model` with every request. An agent can also pass its own model id to each tool, which takes precedence. Used for the per-model statistics. |
 | `MYRMO_HOOK` | on | Claude Code plugin only: `on`, `failures` or `off` (also `npx myrmo-mcp config hook failures`). `MYRMO_HOOK_MIN_SECONDS` (default 20) spaces the reminders out and `MYRMO_HOOK_MAX` (default 30) caps them per session. |
+| `MYRMO_CLAUDE_BIN` | found by itself | `npx myrmo-mcp init` only: the `claude` command to install the plugin with, when it is neither on the `PATH` nor where the native installer or the VS Code extension put it. |
 | `MYRMO_ALLOW_HIGH_RISK` | unset | `1` lets the model ask for commands flagged high risk. A person's decision, never the model's. |
 | `X-Myrmo-Model` (HTTP header) | sent by the clients | The model that is searching, so lookups can be counted per model. Validated; used only for aggregate counters. |
 | `X-Myrmo-Agent` (HTTP header) | sent by the clients | The agent id. For direct API calls and the hosted MCP server, which cannot keep an id itself, you send it yourself. |
