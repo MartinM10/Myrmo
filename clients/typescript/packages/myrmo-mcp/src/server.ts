@@ -22,6 +22,11 @@ export interface ServerOptions {
   /** False when nobody has chosen a publish mode yet: the first publish then asks the user once. */
   publishChosen?: boolean;
   /**
+   * Reads the user's publishing choice again. Called before every publish, so that a choice made with
+   * `npx myrmo-mcp config publish ...` while the server runs applies at once, without restarting it.
+   */
+  readPublishChoice?: () => { mode: PublishMode; chosen: boolean };
+  /**
    * Whether `include_high_risk` may be honoured. It is the user's decision (MYRMO_ALLOW_HIGH_RISK=1),
    * not the model's: a model that just read a hostile trail must not be able to switch it on.
    */
@@ -330,13 +335,23 @@ export function createServer(opts: ServerOptions): McpServer {
       }
       if (opts.hosted) return heldForApproval(opts, trail);  // stateless: it cannot ask the user, so they approve through a link
       let approvedByChoice = false;
+      if (opts.readPublishChoice) {
+        const current = opts.readPublishChoice();
+        opts.publishMode = current.mode;
+        opts.publishChosen = current.chosen;
+      }
       if (opts.publishMode === "off" && opts.publishChosen === false) {
         const chosen = await askConsent(server, preview);
         if (chosen === "unsupported") {
           // This client cannot ask, so the user approves through a link instead. Nothing is sent until they do.
           return heldForApproval(opts, trail, "This MCP client cannot ask the user a question, so the trail is held for their approval by link.");
         }
-        if (chosen === "declined") return text("Not published: the user did not choose. Nothing was sent.");
+        if (chosen === "declined") {
+          return text(
+            "Not published: the user did not choose how publishing works, or chose to publish without accepting the terms of service. Nothing was sent. " +
+              "Tell the user they can choose in a terminal with: npx myrmo-mcp config publish auto|ask|off (it applies at once).",
+          );
+        }
         writeConfig({ publish: chosen });
         opts.publishMode = chosen;
         opts.publishChosen = true;
