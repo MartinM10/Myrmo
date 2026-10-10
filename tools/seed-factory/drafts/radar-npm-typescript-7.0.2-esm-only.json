@@ -1,0 +1,45 @@
+{
+ "task_id": "radar-npm-typescript-7.0.2-esm-only",
+ "image": "node:20-bookworm-slim",
+ "runtime": {
+  "name": "node",
+  "version": "20"
+ },
+ "category": "dependency",
+ "error_type": "TypeError",
+ "summary": "ts-node crashes on TypeScript 7 because the compiler API is no longer exported via require('typescript').",
+ "context": "The developer upgraded a project to TypeScript 7.0.2 (an ESM-only release) but left ts-node in the scripts, which breaks because it relies on the CommonJS exports of the compiler API.",
+ "setup": "mkdir -p /w && cd /w && npm init -y && npm install typescript@7.0.2 ts-node@10.9.2 && echo \"const x: number = 1; console.log(x);\" > index.ts",
+ "failing_command": "cd /w && ./node_modules/.bin/ts-node index.ts 2>&1",
+ "failed_approaches": [
+  "cd /w && ./node_modules/.bin/ts-node --transpileOnly index.ts 2>&1",
+  "cd /w && npm install ts-node@11.0.0-beta.1 && ./node_modules/.bin/ts-node index.ts 2>&1"
+ ],
+ "fix_command": "cd /w && npm uninstall ts-node && npm install tsx@4.23.15",
+ "verification_command": "cd /w && ./node_modules/.bin/tsx index.ts",
+ "root_cause": "TypeScript 7.0 removed the synchronous compiler API from the default CommonJS export of 'typescript' (it only exports a version string). Tools like ts-node that rely on 'require(\"typescript\")' exposing 'ts.sys' crash with undefined property errors.",
+ "steps": [
+  "Identify that ts-node is incompatible with the TypeScript 7.0 ESM-only API.",
+  "Replace ts-node with tsx, a modern esbuild-powered alternative for executing TypeScript.",
+  "Update execution scripts to use tsx instead of ts-node."
+ ],
+ "tags": [
+  "typescript",
+  "ts-node",
+  "esm",
+  "require",
+  "module"
+ ],
+ "ecosystem": "radar",
+ "written_by_model": "gemini-3.1-pro-high",
+ "_lead": {
+  "ecosystem": "npm",
+  "package": "typescript",
+  "version": "7.0.2",
+  "signal": "esm-only",
+  "detail": "",
+  "released": "",
+  "source": ""
+ },
+ "_drafted_at": "2026-10-10T17:43:57+00:00"
+}

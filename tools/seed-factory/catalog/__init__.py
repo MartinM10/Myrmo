@@ -10,7 +10,7 @@ from .base import Task
 from .legacy import LEGACY
 
 #: One module per ecosystem (catalog/<name>.py exporting TASKS). Add a name here to bring its tasks in.
-MODULES = ("python", "node", "jvm", "go", "rust", "dotnet", "docker", "tls", "platform")
+MODULES = ("python", "node", "jvm", "go", "rust", "dotnet", "docker", "tls", "platform", "drafts")
 
 
 def _load() -> tuple[Task, ...]:
