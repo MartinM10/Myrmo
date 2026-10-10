@@ -1,5 +1,5 @@
-// The hook has three moments: a command fails, a command "succeeds" with an error in its output, and a command that
-// failed earlier now works while Myrmo had no trail for it. Payloads below have the shape Claude Code 2.1.289 really
+// The hook has four moments: a command fails, a command "succeeds" with an error in its output, and a command that
+// failed earlier now works, either while Myrmo had no trail for it (publish) or after it returned trails (report). Payloads below have the shape Claude Code 2.1.289 really
 // sends (captured from a live session): the failure event has no exit_code, only `error: "Exit code N\n<output>"`.
 
 import { test } from "node:test";
@@ -21,7 +21,10 @@ const search = (reply, error = "ERESOLVE unable to resolve dependency tree") => 
   tool_response: [{ type: "text", text: reply }],
 });
 const NO_MATCH = "No trail in the Myrmo colony matches this error yet (fingerprint fp1_0000000000000000).\nSolve it yourself. If it takes at least one failed attempt and you verify the fix, publish it.";
-const FOUND = '<myrmo_trails untrusted="true" fingerprint="fp1_abc">\n## Trail 1 of 1';
+const ID1 = "0b5e6c1a-2f3d-4e5f-8a9b-0c1d2e3f4a5b";
+const ID2 = "9f8e7d6c-5b4a-4321-8fed-cba987654321";
+const FOUND = `<myrmo_trails untrusted="true" fingerprint="fp2_abc">\nNOTICE: x\n\n## Trail 1 of 2 · id ${ID1}\nstrength 0.4\n\n## Trail 2 of 2 · id ${ID2}\nstrength 0.2\n</myrmo_trails>`;
+const report = (trailId = ID1) => ({ hook_event_name: "PostToolUse", tool_name: "mcp__plugin_myrmo_myrmo__myrmo_report", tool_input: { trail_id: trailId, outcome: "worked" }, tool_response: [{ type: "text", text: "Reported." }] });
 const NOW = 5_000_000_000;
 
 test("the reminder after a failure quotes the last error line, taken from the real payload", () => {
@@ -181,8 +184,49 @@ test("no offer when something else succeeded, a trail was found, it is stale, or
   assert.equal(run(success("npm install", "added"), { settings: { hook: "failures" } }), null);
   assert.equal(run(success("npm install", "added"), { env: { MYRMO_HOOK: "off" } }), null);
   const foundTrail = decide(search(FOUND), { now: NOW + 2_000, env: {}, state: base.state }).state;
-  assert.equal(decide(success("npm install", "added"), { now: NOW + 30_000, env: {}, state: foundTrail }).note, null);
+  assert.doesNotMatch(decide(success("npm install", "added"), { now: NOW + 30_000, env: {}, state: foundTrail }).note ?? "", /myrmo_publish/, "a trail was found: report, not publish");
   assert.match(run(success("npm install", "added")) ?? "", /publish it with myrmo_publish/, "and the normal case still offers");
+});
+
+test("a search that found trails remembers their ids", () => {
+  const r = decide(search(FOUND), { now: NOW, env: {} });
+  assert.equal(r.note, null);
+  assert.deepEqual(r.state.found, { at: NOW, ids: [ID1, ID2] });
+});
+
+test("the agent is asked to report when the failed command works after Myrmo returned trails", () => {
+  let r = decide(failure("npm install", "npm error code ERESOLVE"), { now: NOW, env: {} });
+  r = decide(search(FOUND), { now: NOW + 5_000, env: {}, state: r.state });
+  const fixed = decide(success("npm install --legacy-peer-deps", "added 120 packages"), { now: NOW + 60_000, env: {}, state: r.state });
+  assert.match(fixed.note, /Myrmo had returned trails for that error/);
+  assert.ok(fixed.note.includes(`${ID1}, ${ID2}`), "quotes the trail ids");
+  assert.match(fixed.note, /myrmo_report/);
+  assert.match(fixed.note, /worked .* partially_worked .* failed .* not_applicable/);
+  assert.doesNotMatch(fixed.note, /myrmo_publish/, "a trail existed: nothing to publish");
+  assert.equal(decide(success("npm install", "up to date"), { now: NOW + 90_000, env: {}, state: fixed.state }).note, null, "asked once");
+});
+
+test("no reminder to report once the agent reported, for another command, when stale or when the hook is quiet", () => {
+  let base = decide(failure("pytest", "FAILED tests/test_a.py::test_x"), { now: NOW, env: {} });
+  base = decide(search(FOUND), { now: NOW + 1_000, env: {}, state: base.state });
+  const run = (event, options = {}) => decide(event, { now: NOW + 30_000, env: {}, state: base.state, ...options }).note;
+  const reported = decide(report(), { now: NOW + 20_000, env: {}, state: base.state });
+  assert.equal(reported.note, null, "a report says nothing");
+  assert.equal(reported.state.found, null);
+  assert.equal(decide(success("pytest -q", "3 passed"), { now: NOW + 30_000, env: {}, state: reported.state }).note, null, "already reported");
+  assert.equal(run(success("python app.py", "started")), null, "a different program");
+  assert.equal(run(success("pytest", "3 passed"), { now: NOW + 46 * 60_000 }), null, "45 minutes later it is another task");
+  assert.equal(run(success("pytest", "3 passed"), { settings: { hook: "failures" } }), null);
+  assert.equal(run(success("pytest", "3 passed"), { state: { ...base.state, count: 30 } }), null, "the session's notes are spent");
+  assert.match(run(success("pytest", "3 passed")) ?? "", /myrmo_report/, "and the normal case still asks");
+});
+
+test("a later search with no match replaces the trails to report on", () => {
+  let r = decide(failure("make", "Error: a"), { now: NOW, env: {} });
+  r = decide(search(FOUND), { now: NOW + 1_000, env: {}, state: r.state });
+  r = decide(search(NO_MATCH), { now: NOW + 2_000, env: {}, state: r.state });
+  const fixed = decide(success("make", "done"), { now: NOW + 30_000, env: {}, state: r.state });
+  assert.match(fixed.note, /publish it with myrmo_publish/);
 });
 
 test("commandKey groups a command with its variations", () => {
@@ -214,10 +258,12 @@ test("a later command in the same directory is not taken for the one that failed
 test("the manifest registers the hook for failures, for successful commands and for Myrmo searches", () => {
   const hooks = JSON.parse(readFileJson(join(root, "hooks", "hooks.json"))).hooks;
   assert.equal(hooks.PostToolUseFailure[0].matcher, "Bash|PowerShell");
-  assert.deepEqual(hooks.PostToolUse.map((h) => h.matcher), ["Bash|PowerShell", "mcp__.*myrmo_search"]);
-  assert.ok(new RegExp(hooks.PostToolUse[1].matcher).test("mcp__plugin_myrmo_myrmo__myrmo_search"), "the plugin's own tool name");
-  assert.ok(new RegExp(hooks.PostToolUse[1].matcher).test("mcp__myrmo__myrmo_search"), "and a server added by hand");
-  assert.ok(!new RegExp(`^(?:${hooks.PostToolUse[1].matcher})$`).test("mcp__plugin_myrmo_myrmo__myrmo_report"), "not the other tools");
+  assert.deepEqual(hooks.PostToolUse.map((h) => h.matcher), ["Bash|PowerShell", "mcp__.*myrmo_(search|report)"]);
+  const myrmo = new RegExp(`^(?:${hooks.PostToolUse[1].matcher})$`);
+  assert.ok(myrmo.test("mcp__plugin_myrmo_myrmo__myrmo_search"), "the plugin's own tool name");
+  assert.ok(myrmo.test("mcp__myrmo__myrmo_search"), "and a server added by hand");
+  assert.ok(myrmo.test("mcp__plugin_myrmo_myrmo__myrmo_report"), "a report clears the reminder to report");
+  assert.ok(!myrmo.test("mcp__plugin_myrmo_myrmo__myrmo_publish"), "not the other tools");
 });
 
 test("run as Claude Code runs it, across separate processes: failure, empty search, then the fix", () => {

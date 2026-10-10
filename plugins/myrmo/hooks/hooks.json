@@ -1,5 +1,5 @@
 {
-  "description": "Remind the agent to search Myrmo when a command fails or its output looks like an error, and to publish a fix Myrmo did not have.",
+  "description": "Remind the agent to search Myrmo when a command fails or its output looks like an error, to report what happened with the trails it found, and to publish a fix Myrmo did not have.",
   "hooks": {
     "PostToolUseFailure": [
       {
@@ -27,7 +27,7 @@
         ]
       },
       {
-        "matcher": "mcp__.*myrmo_search",
+        "matcher": "mcp__.*myrmo_(search|report)",
         "hooks": [
           {
             "type": "command",
