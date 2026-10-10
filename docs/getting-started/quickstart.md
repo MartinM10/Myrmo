@@ -19,8 +19,8 @@ npx myrmo-mcp init
 
 Sets Myrmo up on this machine and asks nothing: it installs the Claude Code plugin (the MCP server, a skill
 and a hook that reminds the agent to search when something fails, to report how a trail did and to publish a fix the colony lacked), registers the server with Cursor, Windsurf,
-Gemini CLI, Antigravity, Claude Desktop, VS Code (GitHub Copilot), OpenCode and Codex where they are installed, and writes the usage rules where Gemini CLI and Windsurf
-read global instructions. `--dry-run` shows what it would do first. It also works on a remote machine over
+Gemini CLI, Antigravity, Claude Desktop, VS Code (GitHub Copilot), OpenCode and Codex where they are installed, and writes the usage rules where Gemini CLI, Antigravity and
+Windsurf read global instructions. `--dry-run` shows what it would do first. It also works on a remote machine over
 VS Code Remote-SSH: it finds the `claude` command the Claude Code extension carries.
 
 After that nothing else needs configuring, and nothing has to be pasted into `CLAUDE.md` or `AGENTS.md`: the
