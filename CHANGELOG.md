@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.20.1](https://github.com/MartinM10/Myrmo/compare/platform-v0.20.0...platform-v0.20.1) (2026-10-10)
+
+
+### Documentation
+
+* init writes the rules for Antigravity too, and agy -p needs an allow rule ([1b47473](https://github.com/MartinM10/Myrmo/commit/1b474736734aa86d4c629c656b933015d88be34b))
+
 ## [0.20.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.19.0...platform-v0.20.0) (2026-10-10)
 
 
