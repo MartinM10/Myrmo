@@ -25,7 +25,10 @@ test("a colony is private only when the user says so, and never the public one",
   assert.equal(lookupEnabled(PRIVATE), true, "on by default for a private colony");
   assert.equal(lookupEnabled({ ...PRIVATE, MYRMO_HOOK_LOOKUP: "0" }), false);
   assert.equal(lookupEnabled({}), false, "opt-in anywhere else");
-  assert.equal(lookupEnabled({ MYRMO_HOOK_LOOKUP: "1" }), true);
+  assert.equal(lookupEnabled({ MYRMO_HOOK_LOOKUP: "1", MYRMO_URL: "http://localhost:8080" }), true, "opt-in for a colony of one's own");
+  // The hook sends the error line unredacted, so never to the public colony, even when asked.
+  assert.equal(lookupEnabled({ MYRMO_HOOK_LOOKUP: "1" }), false);
+  assert.equal(lookupEnabled({ MYRMO_HOOK_LOOKUP: "1", MYRMO_URL: "https://myrmo.dev" }), false);
 });
 
 test("in a private colony the reminder to publish keeps internal names; on the public one it asks to remove them", () => {

@@ -322,6 +322,14 @@ async fn rate_limit(
         return res;
     }
     let mut res = next.run(req).await;
+    if st.cfg.require_key {
+        // Everything here was read with a key: a CDN or proxy in front must never keep it for the next caller, as it
+        // may with the public colony's `public, max-age` lookups.
+        res.headers_mut().insert(
+            header::CACHE_CONTROL,
+            HeaderValue::from_static("private, no-store"),
+        );
+    }
     if limit > 0 {
         add_rate_headers(res.headers_mut(), limit, limit.saturating_sub(used), reset);
     }

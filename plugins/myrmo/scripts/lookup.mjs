@@ -3,8 +3,8 @@
 // search is not enough: small models still rarely search.
 //
 // It is on by default only for a private colony (MYRMO_PRIVATE=1 with MYRMO_URL set to it), where the error line goes
-// to the organisation's own server. Anywhere else it is opt-in with MYRMO_HOOK_LOOKUP=1, and MYRMO_HOOK_LOOKUP=0 turns
-// it off everywhere.
+// to the organisation's own server. For another colony of one's own (MYRMO_URL) it is opt-in with MYRMO_HOOK_LOOKUP=1;
+// it never runs against the public colony, and MYRMO_HOOK_LOOKUP=0 turns it off everywhere.
 
 const PUBLIC_HOSTS = new Set(["myrmo.dev", "www.myrmo.dev"]);
 
@@ -18,8 +18,21 @@ export function privateColony(env = process.env) {
   }
 }
 
+/** A colony other than the public one, named in MYRMO_URL. */
+function ownColony(env) {
+  try {
+    return Boolean(env.MYRMO_URL) && !PUBLIC_HOSTS.has(new URL(env.MYRMO_URL).hostname.toLowerCase());
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Never against the public colony: the hook sends the error line as printed, while the MCP server and the SDKs redact it
+ * on this machine first. For one's own colony that is fine (it redacts again on arrival, and nothing leaves).
+ */
 export function lookupEnabled(env = process.env) {
-  if (env.MYRMO_HOOK_LOOKUP === "0") return false;
+  if (env.MYRMO_HOOK_LOOKUP === "0" || !ownColony(env)) return false;
   return env.MYRMO_HOOK_LOOKUP === "1" || privateColony(env);
 }
 

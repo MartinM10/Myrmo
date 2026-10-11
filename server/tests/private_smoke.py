@@ -24,7 +24,7 @@ EXAMPLE = json.loads((ROOT / "protocol/examples/trail.distutils.json").read_text
 REPORT = {"protocol_version": "1.0", "outcome": "worked", "agent_info": {"model": "m", "framework": "f"}}
 
 
-def call(method: str, path: str, body: dict | None = None, key: str | None = None, headers: dict | None = None) -> tuple[int, dict]:
+def call(method: str, path: str, body: dict | None = None, key: str | None = None, headers: dict | None = None, raw: bool = False):
     req = urllib.request.Request(BASE + path, data=json.dumps(body).encode() if body is not None else None, method=method)
     req.add_header("content-type", "application/json")
     if key is not None:
@@ -33,9 +33,11 @@ def call(method: str, path: str, body: dict | None = None, key: str | None = Non
         req.add_header(name, value)
     try:
         with urllib.request.urlopen(req, timeout=60) as res:
-            return res.status, json.loads(res.read() or b"null")
+            out = res.status, json.loads(res.read() or b"null")
+            return (*out, dict(res.headers)) if raw else out
     except urllib.error.HTTPError as err:
-        return err.code, json.loads(err.read() or b"null")
+        out = err.code, json.loads(err.read() or b"null")
+        return (*out, dict(err.headers)) if raw else out
 
 
 def check(condition: bool, message: str) -> None:
@@ -78,6 +80,10 @@ try:
     check(state == "indexed", f"the trail is indexed ({state})")
     hits = call("POST", "/v1/search", {"query": trail["problem"]["error_message"]}, key=key_b)[1]["results"]
     check(any(h["trail_id"] == tid for h in hits), "luis finds ana's trail")
+    fp = call("POST", "/v1/search", {"query": trail["problem"]["error_message"]}, key=key_b)[1]["fingerprint"]
+    status, _, head = call("GET", f"/v1/trails/by-fingerprint/{fp}", key=key_b, raw=True)
+    cache = {k.lower(): v for k, v in head.items()}.get("cache-control", "")
+    check(status == 200 and "private" in cache and "public" not in cache, f"a lookup is never cacheable by a CDN ({cache})")
     status, body = call("POST", f"/v1/trails/{tid}/outcomes", REPORT, key=key_b)
     check(status == 202 and body["counted"] is True, "luis's report counts, though both share an address")
     check(call("POST", f"/v1/trails/{tid}/outcomes", REPORT, key=key_b)[1]["counted"] is False, "once per person and day")
