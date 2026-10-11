@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.26.1](https://github.com/MartinM10/Myrmo/compare/platform-v0.26.0...platform-v0.26.1) (2026-10-11)
+
+
+### Bug fixes
+
+* **ci:** releases publish from the release commit, and PyPI can be published by hand ([c0f8785](https://github.com/MartinM10/Myrmo/commit/c0f8785edcc6f9812d61e05709f295c0a260408f))
+* **ci:** releases publish from the release commit, and PyPI can be published by hand ([3338f9a](https://github.com/MartinM10/Myrmo/commit/3338f9a7a89951747a032eaebc7be5bbca68776d))
+* say when a trail's commands carry no risk flag ([5f461ee](https://github.com/MartinM10/Myrmo/commit/5f461ee3fa776fef7833fc5dfa58309823da25f8))
+* say when a trail's commands carry no risk flag, so an agent working alone does not stop to ask ([f2ed8c7](https://github.com/MartinM10/Myrmo/commit/f2ed8c700fbc4a0a0c9b81537e40d0c05a04c98a))
+
 ## [0.26.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.25.0...platform-v0.26.0) (2026-10-11)
 
 
