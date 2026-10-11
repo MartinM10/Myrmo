@@ -1,5 +1,5 @@
 {
- "generated": "2026-10-10",
+ "generated": "2026-10-11",
  "days": 120,
  "leads": [
   {
@@ -9,7 +9,9 @@
    "released": "2026-07-08",
    "signal": "esm-only",
    "detail": "no CommonJS entry any more: require() fails",
-   "source": "https://www.npmjs.com/package/typescript"
+   "source": "https://www.npmjs.com/package/typescript",
+   "repo": "microsoft/TypeScript",
+   "evidence": []
   },
   {
    "ecosystem": "npm",
@@ -18,25 +20,45 @@
    "released": "2026-06-16",
    "signal": "esm-only",
    "detail": "no CommonJS entry any more: require() fails",
-   "source": "https://www.npmjs.com/package/@babel/core"
-  },
-  {
-   "ecosystem": "pypi",
-   "package": "pydantic",
-   "version": "2.14.0",
-   "released": "2026-10-08",
-   "signal": "runtime-floor",
-   "detail": "requires Python 3.10.0 (was 3.9.0)",
-   "source": "https://pypi.org/project/pydantic/"
-  },
-  {
-   "ecosystem": "pypi",
-   "package": "sqlalchemy",
-   "version": "2.1.0",
-   "released": "2026-09-24",
-   "signal": "runtime-floor",
-   "detail": "requires Python 3.11.0 (was 3.7.0)",
-   "source": "https://pypi.org/project/sqlalchemy/"
+   "source": "https://www.npmjs.com/package/@babel/core",
+   "repo": "babel/babel",
+   "evidence": [
+    {
+     "title": "Last standalone/babel.min.js broken",
+     "url": "https://github.com/babel/babel/issues/18073",
+     "comments": 11,
+     "repo": "babel/babel",
+     "licence": "MIT"
+    },
+    {
+     "title": "babel/preset-env - erroring out when bugfixes is true puts third-party software in an unresolvable situation",
+     "url": "https://github.com/babel/babel/issues/18096",
+     "comments": 7,
+     "repo": "babel/babel",
+     "licence": "MIT"
+    },
+    {
+     "title": "Copy/paste from website is broken",
+     "url": "https://github.com/babel/babel/issues/18149",
+     "comments": 6,
+     "repo": "babel/babel",
+     "licence": "MIT"
+    },
+    {
+     "title": "SyntaxError on generic arrow function assignment",
+     "url": "https://github.com/babel/babel/issues/18114",
+     "comments": 6,
+     "repo": "babel/babel",
+     "licence": "MIT"
+    },
+    {
+     "title": "`types.optionalCallExpression` throws \"TypeError: Non-optional OptionalCallExpression must chain from an optional...\"",
+     "url": "https://github.com/babel/babel/issues/18119",
+     "comments": 5,
+     "repo": "babel/babel",
+     "licence": "MIT"
+    }
+   ]
   },
   {
    "ecosystem": "npm",
@@ -45,25 +67,45 @@
    "released": "2026-09-03",
    "signal": "runtime-floor",
    "detail": "requires Node 22.12.0 (was 20.0.0)",
-   "source": "https://www.npmjs.com/package/vitest"
-  },
-  {
-   "ecosystem": "pypi",
-   "package": "anthropic",
-   "version": "1.0.0",
-   "released": "2026-08-20",
-   "signal": "runtime-floor",
-   "detail": "requires Python 3.10.0 (was 3.9.0)",
-   "source": "https://pypi.org/project/anthropic/"
-  },
-  {
-   "ecosystem": "pypi",
-   "package": "openai",
-   "version": "2.49.0",
-   "released": "2026-07-27",
-   "signal": "runtime-floor",
-   "detail": "requires Python 3.10.0 (was 3.9.0)",
-   "source": "https://pypi.org/project/openai/"
+   "source": "https://www.npmjs.com/package/vitest",
+   "repo": "vitest-dev/vitest",
+   "evidence": [
+    {
+     "title": "Worker catchError can loop forever on dead IPC channel (OOM \u2192 SIGABRT) \u2014 onError guard doesn't cover it",
+     "url": "https://github.com/vitest-dev/vitest/issues/11241",
+     "comments": 7,
+     "repo": "vitest-dev/vitest",
+     "licence": "MIT"
+    },
+    {
+     "title": "vmThreads: teardown timeout only logs and a stuck worker is never force-terminated, so the process can hang",
+     "url": "https://github.com/vitest-dev/vitest/issues/11371",
+     "comments": 6,
+     "repo": "vitest-dev/vitest",
+     "licence": "MIT"
+    },
+    {
+     "title": "v5 browser mode no longer serves /mockServiceWorker.js (undocumented)",
+     "url": "https://github.com/vitest-dev/vitest/issues/11230",
+     "comments": 6,
+     "repo": "vitest-dev/vitest",
+     "licence": "MIT"
+    },
+    {
+     "title": "Regression in Vitest 5: spying on Set.prototype.add causes a stack overflow",
+     "url": "https://github.com/vitest-dev/vitest/issues/11298",
+     "comments": 5,
+     "repo": "vitest-dev/vitest",
+     "licence": "MIT"
+    },
+    {
+     "title": "UI auth token impossible to retrieve once initial loading is cleared and can't disable auth entirely either",
+     "url": "https://github.com/vitest-dev/vitest/issues/11274",
+     "comments": 5,
+     "repo": "vitest-dev/vitest",
+     "licence": "MIT"
+    }
+   ]
   },
   {
    "ecosystem": "npm",
@@ -72,7 +114,17 @@
    "released": "2026-07-26",
    "signal": "runtime-floor",
    "detail": "requires Node 22.0.0 (was 12.17.0)",
-   "source": "https://www.npmjs.com/package/chalk"
+   "source": "https://www.npmjs.com/package/chalk",
+   "repo": "chalk/chalk",
+   "evidence": [
+    {
+     "title": "A null/undefined argument renders as literal text with two arguments, but as empty with three or more",
+     "url": "https://github.com/chalk/chalk/issues/691",
+     "comments": 0,
+     "repo": "chalk/chalk",
+     "licence": "MIT"
+    }
+   ]
   },
   {
    "ecosystem": "npm",
@@ -81,7 +133,45 @@
    "released": "2026-07-24",
    "signal": "runtime-floor",
    "detail": "requires Node 20.0.0 (was 18.0.0)",
-   "source": "https://www.npmjs.com/package/playwright"
+   "source": "https://www.npmjs.com/package/playwright",
+   "repo": "microsoft/playwright",
+   "evidence": [
+    {
+     "title": "[Bug]: Browser Install Timeout regardless of env timeout. 1.63.0 regression",
+     "url": "https://github.com/microsoft/playwright/issues/42597",
+     "comments": 14,
+     "repo": "microsoft/playwright",
+     "licence": "Apache-2.0"
+    },
+    {
+     "title": "[Regression]: middle / modifier click intermittently fails to open a new tab on Playwright 1.62.x",
+     "url": "https://github.com/microsoft/playwright/issues/42142",
+     "comments": 11,
+     "repo": "microsoft/playwright",
+     "licence": "Apache-2.0"
+    },
+    {
+     "title": "[Bug]: Edge 152 crashes during download after relaunching a persistent profile; bundled Chromium 151 succeeds",
+     "url": "https://github.com/microsoft/playwright/issues/42506",
+     "comments": 9,
+     "repo": "microsoft/playwright",
+     "licence": "Apache-2.0"
+    },
+    {
+     "title": "[Bug]: Firefox headed hangs indefinitely on page.setViewportSize()",
+     "url": "https://github.com/microsoft/playwright/issues/43028",
+     "comments": 9,
+     "repo": "microsoft/playwright",
+     "licence": "Apache-2.0"
+    },
+    {
+     "title": "[Bug]: 1.62.0 regresion - \"Future exception was never retrieved\" error when locator method raises a `TypeError`",
+     "url": "https://github.com/microsoft/playwright/issues/42232",
+     "comments": 8,
+     "repo": "microsoft/playwright",
+     "licence": "Apache-2.0"
+    }
+   ]
   },
   {
    "ecosystem": "npm",
@@ -90,7 +180,17 @@
    "released": "2026-07-12",
    "signal": "runtime-floor",
    "detail": "requires Node 22.0.0 (was 18.0.0)",
-   "source": "https://www.npmjs.com/package/nanoid"
+   "source": "https://www.npmjs.com/package/nanoid",
+   "repo": "ai/nanoid",
+   "evidence": [
+    {
+     "title": "customRandom hangs indefinitely when size is 0",
+     "url": "https://github.com/ai/nanoid/issues/605",
+     "comments": 10,
+     "repo": "ai/nanoid",
+     "licence": "MIT"
+    }
+   ]
   },
   {
    "ecosystem": "npm",
@@ -99,34 +199,9 @@
    "released": "2026-07-08",
    "signal": "runtime-floor",
    "detail": "requires Node 16.20.0 (was 14.17.0)",
-   "source": "https://www.npmjs.com/package/typescript"
-  },
-  {
-   "ecosystem": "pypi",
-   "package": "setuptools",
-   "version": "83.0.0",
-   "released": "2026-07-04",
-   "signal": "runtime-floor",
-   "detail": "requires Python 3.10.0 (was 3.9.0)",
-   "source": "https://pypi.org/project/setuptools/"
-  },
-  {
-   "ecosystem": "pypi",
-   "package": "numpy",
-   "version": "2.5.0",
-   "released": "2026-06-21",
-   "signal": "runtime-floor",
-   "detail": "requires Python 3.12.0 (was 3.11.0)",
-   "source": "https://pypi.org/project/numpy/"
-  },
-  {
-   "ecosystem": "pypi",
-   "package": "scipy",
-   "version": "1.18.0",
-   "released": "2026-06-19",
-   "signal": "runtime-floor",
-   "detail": "requires Python 3.12.0 (was 3.11.0)",
-   "source": "https://pypi.org/project/scipy/"
+   "source": "https://www.npmjs.com/package/typescript",
+   "repo": "microsoft/TypeScript",
+   "evidence": []
   },
   {
    "ecosystem": "npm",
@@ -135,7 +210,45 @@
    "released": "2026-06-16",
    "signal": "runtime-floor",
    "detail": "requires Node 22.18.0 (was 6.9.0)",
-   "source": "https://www.npmjs.com/package/@babel/core"
+   "source": "https://www.npmjs.com/package/@babel/core",
+   "repo": "babel/babel",
+   "evidence": [
+    {
+     "title": "Last standalone/babel.min.js broken",
+     "url": "https://github.com/babel/babel/issues/18073",
+     "comments": 11,
+     "repo": "babel/babel",
+     "licence": "MIT"
+    },
+    {
+     "title": "babel/preset-env - erroring out when bugfixes is true puts third-party software in an unresolvable situation",
+     "url": "https://github.com/babel/babel/issues/18096",
+     "comments": 7,
+     "repo": "babel/babel",
+     "licence": "MIT"
+    },
+    {
+     "title": "Copy/paste from website is broken",
+     "url": "https://github.com/babel/babel/issues/18149",
+     "comments": 6,
+     "repo": "babel/babel",
+     "licence": "MIT"
+    },
+    {
+     "title": "SyntaxError on generic arrow function assignment",
+     "url": "https://github.com/babel/babel/issues/18114",
+     "comments": 6,
+     "repo": "babel/babel",
+     "licence": "MIT"
+    },
+    {
+     "title": "`types.optionalCallExpression` throws \"TypeError: Non-optional OptionalCallExpression must chain from an optional...\"",
+     "url": "https://github.com/babel/babel/issues/18119",
+     "comments": 5,
+     "repo": "babel/babel",
+     "licence": "MIT"
+    }
+   ]
   },
   {
    "ecosystem": "npm",
@@ -144,7 +257,24 @@
    "released": "2026-09-17",
    "signal": "major",
    "detail": "17.4.2 -> 18.0.0",
-   "source": "https://www.npmjs.com/package/dotenv"
+   "source": "https://www.npmjs.com/package/dotenv",
+   "repo": "motdotla/dotenv",
+   "evidence": [
+    {
+     "title": "`DOTENV_QUIET` does not work if it is specified inside `.env`",
+     "url": "https://github.com/motdotla/dotenv/issues/1057",
+     "comments": 3,
+     "repo": "motdotla/dotenv",
+     "licence": "BSD-2-Clause"
+    },
+    {
+     "title": "import 'dotenv/config' broken when using TS",
+     "url": "https://github.com/motdotla/dotenv/issues/1067",
+     "comments": 2,
+     "repo": "motdotla/dotenv",
+     "licence": "BSD-2-Clause"
+    }
+   ]
   },
   {
    "ecosystem": "npm",
@@ -153,7 +283,45 @@
    "released": "2026-09-03",
    "signal": "major",
    "detail": "4.1.11 -> 5.0.0",
-   "source": "https://www.npmjs.com/package/vitest"
+   "source": "https://www.npmjs.com/package/vitest",
+   "repo": "vitest-dev/vitest",
+   "evidence": [
+    {
+     "title": "Worker catchError can loop forever on dead IPC channel (OOM \u2192 SIGABRT) \u2014 onError guard doesn't cover it",
+     "url": "https://github.com/vitest-dev/vitest/issues/11241",
+     "comments": 7,
+     "repo": "vitest-dev/vitest",
+     "licence": "MIT"
+    },
+    {
+     "title": "vmThreads: teardown timeout only logs and a stuck worker is never force-terminated, so the process can hang",
+     "url": "https://github.com/vitest-dev/vitest/issues/11371",
+     "comments": 6,
+     "repo": "vitest-dev/vitest",
+     "licence": "MIT"
+    },
+    {
+     "title": "v5 browser mode no longer serves /mockServiceWorker.js (undocumented)",
+     "url": "https://github.com/vitest-dev/vitest/issues/11230",
+     "comments": 6,
+     "repo": "vitest-dev/vitest",
+     "licence": "MIT"
+    },
+    {
+     "title": "Regression in Vitest 5: spying on Set.prototype.add causes a stack overflow",
+     "url": "https://github.com/vitest-dev/vitest/issues/11298",
+     "comments": 5,
+     "repo": "vitest-dev/vitest",
+     "licence": "MIT"
+    },
+    {
+     "title": "UI auth token impossible to retrieve once initial loading is cleared and can't disable auth entirely either",
+     "url": "https://github.com/vitest-dev/vitest/issues/11274",
+     "comments": 5,
+     "repo": "vitest-dev/vitest",
+     "licence": "MIT"
+    }
+   ]
   },
   {
    "ecosystem": "npm",
@@ -162,7 +330,45 @@
    "released": "2026-08-26",
    "signal": "major",
    "detail": "11.28.5 -> 12.0.0",
-   "source": "https://www.npmjs.com/package/pnpm"
+   "source": "https://www.npmjs.com/package/pnpm",
+   "repo": "pnpm/pnpm",
+   "evidence": [
+    {
+     "title": "Pnpm v12 fails to install some scripts and packages in nuxtjs and vite plus monorepo:",
+     "url": "https://github.com/pnpm/pnpm/issues/16308",
+     "comments": 14,
+     "repo": "pnpm/pnpm",
+     "licence": "MIT"
+    },
+    {
+     "title": "[pnpm v12] Older global pnpm fails to parse newer pnpm-workspace.yaml settings before switching to packageManager version",
+     "url": "https://github.com/pnpm/pnpm/issues/16675",
+     "comments": 8,
+     "repo": "pnpm/pnpm",
+     "licence": "MIT"
+    },
+    {
+     "title": "`pnpm self-update` doesn't respect tags?",
+     "url": "https://github.com/pnpm/pnpm/issues/14345",
+     "comments": 7,
+     "repo": "pnpm/pnpm",
+     "licence": "MIT"
+    },
+    {
+     "title": "Cannot install v12 with the standalone script (404)",
+     "url": "https://github.com/pnpm/pnpm/issues/14203",
+     "comments": 7,
+     "repo": "pnpm/pnpm",
+     "licence": "MIT"
+    },
+    {
+     "title": "pnpm 12.4.2+: `pnpm dedupe` is not idempotent \u2014 `dedupe --check` fails right after `dedupe`",
+     "url": "https://github.com/pnpm/pnpm/issues/16356",
+     "comments": 6,
+     "repo": "pnpm/pnpm",
+     "licence": "MIT"
+    }
+   ]
   },
   {
    "ecosystem": "pypi",
@@ -171,7 +377,45 @@
    "released": "2026-08-20",
    "signal": "major",
    "detail": "0.125.0 -> 1.0.0",
-   "source": "https://pypi.org/project/anthropic/"
+   "source": "https://pypi.org/project/anthropic/",
+   "repo": "anthropics/anthropic-sdk-python",
+   "evidence": [
+    {
+     "title": "transform_schema raises AssertionError on type arrays (e.g. type: [\"string\",\"null\"])",
+     "url": "https://github.com/anthropics/anthropic-sdk-python/issues/1876",
+     "comments": 3,
+     "repo": "anthropics/anthropic-sdk-python",
+     "licence": "MIT"
+    },
+    {
+     "title": "Three symlink tests in test_agent_toolset.py are missing the needs_symlinks marker",
+     "url": "https://github.com/anthropics/anthropic-sdk-python/issues/1915",
+     "comments": 3,
+     "repo": "anthropics/anthropic-sdk-python",
+     "licence": "MIT"
+    },
+    {
+     "title": "The streaming SDK doesn't return a container_id",
+     "url": "https://github.com/anthropics/anthropic-sdk-python/issues/1865",
+     "comments": 2,
+     "repo": "anthropics/anthropic-sdk-python",
+     "licence": "MIT"
+    },
+    {
+     "title": "Bug: AttributeError: 'dict' object has no attribute 'output_tokens' during streaming message_delta",
+     "url": "https://github.com/anthropics/anthropic-sdk-python/issues/1867",
+     "comments": 2,
+     "repo": "anthropics/anthropic-sdk-python",
+     "licence": "MIT"
+    },
+    {
+     "title": "Transport errors while consuming a stream escape as raw httpx exceptions instead of `APITimeoutError` / `APIConnectionError`",
+     "url": "https://github.com/anthropics/anthropic-sdk-python/issues/1919",
+     "comments": 1,
+     "repo": "anthropics/anthropic-sdk-python",
+     "licence": "MIT"
+    }
+   ]
   },
   {
    "ecosystem": "pypi",
@@ -180,7 +424,45 @@
    "released": "2026-08-12",
    "signal": "major",
    "detail": "2.54.0 -> 3.0.0",
-   "source": "https://pypi.org/project/openai/"
+   "source": "https://pypi.org/project/openai/",
+   "repo": "openai/openai-python",
+   "evidence": [
+    {
+     "title": "Triage: openai 3.1.0 changed McpCall.error to a structured union \u2014 mypy fails and MCP call errors raise ValidationError at runtime",
+     "url": "https://github.com/meridianlabs-ai/inspect_ai/issues/233",
+     "comments": 20,
+     "repo": "meridianlabs-ai/inspect_ai",
+     "licence": "MIT"
+    },
+    {
+     "title": "Required checks lint, build and test are satisfied by a skip when dependency-locks fails",
+     "url": "https://github.com/openai/openai-python/issues/3755",
+     "comments": 3,
+     "repo": "openai/openai-python",
+     "licence": "Apache-2.0"
+    },
+    {
+     "title": "`ssl.SSLError` during a request is no longer retried since 3.14.1",
+     "url": "https://github.com/openai/openai-python/issues/3969",
+     "comments": 3,
+     "repo": "openai/openai-python",
+     "licence": "Apache-2.0"
+    },
+    {
+     "title": "fix(auth): SubjectTokenProviderError drops response and duplicates error message in workload identity providers",
+     "url": "https://github.com/openai/openai-python/issues/4017",
+     "comments": 3,
+     "repo": "openai/openai-python",
+     "licence": "Apache-2.0"
+    },
+    {
+     "title": "parse_response crashes with TypeError when a message item has content:null",
+     "url": "https://github.com/openai/openai-python/issues/3840",
+     "comments": 2,
+     "repo": "openai/openai-python",
+     "licence": "Apache-2.0"
+    }
+   ]
   },
   {
    "ecosystem": "pypi",
@@ -189,7 +471,45 @@
    "released": "2026-08-08",
    "signal": "major",
    "detail": "83.0.0 -> 84.0.0",
-   "source": "https://pypi.org/project/setuptools/"
+   "source": "https://pypi.org/project/setuptools/",
+   "repo": "pypa/setuptools",
+   "evidence": [
+    {
+     "title": "[Docs] Broken Intersphinx Inventory",
+     "url": "https://github.com/pypa/setuptools/issues/5315",
+     "comments": 3,
+     "repo": "pypa/setuptools",
+     "licence": "MIT"
+    },
+    {
+     "title": "84.0.0: compilers obtained via `setuptools._distutils.ccompiler` raise a `CompileError` that `setuptools.errors.CompileError` no longer matches",
+     "url": "https://github.com/pypa/setuptools/issues/5294",
+     "comments": 1,
+     "repo": "pypa/setuptools",
+     "licence": "MIT"
+    },
+    {
+     "title": "CI: test (pypy3.11, ubuntu-latest, stdlib) fails because PyPy's bundled distutils calls sysconfig.is_python_build(True)",
+     "url": "https://github.com/pypa/setuptools/issues/5327",
+     "comments": 0,
+     "repo": "pypa/setuptools",
+     "licence": "MIT"
+    },
+    {
+     "title": "[BUG] 84.0.0: Extension is unhashable (dataclass conversion sets __hash__ = None) \u2014 breaks setup scripts using sets of extensions",
+     "url": "https://github.com/pypa/setuptools/issues/5303",
+     "comments": 0,
+     "repo": "pypa/setuptools",
+     "licence": "MIT"
+    },
+    {
+     "title": "instal_lib does not handle when `sys.implementation.cache_tag is None`",
+     "url": "https://github.com/pypa/setuptools/issues/5344",
+     "comments": 0,
+     "repo": "pypa/setuptools",
+     "licence": "MIT"
+    }
+   ]
   },
   {
    "ecosystem": "pypi",
@@ -198,7 +518,9 @@
    "released": "2026-07-31",
    "signal": "major",
    "detail": "49.0.0 -> 50.0.0",
-   "source": "https://pypi.org/project/cryptography/"
+   "source": "https://pypi.org/project/cryptography/",
+   "repo": "pyca/cryptography",
+   "evidence": []
   },
   {
    "ecosystem": "npm",
@@ -207,7 +529,9 @@
    "released": "2026-07-27",
    "signal": "major",
    "detail": "6.49.0 -> 7.0.0",
-   "source": "https://www.npmjs.com/package/openai"
+   "source": "https://www.npmjs.com/package/openai",
+   "repo": "openai/openai-node",
+   "evidence": []
   },
   {
    "ecosystem": "npm",
@@ -216,7 +540,9 @@
    "released": "2026-07-26",
    "signal": "major",
    "detail": "5.6.2 -> 6.0.0",
-   "source": "https://www.npmjs.com/package/chalk"
+   "source": "https://www.npmjs.com/package/chalk",
+   "repo": "chalk/chalk",
+   "evidence": []
   },
   {
    "ecosystem": "npm",
@@ -225,7 +551,9 @@
    "released": "2026-07-21",
    "signal": "major",
    "detail": "12.11.1 -> 13.0.0",
-   "source": "https://www.npmjs.com/package/better-sqlite3"
+   "source": "https://www.npmjs.com/package/better-sqlite3",
+   "repo": "WiseLibs/better-sqlite3",
+   "evidence": []
   },
   {
    "ecosystem": "npm",
@@ -234,7 +562,9 @@
    "released": "2026-07-12",
    "signal": "major",
    "detail": "5.1.16 -> 6.0.0",
-   "source": "https://www.npmjs.com/package/nanoid"
+   "source": "https://www.npmjs.com/package/nanoid",
+   "repo": "ai/nanoid",
+   "evidence": []
   },
   {
    "ecosystem": "npm",
@@ -243,7 +573,9 @@
    "released": "2026-07-08",
    "signal": "major",
    "detail": "6.0.3 -> 7.0.2",
-   "source": "https://www.npmjs.com/package/typescript"
+   "source": "https://www.npmjs.com/package/typescript",
+   "repo": "microsoft/TypeScript",
+   "evidence": []
   },
   {
    "ecosystem": "pypi",
@@ -252,7 +584,9 @@
    "released": "2026-07-04",
    "signal": "major",
    "detail": "82.0.1 -> 83.0.0",
-   "source": "https://pypi.org/project/setuptools/"
+   "source": "https://pypi.org/project/setuptools/",
+   "repo": "pypa/setuptools",
+   "evidence": []
   },
   {
    "ecosystem": "npm",
@@ -261,16 +595,9 @@
    "released": "2026-06-16",
    "signal": "major",
    "detail": "7.29.7 -> 8.0.0",
-   "source": "https://www.npmjs.com/package/@babel/core"
-  },
-  {
-   "ecosystem": "pypi",
-   "package": "cryptography",
-   "version": "49.0.0",
-   "released": "2026-06-12",
-   "signal": "major",
-   "detail": "48.0.1 -> 49.0.0",
-   "source": "https://pypi.org/project/cryptography/"
+   "source": "https://www.npmjs.com/package/@babel/core",
+   "repo": "babel/babel",
+   "evidence": []
   },
   {
    "ecosystem": "npm",
@@ -279,7 +606,9 @@
    "released": "2026-07-13",
    "signal": "yanked",
    "detail": "This is a broken version. Please install pnpm v11.13.1 or newer",
-   "source": "https://www.npmjs.com/package/pnpm"
+   "source": "https://www.npmjs.com/package/pnpm",
+   "repo": "pnpm/pnpm",
+   "evidence": []
   },
   {
    "ecosystem": "npm",
@@ -288,7 +617,9 @@
    "released": "2026-07-11",
    "signal": "yanked",
    "detail": "This release is broken. Please upgrade to v11.13.1 or newer.",
-   "source": "https://www.npmjs.com/package/pnpm"
+   "source": "https://www.npmjs.com/package/pnpm",
+   "repo": "pnpm/pnpm",
+   "evidence": []
   },
   {
    "ecosystem": "npm",
@@ -297,7 +628,9 @@
    "released": "2026-07-10",
    "signal": "yanked",
    "detail": "This version is no longer supported. Please see https://eslint.org/version-support for other options.",
-   "source": "https://www.npmjs.com/package/eslint"
+   "source": "https://www.npmjs.com/package/eslint",
+   "repo": "eslint/eslint",
+   "evidence": []
   },
   {
    "ecosystem": "pypi",
@@ -306,7 +639,9 @@
    "released": "2026-07-06",
    "signal": "yanked",
    "detail": "Bad protobuf dependency version specified; only 7.x should be supported https://github.com/grpc/grpc/issues/42906",
-   "source": "https://pypi.org/project/grpcio/"
+   "source": "https://pypi.org/project/grpcio/",
+   "repo": "grpc/grpc",
+   "evidence": []
   },
   {
    "ecosystem": "pypi",
@@ -315,7 +650,86 @@
    "released": "2026-06-28",
    "signal": "yanked",
    "detail": "Reported segfaults with datetime-related functionality",
-   "source": "https://pypi.org/project/pandas/"
+   "source": "https://pypi.org/project/pandas/",
+   "repo": "pandas-dev/pandas",
+   "evidence": []
+  },
+  {
+   "ecosystem": "pypi",
+   "package": "pydantic",
+   "version": "2.14.0",
+   "released": "2026-10-08",
+   "signal": "runtime-floor",
+   "detail": "requires Python 3.10.0 (was 3.9.0)",
+   "source": "https://pypi.org/project/pydantic/",
+   "repo": "sponsors/samuelcolvin",
+   "evidence": []
+  },
+  {
+   "ecosystem": "pypi",
+   "package": "sqlalchemy",
+   "version": "2.1.0",
+   "released": "2026-09-24",
+   "signal": "runtime-floor",
+   "detail": "requires Python 3.11.0 (was 3.7.0)",
+   "source": "https://pypi.org/project/sqlalchemy/",
+   "repo": "sqlalchemy/sqlalchemy",
+   "evidence": []
+  },
+  {
+   "ecosystem": "pypi",
+   "package": "anthropic",
+   "version": "1.0.0",
+   "released": "2026-08-20",
+   "signal": "runtime-floor",
+   "detail": "requires Python 3.10.0 (was 3.9.0)",
+   "source": "https://pypi.org/project/anthropic/",
+   "repo": "anthropics/anthropic-sdk-python",
+   "evidence": []
+  },
+  {
+   "ecosystem": "pypi",
+   "package": "openai",
+   "version": "2.49.0",
+   "released": "2026-07-27",
+   "signal": "runtime-floor",
+   "detail": "requires Python 3.10.0 (was 3.9.0)",
+   "source": "https://pypi.org/project/openai/",
+   "repo": "openai/openai-python",
+   "evidence": []
+  },
+  {
+   "ecosystem": "pypi",
+   "package": "setuptools",
+   "version": "83.0.0",
+   "released": "2026-07-04",
+   "signal": "runtime-floor",
+   "detail": "requires Python 3.10.0 (was 3.9.0)",
+   "source": "https://pypi.org/project/setuptools/",
+   "repo": "pypa/setuptools",
+   "evidence": []
+  },
+  {
+   "ecosystem": "pypi",
+   "package": "numpy",
+   "version": "2.5.0",
+   "released": "2026-06-21",
+   "signal": "runtime-floor",
+   "detail": "requires Python 3.12.0 (was 3.11.0)",
+   "source": "https://pypi.org/project/numpy/",
+   "repo": "numpy/numpy",
+   "evidence": []
+  },
+  {
+   "ecosystem": "pypi",
+   "package": "scipy",
+   "version": "1.18.0",
+   "released": "2026-06-19",
+   "signal": "runtime-floor",
+   "detail": "requires Python 3.12.0 (was 3.11.0)",
+   "source": "https://pypi.org/project/scipy/",
+   "repo": "scipy/scipy",
+   "evidence": []
   }
  ],
  "errors": []

@@ -24,6 +24,7 @@ def load(path: Path) -> Task:
         **{f: d[f] for f in FIELDS if f not in ("failed_approaches", "steps", "tags")},
         failed_approaches=tuple(d["failed_approaches"]), steps=tuple(d["steps"]), tags=tuple(d["tags"]),
         ecosystem=d.get("ecosystem", "radar"), written_by_model=d.get("written_by_model"), memory=d.get("memory", "1g"),
+        sources=tuple(d.get("_sources", ())),
     )
 
 

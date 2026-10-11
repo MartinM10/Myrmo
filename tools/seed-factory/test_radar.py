@@ -88,3 +88,83 @@ def test_a_raised_python_floor_comes_after_every_other_signal():
                 "versions": {"1.0.0": {}, "2.0.0": {"deprecated": "broken"}}}
     leads, _ = radar.scan(120, now=NOW, fetcher=fetcher, watch={"pypi": ["p"], "npm": ["n"]})
     assert [(l.ecosystem, l.signal) for l in leads] == [("npm", "yanked"), ("pypi", "runtime-floor")]
+
+
+def lead(**kw):
+    base = dict(ecosystem="npm", package="typescript", version="7.0.2", released="2026-07-08", signal="major", detail="", source="s",
+                repo="microsoft/TypeScript")
+    return radar.Lead(**{**base, **kw})
+
+
+def fake_github(issues, licences):
+    """A stand-in for `gh api`: search results by query text, and repository licences."""
+    calls = []
+
+    def call(path, **params):
+        calls.append((path, params.get("q")))
+        if path == "search/issues":
+            return {"items": next((v for k, v in issues.items() if k in params["q"]), [])}
+        repo = path.removeprefix("repos/")
+        return {"license": {"spdx_id": licences[repo]}} if licences.get(repo) else {"license": None}
+    call.calls = calls
+    return call
+
+
+def issue(repo, title, comments, login="someone", kind="User", **extra):
+    return {"title": title, "html_url": f"https://github.com/{repo}/issues/{comments}", "comments": comments,
+            "repository_url": f"https://api.github.com/repos/{repo}", "user": {"login": login, "type": kind}, **extra}
+
+
+def test_the_repository_comes_from_what_the_registry_says_about_itself():
+    assert radar.repo_of("pypi", {"info": {"project_urls": {"Source": "https://github.com/pydantic/pydantic"}}}) == "pydantic/pydantic"
+    assert radar.repo_of("pypi", {"info": {"project_urls": None, "home_page": "https://github.com/a/b.git"}}) == "a/b"
+    assert radar.repo_of("npm", {"repository": {"type": "git", "url": "git+https://github.com/vitest-dev/vitest.git"}}) == "vitest-dev/vitest"
+    assert radar.repo_of("npm", {"repository": "github:owner/name", "homepage": "https://github.com/owner/name#readme"}) == "owner/name"
+    assert radar.repo_of("npm", {"repository": {"url": "https://gitlab.com/x/y"}}) == ""
+
+
+def test_evidence_keeps_problem_titles_from_repositories_with_an_accepted_licence():
+    github = fake_github(
+        {"repo:microsoft/TypeScript": [issue("microsoft/TypeScript", "Crash with the new emit: Cannot read properties of undefined", 4)],
+         '"typescript" "7.0.2"': [issue("TypeStrong/ts-node", "ts-node doesn't work with Typescript 7.0.2", 8),
+                                  issue("someone/copyleft", "TypeScript 7.0.2 breaks the build", 9),
+                                  issue("someone/unlicensed", "TypeScript 7.0.2 breaks the build", 6),
+                                  issue("TypeStrong/ts-node", "Support TypeScript 7 (feature request)", 12),
+                                  issue("a/b", "TypeScript 7.0.2 fails on Node 20", 3, pull_request={})]},
+        {"microsoft/TypeScript": "Apache-2.0", "TypeStrong/ts-node": "MIT", "someone/copyleft": "GPL-3.0-only", "a/b": "MIT"})
+    found = radar.evidence_for(lead(), github, pause=0)
+    assert [(e["repo"], e["comments"], e["licence"]) for e in found] == [("TypeStrong/ts-node", 8, "MIT"), ("microsoft/TypeScript", 4, "Apache-2.0")]
+    assert not any("copyleft" in e["repo"] or "unlicensed" in e["repo"] for e in found), "a repository the policy does not accept is not used"
+    assert not any("feature request" in e["title"] for e in found), "only titles that read like a problem"
+    assert not any(e["comments"] == 3 for e in found), "pull requests are not reports"
+
+
+def test_a_lead_without_a_repository_is_searched_by_name_and_version_only():
+    github = fake_github({}, {})
+    assert radar.evidence_for(lead(repo=""), github, pause=0) == ()
+    assert [q for _, q in github.calls] == ['"typescript" "7.0.2" in:title,body is:issue created:>=2026-07-08']
+
+
+def test_a_repository_licence_is_looked_up_once():
+    github = fake_github({"typescript": [issue("a/b", "typescript boom fails", 2), issue("a/b", "typescript another crash", 1)]}, {"a/b": "MIT"})
+    radar.evidence_for(lead(repo=""), github, pause=0)
+    assert [p for p, _ in github.calls].count("repos/a/b") == 1
+
+
+def test_only_the_first_leads_are_read_for_evidence_and_github_down_changes_nothing():
+    leads = [lead(package=f"p{i}", repo="") for i in range(4)]
+    out = radar.add_evidence(leads, 2, call=lambda path, **params: None, pause=0)
+    assert [l.evidence for l in out] == [(), (), (), ()] and [l.package for l in out] == ["p0", "p1", "p2", "p3"]
+
+
+def test_bots_and_titles_that_matched_by_chance_are_left_out():
+    github = fake_github(
+        {"repo:microsoft/TypeScript": [issue("microsoft/TypeScript", "[ServerErrors][TypeScript] main vs release-5.9", 22, login="typescript-bot"),
+                                       issue("microsoft/TypeScript", "Crash on emit with decorators", 5),
+                                       issue("microsoft/TypeScript", "Release tracking error", 9, login="dependabot[bot]", kind="Bot")],
+         '"typescript" "7.0.2"': [issue("gweiermann/shopware", "Nightly npm audit failures", 17),
+                                  issue("TypeStrong/ts-node", "ts-node fails with 7.0.2", 8),
+                                  issue("a/b", "Build breaks with TypeScript", 4)]},
+        {"microsoft/TypeScript": "Apache-2.0", "gweiermann/shopware": "MIT", "TypeStrong/ts-node": "MIT", "a/b": "MIT"})
+    titles = [e["title"] for e in radar.evidence_for(lead(), github, pause=0)]
+    assert titles == ["ts-node fails with 7.0.2", "Crash on emit with decorators", "Build breaks with TypeScript"]

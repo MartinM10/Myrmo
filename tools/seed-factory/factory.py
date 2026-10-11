@@ -158,6 +158,7 @@ def trail(task: Task) -> dict:
         task_id=task.task_id, batch=BATCH, image=task.image, digest=provenance.image_digest(task.image), version=FACTORY_VERSION,
         model=task.written_by_model, model_terms_accepted_by=OWNER_ACCEPTANCE if task.written_by_model else None,
         public_trail={k: v for k, v in cleaned.items() if not k.startswith("_")},
+        sources=[dict(source) for source in task.sources],
     )
     return cleaned
 
