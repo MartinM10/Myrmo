@@ -250,6 +250,12 @@ async fn rate_limit(
             .map(str::to_string)
     };
     let declared = declared_agent.is_some();
+    // With keys, the person is known, so everything counted per address (who published a trail, places per trail,
+    // hourly totals, quotas) is counted per person: a team behind one office address or VPN is not one caller.
+    let client = match &declared_agent {
+        Some(person) if st.cfg.require_key => person.clone(),
+        _ => client,
+    };
     let agent = declared_agent.unwrap_or_else(|| client.clone());
     req.extensions_mut().insert(Caller {
         agent: agent.clone(),
