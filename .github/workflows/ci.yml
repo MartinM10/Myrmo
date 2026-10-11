@@ -208,6 +208,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Start a colony
         run: docker compose up -d --build --no-deps valkey qdrant embed gateway enricher
+      - name: The hosted MCP server's image builds
+        run: docker compose build mcp
       - name: Wait for the gateway
         run: |
           for i in $(seq 1 90); do curl -sf http://localhost:8080/healthz && exit 0; sleep 2; done
