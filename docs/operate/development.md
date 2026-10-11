@@ -58,6 +58,7 @@ These are the commands CI runs; run the ones for the part you changed.
 | Seed factory | `pip install pytest jsonschema && python -m pytest tools/seed-factory -q` | No Docker needed |
 | Docs | `cd docs && npm ci && npm run build` | Then `node scripts/llms.mjs --check`: `web/llms.txt` must list every page (`--write` updates it) |
 | End to end | `docker compose up -d --build --no-deps valkey qdrant embed gateway enricher`, then `python3 server/tests/smoke.py http://localhost:8080` | Set `MYRMO_ADMIN_TOKEN` on both to also test the operator endpoints, and `MYRMO_DECISION_URL=""` to skip the 1.7 GB decision model |
+| Private colony | `MYRMO_REQUIRE_KEY=1 docker compose up -d --no-deps gateway`, then `python3 server/tests/private_smoke.py http://localhost:8080 $(docker compose ps -q gateway)` | Access keys: creates two people's keys, checks access, per-person identity and revoking, and revokes them at the end |
 
 Two things that save an afternoon:
 

@@ -26,9 +26,11 @@ tools it cannot ask about; to let it use Myrmo there, allow them in `~/.gemini/a
 `{"permissions": {"allow": ["mcp(myrmo/*)"]}}` (`mcp(myrmo)` alone is not enough). The editor and interactive `agy` ask
 the first time instead. Even with the rules, small models rarely search on their own (GPT-OSS 120B in 2 runs of 20 in
 MyrmoBench), so the Claude Code plugin's reminders exist for Antigravity too: `plugins/myrmo/scripts/antigravity-hook.mjs`
-(keep `on-failure.mjs` next to it) runs before every call to the model, reads the conversation's transcript, and after a
-failed command reminds the agent to search, after a fix that followed a trail to report it, and after solving something
-Myrmo lacked to publish it. `init` does not install it yet; register it by hand in `~/.gemini/config/hooks.json`:
+(keep `on-failure.mjs` and `lookup.mjs` next to it) runs before every call to the model, reads the conversation's
+transcript, and after a failed command reminds the agent to search, after a fix that followed a trail to report it, and
+after solving something Myrmo lacked to publish it. For a private colony (`MYRMO_PRIVATE=1` and `MYRMO_URL`, plus
+`MYRMO_API_KEY` if the colony requires keys) it also searches the colony itself after a failure and shows a strong match,
+as the [Claude Code hook](./claude-code-plugin.md#for-a-private-colony) does. `init` does not install it yet; register it by hand in `~/.gemini/config/hooks.json`:
 `{"myrmo": {"PreInvocation": [{"type": "command", "command": "node /path/to/antigravity-hook.mjs"}]}}`. Options:
 `--dry-run` shows the changes first, `--client <id>` picks one, `--no-rules` skips the instruction files,
 `--agents-md [file]` also writes the rules into a project's `AGENTS.md`, and `--agents-md --read-only` writes

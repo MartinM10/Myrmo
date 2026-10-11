@@ -304,6 +304,10 @@ static RULES: LazyLock<Vec<Rule>> = LazyLock::new(|| {
             r"\b[rs]k_(?:live|test)_[A-Za-z0-9]{20,}",
             |_| Some(full("api_key")),
         ),
+        // A private colony's own access keys (`myrmo-server keys add`).
+        rule("api_key", false, r"\bmyk_[0-9a-f]{64}\b", |_| {
+            Some(full("api_key"))
+        }),
         rule("api_key", false, r"\bnpm_[A-Za-z0-9]{36}\b", |_| {
             Some(full("api_key"))
         }),

@@ -163,6 +163,7 @@ _RULES: List[Tuple[str, re.Pattern, Replacer]] = [
         ("api_key", r"\bxox[abprs]-[A-Za-z0-9\-]{10,}", 0, lambda m: _full("api_key")),
         ("api_key", r"\bAIza[0-9A-Za-z_\-]{35}", 0, lambda m: _full("api_key")),
         ("api_key", r"\b[rs]k_(?:live|test)_[A-Za-z0-9]{20,}", 0, lambda m: _full("api_key")),
+        ("api_key", r"\bmyk_[0-9a-f]{64}\b", 0, lambda m: _full("api_key")),
         ("api_key", r"\bnpm_[A-Za-z0-9]{36}\b", 0, lambda m: _full("api_key")),
         ("api_key", r"\bhf_[A-Za-z0-9]{30,}", 0, lambda m: _full("api_key")),
         ("api_key", r"\bSG\.[A-Za-z0-9_\-]{16,}\.[A-Za-z0-9_\-]{16,}", 0, lambda m: _full("api_key")),

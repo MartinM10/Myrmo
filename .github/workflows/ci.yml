@@ -214,6 +214,11 @@ jobs:
           docker compose logs gateway enricher embed; exit 1
       - name: Smoke test
         run: python3 server/tests/smoke.py http://localhost:8080
+      - name: Private colony (access keys)
+        run: |
+          MYRMO_REQUIRE_KEY=1 docker compose up -d --no-deps --no-build gateway
+          for i in $(seq 1 60); do curl -sf http://localhost:8080/healthz >/dev/null && break; sleep 2; done
+          python3 server/tests/private_smoke.py http://localhost:8080 "$(docker compose ps -q gateway)"
       - name: Logs on failure
         if: failure()
         run: docker compose logs --tail 100

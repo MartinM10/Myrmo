@@ -24,7 +24,8 @@ const GROUPS = [
 ];
 
 function front(file) {
-  const text = readFileSync(join(docs, file), "utf8");
+  // A Windows checkout may have CRLF pages; read them as LF, as they are committed.
+  const text = readFileSync(join(docs, file), "utf8").replace(/\r\n/g, "\n");
   const block = /^---\n([\s\S]*?)\n---/.exec(text)?.[1] ?? "";
   const field = (name) => {
     const m = new RegExp(`^${name}:\\s*(.*)$`, "m").exec(block)?.[1]?.trim() ?? "";

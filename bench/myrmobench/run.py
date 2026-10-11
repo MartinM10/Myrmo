@@ -540,7 +540,7 @@ def run_agent(task: Task, model: str, role: str, condition: str, colony: str, re
                 put(name, "/root/.gemini/GEMINI.md", myrmo_rules(private))
                 if hook:
                     # The reminders of plugins/myrmo/scripts/antigravity-hook.mjs, run before every call to the model.
-                    for script in ("on-failure.mjs", "antigravity-hook.mjs"):
+                    for script in ("on-failure.mjs", "lookup.mjs", "antigravity-hook.mjs"):
                         put(name, f"/opt/myrmo-hook/{script}", (PLUGIN_SCRIPTS / script).read_text(encoding="utf-8"))
                     hook_command = "node /opt/myrmo-hook/antigravity-hook.mjs"
                     if lookup:

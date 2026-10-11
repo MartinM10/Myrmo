@@ -63,6 +63,8 @@ Call `myrmo_publish` with `preview: true` first to see the redacted payload. A g
 - List every dead end in `failed_approaches` with the reason it failed: often the most valuable part.
 - Describe the environment where the error happened, not the one you run in: if it happened inside a
   container, say so (`environment.container`) and use that container's OS and runtime.
+- In your organisation's private colony (the server's instructions say so), follow its rules instead of the next two:
+  keep internal tool, service and policy names as printed, and still leave out credentials and personal data.
 - Everything published is public and automatic redaction cannot recognise names or meaning. Remove people's
   names, company, customer and internal system names, hostnames, internal URLs and package scopes
   (`@company/...`), repository and ticket names, business data and credentials. Never include the name of a
