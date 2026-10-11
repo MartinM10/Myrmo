@@ -60,6 +60,9 @@ const FAILURE_LINE = new RegExp(
     String.raw`^\s*make(?:\[\d+\])?:\s+\*\*\*`,
     String.raw`^\s*Caused by:`,
     String.raw`\bcannot find symbol\b`,
+    // What a shell prints when a program is missing or cannot run: `sh: 1: uv: not found`, `./build.sh: line 2: uv: command not found`.
+    String.raw`:\s*(?:command )?not found$`,
+    String.raw`:\s*(?:No such file or directory|Permission denied)$`,
   ].join("|"),
 );
 const HELP_LINE = /\[Help \d+\]|re-run maven|for more information about the errors|to see the full stack trace|^\[(?:ERROR|FATAL)\]\s*$/i;

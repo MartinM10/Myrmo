@@ -292,3 +292,11 @@ test("run as Claude Code runs it, across separate processes: failure, empty sear
 function readFileJson(path) {
   return spawnSync(process.execPath, ["-e", `process.stdout.write(require("node:fs").readFileSync(${JSON.stringify(path)}, "utf8"))`], { encoding: "utf8" }).stdout;
 }
+
+test("a shell's 'command not found' is the error line of a failed command, and plain prose is not", () => {
+  assert.equal(lastErrorLine("building\n./build.sh: line 2: uv: command not found", { loose: true }), "./build.sh: line 2: uv: command not found");
+  assert.equal(lastErrorLine("sh: 1: cargo: not found", { loose: true }), "sh: 1: cargo: not found");
+  assert.equal(lastErrorLine("cat: /etc/app.conf: No such file or directory", { loose: true }), "cat: /etc/app.conf: No such file or directory");
+  assert.equal(lastErrorLine("./build.sh: line 2: uv: command not found"), "", "on exit 0 these shapes are not trusted");
+  assert.equal(lastErrorLine("the page was not found", { loose: true }), "");
+});
