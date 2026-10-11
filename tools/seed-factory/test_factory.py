@@ -330,3 +330,12 @@ def test_tasks_written_by_a_model_name_it_and_the_owner_who_accepted_its_terms()
     assert mine and all(t.ecosystem for t in mine)
     rec = provenance_for(candidate(), model=mine[0].written_by_model, model_terms_accepted_by=factory.OWNER_ACCEPTANCE)
     assert provenance.check(rec) == [] and rec["generated_by"]["kind"] == "model"
+
+
+def test_a_package_managers_banner_is_not_an_error_message():
+    import factory
+    for banner in ("yarn install v1.22.22", "npm warn deprecated inflight@1.0.6", "Collecting numpy==2.5.0", "pnpm v12.0.0"):
+        assert factory.TOOL_BANNER.match(banner), banner
+    for real in ("error @babel/core@8.0.0: The engine \"node\" is incompatible with this module.", "npm error code ERESOLVE",
+                 "ModuleNotFoundError: No module named 'x'"):
+        assert not factory.TOOL_BANNER.match(real), real

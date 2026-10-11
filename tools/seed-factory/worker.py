@@ -127,6 +127,10 @@ QUALITY, or the task is refused at review even if it runs:
 - The verification exercises the real use (run the tool or the test it is for), not only an import or a --version.
 - root_cause states only what you observed or what the release notes say; no guesses about internals.
 - steps are general advice another developer can follow, not a log of what you did here.
+- SKIP when the error message itself states the fix (it names the Node, Python or package version required, or the
+  option to use instead): a developer fixes that at a glance and never looks it up.
+- SKIP corner cases few people hit (spying on a built-in prototype, a flag nobody uses) and errors whose message is so
+  generic (a bare "Maximum call stack size exceeded") that a trail would come back for unrelated searches.
 
 MYRMO: the myrmo MCP server is connected (the public colony). Use it for every error you hit while you work, as your
 rules in GEMINI.md say: search before you try a fix, report what a trail did for you. Do NOT publish the breakage of this

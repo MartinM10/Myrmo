@@ -118,6 +118,11 @@ def verification_evidence(fixed: dict) -> str:
     return (text.strip() or "exit code 0, no output")[-2000:]
 
 
+#: The first line a package manager prints, which the error-line heuristic can pick when the real error is further down
+#: (seen: "yarn install v1.22.22" as the error of a Babel 8 trail).
+TOOL_BANNER = re.compile(r"^(?:yarn(?: install| add| run)? v\d|npm (?:warn|notice)\b|pnpm v?\d|Collecting \S|Requirement already satisfied)", re.I)
+
+
 def quality_problems(candidate: dict) -> list[str]:
     """Reasons a trail would not help another agent; any of them keeps it out of the lot."""
     problem, solution = candidate["problem"], candidate["solution"]
@@ -125,6 +130,8 @@ def quality_problems(candidate: dict) -> list[str]:
     message = problem.get("error_message", "")
     if len(message) < MIN_ERROR_MESSAGE or message.strip().lower() == problem["error_type"].strip().lower():
         found.append("the error message is too short to find or recognise")
+    if TOOL_BANNER.match(message.strip()):
+        found.append("the error message is a tool's banner, not the error")
     if len(problem.get("summary", "")) < 40:
         found.append("the summary is too short")
     if len(solution.get("root_cause", "")) < 30:
