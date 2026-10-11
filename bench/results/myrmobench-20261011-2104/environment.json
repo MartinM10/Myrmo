@@ -1,0 +1,35 @@
+{
+  "plan": {
+    "tasks": 1,
+    "runs": 3,
+    "conditions": [
+      "with"
+    ],
+    "by_role": {
+      "pioneer": {},
+      "followers": {
+        "gpt-oss-120b-medium": 3
+      }
+    },
+    "estimated_usd_ceiling": 6.75,
+    "per_run_usd": {
+      "gpt-oss-120b-medium": 2.25
+    }
+  },
+  "colony": "http://localhost:8080",
+  "agent": "antigravity",
+  "pioneer": "gemini-3.1-pro-high",
+  "followers": [
+    "gpt-oss-120b-medium"
+  ],
+  "colony_at_start": {
+    "trails": 4,
+    "seeded": null
+  },
+  "hook": true,
+  "lookup": true,
+  "private": true,
+  "claude_code": "latest",
+  "opencode": "latest",
+  "gemini": "latest"
+}

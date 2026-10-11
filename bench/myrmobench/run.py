@@ -115,10 +115,10 @@ def price_of(model: str) -> tuple[float, float]:
 
 
 def plan(tasks: int, followers: list[str], pioneer: str, repetitions: int,
-         conditions: tuple[str, ...] = CONDITIONS) -> dict:
+         conditions: tuple[str, ...] = CONDITIONS, pioneers: bool = True) -> dict:
     """Runs and the most they should cost. Per task: every follower `repetitions` times in each condition, and one
     pioneer run when the `with` condition is wanted."""
-    pioneers = tasks if "with" in conditions else 0
+    pioneers = tasks if "with" in conditions and pioneers else 0
     runs = {"pioneer": {pioneer: pioneers} if pioneers else {}}
     runs["followers"] = {m: tasks * repetitions * len(conditions) for m in followers}
     per_run = lambda model: (TOKENS_PER_RUN["input"] * price_of(model)[0] + TOKENS_PER_RUN["output"] * price_of(model)[1]) / 1e6
@@ -130,15 +130,16 @@ def plan(tasks: int, followers: list[str], pioneer: str, repetitions: int,
 
 
 def schedule(task_ids: list[str], pioneer: str, followers: list[str], repetitions: int,
-             conditions: tuple[str, ...] = CONDITIONS) -> list[dict]:
+             conditions: tuple[str, ...] = CONDITIONS, pioneers: bool = True) -> list[dict]:
     """The runs in the order they happen. First every `without` and `unseen` run of every task, alternating so that a
     slow hour of the model's API does not fall on one condition; then the pioneers; then the `with` runs. No pioneer's
     trail is in the colony while a run that must not see it is going on."""
     before = [c for c in ("without", "unseen") if c in conditions]
     out = [{"task": t, "model": m, "role": "follower", "condition": c, "repetition": r}
            for t in task_ids for r in range(repetitions) for m in followers for c in before]
-    if "with" in conditions:
+    if "with" in conditions and pioneers:
         out += [{"task": t, "model": pioneer, "role": "pioneer", "condition": "with", "repetition": 0} for t in task_ids]
+    if "with" in conditions:
         out += [{"task": t, "model": m, "role": "follower", "condition": "with", "repetition": r}
                 for t in task_ids for r in range(repetitions) for m in followers]
     if "notes" in conditions:
@@ -533,7 +534,8 @@ def export_notes(colony: str) -> Path:
 
 
 def run_agent(task: Task, model: str, role: str, condition: str, colony: str, repetition: int, env: list[str],
-              agent: str = "claude-code", hook: bool = False, lookup: bool = False, private: bool = False) -> dict:
+              agent: str = "claude-code", hook: bool = False, lookup: bool = False, private: bool = False,
+              transcripts: Path | None = None) -> dict:
     """One run: a fresh container from the agent image, the agent works in it, the hidden check decides."""
     with_myrmo = condition in ("unseen", "with")
     # Reach the colony on the host from inside the container.
@@ -575,12 +577,13 @@ def run_agent(task: Task, model: str, role: str, condition: str, colony: str, re
                     # The reminders of plugins/myrmo/scripts/antigravity-hook.mjs, run before every call to the model.
                     for script in ("on-failure.mjs", "lookup.mjs", "antigravity-hook.mjs"):
                         put(name, f"/opt/myrmo-hook/{script}", (PLUGIN_SCRIPTS / script).read_text(encoding="utf-8"))
-                    hook_command = "node /opt/myrmo-hook/antigravity-hook.mjs"
-                    if lookup:
-                        # The hook searches the colony itself after a failure and puts a strong match in front of the agent.
-                        server_env = mcp["mcpServers"]["myrmo"]["env"]
-                        hook_command = (f"env MYRMO_HOOK_LOOKUP=1 MYRMO_URL={server_env['MYRMO_URL']} "
-                                        f"MYRMO_AGENT_ID={server_env['MYRMO_AGENT_ID']} {hook_command}")
+                    # The colony and, with --private, private mode, so its notes are a private colony's. The hook's own
+                    # lookup (it searches the colony after a failure and shows a strong match) is on only with --lookup,
+                    # so that the reminders and the lookup can be measured apart.
+                    server_env = mcp["mcpServers"]["myrmo"]["env"]
+                    hook_env = [f"MYRMO_URL={server_env['MYRMO_URL']}", f"MYRMO_AGENT_ID={server_env['MYRMO_AGENT_ID']}",
+                                f"MYRMO_HOOK_LOOKUP={'1' if lookup else '0'}"] + (["MYRMO_PRIVATE=1"] if private else [])
+                    hook_command = f"env {' '.join(hook_env)} node /opt/myrmo-hook/antigravity-hook.mjs"
                     put(name, "/root/.gemini/config/hooks.json", json.dumps(
                         {"myrmo": {"PreInvocation": [{"type": "command", "command": hook_command}]}}))
             command, parse = agy_command(task, model), parse_agy_stream
@@ -598,6 +601,11 @@ def run_agent(task: Task, model: str, role: str, condition: str, colony: str, re
             put(name, rules, NOTES_RULE)
         done = sh("docker", "exec", *exec_env, name, *command, check=False, timeout=task.max_minutes * 60)
         seconds = time.time() - started
+        if transcripts:
+            # What the agent did, for reading why a run failed. Kept on this machine only (bench/results/*/transcripts
+            # is not committed): it is the model's raw output.
+            transcripts.mkdir(parents=True, exist_ok=True)
+            (transcripts / f"{task.id}-{model}-{role}-{condition}-{repetition}.jsonl").write_text(done.stdout, encoding="utf-8")
         passed, why = check(task, name)
         metrics = parse(done.stdout)
         return {"task": task.id, "model": model, "role": role, "condition": condition, "repetition": repetition,
@@ -636,7 +644,7 @@ def cmd_run(args: argparse.Namespace) -> int:
     tasks = load_tasks(args.tasks)
     models = choose_models(args)
     conditions = tuple(args.conditions)
-    p = plan(len(tasks), models["followers"], models["pioneer"], args.repetitions, conditions)
+    p = plan(len(tasks), models["followers"], models["pioneer"], args.repetitions, conditions, not args.no_pioneer)
     if not args.execute or args.approved_usd is None:
         print(json.dumps(p, indent=2))
         print("\nNothing was run. This spends money: add --execute and --approved-usd <the most you accept to spend>.")
@@ -681,13 +689,15 @@ def cmd_run(args: argparse.Namespace) -> int:
            "--build-arg", f"OPENCODE_VERSION={args.opencode_version}", "--build-arg", f"GEMINI_VERSION={args.gemini_version}",
            str(HERE))
     spent, runs = 0.0, []
-    for step in schedule([t.id for t in tasks], models["pioneer"], models["followers"], args.repetitions, conditions):
+    for step in schedule([t.id for t in tasks], models["pioneer"], models["followers"], args.repetitions, conditions,
+                         not args.no_pioneer):
         if spent >= args.approved_usd:
             print(f"Stopped: ${spent:.2f} spent of ${args.approved_usd} approved.")
             break
         task, model, role = by_id[step["task"]], step["model"], step["role"]
         before = colony_trails(args.colony) if role == "pioneer" else 0
-        row = run_agent(task, model, role, step["condition"], args.colony, step["repetition"], env, args.agent, args.hook or args.lookup, args.lookup, args.private)
+        row = run_agent(task, model, role, step["condition"], args.colony, step["repetition"], env, args.agent,
+                        args.hook or args.lookup, args.lookup, args.private, out / "transcripts")
         if role == "pioneer":
             # A pioneer that found a trail, or whose fix merged into one, leaves no new trail: its task's `with` runs
             # then measure the colony as it was, and the result says so.
@@ -730,6 +740,8 @@ def main(argv: list[str] | None = None) -> int:
             s.add_argument("--colony", default="http://localhost:8080", help="a local colony for the run, empty or seeded")
             s.add_argument("--hook", action="store_true", help="antigravity: also install Myrmo's reminder hook (PreInvocation) in the conditions with Myrmo")
             s.add_argument("--lookup", action="store_true", help="antigravity: the hook also searches the colony itself after a failure (implies --hook)")
+            s.add_argument("--no-pioneer", action="store_true", help="no pioneer runs: the `with` and `notes` runs use the "
+                           "colony as it is, for example the trails of an earlier run's pioneers")
             s.add_argument("--private", action="store_true", help="the colony is a company's own: Myrmo runs in private mode "
                            "(MYRMO_PRIVATE=1, the rules of `init --private`), so internal names stay in trails")
             s.add_argument("--seed-from", help="copy this colony's public trails into the local one first (for example https://myrmo.dev)")

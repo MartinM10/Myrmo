@@ -1,0 +1,44 @@
+acme-config-v3     gpt-oss-120b-medium follower with     PASS     39897 tokens $0.000
+acme-config-v3     gemini-3.8-flash-low follower with     PASS    161070 tokens $0.000
+acme-config-v3     gpt-oss-120b-medium follower with     PASS     27906 tokens $0.000
+acme-config-v3     gemini-3.8-flash-low follower with     PASS    210444 tokens $0.000
+acme-config-v3     gpt-oss-120b-medium follower with     PASS     37900 tokens $0.000
+acme-config-v3     gemini-3.8-flash-low follower with     PASS    164638 tokens $0.000
+acme-config-v3     gpt-oss-120b-medium follower with     PASS     10093 tokens $0.000
+acme-config-v3     gemini-3.8-flash-low follower with     PASS    173759 tokens $0.000
+acme-config-v3     gpt-oss-120b-medium follower with     PASS     13472 tokens $0.000
+acme-config-v3     gemini-3.8-flash-low follower with     PASS    183352 tokens $0.000
+acme-db-lock       gpt-oss-120b-medium follower with     FAIL     14691 tokens $0.000
+acme-db-lock       gemini-3.8-flash-low follower with     PASS    185410 tokens $0.000
+acme-db-lock       gpt-oss-120b-medium follower with     FAIL      7423 tokens $0.000
+acme-db-lock       gemini-3.8-flash-low follower with     PASS    166578 tokens $0.000
+acme-db-lock       gpt-oss-120b-medium follower with     FAIL      9047 tokens $0.000
+acme-db-lock       gemini-3.8-flash-low follower with     PASS    203024 tokens $0.000
+acme-db-lock       gpt-oss-120b-medium follower with     FAIL     13162 tokens $0.000
+acme-db-lock       gemini-3.8-flash-low follower with     PASS    194976 tokens $0.000
+acme-db-lock       gpt-oss-120b-medium follower with     FAIL      8460 tokens $0.000
+acme-db-lock       gemini-3.8-flash-low follower with     PASS    138802 tokens $0.000
+acme-deploy-policy gpt-oss-120b-medium follower with     FAIL      7481 tokens $0.000
+acme-deploy-policy gemini-3.8-flash-low follower with     PASS    141089 tokens $0.000
+acme-deploy-policy gpt-oss-120b-medium follower with     PASS     13095 tokens $0.000
+acme-deploy-policy gemini-3.8-flash-low follower with     PASS    144078 tokens $0.000
+acme-deploy-policy gpt-oss-120b-medium follower with     PASS     18453 tokens $0.000
+acme-deploy-policy gemini-3.8-flash-low follower with     PASS    130383 tokens $0.000
+acme-deploy-policy gpt-oss-120b-medium follower with     PASS     12889 tokens $0.000
+acme-deploy-policy gemini-3.8-flash-low follower with     PASS    141778 tokens $0.000
+acme-deploy-policy gpt-oss-120b-medium follower with     PASS     12350 tokens $0.000
+acme-deploy-policy gemini-3.8-flash-low follower with     PASS    165919 tokens $0.000
+acme-private-index gpt-oss-120b-medium follower with     FAIL     10550 tokens $0.000
+acme-private-index gemini-3.8-flash-low follower with     PASS    180199 tokens $0.000
+acme-private-index gpt-oss-120b-medium follower with     FAIL     18595 tokens $0.000
+acme-private-index gemini-3.8-flash-low follower with     PASS    167761 tokens $0.000
+acme-private-index gpt-oss-120b-medium follower with     FAIL     16534 tokens $0.000
+acme-private-index gemini-3.8-flash-low follower with     PASS    148874 tokens $0.000
+acme-private-index gpt-oss-120b-medium follower with     PASS     17382 tokens $0.000
+acme-private-index gemini-3.8-flash-low follower with     PASS    125173 tokens $0.000
+acme-private-index gpt-oss-120b-medium follower with     FAIL     10629 tokens $0.000
+acme-private-index gemini-3.8-flash-low follower with     PASS    188537 tokens $0.000
+
+$10.91 spent. Results in bench\results\myrmobench-20261011-1856; publish with publish_results.py.
+
+[exited with code 1]

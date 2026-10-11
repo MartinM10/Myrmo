@@ -19,3 +19,5 @@ seed-out/
 
 # Source of the website film (the web-sized copy is web/assets/myrmo-film.mp4)
 /myrmo-film-small.mp4
+# MyrmoBench agent transcripts: raw model output, kept locally for analysis only
+bench/results/*/transcripts/

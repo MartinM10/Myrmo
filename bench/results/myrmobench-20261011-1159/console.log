@@ -1,0 +1,95 @@
+scale-20261007
+scale-20261009-fingerprint-cap
+scale-20261009-placeholder-names
+acme-config-v3     gpt-oss-120b-medium follower without  PASS     37286 tokens $0.000
+acme-config-v3     gpt-oss-120b-medium follower unseen   FAIL     50089 tokens $0.000
+acme-config-v3     gemini-3.8-flash-low follower without  PASS    166202 tokens $0.000
+acme-config-v3     gemini-3.8-flash-low follower unseen   PASS    197960 tokens $0.000
+acme-config-v3     gpt-oss-120b-medium follower without  PASS     55194 tokens $0.000
+acme-config-v3     gpt-oss-120b-medium follower unseen   PASS     57333 tokens $0.000
+acme-config-v3     gemini-3.8-flash-low follower without  PASS    193499 tokens $0.000
+acme-config-v3     gemini-3.8-flash-low follower unseen   PASS    156591 tokens $0.000
+acme-config-v3     gpt-oss-120b-medium follower without  PASS     67571 tokens $0.000
+acme-config-v3     gpt-oss-120b-medium follower unseen   PASS     51199 tokens $0.000
+acme-config-v3     gemini-3.8-flash-low follower without  PASS    182760 tokens $0.000
+acme-config-v3     gemini-3.8-flash-low follower unseen   PASS    160187 tokens $0.000
+acme-config-v3     gpt-oss-120b-medium follower without  PASS     44688 tokens $0.000
+acme-config-v3     gpt-oss-120b-medium follower unseen   PASS     80510 tokens $0.000
+acme-config-v3     gemini-3.8-flash-low follower without  PASS    183180 tokens $0.000
+acme-config-v3     gemini-3.8-flash-low follower unseen   PASS    201521 tokens $0.000
+acme-config-v3     gpt-oss-120b-medium follower without  FAIL         0 tokens $0.000
+acme-config-v3     gpt-oss-120b-medium follower unseen   PASS     53124 tokens $0.000
+acme-config-v3     gemini-3.8-flash-low follower without  PASS    157538 tokens $0.000
+acme-config-v3     gemini-3.8-flash-low follower unseen   PASS    129696 tokens $0.000
+acme-db-lock       gpt-oss-120b-medium follower without  FAIL     15336 tokens $0.000
+acme-db-lock       gpt-oss-120b-medium follower unseen   PASS     18457 tokens $0.000
+acme-db-lock       gemini-3.8-flash-low follower without  PASS    192110 tokens $0.000
+acme-db-lock       gemini-3.8-flash-low follower unseen   PASS    253662 tokens $0.000
+acme-db-lock       gpt-oss-120b-medium follower without  PASS     16894 tokens $0.000
+acme-db-lock       gpt-oss-120b-medium follower unseen   FAIL     20230 tokens $0.000
+acme-db-lock       gemini-3.8-flash-low follower without  PASS    198470 tokens $0.000
+acme-db-lock       gemini-3.8-flash-low follower unseen   PASS    187931 tokens $0.000
+acme-db-lock       gpt-oss-120b-medium follower without  FAIL     15357 tokens $0.000
+acme-db-lock       gpt-oss-120b-medium follower unseen   FAIL      7706 tokens $0.000
+acme-db-lock       gemini-3.8-flash-low follower without  PASS    189763 tokens $0.000
+acme-db-lock       gemini-3.8-flash-low follower unseen   PASS    144613 tokens $0.000
+acme-db-lock       gpt-oss-120b-medium follower without  PASS     17167 tokens $0.000
+acme-db-lock       gpt-oss-120b-medium follower unseen   FAIL     15969 tokens $0.000
+acme-db-lock       gemini-3.8-flash-low follower without  PASS    173386 tokens $0.000
+acme-db-lock       gemini-3.8-flash-low follower unseen   PASS    183423 tokens $0.000
+acme-db-lock       gpt-oss-120b-medium follower without  FAIL     16787 tokens $0.000
+acme-db-lock       gpt-oss-120b-medium follower unseen   FAIL     20388 tokens $0.000
+acme-db-lock       gemini-3.8-flash-low follower without  PASS    228158 tokens $0.000
+acme-db-lock       gemini-3.8-flash-low follower unseen   PASS    174666 tokens $0.000
+acme-deploy-policy gpt-oss-120b-medium follower without  FAIL     53195 tokens $0.000
+acme-deploy-policy gpt-oss-120b-medium follower unseen   FAIL     88323 tokens $0.000
+acme-deploy-policy gemini-3.8-flash-low follower without  PASS    176503 tokens $0.000
+acme-deploy-policy gemini-3.8-flash-low follower unseen   PASS    121387 tokens $0.000
+acme-deploy-policy gpt-oss-120b-medium follower without  PASS     33953 tokens $0.000
+acme-deploy-policy gpt-oss-120b-medium follower unseen   FAIL     18495 tokens $0.000
+acme-deploy-policy gemini-3.8-flash-low follower without  PASS    133926 tokens $0.000
+acme-deploy-policy gemini-3.8-flash-low follower unseen   PASS    172168 tokens $0.000
+acme-deploy-policy gpt-oss-120b-medium follower without  FAIL     26479 tokens $0.000
+acme-deploy-policy gpt-oss-120b-medium follower unseen   PASS     37310 tokens $0.000
+acme-deploy-policy gemini-3.8-flash-low follower without  PASS    182567 tokens $0.000
+acme-deploy-policy gemini-3.8-flash-low follower unseen   PASS    147877 tokens $0.000
+acme-deploy-policy gpt-oss-120b-medium follower without  FAIL     48508 tokens $0.000
+acme-deploy-policy gpt-oss-120b-medium follower unseen   PASS     39689 tokens $0.000
+acme-deploy-policy gemini-3.8-flash-low follower without  PASS    157524 tokens $0.000
+acme-deploy-policy gemini-3.8-flash-low follower unseen   PASS    183961 tokens $0.000
+acme-deploy-policy gpt-oss-120b-medium follower without  FAIL     43887 tokens $0.000
+acme-deploy-policy gpt-oss-120b-medium follower unseen   PASS     63436 tokens $0.000
+acme-deploy-policy gemini-3.8-flash-low follower without  PASS    215687 tokens $0.000
+acme-deploy-policy gemini-3.8-flash-low follower unseen   PASS    179689 tokens $0.000
+acme-private-index gpt-oss-120b-medium follower without  FAIL     19540 tokens $0.000
+acme-private-index gpt-oss-120b-medium follower unseen   FAIL     29353 tokens $0.000
+acme-private-index gemini-3.8-flash-low follower without  PASS    203766 tokens $0.000
+acme-private-index gemini-3.8-flash-low follower unseen   PASS    158135 tokens $0.000
+acme-private-index gpt-oss-120b-medium follower without  FAIL         0 tokens $0.000
+acme-private-index gpt-oss-120b-medium follower unseen   FAIL         0 tokens $0.000
+acme-private-index gemini-3.8-flash-low follower without  PASS    173977 tokens $0.000
+acme-private-index gemini-3.8-flash-low follower unseen   PASS    164769 tokens $0.000
+acme-private-index gpt-oss-120b-medium follower without  FAIL         0 tokens $0.000
+acme-private-index gpt-oss-120b-medium follower unseen   FAIL         0 tokens $0.000
+acme-private-index gemini-3.8-flash-low follower without  PASS    217752 tokens $0.000
+acme-private-index gemini-3.8-flash-low follower unseen   PASS    144627 tokens $0.000
+acme-private-index gpt-oss-120b-medium follower without  FAIL         0 tokens $0.000
+acme-private-index gpt-oss-120b-medium follower unseen   FAIL         0 tokens $0.000
+acme-private-index gemini-3.8-flash-low follower without  PASS    150045 tokens $0.000
+acme-private-index gemini-3.8-flash-low follower unseen   PASS    162335 tokens $0.000
+acme-private-index gpt-oss-120b-medium follower without  FAIL         0 tokens $0.000
+acme-private-index gpt-oss-120b-medium follower unseen   FAIL         0 tokens $0.000
+acme-private-index gemini-3.8-flash-low follower without  PASS    203004 tokens $0.000
+acme-private-index gemini-3.8-flash-low follower unseen   PASS    190477 tokens $0.000
+acme-config-v3     gemini-3.1-pro-high pioneer  with     PASS    141654 tokens $0.000 published=False
+acme-db-lock       gemini-3.1-pro-high pioneer  with     PASS    127764 tokens $0.000 published=False
+acme-deploy-policy gemini-3.1-pro-high pioneer  with     FAIL         0 tokens $0.000 published=False
+acme-private-index gemini-3.1-pro-high pioneer  with     PASS    164972 tokens $0.000 published=False
+acme-config-v3     gpt-oss-120b-medium follower with     PASS     79606 tokens $0.000
+acme-config-v3     gemini-3.8-flash-low follower with     PASS    146244 tokens $0.000
+acme-config-v3     gpt-oss-120b-medium follower with     PASS     49914 tokens $0.000
+acme-config-v3     gemini-3.8-flash-low follower with     PASS    223043 tokens $0.000
+acme-config-v3     gpt-oss-120b-medium follower with     PASS     41257 tokens $0.000
+acme-config-v3     gemini-3.8-flash-low follower with     PASS    213228 tokens $0.000
+
+[killed]

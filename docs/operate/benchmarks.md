@@ -14,9 +14,10 @@ Suites in `bench/`: MyrmoBench, load, retrieval, scale and the leak tests. Each 
 
 > [!WARNING]
 > **Measured, no saving shown yet.** Eight tasks are built in `bench/myrmobench/`: four public breakages and four problems
-> of a simulated company (`acme-*`). Claude Sonnet solves the public four at once; with cheaper models the runs so far
-> (below) show no saving beyond noise, so no number on this site says Myrmo saves work. The company suite, run against a
-> private colony, is in progress. Eight more public tasks are specified below and not built.
+> of a simulated company (`acme-*`). Claude Sonnet solves the public four at once. On the company suite a cheap model
+> solves 14 of 20 when the hooks put the trail in front of it, against 7 with no help and 12 with the same trails as
+> Markdown notes, in fewer tokens and turns than either; five runs per cell cannot yet separate it from the notes. No number on this site says Myrmo
+> saves work. Eight more public tasks are specified below and not built.
 
 Does following a trail actually save agents work?
 
@@ -172,17 +173,54 @@ internal to one organisation. Four tasks play the problems of a fictional compan
 | Task | Problem |
 |---|---|
 | `acme-deploy-policy` | the deploy script stops on "policy REL-7 violated"; the policy wants a release record the changelog lacks |
-| `acme-private-index` | `pip install` stops at a username prompt for the company's package index; its auth command fixes it |
+| `acme-private-index` | `pip install` cannot reach the company's package index without credentials (`No matching distribution found`); its auth command fixes it |
 | `acme-db-lock` | a dead CI runner left the migration lock; removing it by hand trips the lock audit, the supported unlock does not |
 | `acme-config-v3` | the internal framework's version 3 moved the settings into sections and only answers `E1042`; it ships bytecode only |
 
-They run against an empty colony in private mode (`--private`: `MYRMO_PRIVATE=1` and the rules of `init --private`), as a
-team's own colony would start. First measured, without Myrmo: GPT-OSS solves `acme-deploy-policy` in 1 of 5 runs and
-`acme-db-lock` in 2 of 5; Gemini Flash solves all of them, in 15 to 20 turns and 160k to 200k tokens each. The `with`
-condition is running.
+They run in private mode (`--private`: `MYRMO_PRIVATE=1` and the rules of `init --private`), on Antigravity, with followers
+`gpt-oss-120b-medium` and `gemini-3.8-flash-low`, five runs per cell (2026-10-11; raw runs and what each run is in
+`bench/results/myrmobench-20261011-{1159,1714,1729,1856,1949,2041,2104}`).
 
-Next: the company suite with the trails in the colony and the automatic lookup, and a handoff scenario (one agent migrates,
-another deploys) to measure procedures against a Markdown handoff.
+**Pioneers publish only when reminded.** With Myrmo's rules alone, the four pioneers (`gemini-3.1-pro-high`) solved three
+tasks and published nothing: not one call to Myrmo (run 1159). With the reminder hook (`--hook`), whose note comes the
+moment a command that failed starts to work, all four solved their task and **all four published** a trail (run 1714), each
+with the company's supported fix rather than a workaround (the stale-lock unlock, the hidden config migration command). A
+colony fills when the reminder comes at the moment a problem is solved; nothing asks agents to remember, and "the end of a
+session" is not a moment that exists in practice.
+
+**Followers, on the colony those four trails make** (successes of 20, then median tokens and turns per run; `without` and
+the private-index `with` cells come from runs 1159 and 2041, after that task was fixed so pip fails instead of waiting for
+a username, which made GPT-OSS hang in every condition):
+
+| Follower | without | Myrmo, rules and reminders | Myrmo with the hooks' own lookup (before the fix below) | `notes` (no Myrmo) |
+|---|---|---|---|---|
+| `gpt-oss-120b-medium` | 7 · 19k · 12.5 | 8 · 20k · 7.5 | 10 · **13k · 7** | **12** · 28k · 14 |
+| `gemini-3.8-flash-low` | 20 · 182k · 19.5 | 20 · 172k · 17.5 | 20 · **166k** · 17.5 | 20 · 185k · 18 |
+
+What it says, read honestly:
+
+- **On success, Myrmo does not beat the cheap alternative.** The Markdown notes solved 12 of 20 for GPT-OSS, the lookup 10.
+  With five runs per task the gap is noise (the same model solved `acme-db-lock` 2 of 5 without anything and 5 of 5 with
+  notes it opened once), so no condition is shown better than another on success.
+- **On cost, the lookup is clearly cheaper.** GPT-OSS needs half the tokens of the notes condition and of no help at all,
+  and half the turns of no help: a trail put in front of it at the failure replaces exploring. The notes cost more tokens
+  than nothing, because the agent reads them (when it does: GPT-OSS opened them in 9 of 20 runs). Flash, which solves
+  everything anyway, saves 9% of its tokens with the lookup and none with the notes.
+- **A defect in how trails were shown, found here.** With the lookup, GPT-OSS failed `acme-db-lock` five times out of five
+  in one turn: it had the right trail and stopped to ask the user before running two commands it called medium risk
+  (run 2104, transcripts). The colony had flagged none of them; nothing said so, the trail was framed as untrusted data,
+  and the result marked its verification command, the same command as one of its steps, "ask the user first". An agent
+  working alone cannot ask. The clients now say outright when no command is flagged, and a verification command that is one
+  of the analysed commands needs no extra approval (myrmo 0.14.1). Flagged commands are unchanged.
+- **`acme-db-lock` is too easy to discover:** the company tool's own error ("unlock needs --stale") gives the answer away,
+  so it says little about knowledge; it will be made harder.
+- **After the fix** (run 2118, GPT-OSS only): with the lookup it solved **14 of 20** (`acme-db-lock` 4 of 5, from 0), against
+  12 with the notes and 7 with no help. Counting only solved runs, it needed a median 24k tokens and 8.5 turns, against 27k
+  and 13.5 with the notes and 37k and 23 with no help. Ahead of the notes, but by two runs of twenty: still within what
+  five runs per cell cannot separate.
+
+Next: more runs per cell (five are too few to separate conditions on success), harder company tasks, and a handoff
+scenario (one agent migrates, another deploys) to measure procedures against a Markdown handoff.
 
 ```bash
 python bench/myrmobench/run.py list

@@ -1,0 +1,9 @@
+trails 0
+acme-config-v3     gemini-3.1-pro-high pioneer  with     PASS    163071 tokens $0.000 published=True
+acme-db-lock       gemini-3.1-pro-high pioneer  with     PASS    173127 tokens $0.000 published=True
+acme-deploy-policy gemini-3.1-pro-high pioneer  with     PASS    171568 tokens $0.000 published=True
+acme-private-index gemini-3.1-pro-high pioneer  with     PASS    131466 tokens $0.000 published=True
+
+$1.92 spent. Results in bench\results\myrmobench-20261011-1714; publish with publish_results.py.
+
+[exited with code 0]

@@ -304,3 +304,9 @@ def test_reading_the_notes_is_counted():
                             "tool_info": {"parameters": {"AbsolutePath": f"{run.NOTES_DIR}/README.md"}, "output": "..."}}}
     result = {"event": "result", "result": {"status": "SUCCESS", "usage": {"total_tokens": 10}}}
     assert run.parse_agy_stream("\n".join(json.dumps(x) for x in (step, result)))["notes_reads"] == 1
+
+
+def test_without_pioneers_the_colony_is_used_as_it_is():
+    order = run.schedule(["a"], "P", ["F"], 1, ("with", "notes"), pioneers=False)
+    assert [(x["role"], x["condition"]) for x in order] == [("follower", "with"), ("follower", "notes")]
+    assert run.plan(2, ["F"], "P", 1, ("with",), pioneers=False)["runs"] == 2

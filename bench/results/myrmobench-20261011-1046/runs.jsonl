@@ -1,0 +1,44 @@
+{"task": "node-require-esm", "model": "gpt-oss-120b-medium", "role": "follower", "condition": "unseen", "repetition": 1, "success": true, "tokens": 27139, "cost_usd": 0.0, "reconstructed": true}
+{"task": "node-require-esm", "model": "gpt-oss-120b-medium", "role": "follower", "condition": "unseen", "repetition": 2, "success": true, "tokens": 20555, "cost_usd": 0.0, "reconstructed": true}
+{"task": "node-require-esm", "model": "gpt-oss-120b-medium", "role": "follower", "condition": "unseen", "repetition": 3, "success": true, "tokens": 21444, "cost_usd": 0.0, "reconstructed": true}
+{"task": "node-require-esm", "model": "gpt-oss-120b-medium", "role": "follower", "condition": "unseen", "repetition": 4, "success": true, "tokens": 9893, "cost_usd": 0.0, "reconstructed": true}
+{"task": "node-require-esm", "model": "gpt-oss-120b-medium", "role": "follower", "condition": "unseen", "repetition": 5, "success": true, "tokens": 21270, "cost_usd": 0.0, "reconstructed": true}
+{"task": "pg-scram", "model": "gpt-oss-120b-medium", "role": "follower", "condition": "unseen", "repetition": 1, "success": false, "tokens": 19558, "cost_usd": 0.0, "reconstructed": true}
+{"task": "pg-scram", "model": "gpt-oss-120b-medium", "role": "follower", "condition": "unseen", "repetition": 2, "success": true, "tokens": 17985, "cost_usd": 0.0, "reconstructed": true}
+{"task": "pg-scram", "model": "gpt-oss-120b-medium", "role": "follower", "condition": "unseen", "repetition": 3, "success": false, "tokens": 23970, "cost_usd": 0.0, "reconstructed": true}
+{"task": "pg-scram", "model": "gpt-oss-120b-medium", "role": "follower", "condition": "unseen", "repetition": 4, "success": false, "tokens": 30263, "cost_usd": 0.0, "reconstructed": true}
+{"task": "pg-scram", "model": "gpt-oss-120b-medium", "role": "follower", "condition": "unseen", "repetition": 5, "success": false, "tokens": 23983, "cost_usd": 0.0, "reconstructed": true}
+{"task": "tls-corporate-ca", "model": "gpt-oss-120b-medium", "role": "follower", "condition": "unseen", "repetition": 1, "success": true, "tokens": 16373, "cost_usd": 0.0, "reconstructed": true}
+{"task": "tls-corporate-ca", "model": "gpt-oss-120b-medium", "role": "follower", "condition": "unseen", "repetition": 2, "success": true, "tokens": 16208, "cost_usd": 0.0, "reconstructed": true}
+{"task": "tls-corporate-ca", "model": "gpt-oss-120b-medium", "role": "follower", "condition": "unseen", "repetition": 3, "success": true, "tokens": 17272, "cost_usd": 0.0, "reconstructed": true}
+{"task": "tls-corporate-ca", "model": "gpt-oss-120b-medium", "role": "follower", "condition": "unseen", "repetition": 4, "success": true, "tokens": 23382, "cost_usd": 0.0, "reconstructed": true}
+{"task": "tls-corporate-ca", "model": "gpt-oss-120b-medium", "role": "follower", "condition": "unseen", "repetition": 5, "success": true, "tokens": 16305, "cost_usd": 0.0, "reconstructed": true}
+{"task": "uv-path", "model": "gpt-oss-120b-medium", "role": "follower", "condition": "unseen", "repetition": 1, "success": false, "tokens": 17385, "cost_usd": 0.0, "reconstructed": true}
+{"task": "uv-path", "model": "gpt-oss-120b-medium", "role": "follower", "condition": "unseen", "repetition": 2, "success": false, "tokens": 17481, "cost_usd": 0.0, "reconstructed": true}
+{"task": "uv-path", "model": "gpt-oss-120b-medium", "role": "follower", "condition": "unseen", "repetition": 3, "success": false, "tokens": 0, "cost_usd": 0.0, "reconstructed": true}
+{"task": "uv-path", "model": "gpt-oss-120b-medium", "role": "follower", "condition": "unseen", "repetition": 4, "success": false, "tokens": 20706, "cost_usd": 0.0, "reconstructed": true}
+{"task": "uv-path", "model": "gpt-oss-120b-medium", "role": "follower", "condition": "unseen", "repetition": 5, "success": false, "tokens": 18240, "cost_usd": 0.0, "reconstructed": true}
+{"task": "node-require-esm", "model": "gemini-3.1-pro-high", "role": "pioneer", "condition": "with", "repetition": 1, "success": true, "tokens": 114120, "cost_usd": 0.0, "reconstructed": true, "published": false}
+{"task": "pg-scram", "model": "gemini-3.1-pro-high", "role": "pioneer", "condition": "with", "repetition": 1, "success": true, "tokens": 149933, "cost_usd": 0.0, "reconstructed": true, "published": false}
+{"task": "tls-corporate-ca", "model": "gemini-3.1-pro-high", "role": "pioneer", "condition": "with", "repetition": 1, "success": true, "tokens": 156149, "cost_usd": 0.0, "reconstructed": true, "published": false}
+{"task": "uv-path", "model": "gemini-3.1-pro-high", "role": "pioneer", "condition": "with", "repetition": 1, "success": true, "tokens": 206949, "cost_usd": 0.0, "reconstructed": true, "published": false}
+{"task": "node-require-esm", "model": "gpt-oss-120b-medium", "role": "follower", "condition": "with", "repetition": 1, "success": true, "tokens": 19091, "cost_usd": 0.0, "reconstructed": true}
+{"task": "node-require-esm", "model": "gpt-oss-120b-medium", "role": "follower", "condition": "with", "repetition": 2, "success": true, "tokens": 10033, "cost_usd": 0.0, "reconstructed": true}
+{"task": "node-require-esm", "model": "gpt-oss-120b-medium", "role": "follower", "condition": "with", "repetition": 3, "success": true, "tokens": 18757, "cost_usd": 0.0, "reconstructed": true}
+{"task": "node-require-esm", "model": "gpt-oss-120b-medium", "role": "follower", "condition": "with", "repetition": 4, "success": true, "tokens": 20892, "cost_usd": 0.0, "reconstructed": true}
+{"task": "node-require-esm", "model": "gpt-oss-120b-medium", "role": "follower", "condition": "with", "repetition": 5, "success": true, "tokens": 18324, "cost_usd": 0.0, "reconstructed": true}
+{"task": "pg-scram", "model": "gpt-oss-120b-medium", "role": "follower", "condition": "with", "repetition": 1, "success": false, "tokens": 21049, "cost_usd": 0.0, "reconstructed": true}
+{"task": "pg-scram", "model": "gpt-oss-120b-medium", "role": "follower", "condition": "with", "repetition": 2, "success": false, "tokens": 27808, "cost_usd": 0.0, "reconstructed": true}
+{"task": "pg-scram", "model": "gpt-oss-120b-medium", "role": "follower", "condition": "with", "repetition": 3, "success": true, "tokens": 32280, "cost_usd": 0.0, "reconstructed": true}
+{"task": "pg-scram", "model": "gpt-oss-120b-medium", "role": "follower", "condition": "with", "repetition": 4, "success": false, "tokens": 22011, "cost_usd": 0.0, "reconstructed": true}
+{"task": "pg-scram", "model": "gpt-oss-120b-medium", "role": "follower", "condition": "with", "repetition": 5, "success": false, "tokens": 25903, "cost_usd": 0.0, "reconstructed": true}
+{"task": "tls-corporate-ca", "model": "gpt-oss-120b-medium", "role": "follower", "condition": "with", "repetition": 1, "success": true, "tokens": 17482, "cost_usd": 0.0, "reconstructed": true}
+{"task": "tls-corporate-ca", "model": "gpt-oss-120b-medium", "role": "follower", "condition": "with", "repetition": 2, "success": true, "tokens": 16300, "cost_usd": 0.0, "reconstructed": true}
+{"task": "tls-corporate-ca", "model": "gpt-oss-120b-medium", "role": "follower", "condition": "with", "repetition": 3, "success": true, "tokens": 16010, "cost_usd": 0.0, "reconstructed": true}
+{"task": "tls-corporate-ca", "model": "gpt-oss-120b-medium", "role": "follower", "condition": "with", "repetition": 4, "success": true, "tokens": 16794, "cost_usd": 0.0, "reconstructed": true}
+{"task": "tls-corporate-ca", "model": "gpt-oss-120b-medium", "role": "follower", "condition": "with", "repetition": 5, "success": true, "tokens": 17366, "cost_usd": 0.0, "reconstructed": true}
+{"task": "uv-path", "model": "gpt-oss-120b-medium", "role": "follower", "condition": "with", "repetition": 1, "success": false, "tokens": 22851, "cost_usd": 0.0, "reconstructed": true}
+{"task": "uv-path", "model": "gpt-oss-120b-medium", "role": "follower", "condition": "with", "repetition": 2, "success": false, "tokens": 31381, "cost_usd": 0.0, "reconstructed": true}
+{"task": "uv-path", "model": "gpt-oss-120b-medium", "role": "follower", "condition": "with", "repetition": 3, "success": false, "tokens": 27410, "cost_usd": 0.0, "reconstructed": true}
+{"task": "uv-path", "model": "gpt-oss-120b-medium", "role": "follower", "condition": "with", "repetition": 4, "success": false, "tokens": 23115, "cost_usd": 0.0, "reconstructed": true}
+{"task": "uv-path", "model": "gpt-oss-120b-medium", "role": "follower", "condition": "with", "repetition": 5, "success": false, "tokens": 0, "cost_usd": 0.0, "reconstructed": true}
