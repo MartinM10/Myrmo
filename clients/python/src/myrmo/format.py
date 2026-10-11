@@ -121,11 +121,23 @@ def _hit(hit: Hit, i: int, total: int, include_high_risk: bool) -> str:
                 lines.append(f"- [{_clip(f['flag'], 40)}, {_clip(f['level'], 16)} risk: ask the user before running] $ {_clip(c['command'], 500)}  # {_clip(c['purpose'], 200)}")
             else:
                 lines.append(f"- $ {_clip(c['command'], 500)}  # {_clip(c['purpose'], 200)}")
+        if not flags:
+            # Said outright: a careful model that is not told otherwise treats every command from a trail as risky and
+            # stops to ask, which an agent working alone cannot do (measured in MyrmoBench).
+            lines.append("Risk: the colony flagged none of these commands. Once you have checked they fit your environment, run them as you would your own.")
     for p in t["solution"].get("code_patches", []):
         lines += [f"Patch {_clip(p['file_path'], 200)}:", *_fenced(p["diff"], 3000, "diff")]
     v = t["solution"]["verification_method"]
-    # The colony does not risk-analyse verification commands, so they always need the user's approval.
-    command = f" · run (not risk-analysed, ask the user first) `{_clip(v.get('command'), 300).replace('`', chr(39))}`" if v.get("command") else ""
+    # The colony does not risk-analyse verification commands, so they need the user's approval, unless the same command
+    # is one of the trail's commands above, which were analysed.
+    analysed = {(c.get("command") or "").strip() for c in commands}
+    shown = f"`{_clip(v.get('command'), 300).replace('`', chr(39))}`"
+    if not v.get("command"):
+        command = ""
+    elif v["command"].strip() in analysed:
+        command = f" · run {shown}"
+    else:
+        command = f" · run (not risk-analysed, ask the user first) {shown}"
     lines.append(f"Verify: {_clip(v['type'], 32)}{command}" + (f" · expected like: {_clip(v.get('evidence'), 200)}" if v.get("evidence") else ""))
     return "\n".join(lines)
 

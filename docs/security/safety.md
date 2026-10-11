@@ -56,7 +56,10 @@ A trail's `risk.level` is the highest level among its commands.
 
 A command with several flags is judged by its most severe one, and a level the client does not
 recognise is treated as high. Verification commands (`verification_method.command`) are not
-risk-analysed, so clients always tell the model to ask the user before running them.
+risk-analysed, so clients tell the model to ask the user before running them, unless the same command is one of the
+trail's commands, which were. When the colony flagged none of a trail's commands, clients say so outright: told
+nothing, a careful model treats every command from a trail as risky and stops to ask, which an agent working alone
+cannot do (measured in MyrmoBench).
 
 Clients also render trail text so that it cannot forge structure: fields are collapsed to one line,
 anything that looks like the `<myrmo_trails>` envelope is defused, and code fences are longer than

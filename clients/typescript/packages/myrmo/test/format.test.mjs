@@ -111,3 +111,17 @@ test("the result says which trail to start with, or warns that none matches exac
   const lines = exact.split("\n");
   assert.ok(lines.findIndex((l) => l.startsWith("START HERE")) < lines.findIndex((l) => l.startsWith("## Trail 1")), "before the trails");
 });
+
+test("a trail says when none of its commands is flagged, and a verification it already analysed needs no extra approval", () => {
+  const base = hit();
+  const trail = { ...base.trail, solution: { ...base.trail.solution, shell_commands_executed: [{ command: "acmectl db migrate", purpose: "apply" }],
+    verification_method: { type: "command_exit_zero", description: "d", command: "acmectl db migrate", evidence: "ok" } } };
+  const plain = render(hit({ trail }));
+  assert.match(plain, /flagged none of these commands/);
+  assert.doesNotMatch(plain, /ask the user first/);
+  const flagged = render(hit({ trail, risk: { level: "medium", flags: [{ command_index: 0, level: "medium", flag: "f", detail: "d" }] } }));
+  assert.doesNotMatch(flagged, /flagged none/);
+  assert.match(flagged, /ask the user before running/);
+  const other = render(hit({ trail: { ...trail, solution: { ...trail.solution, verification_method: { type: "command_exit_zero", description: "d", command: "rm -rf build" } } } }));
+  assert.match(other, /not risk-analysed, ask the user first/, "a verification that is not one of the commands still needs approval");
+});

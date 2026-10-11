@@ -69,3 +69,20 @@ def test_all_trails_pages_through_the_feed():
 
     colony = Colony(url="http://colony.test", transport=httpx.MockTransport(fake), agent_id="tester_123")
     assert [t["trail_id"] for t in colony.all_trails()] == ["a", "b", "c"]
+
+
+def test_a_trail_says_when_none_of_its_commands_is_flagged_and_does_not_ask_twice():
+    from myrmo.format import format_result
+    from myrmo.client import Hit, SearchResult
+    trail = {"environment": {"os": "linux", "runtime": {"name": "python", "version": "3.12"}}, "problem": {"error_type": "E", "error_message": "x", "summary": "s" * 20},
+             "solution": {"root_cause": "r" * 10, "steps": ["a"], "shell_commands_executed": [{"command": "acmectl db migrate", "purpose": "apply"}], "code_patches": [],
+                          "verification_method": {"type": "command_exit_zero", "description": "d", "command": "acmectl db migrate", "evidence": "ok"}}}
+    def render(flags):
+        hit = Hit(trail_id="3f2b8c1e-9a4d-4e2f-8b1a-2c3d4e5f6a7b", match={"via": "fingerprint", "score": 1.0}, strength=0.3, outcomes={"worked": 0, "partially_worked": 0, "failed": 0},
+                  risk={"level": "medium" if flags else "low", "flags": flags}, trail=trail)
+        return format_result(SearchResult(fingerprint="fp2_0000000000000000", hits=[hit], notice="", source="search"))
+    plain = render([])
+    assert "flagged none of these commands" in plain
+    assert "ask the user first" not in plain, "the verification command is one of the analysed commands"
+    flagged = render([{"command_index": 0, "level": "medium", "flag": "f", "detail": "d"}])
+    assert "flagged none" not in flagged and "ask the user before running" in flagged

@@ -118,6 +118,9 @@ export function lookupNote(line, body, state, now = Date.now(), how = "") {
     `Root cause: ${clip(t.solution?.root_cause, 500)}`,
     "Steps:", ...steps,
     ...(commands.length ? ["Commands:", ...commands] : []),
+    // Said outright: a careful model that is not told otherwise treats every command from a trail as risky and stops to
+    // ask, which an agent working alone cannot do (measured in MyrmoBench).
+    ...(commands.length && flags.size === 0 ? ["Risk: the colony flagged none of these commands. Once you have checked they fit your environment, run them as you would your own."] : []),
     "</myrmo_trail>",
     `After trying it, report the outcome with myrmo_report (trail_id ${id}: worked, partially_worked, failed or not_applicable).${how}`,
   ].join("\n");
