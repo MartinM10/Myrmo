@@ -2,38 +2,46 @@
 // of the agent, so the trail is read whether or not the model thinks of Myrmo. Measured in MyrmoBench, a reminder to
 // search is not enough: small models still rarely search.
 //
-// It is on by default only for a private colony (MYRMO_PRIVATE=1 with MYRMO_URL set to it), where the error line goes
-// to the organisation's own server. For another colony of one's own (MYRMO_URL) it is opt-in with MYRMO_HOOK_LOOKUP=1;
-// it never runs against the public colony, and MYRMO_HOOK_LOOKUP=0 turns it off everywhere.
+// It is on by default only for a private colony, where the error line goes to the organisation's own server. The colony
+// comes from MYRMO_URL (with MYRMO_API_KEY and MYRMO_PRIVATE=1), or from the settings file that `npx myrmo-mcp init
+// --url` writes, whose key and private mode apply only to that very URL. For another colony of one's own it is opt-in
+// with MYRMO_HOOK_LOOKUP=1; it never runs against the public colony, and MYRMO_HOOK_LOOKUP=0 turns it off everywhere.
 
 const PUBLIC_HOSTS = new Set(["myrmo.dev", "www.myrmo.dev"]);
+const trim = (url) => String(url ?? "").trim().replace(/\/+$/, "");
 
-/** Whether the colony is an organisation's own (the MCP server's private mode, same rule). */
-export function privateColony(env = process.env) {
-  if (env.MYRMO_PRIVATE !== "1" || !env.MYRMO_URL) return false;
+/** The colony the hooks talk to: url, key and private mode, by the same rules as the SDKs. */
+export function colonyOf(env = process.env, settings = {}) {
+  const saved = settings?.colony && typeof settings.colony.url === "string" ? settings.colony : null;
+  const url = trim(env.MYRMO_URL || saved?.url || "https://myrmo.dev");
+  const same = Boolean(saved) && trim(saved.url) === url;
+  let own = false;
   try {
-    return !PUBLIC_HOSTS.has(new URL(env.MYRMO_URL).hostname.toLowerCase());
+    own = !PUBLIC_HOSTS.has(new URL(url).hostname.toLowerCase());
   } catch {
-    return false;
+    own = false;
   }
+  return {
+    url,
+    apiKey: env.MYRMO_API_KEY || (same && typeof saved.api_key === "string" ? saved.api_key : undefined),
+    own,
+    private: own && (env.MYRMO_PRIVATE === "1" || (same && saved.private === true)),
+  };
 }
 
-/** A colony other than the public one, named in MYRMO_URL. */
-function ownColony(env) {
-  try {
-    return Boolean(env.MYRMO_URL) && !PUBLIC_HOSTS.has(new URL(env.MYRMO_URL).hostname.toLowerCase());
-  } catch {
-    return false;
-  }
+/** Whether the colony is an organisation's own (the MCP server's private mode, same rule). */
+export function privateColony(env = process.env, settings = {}) {
+  return colonyOf(env, settings).private;
 }
 
 /**
  * Never against the public colony: the hook sends the error line as printed, while the MCP server and the SDKs redact it
  * on this machine first. For one's own colony that is fine (it redacts again on arrival, and nothing leaves).
  */
-export function lookupEnabled(env = process.env) {
-  if (env.MYRMO_HOOK_LOOKUP === "0" || !ownColony(env)) return false;
-  return env.MYRMO_HOOK_LOOKUP === "1" || privateColony(env);
+export function lookupEnabled(env = process.env, settings = {}) {
+  const colony = colonyOf(env, settings);
+  if (env.MYRMO_HOOK_LOOKUP === "0" || !colony.own) return false;
+  return env.MYRMO_HOOK_LOOKUP === "1" || colony.private;
 }
 
 export const clip = (text, max) => {
@@ -42,12 +50,13 @@ export const clip = (text, max) => {
 };
 
 /** Search the colony for an error line; null when it cannot be reached. */
-export async function lookup(line, { env = process.env, fetcher = fetch, timeoutMs = 6000, agent = "myrmo-hook/1" } = {}) {
-  const url = `${String(env.MYRMO_URL || "https://myrmo.dev").replace(/\/$/, "")}/v1/search`;
+export async function lookup(line, { env = process.env, settings = {}, fetcher = fetch, timeoutMs = 6000, agent = "myrmo-hook/1" } = {}) {
+  const colony = colonyOf(env, settings);
+  const url = `${colony.url}/v1/search`;
   const headers = { "content-type": "application/json", "user-agent": agent };
   if (env.MYRMO_AGENT_ID) headers["x-myrmo-agent"] = env.MYRMO_AGENT_ID;
   // A private colony needs the person's access key, the same one the MCP server sends.
-  if (env.MYRMO_API_KEY) headers.authorization = `Bearer ${env.MYRMO_API_KEY}`;
+  if (colony.apiKey) headers.authorization = `Bearer ${colony.apiKey}`;
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);
   try {

@@ -82,7 +82,7 @@ It is deliberately quiet:
 
 ### For a private colony
 
-With `MYRMO_PRIVATE=1` and `MYRMO_URL` set to your organisation's colony (see
+With your organisation's colony set up by `npx myrmo-mcp init --url ... --private`, or `MYRMO_PRIVATE=1` and `MYRMO_URL` set to it (see
 [a private colony](../operate/self-hosting.md#a-private-colony)), the hook does two more things:
 
 - **It looks the error up itself.** After a failed command it searches the colony with the error line (sending

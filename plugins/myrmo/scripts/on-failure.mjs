@@ -13,7 +13,7 @@
 //   4. A command that failed earlier now SUCCEEDS and Myrmo had returned trails for it: the agent is reminded to report
 //      what happened with them (myrmo_report), which is what makes good trails rise and stale ones fade.
 //
-// For an organisation's private colony (MYRMO_PRIVATE=1 and MYRMO_URL), two more:
+// For an organisation's private colony (`npx myrmo-mcp init --url ... --private`, or MYRMO_PRIVATE=1 and MYRMO_URL), two more:
 //   5. After a failed command, the hook searches the colony itself and shows a strong match (lookup.mjs).
 //   6. When the agent stops after a turn in which commands failed, it is asked once to share what the next person's agent
 //      would need before it finishes (Stop hook): what is learned in a session otherwise leaves with it.
@@ -252,7 +252,7 @@ export function decide(input, { now = Date.now(), state = {}, env = process.env,
   const nomatch = state.nomatch;
   if (nomatch && !nomatch.nudged && now - nomatch.at < 45 * 60_000 && state.failed && commandKey(command) === state.failed.key && !spent) {
     const min = Number(settings.min_failed_attempts ?? 1);
-    const note = privateColony(env)
+    const note = privateColony(env, settings)
       ? `Myrmo: the command that failed earlier now succeeds, and your organisation's Myrmo colony had no trail for that error, so you may be the first to solve it. ` +
         `If you verified the fix and it took ${attempts(Number.isFinite(min) ? min : 1)}, publish it with myrmo_publish so your colleagues' agents do not solve it again: ` +
         `internal tools, services, policies and procedures included, with their names as printed. Keep out credentials and personal data. ` +
@@ -297,7 +297,7 @@ export function decide(input, { now = Date.now(), state = {}, env = process.env,
  */
 export function decideStop(input, { now = Date.now(), state = {}, env = process.env, settings = {} } = {}) {
   const none = { reason: null, state };
-  if (hookMode(env, settings) === "off" || !privateColony(env) || env.MYRMO_HARVEST === "off") return none;
+  if (hookMode(env, settings) === "off" || !privateColony(env, settings) || env.MYRMO_HARVEST === "off") return none;
   if (input?.stop_hook_active === true) return none;
   const failures = Number(state.failures ?? 0);
   if (failures <= Number(state.harvestedAt ?? 0)) return none;
@@ -347,8 +347,8 @@ async function main() {
   }
   const out = decide(input, { state, settings });
   // 5. In a private colony the hook looks the error up itself, so a trail reaches the agent even if it never searches.
-  if (out.note?.startsWith("Myrmo: a command just failed") && out.state.failed?.line && lookupEnabled()) {
-    const body = await lookup(out.state.failed.line, { agent: "myrmo-claude-code-hook/1" });
+  if (out.note?.startsWith("Myrmo: a command just failed") && out.state.failed?.line && lookupEnabled(process.env, settings)) {
+    const body = await lookup(out.state.failed.line, { settings, agent: "myrmo-claude-code-hook/1" });
     if (body) Object.assign(out, lookupNote(out.state.failed.line, body, out.state));
   }
   save(file, state, out.state);

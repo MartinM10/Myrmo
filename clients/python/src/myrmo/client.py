@@ -18,7 +18,7 @@ from typing import Any, Dict, List, Optional, Sequence, Union
 
 import httpx
 
-from .config import agent_identity, publish_choice
+from .config import agent_identity, file_colony, publish_choice
 from .environment import detect_environment, parse_package
 from .fingerprint import fingerprint2, guess_error_type
 from .names import names_conflict
@@ -127,15 +127,18 @@ class _Base:
         repeated. `retry_delays` are the pauses in seconds, with a little jitter."""
         self.retries = max(0, retries)
         self.retry_delays = tuple(retry_delays) or DEFAULT_RETRY_DELAYS
-        self.url = (url or _env("MYRMO_URL") or DEFAULT_URL).rstrip("/")
+        # An explicit URL or MYRMO_URL first, then the colony in the settings file; its key only goes to its own URL.
+        named = url or _env("MYRMO_URL")
+        from_file = file_colony(named or None)
+        self.url = (named or (from_file or {}).get("url") or DEFAULT_URL).rstrip("/")
         #: "off", "ask" or "auto"; `publish_source` says where it came from. "default" means nobody
         #: has chosen yet, so nothing is published (see `python -m myrmo config`).
-        self.publish_mode, self.publish_source = publish_choice(publish)
+        self.publish_mode, self.publish_source = publish_choice(publish, self.url)
         self.timeout = timeout
         self.cache_ttl = cache_ttl
         self._cache: Dict[str, tuple] = {}
         self.headers = {"accept": "application/json", "user-agent": f"myrmo-python/{SDK_VERSION}", **(headers or {})}
-        key = api_key or _env("MYRMO_API_KEY")
+        key = api_key or _env("MYRMO_API_KEY") or (file_colony(self.url) or {}).get("api_key")
         agent, _ = agent_identity(agent_id)
         model = (model or _env("MYRMO_AGENT_MODEL") or "").strip()
         if key:

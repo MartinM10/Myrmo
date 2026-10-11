@@ -90,6 +90,12 @@ try:
     status, body = call("POST", f"/v1/trails/{tid}/outcomes", REPORT, key=key_a, headers={"x-myrmo-agent": "fresh-agent-id-123"})
     check(body["counted"] is False, "ana cannot reinforce her own trail, whatever agent id she sends")
 
+    print("team report")
+    report = subprocess.run(["docker", "exec", CONTAINER, "myrmo-server", "team-report", "1"], capture_output=True, text=True).stdout
+    check(f"{ana} -> {luis}  worked" in report, "the report shows luis used ana's trail")
+    row = next((line for line in report.splitlines() if line.startswith(luis)), "")
+    check(row.split()[1:2] != ["0"], f"and counts luis's searches ({row.strip()})")
+
     print("revoking")
     keys("revoke", luis)
     check(call("POST", "/v1/search", {"query": "x failed here"}, key=key_b)[0] == 401, "a revoked key stops working at once")

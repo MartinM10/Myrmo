@@ -146,8 +146,9 @@ async function main() {
   }
   const transcript = input.transcriptPath && existsSync(input.transcriptPath) ? readFileSync(input.transcriptPath, "utf8") : "";
   const out = step(input, state, { settings: readSettings(), transcript });
-  if (out.failure && lookupEnabled()) {
-    const body = await lookup(out.failure, { agent: "myrmo-antigravity-hook/1" });
+  const settings = readSettings();
+  if (out.failure && lookupEnabled(process.env, settings)) {
+    const body = await lookup(out.failure, { settings, agent: "myrmo-antigravity-hook/1" });
     if (body) Object.assign(out, lookupNote(out.failure, body, out.state));
   }
   try {

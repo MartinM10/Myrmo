@@ -10,7 +10,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { decide, decideStop } from "../scripts/on-failure.mjs";
-import { lookupEnabled, privateColony } from "../scripts/lookup.mjs";
+import { lookup, lookupEnabled, privateColony } from "../scripts/lookup.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const PRIVATE = { MYRMO_PRIVATE: "1", MYRMO_URL: "http://colony.internal:8080" };
@@ -129,4 +129,23 @@ test("Claude Code: without a private colony the hook sends nothing and never hol
   assert.match(out.hookSpecificOutput.additionalContext, /call myrmo_search/);
   assert.equal(requests.length, before);
   assert.equal(await runHook({ session_id: "s2", hook_event_name: "Stop", stop_hook_active: false }, env), null);
+});
+
+test("the colony can come from the settings file (`init --url`), and its key and private mode only apply to that URL", async () => {
+  const { colonyOf } = await import("../scripts/lookup.mjs");
+  const settings = { colony: { url: "https://myrmo.example.internal/", api_key: "myk_saved", private: true } };
+  const saved = colonyOf({}, settings);
+  assert.deepEqual(saved, { url: "https://myrmo.example.internal", apiKey: "myk_saved", own: true, private: true });
+  assert.equal(lookupEnabled({}, settings), true);
+  assert.equal(privateColony({}, settings), true);
+
+  const elsewhere = colonyOf({ MYRMO_URL: "https://myrmo.dev" }, settings);
+  assert.equal(elsewhere.apiKey, undefined, "the saved key never goes to another colony");
+  assert.equal(elsewhere.private, false);
+  assert.equal(lookupEnabled({ MYRMO_URL: "https://myrmo.dev", MYRMO_HOOK_LOOKUP: "1" }, settings), false);
+
+  const sent = [];
+  await lookup("x failed here", { env: {}, settings, fetcher: async (url, init) => (sent.push({ url, init }), { ok: true, json: async () => ({}) }) });
+  assert.equal(sent[0].url, "https://myrmo.example.internal/v1/search");
+  assert.equal(sent[0].init.headers.authorization, "Bearer myk_saved");
 });
