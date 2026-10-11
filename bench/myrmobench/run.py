@@ -115,10 +115,10 @@ def price_of(model: str) -> tuple[float, float]:
 
 
 def plan(tasks: int, followers: list[str], pioneer: str, repetitions: int,
-         conditions: tuple[str, ...] = CONDITIONS) -> dict:
+         conditions: tuple[str, ...] = CONDITIONS, pioneers: bool = True) -> dict:
     """Runs and the most they should cost. Per task: every follower `repetitions` times in each condition, and one
     pioneer run when the `with` condition is wanted."""
-    pioneers = tasks if "with" in conditions else 0
+    pioneers = tasks if "with" in conditions and pioneers else 0
     runs = {"pioneer": {pioneer: pioneers} if pioneers else {}}
     runs["followers"] = {m: tasks * repetitions * len(conditions) for m in followers}
     per_run = lambda model: (TOKENS_PER_RUN["input"] * price_of(model)[0] + TOKENS_PER_RUN["output"] * price_of(model)[1]) / 1e6
@@ -130,15 +130,16 @@ def plan(tasks: int, followers: list[str], pioneer: str, repetitions: int,
 
 
 def schedule(task_ids: list[str], pioneer: str, followers: list[str], repetitions: int,
-             conditions: tuple[str, ...] = CONDITIONS) -> list[dict]:
+             conditions: tuple[str, ...] = CONDITIONS, pioneers: bool = True) -> list[dict]:
     """The runs in the order they happen. First every `without` and `unseen` run of every task, alternating so that a
     slow hour of the model's API does not fall on one condition; then the pioneers; then the `with` runs. No pioneer's
     trail is in the colony while a run that must not see it is going on."""
     before = [c for c in ("without", "unseen") if c in conditions]
     out = [{"task": t, "model": m, "role": "follower", "condition": c, "repetition": r}
            for t in task_ids for r in range(repetitions) for m in followers for c in before]
-    if "with" in conditions:
+    if "with" in conditions and pioneers:
         out += [{"task": t, "model": pioneer, "role": "pioneer", "condition": "with", "repetition": 0} for t in task_ids]
+    if "with" in conditions:
         out += [{"task": t, "model": m, "role": "follower", "condition": "with", "repetition": r}
                 for t in task_ids for r in range(repetitions) for m in followers]
     if "notes" in conditions:
@@ -637,7 +638,7 @@ def cmd_run(args: argparse.Namespace) -> int:
     tasks = load_tasks(args.tasks)
     models = choose_models(args)
     conditions = tuple(args.conditions)
-    p = plan(len(tasks), models["followers"], models["pioneer"], args.repetitions, conditions)
+    p = plan(len(tasks), models["followers"], models["pioneer"], args.repetitions, conditions, not args.no_pioneer)
     if not args.execute or args.approved_usd is None:
         print(json.dumps(p, indent=2))
         print("\nNothing was run. This spends money: add --execute and --approved-usd <the most you accept to spend>.")
@@ -682,7 +683,8 @@ def cmd_run(args: argparse.Namespace) -> int:
            "--build-arg", f"OPENCODE_VERSION={args.opencode_version}", "--build-arg", f"GEMINI_VERSION={args.gemini_version}",
            str(HERE))
     spent, runs = 0.0, []
-    for step in schedule([t.id for t in tasks], models["pioneer"], models["followers"], args.repetitions, conditions):
+    for step in schedule([t.id for t in tasks], models["pioneer"], models["followers"], args.repetitions, conditions,
+                         not args.no_pioneer):
         if spent >= args.approved_usd:
             print(f"Stopped: ${spent:.2f} spent of ${args.approved_usd} approved.")
             break
@@ -731,6 +733,8 @@ def main(argv: list[str] | None = None) -> int:
             s.add_argument("--colony", default="http://localhost:8080", help="a local colony for the run, empty or seeded")
             s.add_argument("--hook", action="store_true", help="antigravity: also install Myrmo's reminder hook (PreInvocation) in the conditions with Myrmo")
             s.add_argument("--lookup", action="store_true", help="antigravity: the hook also searches the colony itself after a failure (implies --hook)")
+            s.add_argument("--no-pioneer", action="store_true", help="no pioneer runs: the `with` and `notes` runs use the "
+                           "colony as it is, for example the trails of an earlier run's pioneers")
             s.add_argument("--private", action="store_true", help="the colony is a company's own: Myrmo runs in private mode "
                            "(MYRMO_PRIVATE=1, the rules of `init --private`), so internal names stay in trails")
             s.add_argument("--seed-from", help="copy this colony's public trails into the local one first (for example https://myrmo.dev)")
