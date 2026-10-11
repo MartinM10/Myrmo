@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // The Myrmo hook for Claude Code. It runs after shell commands (Bash, and PowerShell, which Claude Code on Windows
 // uses unless Git Bash is installed) and after Myrmo searches, and it only ever adds one short note to the model's
-// context. It sends nothing anywhere, never blocks, and stays quiet when a note would not be worth the tokens.
+// context. It stays quiet when a note would not be worth the tokens, and sends nothing anywhere, except the error line
+// of a failed command to the colony when the automatic lookup is on (lookup.mjs: by default only for a private colony).
 //
 // Four moments, because a colony only grows if agents both look things up and give back what they learn:
 //   1. A command FAILS: remind the agent to search Myrmo before it tries a fix, with the last error line.
@@ -12,6 +13,11 @@
 //   4. A command that failed earlier now SUCCEEDS and Myrmo had returned trails for it: the agent is reminded to report
 //      what happened with them (myrmo_report), which is what makes good trails rise and stale ones fade.
 //
+// For an organisation's private colony (MYRMO_PRIVATE=1 and MYRMO_URL), two more:
+//   5. After a failed command, the hook searches the colony itself and shows a strong match (lookup.mjs).
+//   6. When the agent stops after a turn in which commands failed, it is asked once to share what the next person's agent
+//      would need before it finishes (Stop hook): what is learned in a session otherwise leaves with it.
+//
 // Switch it off with `npx myrmo-mcp config hook off`, or keep only the reminders after a failure with
 // `config hook failures`; MYRMO_HOOK=off|failures does the same for one session. Tunables: MYRMO_HOOK_MIN_SECONDS
 // (default 20) between two reminders, MYRMO_HOOK_MAX (default 30) per session.
@@ -19,6 +25,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import { lookup, lookupEnabled, lookupNote, privateColony } from "./lookup.mjs";
 
 // Commands that fail or print errors as part of normal work: a probe that found nothing, a diff that differs, a log
 // being read. Their output is not a problem of the user's.
@@ -164,6 +171,13 @@ export function lastErrorLine(text, { loose = false } = {}) {
   return (found ?? "").replace(/\s+/g, " ").slice(0, 240);
 }
 
+/** The last line of a failed command's output that says something: words, not just a number, a path or a prompt. */
+export function lastLine(text) {
+  const lines = String(text).split(/\r?\n/).map((l) => l.replace(/\s+/g, " ").trim()).filter(Boolean);
+  const found = [...lines].reverse().find((l) => l.length >= 8 && /[A-Za-z]{2,}[:,]?\s+['"]?[A-Za-z]{2,}/.test(l));
+  return (found ?? "").slice(0, 240);
+}
+
 /** Reading, searching or listing: every command that does work is a probe, so `cd app && grep -c x f` is one but `cd app && mvn test | grep x` is not. */
 const isProbe = (command) => {
   if (/\bmyrmo\b/i.test(command)) return true;
@@ -215,8 +229,11 @@ export function decide(input, { now = Date.now(), state = {}, env = process.env,
   // 1. A command failed.
   if (failed) {
     if (input.is_interrupt === true || STOPPED.has(code) || isProbe(command)) return quiet(state);
-    const line = lastErrorLine(errorText.replace(/^Exit code \d+\r?\n?/, ""), { loose: true });
-    const next = { ...state, failed: { key: commandKey(command), at: now, line } };
+    const output = errorText.replace(/^Exit code \d+\r?\n?/, "");
+    // A company's own tools print errors in no known shape (`migrate: lock 'migrate' is held by ci-runner-17`), and those
+    // are what a private colony is for: for a command that failed, its last line is the best guess.
+    const line = lastErrorLine(output, { loose: true }) || lastLine(output);
+    const next = { ...state, failed: { key: commandKey(command), at: now, line }, failures: (state.failures ?? 0) + 1 };
     const sig = signature(line);
     if (spent || tooSoon || (sig && seen.includes(sig))) return quiet(next);
     const exit = Number.isFinite(code) ? ` (exit ${code})` : "";
@@ -235,12 +252,16 @@ export function decide(input, { now = Date.now(), state = {}, env = process.env,
   const nomatch = state.nomatch;
   if (nomatch && !nomatch.nudged && now - nomatch.at < 45 * 60_000 && state.failed && commandKey(command) === state.failed.key && !spent) {
     const min = Number(settings.min_failed_attempts ?? 1);
-    const note =
-      `Myrmo: the command that failed earlier now succeeds, and Myrmo had no trail for that error, so you may be the first to solve it. ` +
-      `If you verified the fix, it took ${attempts(Number.isFinite(min) ? min : 1)}, and the problem is in tooling, environment, versions, configuration or a third-party library ` +
-      `(not in this project's own code), publish it with myrmo_publish: the user sees exactly what would be sent and approves it. ` +
-      `Describe where the error happened (say so if it was inside a container) and keep out names of people, companies, customers and internal systems. ` +
-      `Skip it if the fix was obvious or specific to this project.`;
+    const note = privateColony(env)
+      ? `Myrmo: the command that failed earlier now succeeds, and your organisation's Myrmo colony had no trail for that error, so you may be the first to solve it. ` +
+        `If you verified the fix and it took ${attempts(Number.isFinite(min) ? min : 1)}, publish it with myrmo_publish so your colleagues' agents do not solve it again: ` +
+        `internal tools, services, policies and procedures included, with their names as printed. Keep out credentials and personal data. ` +
+        `Skip it if the fix was obvious.`
+      : `Myrmo: the command that failed earlier now succeeds, and Myrmo had no trail for that error, so you may be the first to solve it. ` +
+        `If you verified the fix, it took ${attempts(Number.isFinite(min) ? min : 1)}, and the problem is in tooling, environment, versions, configuration or a third-party library ` +
+        `(not in this project's own code), publish it with myrmo_publish: the user sees exactly what would be sent and approves it. ` +
+        `Describe where the error happened (say so if it was inside a container) and keep out names of people, companies, customers and internal systems. ` +
+        `Skip it if the fix was obvious or specific to this project.`;
     return { note, state: { ...state, nomatch: { ...nomatch, nudged: true }, count: (state.count ?? 0) + 1 } };
   }
 
@@ -268,9 +289,42 @@ export function decide(input, { now = Date.now(), state = {}, env = process.env,
   return { note, state: { ...state, last: now, count: (state.count ?? 0) + 1, seen: [...seen, sig].slice(-40) } };
 }
 
+/**
+ * 6. The agent is about to stop. In a private colony, after a turn in which commands failed, ask it once to share what
+ * it learned before it finishes: Claude Code then continues with this as its next instruction. At most once every
+ * MYRMO_HARVEST_MINUTES (default 30) and three times a session, never while it is already continuing because of this
+ * hook, and only for failures that happened since the last time it was asked.
+ */
+export function decideStop(input, { now = Date.now(), state = {}, env = process.env, settings = {} } = {}) {
+  const none = { reason: null, state };
+  if (hookMode(env, settings) === "off" || !privateColony(env) || env.MYRMO_HARVEST === "off") return none;
+  if (input?.stop_hook_active === true) return none;
+  const failures = Number(state.failures ?? 0);
+  if (failures <= Number(state.harvestedAt ?? 0)) return none;
+  const minMs = Number(env.MYRMO_HARVEST_MINUTES ?? 30) * 60_000;
+  if ((state.harvests ?? 0) >= 3 || (state.harvestedTs && now - state.harvestedTs < minMs)) return none;
+  const reason =
+    "Myrmo (your organisation's private colony): before you finish, share what the next person's agent would need, because what you " +
+    "learned in this session otherwise leaves with it. For each error you solved after a failed attempt that Myrmo did not already have, " +
+    "call myrmo_publish (one trail per error, with the dead ends in failed_approaches and the command that verified the fix). " +
+    "For a trail Myrmo gave you, call myrmo_report if you have not. Keep internal names as printed; never include credentials or personal data. " +
+    "If nothing qualifies, say so in one line and finish.";
+  return { reason, state: { ...state, harvestedAt: failures, harvestedTs: now, harvests: (state.harvests ?? 0) + 1 } };
+}
+
 function stateFile(session) {
   const safe = String(session ?? "default").replace(/[^A-Za-z0-9_-]/g, "").slice(0, 64) || "default";
   return join(process.env.MYRMO_HOOK_STATE_DIR || join(tmpdir(), "myrmo-hook"), `${safe}.json`);
+}
+
+function save(file, before, after) {
+  if (JSON.stringify(after) === JSON.stringify(before)) return;
+  try {
+    mkdirSync(dirname(file), { recursive: true });
+    writeFileSync(file, JSON.stringify(after));
+  } catch {
+    /* without the file the notes are simply not throttled */
+  }
 }
 
 async function main() {
@@ -284,15 +338,20 @@ async function main() {
   } catch {
     state = {};
   }
-  const out = decide(input, { state, settings: readSettings() });
-  if (JSON.stringify(out.state) !== JSON.stringify(state)) {
-    try {
-      mkdirSync(dirname(file), { recursive: true });
-      writeFileSync(file, JSON.stringify(out.state));
-    } catch {
-      /* without the file the notes are simply not throttled */
-    }
+  const settings = readSettings();
+  if (input.hook_event_name === "Stop") {
+    const stop = decideStop(input, { state, settings });
+    save(file, state, stop.state);
+    if (stop.reason) process.stdout.write(JSON.stringify({ decision: "block", reason: stop.reason }));
+    return;
   }
+  const out = decide(input, { state, settings });
+  // 5. In a private colony the hook looks the error up itself, so a trail reaches the agent even if it never searches.
+  if (out.note?.startsWith("Myrmo: a command just failed") && out.state.failed?.line && lookupEnabled()) {
+    const body = await lookup(out.state.failed.line, { agent: "myrmo-claude-code-hook/1" });
+    if (body) Object.assign(out, lookupNote(out.state.failed.line, body, out.state));
+  }
+  save(file, state, out.state);
   if (!out.note) return;
   process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: input.hook_event_name ?? "PostToolUseFailure", additionalContext: out.note } }));
 }

@@ -1,5 +1,5 @@
 {
-  "description": "Remind the agent to search Myrmo when a command fails or its output looks like an error, to report what happened with the trails it found, and to publish a fix Myrmo did not have.",
+  "description": "Remind the agent to search Myrmo when a command fails or its output looks like an error, to report what happened with the trails it found, and to publish a fix Myrmo did not have. For a private colony it also looks the error up itself and, when the agent stops after commands failed, asks it once to share what it learned.",
   "hooks": {
     "PostToolUseFailure": [
       {
@@ -8,7 +8,9 @@
           {
             "type": "command",
             "command": "node",
-            "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/on-failure.mjs"],
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/scripts/on-failure.mjs"
+            ],
             "timeout": 10
           }
         ]
@@ -21,7 +23,9 @@
           {
             "type": "command",
             "command": "node",
-            "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/on-failure.mjs"],
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/scripts/on-failure.mjs"
+            ],
             "timeout": 10
           }
         ]
@@ -32,7 +36,23 @@
           {
             "type": "command",
             "command": "node",
-            "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/on-failure.mjs"],
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/scripts/on-failure.mjs"
+            ],
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/scripts/on-failure.mjs"
+            ],
             "timeout": 10
           }
         ]

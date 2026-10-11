@@ -148,6 +148,10 @@ test("the lookup asks the colony set in MYRMO_URL and gives up quietly when it c
   assert.equal(seen[0].url, "http://colony:8080/v1/search");
   assert.equal(JSON.parse(seen[0].init.body).query, "uv: command not found");
   assert.equal(seen[0].init.headers["x-myrmo-agent"], "bench-agent-01");
+  assert.equal(seen[0].init.headers.authorization, undefined, "no key, no header");
+  // A private colony: the person's access key goes with the lookup, as with the MCP server.
+  await lookup("x", { env: { MYRMO_API_KEY: "myk_abc" }, fetcher: async (url, init) => (seen.push({ url, init }), { ok: true, json: async () => ({}) }) });
+  assert.equal(seen[1].init.headers.authorization, "Bearer myk_abc");
   assert.equal(await lookup("x", { env: {}, fetcher: async () => { throw new Error("down"); } }), null);
   assert.equal(await lookup("x", { env: {}, fetcher: async () => ({ ok: false }) }), null);
 });
