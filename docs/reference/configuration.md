@@ -49,11 +49,26 @@ For the publish mode, from strongest to weakest:
 1. An explicit argument: `Colony(publish="auto")` in Python, `new Colony({ publish: "auto" })` in
    TypeScript.
 2. The environment variable `MYRMO_PUBLISH`.
-3. The settings file, `~/.myrmo/config.json`, which holds the user's one-time choice.
+3. The settings file, `~/.myrmo/config.json`: first a choice saved for the colony in use (see below), then the user's
+   one-time choice.
 4. Nothing chosen yet. The clients then **publish nothing** and say how to choose.
 
-The settings file is shared by the TypeScript and Python clients and by the MCP server, and
+The settings file is shared by the TypeScript and Python clients, the MCP server and the Claude Code plugin's hooks, and
 `MYRMO_CONFIG` points all of them at another file.
+
+### Another colony in the settings file
+
+`npx myrmo-mcp init --url <colony> --key <key> --private --publish auto` saves an organisation's own colony there:
+
+```json
+{ "colony": { "url": "https://myrmo.example.internal", "api_key": "myk_...", "private": true, "publish": "auto" } }
+```
+
+With no `MYRMO_URL`, the clients use that colony. Its key, private mode and publish choice apply only while the colony
+in use is that very URL: with `MYRMO_URL` pointing elsewhere, the key is not sent and the choices do not apply, so a
+key never reaches another colony and `auto` for a private colony never publishes on the public one. The environment
+variables (`MYRMO_URL`, `MYRMO_API_KEY`, `MYRMO_PRIVATE`, `MYRMO_PUBLISH`) win over the file. The file is written
+readable only by its owner.
 
 ## Agent identity
 

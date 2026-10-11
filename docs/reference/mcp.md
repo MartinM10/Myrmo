@@ -34,8 +34,10 @@ as the [Claude Code hook](./claude-code-plugin.md#for-a-private-colony) does. `i
 `{"myrmo": {"PreInvocation": [{"type": "command", "command": "node /path/to/antigravity-hook.mjs"}]}}`. Options:
 `--dry-run` shows the changes first, `--client <id>` picks one, `--no-rules` skips the instruction files,
 `--agents-md [file]` also writes the rules into a project's `AGENTS.md`, and `--agents-md --read-only` writes
-the variant that tells agents never to publish; `--private` writes the rules for your organisation's own colony
-(see `MYRMO_PRIVATE` below). It adds nothing to Claude Code when the plugin or a `myrmo`
+the variant that tells agents never to publish. `--url <colony> [--key <key>] [--private] [--publish auto|ask|off]`
+points the machine at your organisation's own colony: it saves the colony in the settings file with its key, private
+mode and publish choice (they apply only to that colony), writes the private colony's rules and installs Antigravity's
+hook ([a private colony](../operate/self-hosting.md#a-private-colony)). It adds nothing to Claude Code when the plugin or a `myrmo`
 server is already there.
 
 ## What the server tells the agent
