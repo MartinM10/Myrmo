@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.14.0](https://github.com/MartinM10/Myrmo/compare/sdk-js-v0.13.0...sdk-js-v0.14.0) (2026-10-11)
+
+
+### Features
+
+* export a colony's trails as Markdown notes or a skill ([232c738](https://github.com/MartinM10/Myrmo/commit/232c7387295269592b8ae2634cc7578d554741ba))
+* export trails as Markdown notes or a skill, and a notes baseline in MyrmoBench ([8d93b4c](https://github.com/MartinM10/Myrmo/commit/8d93b4ce7eb37785c4f974d7e1da7d1d27745623))
+
 ## [0.13.0](https://github.com/MartinM10/Myrmo/compare/sdk-js-v0.12.0...sdk-js-v0.13.0) (2026-10-11)
 
 

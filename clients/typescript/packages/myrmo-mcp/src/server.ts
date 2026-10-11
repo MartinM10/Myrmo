@@ -6,7 +6,7 @@ import { Colony, MyrmoError, detectEnvironment, formatResult, writeConfig, type 
 import { z } from "zod";
 import { buildInstructions } from "./instructions.js";
 
-export const VERSION = "0.17.0"; // x-release-please-version
+export const VERSION = "0.18.0"; // x-release-please-version
 
 export interface ServerOptions {
   colony: Colony;
