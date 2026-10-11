@@ -575,12 +575,13 @@ def run_agent(task: Task, model: str, role: str, condition: str, colony: str, re
                     # The reminders of plugins/myrmo/scripts/antigravity-hook.mjs, run before every call to the model.
                     for script in ("on-failure.mjs", "lookup.mjs", "antigravity-hook.mjs"):
                         put(name, f"/opt/myrmo-hook/{script}", (PLUGIN_SCRIPTS / script).read_text(encoding="utf-8"))
-                    hook_command = "node /opt/myrmo-hook/antigravity-hook.mjs"
-                    if lookup:
-                        # The hook searches the colony itself after a failure and puts a strong match in front of the agent.
-                        server_env = mcp["mcpServers"]["myrmo"]["env"]
-                        hook_command = (f"env MYRMO_HOOK_LOOKUP=1 MYRMO_URL={server_env['MYRMO_URL']} "
-                                        f"MYRMO_AGENT_ID={server_env['MYRMO_AGENT_ID']} {hook_command}")
+                    # The colony and, with --private, private mode, so its notes are a private colony's. The hook's own
+                    # lookup (it searches the colony after a failure and shows a strong match) is on only with --lookup,
+                    # so that the reminders and the lookup can be measured apart.
+                    server_env = mcp["mcpServers"]["myrmo"]["env"]
+                    hook_env = [f"MYRMO_URL={server_env['MYRMO_URL']}", f"MYRMO_AGENT_ID={server_env['MYRMO_AGENT_ID']}",
+                                f"MYRMO_HOOK_LOOKUP={'1' if lookup else '0'}"] + (["MYRMO_PRIVATE=1"] if private else [])
+                    hook_command = f"env {' '.join(hook_env)} node /opt/myrmo-hook/antigravity-hook.mjs"
                     put(name, "/root/.gemini/config/hooks.json", json.dumps(
                         {"myrmo": {"PreInvocation": [{"type": "command", "command": hook_command}]}}))
             command, parse = agy_command(task, model), parse_agy_stream
