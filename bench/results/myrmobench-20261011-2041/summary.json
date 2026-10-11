@@ -1,0 +1,18 @@
+{
+  "without": {
+    "runs": 10,
+    "success_rate": 0.5,
+    "median_tokens": 91487.0,
+    "median_failed_attempts": 4.0,
+    "median_seconds": 56.2,
+    "median_cost_usd": 0.0
+  },
+  "with": {
+    "runs": 10,
+    "success_rate": 0.5,
+    "median_tokens": 79495.5,
+    "median_failed_attempts": 1.0,
+    "median_seconds": 60.8,
+    "median_cost_usd": 0.0
+  }
+}
