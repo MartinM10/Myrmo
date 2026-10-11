@@ -534,7 +534,8 @@ def export_notes(colony: str) -> Path:
 
 
 def run_agent(task: Task, model: str, role: str, condition: str, colony: str, repetition: int, env: list[str],
-              agent: str = "claude-code", hook: bool = False, lookup: bool = False, private: bool = False) -> dict:
+              agent: str = "claude-code", hook: bool = False, lookup: bool = False, private: bool = False,
+              transcripts: Path | None = None) -> dict:
     """One run: a fresh container from the agent image, the agent works in it, the hidden check decides."""
     with_myrmo = condition in ("unseen", "with")
     # Reach the colony on the host from inside the container.
@@ -600,6 +601,11 @@ def run_agent(task: Task, model: str, role: str, condition: str, colony: str, re
             put(name, rules, NOTES_RULE)
         done = sh("docker", "exec", *exec_env, name, *command, check=False, timeout=task.max_minutes * 60)
         seconds = time.time() - started
+        if transcripts:
+            # What the agent did, for reading why a run failed. Kept on this machine only (bench/results/*/transcripts
+            # is not committed): it is the model's raw output.
+            transcripts.mkdir(parents=True, exist_ok=True)
+            (transcripts / f"{task.id}-{model}-{role}-{condition}-{repetition}.jsonl").write_text(done.stdout, encoding="utf-8")
         passed, why = check(task, name)
         metrics = parse(done.stdout)
         return {"task": task.id, "model": model, "role": role, "condition": condition, "repetition": repetition,
@@ -690,7 +696,8 @@ def cmd_run(args: argparse.Namespace) -> int:
             break
         task, model, role = by_id[step["task"]], step["model"], step["role"]
         before = colony_trails(args.colony) if role == "pioneer" else 0
-        row = run_agent(task, model, role, step["condition"], args.colony, step["repetition"], env, args.agent, args.hook or args.lookup, args.lookup, args.private)
+        row = run_agent(task, model, role, step["condition"], args.colony, step["repetition"], env, args.agent,
+                        args.hook or args.lookup, args.lookup, args.private, out / "transcripts")
         if role == "pioneer":
             # A pioneer that found a trail, or whose fix merged into one, leaves no new trail: its task's `with` runs
             # then measure the colony as it was, and the result says so.
