@@ -114,13 +114,21 @@ function formatHit(hit: Hit, index: number, total: number, opts: FormatOptions):
         lines.push(`- $ ${clip(c.command, 500)}  # ${clip(c.purpose, 200)}`);
       }
     });
+    if (flags.size === 0) {
+      // Said outright: a careful model that is not told otherwise treats every command from a trail as risky and stops
+      // to ask, which an agent working alone cannot do (measured in MyrmoBench).
+      lines.push("Risk: the colony flagged none of these commands. Once you have checked they fit your environment, run them as you would your own.");
+    }
   }
   for (const p of t.solution.code_patches) {
     lines.push(`Patch ${clip(p.file_path, 200)}:`, ...fenced(p.diff, 3000, "diff"));
   }
   const v = t.solution.verification_method;
-  // The colony does not risk-analyse verification commands, so they always need the user's approval.
-  const verifyCommand = v.command ? ` · run (not risk-analysed, ask the user first) \`${clip(v.command, 300).replace(/`/g, "'")}\`` : "";
+  // The colony does not risk-analyse verification commands, so they need the user's approval, unless the same command
+  // is one of the trail's commands above, which were analysed.
+  const analysed = new Set(t.solution.shell_commands_executed.map((c) => (c.command ?? "").trim()));
+  const shown = v.command ? `\`${clip(v.command, 300).replace(/`/g, "'")}\`` : "";
+  const verifyCommand = !v.command ? "" : analysed.has(v.command.trim()) ? ` · run ${shown}` : ` · run (not risk-analysed, ask the user first) ${shown}`;
   lines.push(`Verify: ${clip(v.type, 32)}${verifyCommand}${v.evidence ? ` · expected like: ${clip(v.evidence, 200)}` : ""}`);
   return lines.join("\n");
 }

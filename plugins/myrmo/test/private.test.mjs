@@ -149,3 +149,13 @@ test("the colony can come from the settings file (`init --url`), and its key and
   assert.equal(sent[0].url, "https://myrmo.example.internal/v1/search");
   assert.equal(sent[0].init.headers.authorization, "Bearer myk_saved");
 });
+
+test("a strong match says outright when the colony flagged none of its commands, and not when it flagged one", async () => {
+  const { lookupNote } = await import("../scripts/lookup.mjs");
+  const hit = (flags) => ({ results: [{ trail_id: "3f2b8c1e-9a4d-4e2f-8b1a-2c3d4e5f6a7b", match: { via: "fingerprint", score: 1 }, risk: { level: flags.length ? "medium" : "low", flags },
+    trail: { environment: { os: "linux" }, problem: { error_message: "x" }, solution: { root_cause: "y is wrong", steps: ["do z"], shell_commands_executed: [{ command: "acmectl db unlock --stale", purpose: "release" }] } } }] });
+  assert.match(lookupNote("x", hit([]), {}).note, /flagged none of these commands/);
+  const flagged = lookupNote("x", hit([{ command_index: 0, level: "medium", flag: "state_change" }]), {}).note;
+  assert.doesNotMatch(flagged, /flagged none/);
+  assert.match(flagged, /medium risk: ask the user before running/);
+});
