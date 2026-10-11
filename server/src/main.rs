@@ -5,6 +5,7 @@
 //!   myrmo-server all      both in one process, for small deployments
 //!   myrmo-server migrate-fingerprints   refile every trail under its fp2 (also done once, in the background, at start)
 //!   myrmo-server keys add <person> | list | revoke <person>   access keys of a private colony (MYRMO_REQUIRE_KEY=1)
+//!   myrmo-server team-report [days]   what each person of a private colony did with it, and reuse between people
 
 mod access;
 mod analytics;
@@ -26,6 +27,7 @@ mod schema;
 mod state;
 mod store;
 mod strength;
+mod team;
 
 use anyhow::Result;
 use std::net::SocketAddr;
@@ -49,6 +51,10 @@ async fn main() -> Result<()> {
         // Only Valkey is needed: keys can be managed while the rest of the colony is down.
         let args: Vec<String> = std::env::args().skip(2).collect();
         return access::cli(&cfg.redis_url, &args).await;
+    }
+    if mode == "team-report" {
+        let args: Vec<String> = std::env::args().skip(2).collect();
+        return team::cli(&cfg.redis_url, &args).await;
     }
     let st = state::AppState::connect(cfg.clone()).await?;
 
@@ -77,7 +83,7 @@ async fn main() -> Result<()> {
             serve(st).await
         }
         other => anyhow::bail!(
-            "unknown mode {other:?}; expected serve, enrich, all, migrate-fingerprints or keys"
+            "unknown mode {other:?}; expected serve, enrich, all, migrate-fingerprints, keys or team-report"
         ),
     }
 }

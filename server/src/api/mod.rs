@@ -268,6 +268,13 @@ async fn rate_limit(
     let minute = now / 60;
     let mut con = st.redis();
     let mut pipe = redis::pipe();
+    // A private colony counts what each person does with it (`myrmo-server team-report`).
+    if st.cfg.require_key
+        && declared
+        && let Some(kind) = crate::team::activity(req.method().as_str(), req.uri().path())
+    {
+        crate::team::count(&mut pipe, &agent, kind, now);
+    }
     // Only a caller that declared an id is an agent. An address hash changes every day, and a browser that opens
     // the colony page has no id, so counting it would make "agents" mean "anything that sent a request".
     if declared {

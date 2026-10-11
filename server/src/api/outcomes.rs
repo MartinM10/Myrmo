@@ -110,7 +110,8 @@ pub(super) async fn report_outcome(
     // on this trail, and the address has not used up its hourly total. A report that cannot count is accepted and
     // does not use up any of these.
     let published_from = con.get::<_, Option<String>>(keys::pub_addr(&id)).await?;
-    let is_author = trail_author(&mut con, &id, &meta).await?.as_deref() == Some(&caller.agent)
+    let author = trail_author(&mut con, &id, &meta).await?;
+    let is_author = author.as_deref() == Some(&caller.agent)
         || published_from.as_deref() == Some(&caller.client);
     let eligible = author_may_report(is_author, &outcome);
     let first_today: bool = eligible
@@ -268,6 +269,16 @@ pub(super) async fn report_outcome(
     }
     pipe.cmd("HGETALL").arg(keys::outcomes(&id));
     let (hash,): (HashMap<String, String>,) = pipe.query_async(&mut con).await?;
+    // A private colony: one person's agent reported on what another person's agent published.
+    if st.cfg.require_key
+        && caller.declared
+        && let (Some(outcome), Some(author)) = (analytics_outcome.as_deref(), author.as_deref())
+        && author != caller.agent
+        && let Err(err) =
+            crate::team::record_reuse(&mut con, now, &id, author, &caller.agent, outcome).await
+    {
+        tracing::warn!(error = %err, "team reuse not recorded");
+    }
     if let Some(outcome) = analytics_outcome {
         // Which model followed the trail and what happened: kept for later analysis.
         let model = crate::analytics::clean_label(&agent_info["model"]);
