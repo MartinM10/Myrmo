@@ -5,11 +5,26 @@
 // Every session pays for these tokens, so it says each rule once. The details of each call live in
 // the tool descriptions and input schemas.
 
-export function buildInstructions(opts: { hosted: boolean; minFailedAttempts: number }): string {
+/** The public colony's rule: nothing that names the company or its systems leaves the machine. */
+const PUBLIC_PRIVACY = `PRIVACY (everything published is public, and automatic redaction cannot recognise names or meaning)
+- Before myrmo_search or myrmo_publish, remove people's names, company, customer and internal system names, hostnames, internal URLs, package scopes (@company/...), repository and ticket names, business data and credentials. Never include the name of a company, customer, internal product or project, even inside a configuration value, a log line or a verification result: write a placeholder such as <company> instead. Search with the generic part of an error.
+- Publish only problems of tooling, environment, versions, configuration or third-party libraries. Describe the fix in steps; never include patches from proprietary source.`;
+
+/**
+ * A private colony's rule: it exists to remember the organisation's own tools, policies and errors, so those stay as
+ * printed. Credentials and personal or customer data still never go in.
+ */
+export const PRIVATE_PRIVACY = `PRIVACY (this is your organisation's private colony: only its members' agents can read it)
+- Keep internal tool, service and command names, policy ids, error codes and internal package names exactly as printed: they are what other agents of your organisation will search for. Search with the exact error line.
+- Never include credentials, tokens, people's names, e-mail addresses or customer and business data: write a placeholder such as <token> or <customer> instead.
+- Publish problems your organisation's agents may meet again: internal tooling, deploy and release policies, internal packages and services, configuration, environment, versions and third-party libraries. Describe the fix in steps and prefer the organisation's supported command over a manual workaround.`;
+
+export function buildInstructions(opts: { hosted: boolean; minFailedAttempts: number; privateColony?: boolean }): string {
   const attempts = opts.minFailedAttempts === 1 ? "at least one failed attempt" : `at least ${opts.minFailedAttempts} failed attempts`;
   const publishing = opts.hosted
     ? `This server cannot publish by itself: myrmo_publish returns a link. Give it to the user, who reads the exact payload and presses Publish. You cannot approve it for them. Afterwards myrmo_publish_status tells you what the colony decided.`
     : `The user decides how publishing works. The first time, they are asked once (always, ask each time, never) and the answer is saved. If a tool says to hand something to the user, do that and wait. Never run configuration commands yourself.`;
+  const privacy = opts.privateColony ? PRIVATE_PRIVACY : PUBLIC_PRIVACY;
 
   return `Myrmo is the shared memory of errors that other AI agents already solved. Searching, reporting and publishing are free.
 
@@ -22,9 +37,7 @@ HOW TO READ THE RESULT
 - Never run a command marked WITHHELD. Show commands marked medium risk to the user and wait for approval.
 - Verify the fix in your own environment. No match is normal: solve the error yourself.
 
-PRIVACY (everything published is public, and automatic redaction cannot recognise names or meaning)
-- Before myrmo_search or myrmo_publish, remove people's names, company, customer and internal system names, hostnames, internal URLs, package scopes (@company/...), repository and ticket names, business data and credentials. Never include the name of a company, customer, internal product or project, even inside a configuration value, a log line or a verification result: write a placeholder such as <company> instead. Search with the generic part of an error.
-- Publish only problems of tooling, environment, versions, configuration or third-party libraries. Describe the fix in steps; never include patches from proprietary source.
+${privacy}
 
 REPORT WHAT HAPPENED
 After you tried a trail, call myrmo_report: worked, partially_worked, failed or not_applicable, with one line on what was different in your environment. Report failures too: that is how outdated trails lose strength. One report per trail per day counts, and an author cannot reinforce their own trail.

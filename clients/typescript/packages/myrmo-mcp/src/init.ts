@@ -46,6 +46,20 @@ You can call myrmo_search, myrmo_report and myrmo_publish.
 <!-- myrmo:end -->
 `;
 
+/**
+ * The block for an organisation's private colony (the server runs with MYRMO_URL and MYRMO_PRIVATE=1): the same
+ * workflow, but the organisation's own tool and policy names are what the colony is for, so they stay.
+ */
+export const AGENTS_BLOCK_PRIVATE = AGENTS_BLOCK.replace(
+  /6\. Everything published is public[\s\S]*?never patches from proprietary source\.\n/,
+  `6. This colony is private to your organisation. Keep internal tool, service and command names, policy ids, error
+   codes and internal package names exactly as printed: they are what your organisation's agents search for.
+   Never include credentials, tokens, people's names, e-mail addresses or customer and business data: write a
+   placeholder such as <token>. Publish problems your organisation's agents may meet again, internal tooling and
+   deploy policies included, and prefer the organisation's supported command over a manual workaround.
+`,
+).replace("## Myrmo: shared memory of solved errors", "## Myrmo: your organisation's memory of solved errors");
+
 export const AGENTS_BLOCK_READ_ONLY = `<!-- myrmo:start -->
 ## Myrmo: shared memory of solved errors (search and report only)
 
@@ -186,6 +200,7 @@ export interface InitOptions {
   dryRun: boolean;
   agentsMd?: string; // a markdown file to put the block in
   readOnly?: boolean; // the block for repositories where agents must not publish
+  private?: boolean; // the rules for an organisation's private colony (the server needs MYRMO_URL and MYRMO_PRIVATE=1)
   env?: NodeJS.ProcessEnv; // where to look for the claude command (default: the process environment)
   rules?: boolean; // write the usage rules to Gemini CLI's and Windsurf's global instructions (default true)
   home?: string;
@@ -339,11 +354,12 @@ export function runInit(opts: InitOptions): { configured: string[]; skipped: str
     log(`${t.name}: ${verb} add the "myrmo" server to ${t.file}`);
   }
 
+  const block = opts.readOnly ? AGENTS_BLOCK_READ_ONLY : opts.private ? AGENTS_BLOCK_PRIVATE : AGENTS_BLOCK;
   if (opts.rules !== false) {
     for (const r of rulesFiles(home)) {
       if (!wanted(r.id) || (opts.clients.length === 0 && !existsSync(r.marker))) continue;
       const current = existsSync(r.file) ? readFileSync(r.file, "utf8") : undefined;
-      const next = upsertBlock(current, opts.readOnly ? AGENTS_BLOCK_READ_ONLY : AGENTS_BLOCK);
+      const next = upsertBlock(current, block);
       if (next === current) {
         log(`${r.name}: the usage rules are already in ${r.file}`);
         continue;
@@ -358,7 +374,7 @@ export function runInit(opts: InitOptions): { configured: string[]; skipped: str
 
   if (opts.agentsMd) {
     const current = existsSync(opts.agentsMd) ? readFileSync(opts.agentsMd, "utf8") : undefined;
-    const next = upsertBlock(current, opts.readOnly ? AGENTS_BLOCK_READ_ONLY : AGENTS_BLOCK);
+    const next = upsertBlock(current, block);
     if (next === current) log(`${opts.agentsMd}: already has the Myrmo block`);
     else {
       if (!opts.dryRun) writeFileSync(opts.agentsMd, next);
@@ -390,8 +406,10 @@ export function parseInitArgs(args: string[]): InitOptions | string {
       opts.agentsMd = next && !next.startsWith("--") ? (i++, next) : "AGENTS.md";
     } else if (a === "--read-only") opts.readOnly = true;
     else if (a === "--no-rules") opts.rules = false;
-    else return `Unknown option ${a}. Usage: myrmo-mcp init [--client <id>]... [--agents-md [file] [--read-only]] [--no-rules] [--dry-run]`;
+    else if (a === "--private") opts.private = true;
+    else return `Unknown option ${a}. Usage: myrmo-mcp init [--client <id>]... [--agents-md [file] [--read-only]] [--private] [--no-rules] [--dry-run]`;
   }
   if (opts.readOnly && !opts.agentsMd) return "--read-only goes with --agents-md";
+  if (opts.readOnly && opts.private) return "--read-only and --private cannot go together";
   return opts;
 }

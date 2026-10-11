@@ -1,0 +1,11 @@
+{
+  "id": "acme-config-v3",
+  "title": "The company's service framework moved to config format 3 and only answers with an error code",
+  "image_tag": "myrmobench/acme-config-v3",
+  "prompt": "The orders service in /work no longer starts since the platform team upgraded acmeframe to 3.0. Make `python -m acmeframe check service.toml` pass, keeping every setting of the service as it is. Do not change acmeframe.",
+  "error_line": "acmeframe: ConfigError: E1042 at service.toml:2",
+  "max_minutes": 15,
+  "symptom": "cd /work && python -m acmeframe check service.toml",
+  "symptom_match": "E1042 at service.toml:2",
+  "ready": "true"
+}

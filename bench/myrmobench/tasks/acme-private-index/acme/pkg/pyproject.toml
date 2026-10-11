@@ -1,0 +1,11 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "acmeco-internal-logging"
+version = "2.1.0"
+description = "Acme's structured logging (internal)"
+
+[tool.setuptools]
+packages = ["acmeco_logging"]

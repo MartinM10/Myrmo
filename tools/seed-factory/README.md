@@ -32,11 +32,38 @@ discovery only; nothing from them goes into a trail.
 python tools/seed-factory/radar.py --days 120
 ```
 
+With `--evidence N` (default 12) the radar also reads, for its first N leads, the public GitHub issues about each release:
+in the package's own repository since the release, and in other repositories that name the exact version. It keeps
+titles that read like a problem, drops bots and chance matches, and uses only repositories whose licence the provenance
+policy accepts. These titles say which error people actually hit; they are never copied into a trail.
+
+## From a lead to a task: the worker
+
+`worker.py` turns leads into tasks with an agent that reproduces each one, so nobody writes the task by hand:
+
+```bash
+python tools/seed-factory/worker.py --limit 6 --batch radar-003
+```
+
+For each lead, the Antigravity CLI (signed in once into the `myrmobench-agy` Docker volume, see
+`docs/operate/benchmarks.md`) runs inside a container of the task's base image, with the public colony connected. The
+agent installs pinned versions, makes the error happen, tries plausible fixes that fail, finds the one that works and
+writes `drafts/<task_id>.json` (loaded by `catalog/drafts.py`), or a reason to skip. The factory then runs the draft in
+fresh containers with the quality gates below; when they refuse it, the next model gets the reason. Models go cheapest
+first (Gemini Flash Low, GPT-OSS 120B, Gemini Pro). Leads with reports go first, and leads an earlier batch skipped or
+made into a task are not tried again (`--retry-skipped`). The repositories whose issues the agent was shown are recorded
+as `discovery` sources in each trail's provenance.
+
+**A valid task is not yet a trail to publish.** Every trail is read before `publisher.py` sends it. In the first two
+batches, every trail that passed the gates was set aside at review: its error message named the fix (a required Node
+version), it was a corner case with a generic message, or its fix forced an unsupported combination. The worker's
+instructions now ask it to skip those.
+
 ## Quality gates (`factory.validate`)
 
 Schema-valid; at least one real failed attempt; every dead end really exited non-zero; the fix and its
 verification really exited zero; an error message of 20 characters or more that is not just the error
-type; no command reduced to a placeholder. The task's setup is silenced and a failing setup aborts the
+type and not a package manager's banner; no command reduced to a placeholder. The task's setup is silenced and a failing setup aborts the
 task, so package-manager output never becomes the "error" and a broken setup is never taken for the
 failure the task is meant to show. Paths inside the container are kept as they are, because the commands
 of a trail have to stay runnable; only what belongs to the host is replaced.

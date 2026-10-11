@@ -11,8 +11,11 @@ import run  # noqa: E402
 
 def test_every_task_is_complete_and_unique():
     tasks = run.load_tasks()
-    assert len(tasks) == 4
-    assert len({t.id for t in tasks}) == 4 and len({t.image_tag for t in tasks}) == 4
+    assert len(tasks) == 8
+    assert len({t.id for t in tasks}) == 8 and len({t.image_tag for t in tasks}) == 8
+    # The company suite: problems only that company's own colony can know about.
+    assert {t.id for t in tasks if t.id.startswith("acme-")} == {
+        "acme-deploy-policy", "acme-private-index", "acme-db-lock", "acme-config-v3"}
     for t in tasks:
         assert t.prompt and t.symptom_match and t.max_minutes > 0
         check = (t.path / "check.sh").read_text()

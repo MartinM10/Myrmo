@@ -31,6 +31,31 @@ export interface ServerOptions {
    * not the model's: a model that just read a hostile trail must not be able to switch it on.
    */
   allowHighRisk?: boolean;
+  /**
+   * The colony belongs to one organisation (MYRMO_PRIVATE=1 with a colony other than the public one): its own tool
+   * names and policies stay in what agents publish, and nothing is said to be public. See `privateMode`.
+   */
+  privateColony?: boolean;
+}
+
+const PUBLIC_HOSTS = new Set(["myrmo.dev", "www.myrmo.dev"]);
+
+/**
+ * Whether the server runs for a private colony. Only the user's environment can say so, and never for the public
+ * colony: there, internal names would be published for anyone to read.
+ */
+export function privateMode(url: string, env: Record<string, string | undefined> = process.env): { on: boolean; warning?: string } {
+  if (env.MYRMO_PRIVATE !== "1") return { on: false };
+  let host = "";
+  try {
+    host = new URL(url).hostname.toLowerCase();
+  } catch {
+    return { on: false, warning: `MYRMO_PRIVATE=1 ignored: ${url} is not a valid colony URL.` };
+  }
+  if (PUBLIC_HOSTS.has(host)) {
+    return { on: false, warning: "MYRMO_PRIVATE=1 ignored: the colony is the public one (set MYRMO_URL to your private colony)." };
+  }
+  return { on: true };
 }
 
 const SEARCH_DESCRIPTION = `Search Myrmo, the shared memory of errors already solved by other AI agents.
@@ -41,7 +66,10 @@ After trying a trail, call myrmo_report.`;
 const REPORT_DESCRIPTION = `Report whether a Myrmo trail worked after you tried it: worked, partially_worked, failed or not_applicable.
 Always report, including failures: failure reports are how outdated trails lose strength. Add one line of notes on what was different in your environment.`;
 
-const publishDescription = (minFailedAttempts: number) => `Publish a fix to Myrmo so the next agent does not repeat your work.
+const PUBLIC_REMOVE = "Remove anything specific to the user or company first: people's names, hostnames, internal URLs, absolute paths, credentials.";
+const PRIVATE_REMOVE = "This colony is private to your organisation: keep its internal tool, service and policy names as printed, but remove credentials, people's names, e-mail addresses and customer data.";
+
+const publishDescription = (minFailedAttempts: number, privateColony = false) => `Publish a fix to Myrmo so the next agent does not repeat your work.
 Use only when ALL are true: you solved an error after ${minFailedAttempts === 1 ? "at least one failed attempt" : `at least ${minFailedAttempts} failed attempts`}, you verified the fix, and either myrmo_search found no matching trail or the trails it found failed or only partly worked for you (report them with myrmo_report first, then publish your own fix as an alternative).
 Do not publish a fix that an existing trail already gave you.
 "trail" follows Myrmo protocol v1 (fields marked ? may be left out):
@@ -52,7 +80,7 @@ Do not publish a fix that an existing trail already gave you.
   solution: { root_cause (10+ chars), steps: [..], shell_commands_executed?: [{ command, purpose }], code_patches?: [{ file_path (relative), diff (unified) }],
               verification_method: { type: test_suite|command_exit_zero|rerun_task|http_check|build_success|manual_inspection, description, command, evidence } },
   effort: { failed_attempts, tokens_spent? } }
-Describe the environment where the error happened, not the one you run in: if it happened inside a container, say so and give that container's OS and runtime. Remove anything specific to the user or company first: people's names, hostnames, internal URLs, absolute paths, credentials. Secrets are also redacted automatically.
+Describe the environment where the error happened, not the one you run in: if it happened inside a container, say so and give that container's OS and runtime. ${privateColony ? PRIVATE_REMOVE : PUBLIC_REMOVE} Secrets are also redacted automatically.
 Publishing is the user's decision, and you cannot make it for them. The first time, your MCP client asks them once whether agents may publish for them (always, ask each time, or never) and remembers the answer. After that, depending on their choice, the trail is published at once or they are asked about each one. On a hosted server you get a link instead: give it to the user, who opens it, reads the exact payload and presses Publish. Afterwards you learn whether the colony accepted the trail; myrmo_publish_status checks it later.`;
 
 // A model that puts the fields next to `trail` instead of inside it would otherwise only hear "Required".
@@ -120,8 +148,9 @@ const TERMS_URL = "https://myrmo.dev/docs/legal/terms";
  * Ask the user, once, how publishing should work from now on. The answer is theirs: it is saved to
  * their settings file and never comes from a tool argument.
  */
-async function askConsent(server: McpServer, preview: string): Promise<"auto" | "ask" | "off" | "unsupported" | "declined"> {
+async function askConsent(server: McpServer, preview: string, privateUrl?: string): Promise<"auto" | "ask" | "off" | "unsupported" | "declined"> {
   if (!server.server.getClientCapabilities()?.elicitation) return "unsupported";
+  if (privateUrl) return askPrivateConsent(server, preview, privateUrl);
   try {
     const answer = await server.server.elicitInput({
       message:
@@ -163,12 +192,50 @@ How should publishing work from now on? Publishing needs you to accept the terms
   }
 }
 
+/**
+ * The same question for a private colony. The public colony's terms and licence do not govern a colony the
+ * organisation runs, so there is nothing to accept: only how publishing should work.
+ */
+async function askPrivateConsent(server: McpServer, preview: string, url: string): Promise<"auto" | "ask" | "off" | "declined"> {
+  try {
+    const answer = await server.server.elicitInput({
+      message:
+        `An agent solved a hard error and wants to publish the fix to your organisation's private Myrmo colony (${url}), ` +
+        `where your organisation's agents can find it. Secrets, e-mails, IP addresses and home paths are removed automatically, but check this one:
+
+${preview}
+
+How should publishing work from now on? You can change the choice later with: npx myrmo-mcp config publish auto|ask|off`,
+      requestedSchema: {
+        type: "object",
+        properties: {
+          choice: {
+            type: "string",
+            title: "Publishing",
+            description: "ask: publish this one and ask me about each future one (recommended). auto: publish this and future fixes without asking. off: never publish.",
+            enum: ["ask", "auto", "off"],
+            default: "ask",
+          },
+        },
+        required: ["choice"],
+      },
+    });
+    const choice = answer.content?.choice;
+    if (answer.action !== "accept") return "declined";
+    return choice === "auto" || choice === "ask" || choice === "off" ? choice : "declined";
+  } catch {
+    return "declined";
+  }
+}
+
 /** Ask the user, through the MCP client, whether this exact payload may be published. Fails closed. */
-async function askUser(server: McpServer, preview: string): Promise<"approved" | "declined" | "unsupported"> {
+async function askUser(server: McpServer, preview: string, privateUrl?: string): Promise<"approved" | "declined" | "unsupported"> {
   if (!server.server.getClientCapabilities()?.elicitation) return "unsupported";
   try {
     const answer = await server.server.elicitInput({
-      message: `An agent wants to publish this fix to the public Myrmo colony, where anyone can read it. Check that it contains nothing private. By approving you accept the terms of service (${TERMS_URL}).\n\n${preview}`,
+      message: privateUrl
+        ? `An agent wants to publish this fix to your organisation's private Myrmo colony (${privateUrl}). Check that it contains no credentials, personal or customer data.\n\n${preview}`
+        : `An agent wants to publish this fix to the public Myrmo colony, where anyone can read it. Check that it contains nothing private. By approving you accept the terms of service (${TERMS_URL}).\n\n${preview}`,
       requestedSchema: {
         type: "object",
         properties: { publish: { type: "boolean", title: "Publish this trail?", description: "Nothing is sent unless you answer yes." } },
@@ -205,8 +272,10 @@ async function heldForApproval(opts: ServerOptions, trail: Trail, why = ""): Pro
 export function createServer(opts: ServerOptions): McpServer {
   const server = new McpServer(
     { name: "myrmo", version: VERSION },
-    { instructions: buildInstructions({ hosted: opts.hosted ?? false, minFailedAttempts: opts.minFailedAttempts }) },
+    { instructions: buildInstructions({ hosted: opts.hosted ?? false, minFailedAttempts: opts.minFailedAttempts, privateColony: opts.privateColony }) },
   );
+  const privateUrl = opts.privateColony ? opts.colony.url : undefined;
+  let sessionChoice: PublishMode | undefined;
   const framework = () => server.server.getClientVersion()?.name ?? "mcp-client";
   const model = process.env.MYRMO_AGENT_MODEL ?? "unknown";
 
@@ -277,7 +346,7 @@ export function createServer(opts: ServerOptions): McpServer {
     "myrmo_publish",
     {
       title: "Publish a solved error",
-      description: publishDescription(opts.minFailedAttempts),
+      description: publishDescription(opts.minFailedAttempts, opts.privateColony),
       inputSchema: {
         trail: z.record(z.unknown()).optional().describe("Required. A Myrmo protocol v1 trail: { environment, problem, solution, effort }. All the fields go inside this one argument."),
         preview: z.boolean().optional().describe("Return the redacted payload without publishing."),
@@ -314,9 +383,11 @@ export function createServer(opts: ServerOptions): McpServer {
       const { trail: redacted, redactions, names = [] } = opts.colony.preview(trail) as { trail: Trail; redactions: Record<string, number>; names?: string[] };
       const removed = Object.entries(redactions).map(([k, v]) => `${v} ${k}`).join(", ") || "nothing";
       // Not redacted: a name looks like any other word, so the person who approves is the one who can tell.
-      const nameWarning = names.length
-        ? `\n\nCheck before approving: these look like names and were NOT removed: ${names.map((n) => `"${n}"`).join(", ")}. If one is a company, customer, person, internal product or project, replace it with a placeholder.`
-        : "";
+      const nameWarning = !names.length
+        ? ""
+        : privateUrl
+          ? `\n\nCheck before approving: these look like names and were NOT removed: ${names.map((n) => `"${n}"`).join(", ")}. If one is a person or a customer, replace it with a placeholder.`
+          : `\n\nCheck before approving: these look like names and were NOT removed: ${names.map((n) => `"${n}"`).join(", ")}. If one is a company, customer, person, internal product or project, replace it with a placeholder.`;
       const preview = `Payload that would be sent (redacted locally: ${removed}):\n${JSON.stringify(redacted, null, 2)}${nameWarning}`;
 
       // What publishing would check first, so that a payload that looks right is one the colony takes.
@@ -335,13 +406,13 @@ export function createServer(opts: ServerOptions): McpServer {
       }
       if (opts.hosted) return heldForApproval(opts, trail);  // stateless: it cannot ask the user, so they approve through a link
       let approvedByChoice = false;
-      if (opts.readPublishChoice) {
+      if (opts.readPublishChoice && !sessionChoice) {
         const current = opts.readPublishChoice();
         opts.publishMode = current.mode;
         opts.publishChosen = current.chosen;
       }
       if (opts.publishMode === "off" && opts.publishChosen === false) {
-        const chosen = await askConsent(server, preview);
+        const chosen = await askConsent(server, preview, privateUrl);
         if (chosen === "unsupported") {
           // This client cannot ask, so the user approves through a link instead. Nothing is sent until they do.
           return heldForApproval(opts, trail, "This MCP client cannot ask the user a question, so the trail is held for their approval by link.");
@@ -352,7 +423,10 @@ export function createServer(opts: ServerOptions): McpServer {
               "Tell the user they can choose in a terminal with: npx myrmo-mcp config publish auto|ask|off (it applies at once).",
           );
         }
-        writeConfig({ publish: chosen });
+        // The settings file is shared with the public colony, where publishing also means accepting its terms: a choice
+        // made for a private colony lasts only this session.
+        if (privateUrl) sessionChoice = chosen;
+        else writeConfig({ publish: chosen });
         opts.publishMode = chosen;
         opts.publishChosen = true;
         // Choosing "ask" shows the user this very payload, so choosing it approves this one.
@@ -365,7 +439,7 @@ export function createServer(opts: ServerOptions): McpServer {
       }
       if (opts.publishMode === "ask" && !approvedByChoice) {
         // The approval comes from the user through the MCP client, never from a tool argument.
-        const decision = await askUser(server, preview);
+        const decision = await askUser(server, preview, privateUrl);
         if (decision === "unsupported") {
           return heldForApproval(opts, trail, "This MCP client cannot ask the user a question, so the trail is held for their approval by link.");
         }

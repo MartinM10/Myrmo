@@ -1,0 +1,83 @@
+#!/usr/bin/env python3
+"""acmectl, the Acme platform CLI.
+
+  acmectl db migrate [--dir migrations]       apply the service's pending migrations to its database
+  acmectl db locks                            list the database's locks
+  acmectl db unlock --stale [--older-than N]  release locks whose holder is gone (held for more than N hours, default 1)
+"""
+import argparse
+import datetime
+import pathlib
+import sqlite3
+import sys
+
+DB = "/var/acme/billing.db"
+now = datetime.datetime.now(datetime.timezone.utc)
+stamp = now.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+parser = argparse.ArgumentParser(prog="acmectl", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+sub = parser.add_subparsers(dest="area", required=True)
+dbp = sub.add_parser("db").add_subparsers(dest="action", required=True)
+migrate = dbp.add_parser("migrate")
+migrate.add_argument("--dir", default="migrations")
+dbp.add_parser("locks")
+unlock = dbp.add_parser("unlock")
+unlock.add_argument("--stale", action="store_true")
+unlock.add_argument("--older-than", type=float, default=1.0)
+args = parser.parse_args()
+db = sqlite3.connect(DB)
+
+
+def audit_gap():
+    """A lock whose last generation is neither held nor released in the audit: someone removed it by hand."""
+    for name, generation in db.execute("SELECT name, generation FROM _acme_lockseq"):
+        held = db.execute("SELECT 1 FROM _acme_locks WHERE name = ? AND generation = ?", (name, generation)).fetchone()
+        released = db.execute("SELECT 1 FROM _acme_audit WHERE name = ? AND generation = ? AND action = 'released'",
+                              (name, generation)).fetchone()
+        if not held and not released:
+            return name, generation
+    return None
+
+
+if args.action == "locks":
+    rows = db.execute("SELECT name, owner, since, generation FROM _acme_locks").fetchall()
+    print("\n".join(f"{n}\theld by {o} since {s} (generation {g})" for n, o, s, g in rows) or "no locks")
+elif args.action == "unlock":
+    if not args.stale:
+        print("acmectl: db unlock needs --stale: only locks whose holder is gone may be released", file=sys.stderr)
+        sys.exit(2)
+    released = 0
+    for name, owner, since, generation in db.execute("SELECT name, owner, since, generation FROM _acme_locks").fetchall():
+        age = now - datetime.datetime.strptime(since, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=datetime.timezone.utc)
+        if age.total_seconds() >= args.older_than * 3600:
+            db.execute("DELETE FROM _acme_locks WHERE name = ?", (name,))
+            db.execute("INSERT INTO _acme_audit VALUES (?, ?, ?, 'released', 'acmectl unlock --stale')", (stamp, name, generation))
+            print(f"released stale lock '{name}' held by {owner} (generation {generation})")
+            released += 1
+    db.commit()
+    print(f"{released} lock(s) released")
+elif args.action == "migrate":
+    gap = audit_gap()
+    if gap:
+        print(f"migrate: refusing to run: lock '{gap[0]}' (generation {gap[1]}) vanished without an audit record (MIG-AUDIT)",
+              file=sys.stderr)
+        sys.exit(5)
+    held = db.execute("SELECT owner, since FROM _acme_locks WHERE name = 'migrate'").fetchone()
+    if held:
+        print(f"migrate: lock 'migrate' is held by {held[0]} since {held[1]}", file=sys.stderr)
+        sys.exit(4)
+    generation = db.execute("SELECT generation FROM _acme_lockseq WHERE name = 'migrate'").fetchone()[0] + 1
+    db.execute("UPDATE _acme_lockseq SET generation = ? WHERE name = 'migrate'", (generation,))
+    db.execute("INSERT INTO _acme_locks VALUES ('migrate', 'acmectl', ?, ?)", (stamp, generation))
+    db.execute("INSERT INTO _acme_audit VALUES (?, 'migrate', ?, 'acquired', 'acmectl')", (stamp, generation))
+    version = db.execute("SELECT version FROM _acme_schema").fetchone()[0]
+    for path in sorted(pathlib.Path(args.dir).glob("*.sql")):
+        number = int(path.name.split("_")[0])
+        if number > version:
+            db.executescript(path.read_text())
+            db.execute("UPDATE _acme_schema SET version = ?", (number,))
+            version = number
+    db.execute("DELETE FROM _acme_locks WHERE name = 'migrate'")
+    db.execute("INSERT INTO _acme_audit VALUES (?, 'migrate', ?, 'released', 'acmectl')", (stamp, generation))
+    db.commit()
+    print(f"MIGRATED billing.db to schema {version}")

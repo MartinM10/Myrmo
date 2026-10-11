@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { AGENTS_BLOCK, AGENTS_BLOCK_READ_ONLY, SHAPES, claudeCodeSetUp, mergeCodex, mergeServer, parseInitArgs, runInit, serverEntry, targets, upsertBlock } from "../dist/init.js";
+import { AGENTS_BLOCK, AGENTS_BLOCK_PRIVATE, AGENTS_BLOCK_READ_ONLY, SHAPES, claudeCodeSetUp, mergeCodex, mergeServer, parseInitArgs, runInit, serverEntry, targets, upsertBlock } from "../dist/init.js";
 
 const entry = serverEntry("linux");
 const quiet = () => {};
@@ -251,4 +251,15 @@ test("init sets up Antigravity: the server in its shared MCP file, and the rules
   const rules = readFileSync(join(home, ".gemini", "GEMINI.md"), "utf8");
   assert.match(rules, /<!-- myrmo:start -->[\s\S]*myrmo_search[\s\S]*<!-- myrmo:end -->/);
   assert.equal((rules.match(/myrmo:start/g) ?? []).length, 1, "one block even though Gemini CLI uses the same file");
+});
+
+test("init --private writes the private colony's rules, which keep internal names but never credentials", () => {
+  const opts = parseInitArgs(["--agents-md", "X.md", "--private"]);
+  assert.equal(opts.private, true);
+  assert.equal(typeof parseInitArgs(["--agents-md", "--read-only", "--private"]), "string");
+  assert.match(AGENTS_BLOCK_PRIVATE, /private to your organisation/);
+  assert.match(AGENTS_BLOCK_PRIVATE, /Never include credentials/);
+  assert.doesNotMatch(AGENTS_BLOCK_PRIVATE, /Everything published is public/);
+  assert.match(AGENTS_BLOCK_PRIVATE, /myrmo_search/);
+  assert.match(AGENTS_BLOCK_PRIVATE, /<!-- myrmo:end -->/);
 });

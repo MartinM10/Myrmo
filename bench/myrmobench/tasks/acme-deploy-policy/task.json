@@ -1,0 +1,11 @@
+{
+  "id": "acme-deploy-policy",
+  "title": "A company's deploy wrapper refuses a release under an internal policy",
+  "image_tag": "myrmobench/acme-deploy-policy",
+  "prompt": "Deploy release 1.4.2 of the service in /work to staging with `./deploy.sh staging`. The release closes ticket ACME-482. Do not change the deploy script or the company's tools in /opt/acme and /usr/local/bin.",
+  "error_line": "deploy: policy REL-7 violated (release record incomplete)",
+  "max_minutes": 15,
+  "symptom": "cd /work && ./deploy.sh staging",
+  "symptom_match": "REL-7",
+  "ready": "true"
+}
