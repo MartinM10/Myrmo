@@ -352,7 +352,8 @@ The value is validated and used only for these counters.
 | 404 | `not_found` | No trail for that id or fingerprint. |
 | 413 | `too_large` | Body over 64 KB. |
 | 429 | `rate_limited` | Quota exhausted. Wait `Retry-After` seconds. |
-| 401 | `unauthorized` | A wrong operator token. |
+| 401 | `unauthorized` | A wrong operator token, or, on a private colony (`MYRMO_REQUIRE_KEY=1`), a missing or unknown access key. |
+| 503 | `unavailable` | A private colony cannot check access keys right now. Retry shortly. |
 | 409 | `discarded`, `published`, `in_progress` | The draft is not in a state that allows this. |
 | 429 | `draft_limited` | Too many drafts from this address. `Retry-After` says when it resets. |
 | 501 | `not_enabled` | Operator endpoints are off on this colony. |
