@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.9.0](https://github.com/MartinM10/Myrmo/compare/server-v0.8.0...server-v0.9.0) (2026-10-11)
+
+
+### Features
+
+* private colony onboarding in one command, and a team report ([2790341](https://github.com/MartinM10/Myrmo/commit/27903419807052fb5397c7849462f22a559e1416))
+* **server:** team-report, what each person of a private colony does with it ([d4a13a7](https://github.com/MartinM10/Myrmo/commit/d4a13a7828313422b08555109e26840d22d35d40))
+
 ## [0.8.0](https://github.com/MartinM10/Myrmo/compare/server-v0.7.3...server-v0.8.0) (2026-10-11)
 
 

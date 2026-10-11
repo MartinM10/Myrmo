@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.17.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.16.0...mcp-v0.17.0) (2026-10-11)
+
+
+### Features
+
+* one command points a machine at a private colony ([22358b1](https://github.com/MartinM10/Myrmo/commit/22358b14731a8369b6c36ab008d18de648507168))
+* private colony onboarding in one command, and a team report ([2790341](https://github.com/MartinM10/Myrmo/commit/27903419807052fb5397c7849462f22a559e1416))
+
 ## [0.16.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.15.0...mcp-v0.16.0) (2026-10-11)
 
 
