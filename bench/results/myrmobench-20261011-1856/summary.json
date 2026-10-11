@@ -1,0 +1,10 @@
+{
+  "with": {
+    "runs": 40,
+    "success_rate": 0.75,
+    "median_tokens": 82535.0,
+    "median_failed_attempts": 1.0,
+    "median_seconds": 61.2,
+    "median_cost_usd": 0.0
+  }
+}
