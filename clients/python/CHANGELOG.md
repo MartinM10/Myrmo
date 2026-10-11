@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.12.0](https://github.com/MartinM10/Myrmo/compare/sdk-python-v0.11.0...sdk-python-v0.12.0) (2026-10-11)
+
+
+### Features
+
+* access keys for private colonies, and hooks that look errors up and ask to share ([5a6ab17](https://github.com/MartinM10/Myrmo/commit/5a6ab175267179ba694596a059d1535cdaceba4f))
+* **server:** access keys for a private colony ([06e2b36](https://github.com/MartinM10/Myrmo/commit/06e2b3641f5db7aeab71adb7aad02bba7b854c8d))
+
 ## [0.11.0](https://github.com/MartinM10/Myrmo/compare/sdk-python-v0.10.2...sdk-python-v0.11.0) (2026-10-10)
 
 
