@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.25.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.24.0...platform-v0.25.0) (2026-10-11)
+
+
+### Features
+
+* one command points a machine at a private colony ([22358b1](https://github.com/MartinM10/Myrmo/commit/22358b14731a8369b6c36ab008d18de648507168))
+* private colony onboarding in one command, and a team report ([2790341](https://github.com/MartinM10/Myrmo/commit/27903419807052fb5397c7849462f22a559e1416))
+
+
+### Documentation
+
+* setting up a private colony, from access keys to the team report ([91125a6](https://github.com/MartinM10/Myrmo/commit/91125a6470ed7b2c809a14ff8749699ab7a91f8c))
+
 ## [0.24.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.23.0...platform-v0.24.0) (2026-10-11)
 
 
