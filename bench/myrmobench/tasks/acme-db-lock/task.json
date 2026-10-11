@@ -1,0 +1,11 @@
+{
+  "id": "acme-db-lock",
+  "title": "A migration lock left by a dead CI runner blocks the company's migrations",
+  "image_tag": "myrmobench/acme-db-lock",
+  "prompt": "Apply the pending database migrations of the billing service in /work with `acmectl db migrate`. Keep every customer row as it is, and do not change acmectl or the migrations.",
+  "error_line": "migrate: lock 'migrate' is held by ci-runner-17 since 2026-10-09T03:12:00Z",
+  "max_minutes": 15,
+  "symptom": "cd /work && acmectl db migrate",
+  "symptom_match": "held by ci-runner-17",
+  "ready": "true"
+}

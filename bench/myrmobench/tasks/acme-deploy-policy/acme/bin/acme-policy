@@ -1,0 +1,22 @@
+#!/usr/bin/env python3
+"""Acme release policies. Usage: acme-policy check <POLICY> --version <v> --changelog <file>
+
+Each policy is a module in /opt/acme/policies. The exit code says whether the release complies (0) or not (1).
+"""
+import argparse
+import importlib.util
+import sys
+
+parser = argparse.ArgumentParser(prog="acme-policy")
+parser.add_argument("command", choices=["check"])
+parser.add_argument("policy")
+parser.add_argument("--version", required=True)
+parser.add_argument("--changelog", required=True)
+args = parser.parse_args()
+
+path = f"/opt/acme/policies/{args.policy.lower()}.py"
+spec = importlib.util.spec_from_file_location(args.policy, path)
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+problems = module.check(version=args.version, changelog=args.changelog)
+sys.exit(1 if problems else 0)

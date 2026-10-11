@@ -1,0 +1,29 @@
+#!/usr/bin/env python3
+"""acmectl, the Acme platform CLI.
+
+  acmectl auth pip       set pip on this machine up for the Acme package index (writes /etc/pip.conf)
+  acmectl auth status    whether this machine has a token for the Acme package index
+"""
+import argparse
+import pathlib
+import sys
+
+TOKEN = pathlib.Path("/etc/acme/pip-token")
+INDEX = "127.0.0.1:8081/simple/"
+
+parser = argparse.ArgumentParser(prog="acmectl", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+sub = parser.add_subparsers(dest="area", required=True)
+auth = sub.add_parser("auth").add_subparsers(dest="action", required=True)
+auth.add_parser("pip")
+auth.add_parser("status")
+args = parser.parse_args()
+
+if not TOKEN.exists():
+    print("acmectl: this machine has no Acme token (ask #platform)", file=sys.stderr)
+    sys.exit(2)
+if args.action == "status":
+    print("token present for the Acme package index")
+elif args.action == "pip":
+    token = TOKEN.read_text().strip()
+    pathlib.Path("/etc/pip.conf").write_text(f"[global]\nextra-index-url = http://__token__:{token}@{INDEX}\n")
+    print("pip is set up for the Acme package index.")

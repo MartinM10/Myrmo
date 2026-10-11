@@ -338,10 +338,13 @@ def put(container: str, path: str, text: str) -> None:
     sh("docker", "exec", "-i", container, "sh", "-c", f'mkdir -p "$(dirname {path})" && cat > {path}', input_text=text)
 
 
-def mcp_config(colony: str, publish: str, agent_id: str) -> dict:
+def mcp_config(colony: str, publish: str, agent_id: str, private: bool = False) -> dict:
     version = json.loads(MCP_VERSION_FILE.read_text(encoding="utf-8"))["version"]
-    return {"mcpServers": {"myrmo": {"command": "npx", "args": ["-y", f"myrmo-mcp@{version}"],
-            "env": {"MYRMO_URL": colony, "MYRMO_PUBLISH": publish, "MYRMO_AGENT_ID": agent_id, "MYRMO_MIN_FAILED_ATTEMPTS": "1"}}}}
+    env = {"MYRMO_URL": colony, "MYRMO_PUBLISH": publish, "MYRMO_AGENT_ID": agent_id, "MYRMO_MIN_FAILED_ATTEMPTS": "1"}
+    if private:
+        # A company's own colony: its tool and policy names stay in what agents publish and search for.
+        env["MYRMO_PRIVATE"] = "1"
+    return {"mcpServers": {"myrmo": {"command": "npx", "args": ["-y", f"myrmo-mcp@{version}"], "env": env}}}
 
 
 #: What an OpenCode agent may do: the same tools as the Claude Code runs, and no web. The container is the sandbox.
@@ -430,21 +433,23 @@ AGY_ERROR = re.compile(r"(?im)^\s*(?:\S+:\s*)?(?:error|fatal|traceback|exception
 
 
 MCP_DIST = ROOT / "clients/typescript/packages/myrmo-mcp/dist/init.js"
-_RULES: list[str] = []
+PLUGIN_SCRIPTS = ROOT / "plugins/myrmo/scripts"
+_RULES: dict[str, str] = {}
 
 
-def myrmo_rules() -> str:
-    """The usage rules `npx myrmo-mcp init` writes to ~/.gemini/GEMINI.md. Antigravity and Gemini CLI do not pass an MCP
-    server's instructions to the model, and Antigravity even hides the tools behind a generic `call_mcp_tool`: without
-    these rules the model never learns Myrmo is there (measured: no search in 36 runs). So the conditions with Myrmo get
-    what a user who ran `init` has."""
-    if not _RULES:
-        done = sh("node", "-e", f"import({json.dumps(MCP_DIST.as_uri())}).then(m => process.stdout.write(m.AGENTS_BLOCK))",
+def myrmo_rules(private: bool = False) -> str:
+    """The usage rules `npx myrmo-mcp init` writes to ~/.gemini/GEMINI.md (`init --private` for a company's own colony).
+    Antigravity and Gemini CLI do not pass an MCP server's instructions to the model, and Antigravity even hides the
+    tools behind a generic `call_mcp_tool`: without these rules the model never learns Myrmo is there (measured: no
+    search in 36 runs). So the conditions with Myrmo get what a user who ran `init` has."""
+    block = "AGENTS_BLOCK_PRIVATE" if private else "AGENTS_BLOCK"
+    if block not in _RULES:
+        done = sh("node", "-e", f"import({json.dumps(MCP_DIST.as_uri())}).then(m => process.stdout.write(m.{block} ?? ''))",
                   check=False)
         if done.returncode != 0 or "myrmo:start" not in done.stdout:
             raise SystemExit("Build the MCP server first (cd clients/typescript && npm ci && npm run build): the rules come from it.")
-        _RULES.append(done.stdout)
-    return _RULES[0]
+        _RULES[block] = done.stdout
+    return _RULES[block]
 
 
 def agy_command(task: Task, model: str) -> list[str]:
@@ -495,7 +500,7 @@ def claude_command(task: Task, model: str, with_myrmo: bool) -> list[str]:
 
 
 def run_agent(task: Task, model: str, role: str, condition: str, colony: str, repetition: int, env: list[str],
-              agent: str = "claude-code") -> dict:
+              agent: str = "claude-code", hook: bool = False, lookup: bool = False, private: bool = False) -> dict:
     """One run: a fresh container from the agent image, the agent works in it, the hidden check decides."""
     with_myrmo = condition != "without"
     # Reach the colony on the host from inside the container.
@@ -506,7 +511,7 @@ def run_agent(task: Task, model: str, role: str, condition: str, colony: str, re
     started = time.time()
     try:
         mcp = mcp_config(colony.replace("localhost", "host.docker.internal"), "auto" if role == "pioneer" else "off",
-                         f"bench-{role}-{uuid.uuid4().hex[:8]}")
+                         f"bench-{role}-{uuid.uuid4().hex[:8]}", private)
         exec_env = [x for e in env for x in ("-e", e)]
         if agent == "opencode":
             put(name, "/tmp/opencode.json", json.dumps(opencode_config(with_myrmo, mcp)))
@@ -519,7 +524,7 @@ def run_agent(task: Task, model: str, role: str, condition: str, colony: str, re
             key = dict(e.split("=", 1) for e in env).get("GEMINI_API_KEY", "")
             put(name, "/root/.gemini/settings.json", json.dumps(gemini_settings(with_myrmo, mcp, bool(key))))
             if with_myrmo:
-                put(name, "/root/.gemini/GEMINI.md", myrmo_rules())
+                put(name, "/root/.gemini/GEMINI.md", myrmo_rules(private))
             if not key:
                 # The sign-in goes where `gemini` would have put it, in the throwaway container only.
                 put(name, "/root/.gemini/oauth_creds.json", gemini_credentials() or "{}")
@@ -532,7 +537,19 @@ def run_agent(task: Task, model: str, role: str, condition: str, colony: str, re
             put(name, "/root/.gemini/config/mcp_config.json",
                 json.dumps({"mcpServers": dict(mcp["mcpServers"]) if with_myrmo else {}}))
             if with_myrmo:
-                put(name, "/root/.gemini/GEMINI.md", myrmo_rules())
+                put(name, "/root/.gemini/GEMINI.md", myrmo_rules(private))
+                if hook:
+                    # The reminders of plugins/myrmo/scripts/antigravity-hook.mjs, run before every call to the model.
+                    for script in ("on-failure.mjs", "antigravity-hook.mjs"):
+                        put(name, f"/opt/myrmo-hook/{script}", (PLUGIN_SCRIPTS / script).read_text(encoding="utf-8"))
+                    hook_command = "node /opt/myrmo-hook/antigravity-hook.mjs"
+                    if lookup:
+                        # The hook searches the colony itself after a failure and puts a strong match in front of the agent.
+                        server_env = mcp["mcpServers"]["myrmo"]["env"]
+                        hook_command = (f"env MYRMO_HOOK_LOOKUP=1 MYRMO_URL={server_env['MYRMO_URL']} "
+                                        f"MYRMO_AGENT_ID={server_env['MYRMO_AGENT_ID']} {hook_command}")
+                    put(name, "/root/.gemini/config/hooks.json", json.dumps(
+                        {"myrmo": {"PreInvocation": [{"type": "command", "command": hook_command}]}}))
             command, parse = agy_command(task, model), parse_agy_stream
         else:
             if with_myrmo:
@@ -606,6 +623,7 @@ def cmd_run(args: argparse.Namespace) -> int:
     (out / "environment.json").write_text(json.dumps({"plan": p, "colony": args.colony, "agent": args.agent,
                                                       "pioneer": models["pioneer"], "followers": models["followers"],
                                                       "colony_at_start": {"trails": colony_trails(args.colony), "seeded": seeded},
+                                                      "hook": args.hook or args.lookup, "lookup": args.lookup, "private": args.private,
                                                       "claude_code": args.claude_code_version, "opencode": args.opencode_version,
                                                       "gemini": args.gemini_version}, indent=2))
     by_id = {t.id: t for t in tasks}
@@ -628,7 +646,7 @@ def cmd_run(args: argparse.Namespace) -> int:
             break
         task, model, role = by_id[step["task"]], step["model"], step["role"]
         before = colony_trails(args.colony) if role == "pioneer" else 0
-        row = run_agent(task, model, role, step["condition"], args.colony, step["repetition"], env, args.agent)
+        row = run_agent(task, model, role, step["condition"], args.colony, step["repetition"], env, args.agent, args.hook or args.lookup, args.lookup, args.private)
         if role == "pioneer":
             # A pioneer that found a trail, or whose fix merged into one, leaves no new trail: its task's `with` runs
             # then measure the colony as it was, and the result says so.
@@ -669,6 +687,10 @@ def main(argv: list[str] | None = None) -> int:
             s.add_argument("--execute", action="store_true", help="really run the agents (spends money)")
             s.add_argument("--approved-usd", type=float, help="the most the person who pays accepts to spend")
             s.add_argument("--colony", default="http://localhost:8080", help="a local colony for the run, empty or seeded")
+            s.add_argument("--hook", action="store_true", help="antigravity: also install Myrmo's reminder hook (PreInvocation) in the conditions with Myrmo")
+            s.add_argument("--lookup", action="store_true", help="antigravity: the hook also searches the colony itself after a failure (implies --hook)")
+            s.add_argument("--private", action="store_true", help="the colony is a company's own: Myrmo runs in private mode "
+                           "(MYRMO_PRIVATE=1, the rules of `init --private`), so internal names stay in trails")
             s.add_argument("--seed-from", help="copy this colony's public trails into the local one first (for example https://myrmo.dev)")
             s.add_argument("--claude-code-version", default=CLAUDE_CODE_VERSION)
             s.add_argument("--opencode-version", default=OPENCODE_VERSION)
