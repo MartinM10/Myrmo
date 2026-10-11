@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.22.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.21.0...platform-v0.22.0) (2026-10-11)
+
+
+### Features
+
+* **plugin:** a hook for Antigravity that brings the Claude Code hook's reminders ([f5be5c3](https://github.com/MartinM10/Myrmo/commit/f5be5c32da57262b789c33f24712d857bbf668ff))
+* **plugin:** a hook for Antigravity that brings the Claude Code hook's reminders ([f7e8b79](https://github.com/MartinM10/Myrmo/commit/f7e8b79d62ad38e6cf5b2b000f0b95574ddfd5eb))
+* **seed:** the radar reads public issues about each release, and their sources go into provenance ([db2d941](https://github.com/MartinM10/Myrmo/commit/db2d94191b12e26f7a1024df13b6c3cd83969c86))
+* **seed:** the radar reads public issues about each release, and their sources go into provenance ([a97429b](https://github.com/MartinM10/Myrmo/commit/a97429b61436bb5c77701dcd32bacdbc40773096))
+
 ## [0.21.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.20.1...platform-v0.21.0) (2026-10-10)
 
 
