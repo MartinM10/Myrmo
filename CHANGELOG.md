@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.26.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.25.0...platform-v0.26.0) (2026-10-11)
+
+
+### Features
+
+* **bench:** the notes condition, the cheap alternative to beat ([4b151a8](https://github.com/MartinM10/Myrmo/commit/4b151a80135c7fb3aed1935dc8e20b25a47ac09b))
+* export a colony's trails as Markdown notes or a skill ([232c738](https://github.com/MartinM10/Myrmo/commit/232c7387295269592b8ae2634cc7578d554741ba))
+* export trails as Markdown notes or a skill, and a notes baseline in MyrmoBench ([8d93b4c](https://github.com/MartinM10/Myrmo/commit/8d93b4ce7eb37785c4f974d7e1da7d1d27745623))
+
+
+### Bug fixes
+
+* **mcp:** the hosted server's image builds again, and CI builds it ([b2810b4](https://github.com/MartinM10/Myrmo/commit/b2810b4e6435f424e017d47f360d87dfc7dd4d56))
+* **mcp:** the hosted server's image builds again, and CI builds it ([d621d75](https://github.com/MartinM10/Myrmo/commit/d621d75ccebfa29aaf3c177f44ddf0ab33c9ccf2))
+
 ## [0.25.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.24.0...platform-v0.25.0) (2026-10-11)
 
 
