@@ -248,6 +248,13 @@
     "kinds": {}
   },
   {
+    "input": "MYRMO_API_KEY=myk_0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    "output": "MYRMO_API_KEY=<redacted:api_key>",
+    "kinds": {
+      "api_key": 1
+    }
+  },
+  {
     "input": "npm_Abcdefghijklmnopqrstuvwxyz0123456789",
     "output": "<redacted:api_key>",
     "kinds": {

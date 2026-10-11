@@ -154,6 +154,7 @@ const RULES: Rule[] = [
   r("api_key", String.raw`\bxox[abprs]-[A-Za-z0-9\-]{10,}`, "", fixed("api_key")),
   r("api_key", String.raw`\bAIza[0-9A-Za-z_\-]{35}`, "", fixed("api_key")),
   r("api_key", String.raw`\b[rs]k_(?:live|test)_[A-Za-z0-9]{20,}`, "", fixed("api_key")),
+  r("api_key", String.raw`\bmyk_[0-9a-f]{64}\b`, "", fixed("api_key")),
   r("api_key", String.raw`\bnpm_[A-Za-z0-9]{36}\b`, "", fixed("api_key")),
   r("api_key", String.raw`\bhf_[A-Za-z0-9]{30,}`, "", fixed("api_key")),
   r("api_key", String.raw`\bSG\.[A-Za-z0-9_\-]{16,}\.[A-Za-z0-9_\-]{16,}`, "", fixed("api_key")),

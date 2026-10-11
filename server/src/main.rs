@@ -4,7 +4,9 @@
 //!   myrmo-server enrich   enrichment worker (run as many as needed)
 //!   myrmo-server all      both in one process, for small deployments
 //!   myrmo-server migrate-fingerprints   refile every trail under its fp2 (also done once, in the background, at start)
+//!   myrmo-server keys add <person> | list | revoke <person>   access keys of a private colony (MYRMO_REQUIRE_KEY=1)
 
+mod access;
 mod analytics;
 mod api;
 mod config;
@@ -43,6 +45,11 @@ async fn main() -> Result<()> {
 
     let mode = std::env::args().nth(1).unwrap_or_else(|| "serve".into());
     let cfg = config::Config::from_env();
+    if mode == "keys" {
+        // Only Valkey is needed: keys can be managed while the rest of the colony is down.
+        let args: Vec<String> = std::env::args().skip(2).collect();
+        return access::cli(&cfg.redis_url, &args).await;
+    }
     let st = state::AppState::connect(cfg.clone()).await?;
 
     if matches!(mode.as_str(), "serve" | "enrich" | "all") {
@@ -70,7 +77,7 @@ async fn main() -> Result<()> {
             serve(st).await
         }
         other => anyhow::bail!(
-            "unknown mode {other:?}; expected serve, enrich, all or migrate-fingerprints"
+            "unknown mode {other:?}; expected serve, enrich, all, migrate-fingerprints or keys"
         ),
     }
 }

@@ -176,6 +176,46 @@ pub struct Caller {
     pub client: String,
 }
 
+/// On a colony that requires keys: the agent id of the person whose key the request carries (`None` for the operator
+/// token, which acts under the address). A missing or unknown key is refused, and so is every request while Valkey
+/// cannot say whose a key is: unlike the rate limiter, access fails closed.
+async fn key_holder(st: &AppState, headers: &HeaderMap) -> ApiResult<Option<String>> {
+    let unauthorized = || {
+        ApiError::new(
+            StatusCode::UNAUTHORIZED,
+            "unauthorized",
+            "This colony is private: send your access key as `Authorization: Bearer <key>` (MYRMO_API_KEY in the clients).",
+        )
+    };
+    let given = crate::access::bearer(
+        headers
+            .get(header::AUTHORIZATION)
+            .and_then(|v| v.to_str().ok()),
+    )
+    .ok_or_else(unauthorized)?;
+    if st
+        .cfg
+        .admin_token
+        .as_deref()
+        .is_some_and(|expected| token_matches(expected, given))
+    {
+        return Ok(None);
+    }
+    let mut con = st.redis();
+    match crate::access::person_of(&mut con, given).await {
+        Ok(Some(person)) => Ok(Some(crate::access::agent_of(&person))),
+        Ok(None) => Err(unauthorized()),
+        Err(err) => {
+            tracing::warn!(error = %err, "access keys unavailable");
+            Err(ApiError::new(
+                StatusCode::SERVICE_UNAVAILABLE,
+                "unavailable",
+                "The colony cannot check access keys right now. Try again shortly.",
+            ))
+        }
+    }
+}
+
 fn valid_agent_id(id: &str) -> bool {
     (8..=64).contains(&id.len())
         && id
@@ -197,12 +237,18 @@ async fn rate_limit(
         &st.cfg.trusted_proxies,
     );
     let client = keys::client_key(&st.cfg.salt, &address);
-    let declared_agent = req
-        .headers()
-        .get("x-myrmo-agent")
-        .and_then(|v| v.to_str().ok())
-        .filter(|v| valid_agent_id(v))
-        .map(str::to_string);
+    let declared_agent = if st.cfg.require_key {
+        match key_holder(&st, req.headers()).await {
+            Ok(holder) => holder,
+            Err(err) => return err.into_response(),
+        }
+    } else {
+        req.headers()
+            .get("x-myrmo-agent")
+            .and_then(|v| v.to_str().ok())
+            .filter(|v| valid_agent_id(v))
+            .map(str::to_string)
+    };
     let declared = declared_agent.is_some();
     let agent = declared_agent.unwrap_or_else(|| client.clone());
     req.extensions_mut().insert(Caller {

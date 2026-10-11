@@ -45,6 +45,9 @@ pub struct Config {
     /// Bearer token for operator endpoints (removing a trail). Unset, or shorter than 16
     /// characters, disables them.
     pub admin_token: Option<String>,
+    /// A private colony: every `/v1` request needs a person's access key (`myrmo-server keys add`), and that person is
+    /// the caller's identity. `MYRMO_REQUIRE_KEY=1`.
+    pub require_key: bool,
     /// Public address of the website, used to build approval links for drafts.
     pub public_url: String,
     /// Minimum cosine similarity for a semantic match.
@@ -102,6 +105,7 @@ impl Config {
                 .trim_end_matches('/')
                 .to_string(),
             admin_token: var("MYRMO_ADMIN_TOKEN").filter(|t| t.len() >= 16),
+            require_key: get("MYRMO_REQUIRE_KEY", "0") == "1",
             min_similarity: get("MYRMO_MIN_SIMILARITY", "0.75").parse().unwrap_or(0.75),
             max_per_fingerprint: get("MYRMO_MAX_PER_FINGERPRINT", "64").parse().unwrap_or(64),
             demand_min_agents: get("MYRMO_DEMAND_MIN_AGENTS", "3").parse().unwrap_or(3),

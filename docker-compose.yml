@@ -36,6 +36,7 @@ services:
       # Operator endpoints (removing a trail) and the approval links of drafts. Only the gateway
       # needs them. The operator token must be at least 16 characters; unset disables them.
       MYRMO_ADMIN_TOKEN: ${MYRMO_ADMIN_TOKEN:-}
+      MYRMO_REQUIRE_KEY: ${MYRMO_REQUIRE_KEY:-0}
       MYRMO_PUBLIC_URL: ${MYRMO_PUBLIC_URL:-http://localhost:3000}
     ports:
       - "8080:8080"
