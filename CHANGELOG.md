@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.23.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.22.0...platform-v0.23.0) (2026-10-11)
+
+
+### Features
+
+* **bench:** a simulated company suite, private mode, and the hook's own lookup ([f99c74d](https://github.com/MartinM10/Myrmo/commit/f99c74d301655b46fae49af154b43b9e0ae3705c))
+* **mcp:** private mode for an organisation's own colony ([e274b32](https://github.com/MartinM10/Myrmo/commit/e274b3254fc1e6b1df1dde16bebc3158f729a68e))
+* **plugin:** the Antigravity hook can look Myrmo up itself, and shells' "not found" lines are errors ([e088d15](https://github.com/MartinM10/Myrmo/commit/e088d153335ed4e0c15fe524fc44fd01ef389c96))
+* private mode for company colonies, Antigravity hook lookup, and a simulated company bench suite ([9abb063](https://github.com/MartinM10/Myrmo/commit/9abb063fec8bb7fa887576e69c46e787cd7edc87))
+
+
+### Bug fixes
+
+* **seed:** a package manager's banner is not an error, and workers skip self-explaining errors ([a98730e](https://github.com/MartinM10/Myrmo/commit/a98730eac6decde695f9f4e876590790a3ca4f70))
+
+
+### Documentation
+
+* the Antigravity hook and how to register it by hand ([838c21b](https://github.com/MartinM10/Myrmo/commit/838c21b0a869c65149138f5445d8cb3bccc99545))
+
 ## [0.22.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.21.0...platform-v0.22.0) (2026-10-11)
 
 
