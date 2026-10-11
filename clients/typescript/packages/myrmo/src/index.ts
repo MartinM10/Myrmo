@@ -3,7 +3,7 @@ export { Session, type SessionOptions, type Success, type Hints } from "./sessio
 export { fingerprint, fingerprint2, normalizeMessage, normalizeMessage2, guessErrorType, PREFIX as FINGERPRINT_PREFIX, PREFIX_2 as FINGERPRINT_PREFIX_2 } from "./fingerprint.js";
 export { namesConflict, placeholderNames } from "./names.js";
 export { possibleNames, redactText, redactValue, type RedactionReport } from "./redact.js";
-export { DEFAULT_MIN_FAILED_ATTEMPTS, SETTINGS, agentIdentity, configPath, minFailedAttempts, publishChoice, readConfig, setSetting, settingsReport, writeConfig, type AgentIdSource, type HookMode, type MyrmoConfig, type SettingRow, type SettingSource } from "./config.js";
+export { DEFAULT_MIN_FAILED_ATTEMPTS, SETTINGS, agentIdentity, configPath, fileColony, minFailedAttempts, publishChoice, readConfig, setSetting, settingsReport, writeConfig, type AgentIdSource, type ColonySettings, type HookMode, type MyrmoConfig, type SettingRow, type SettingSource } from "./config.js";
 export { detectEnvironment, parsePackage } from "./environment.js";
 export { attemptsPhrase, formatResult, startHere, type FormatOptions } from "./format.js";
 export type * from "./types.js";

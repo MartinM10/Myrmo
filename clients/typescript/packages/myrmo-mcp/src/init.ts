@@ -14,9 +14,11 @@
 // a table would break).
 
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { writeConfig, type PublishMode } from "myrmo";
 
 export const AGENTS_BLOCK = `<!-- myrmo:start -->
 ## Myrmo: shared memory of solved errors
@@ -200,7 +202,11 @@ export interface InitOptions {
   dryRun: boolean;
   agentsMd?: string; // a markdown file to put the block in
   readOnly?: boolean; // the block for repositories where agents must not publish
-  private?: boolean; // the rules for an organisation's private colony (the server needs MYRMO_URL and MYRMO_PRIVATE=1)
+  private?: boolean; // the rules and hooks for an organisation's private colony
+  url?: string; // another colony to use, saved in the settings file with what goes with it
+  key?: string; // that colony's access key
+  publish?: PublishMode; // how publishing works for that colony only
+  hooksSource?: string; // where the hook scripts to install come from (default: dist/hooks of this package)
   env?: NodeJS.ProcessEnv; // where to look for the claude command (default: the process environment)
   rules?: boolean; // write the usage rules to Gemini CLI's and Windsurf's global instructions (default true)
   home?: string;
@@ -293,6 +299,62 @@ function claudeCliAvailable(): boolean {
   return r.status === 0;
 }
 
+const PUBLIC_HOSTS = new Set(["myrmo.dev", "www.myrmo.dev"]);
+
+/** The Antigravity hook entry, as `~/.gemini/config/hooks.json` holds it. */
+export function mergeHooks(current: string | undefined, command: string): { text: string; changed: boolean } | null {
+  let hooks: Record<string, unknown> = {};
+  if (current !== undefined && current.trim() !== "") {
+    try {
+      const parsed = JSON.parse(current) as unknown;
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
+      hooks = parsed as Record<string, unknown>;
+    } catch {
+      return null;
+    }
+  }
+  const mine = { PreInvocation: [{ type: "command", command }] };
+  if (JSON.stringify(hooks.myrmo) === JSON.stringify(mine)) return { text: current ?? "", changed: false };
+  return { text: JSON.stringify({ ...hooks, myrmo: mine }, null, 2) + "\n", changed: true };
+}
+
+/**
+ * Point this machine at another colony: saves it in the settings file (with its key, private mode and publish choice,
+ * which apply only to that colony), and for Antigravity installs the hook that looks errors up there.
+ */
+function setUpColony(opts: InitOptions, home: string, log: (l: string) => void, wanted: (id: string) => boolean): void {
+  const verb = opts.dryRun ? "would" : "did";
+  const url = opts.url!.trim().replace(/\/+$/, "");
+  const colony = { url, ...(opts.key ? { api_key: opts.key } : {}), ...(opts.private ? { private: true } : {}), ...(opts.publish ? { publish: opts.publish } : {}) };
+  if (!opts.dryRun) writeConfig({ colony });
+  const what = [opts.key ? "its access key" : "", opts.private ? "private mode" : "", opts.publish ? `publish ${opts.publish}` : ""].filter(Boolean).join(", ");
+  log(`Colony: ${verb} save ${url}${what ? ` with ${what}` : ""} in the settings file; the key and the choices apply only to that colony`);
+
+  // Antigravity has no plugin: copy the hook next to the settings and register it, so that after a failed command it
+  // looks the error up in this colony (and reminds the agent to report and to publish).
+  const agy = targets(home).find((t) => t.id === "antigravity")!;
+  if (!opts.private || !wanted("antigravity") || (opts.clients.length === 0 && !existsSync(agy.marker))) return;
+  const source = opts.hooksSource ?? join(dirname(fileURLToPath(import.meta.url)), "hooks");
+  const dir = join(home, ".myrmo", "hooks");
+  const script = join(dir, "antigravity-hook.mjs");
+  const file = join(home, ".gemini", "config", "hooks.json");
+  const current = existsSync(file) ? readFileSync(file, "utf8") : undefined;
+  const merged = mergeHooks(current, `node "${script}"`);
+  if (!merged) {
+    log(`Antigravity: ${file} is not valid JSON, left untouched; the hook was not registered`);
+    return;
+  }
+  if (!opts.dryRun) {
+    mkdirSync(dir, { recursive: true });
+    for (const name of ["antigravity-hook.mjs", "on-failure.mjs", "lookup.mjs"]) copyFileSync(join(source, name), join(dir, name));
+    if (merged.changed) {
+      mkdirSync(dirname(file), { recursive: true });
+      writeFileSync(file, merged.text);
+    }
+  }
+  log(`Antigravity: ${verb} install the hook in ${dir} and register it in ${file}`);
+}
+
 export function runInit(opts: InitOptions): { configured: string[]; skipped: string[] } {
   const log = opts.log ?? ((l: string) => console.log(l));
   const home = opts.home ?? homedir();
@@ -301,6 +363,7 @@ export function runInit(opts: InitOptions): { configured: string[]; skipped: str
   const configured: string[] = [];
   const skipped: string[] = [];
   const verb = opts.dryRun ? "would" : "did";
+  if (opts.url) setUpColony(opts, home, log, wanted);
 
   const alreadyThere = wanted(CLAUDE_CODE) ? claudeCodeSetUp(home) : null;
   const slash = `In Claude Code's chat run: /plugin marketplace add ${MARKETPLACE}   then   /plugin install ${PLUGIN}`;
@@ -407,7 +470,26 @@ export function parseInitArgs(args: string[]): InitOptions | string {
     } else if (a === "--read-only") opts.readOnly = true;
     else if (a === "--no-rules") opts.rules = false;
     else if (a === "--private") opts.private = true;
-    else return `Unknown option ${a}. Usage: myrmo-mcp init [--client <id>]... [--agents-md [file] [--read-only]] [--private] [--no-rules] [--dry-run]`;
+    else if (a === "--url" || a === "--key" || a === "--publish") {
+      const value = args[++i];
+      if (!value || value.startsWith("--")) return `${a} needs a value`;
+      if (a === "--url") opts.url = value;
+      else if (a === "--key") opts.key = value;
+      else if (value === "auto" || value === "ask" || value === "off") opts.publish = value;
+      else return "--publish takes auto, ask or off";
+    } else return `Unknown option ${a}. Usage: myrmo-mcp init [--client <id>]... [--agents-md [file] [--read-only]] [--url <colony> [--key <key>] [--private] [--publish auto|ask|off]] [--no-rules] [--dry-run]`;
+  }
+  if ((opts.key || opts.publish) && !opts.url) return "--key and --publish go with --url: they belong to one colony";
+  if (opts.url) {
+    let host = "";
+    try {
+      const u = new URL(opts.url);
+      if (u.protocol !== "https:" && u.protocol !== "http:") throw new Error();
+      host = u.hostname.toLowerCase();
+    } catch {
+      return `--url needs a colony address such as https://myrmo.example.internal, not ${JSON.stringify(opts.url)}`;
+    }
+    if (PUBLIC_HOSTS.has(host) && (opts.private || opts.key)) return "--private and --key are for your own colony, not the public one";
   }
   if (opts.readOnly && !opts.agentsMd) return "--read-only goes with --agents-md";
   if (opts.readOnly && opts.private) return "--read-only and --private cannot go together";

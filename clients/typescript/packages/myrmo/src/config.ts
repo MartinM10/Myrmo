@@ -11,6 +11,14 @@
 // no personal data and can be deleted at any time.
 //
 // For each setting the order is: an explicit option, the environment variable, this file, the default.
+//
+// `colony` points the clients at another colony, such as an organisation's private one, and holds what goes with it:
+//
+//   "colony": { "url": "https://myrmo.example.internal", "api_key": "myk_...", "private": true, "publish": "auto" }
+//
+// Its key, private mode and publish choice apply only while the colony in use is that URL, so a key is never sent to
+// another colony and a choice made for a private colony never applies to the public one. `npx myrmo-mcp init --url`
+// writes it.
 
 import { randomUUID } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -29,6 +37,41 @@ export interface MyrmoConfig {
   hook?: HookMode;
   /** Send no agent id at all. */
   anonymous?: boolean;
+  /** Another colony to use, and what goes with it (see the top of this file). */
+  colony?: ColonySettings;
+}
+
+export interface ColonySettings {
+  url: string;
+  /** The access key of a colony that requires one. */
+  api_key?: string;
+  /** An organisation's own colony: agents keep its internal names (the MCP server's private mode). */
+  private?: boolean;
+  /** How publishing works for this colony only. */
+  publish?: PublishMode;
+}
+
+const trimUrl = (url: string) => url.trim().replace(/\/+$/, "");
+
+function parseColony(raw: unknown): ColonySettings | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const c = raw as Record<string, unknown>;
+  if (typeof c.url !== "string" || !/^https?:\/\/\S+$/.test(c.url.trim())) return undefined;
+  const colony: ColonySettings = { url: trimUrl(c.url) };
+  if (typeof c.api_key === "string" && /^[\x21-\x7e]{8,256}$/.test(c.api_key)) colony.api_key = c.api_key;
+  if (typeof c.private === "boolean") colony.private = c.private;
+  if (MODES.includes(c.publish as PublishMode)) colony.publish = c.publish as PublishMode;
+  return colony;
+}
+
+/**
+ * The file's colony settings, if they apply: when no URL is in use yet (`inUse` undefined, the file then chooses the
+ * colony) or when the URL in use is the file's. Never for another colony.
+ */
+export function fileColony(inUse?: string): ColonySettings | undefined {
+  const colony = readConfig().colony;
+  if (!colony) return undefined;
+  return inUse === undefined || trimUrl(inUse) === colony.url ? colony : undefined;
 }
 
 export const DEFAULT_MIN_FAILED_ATTEMPTS = 1;
@@ -53,6 +96,8 @@ export function readConfig(): MyrmoConfig {
     if (attempts !== undefined) config.min_failed_attempts = attempts;
     if (raw.hook === "on" || raw.hook === "failures" || raw.hook === "off") config.hook = raw.hook;
     if (typeof raw.anonymous === "boolean") config.anonymous = raw.anonymous;
+    const colony = parseColony(raw.colony);
+    if (colony) config.colony = colony;
     return config;
   } catch {
     // Missing or unreadable: no choice has been made.
@@ -77,11 +122,14 @@ export function writeConfig(patch: { [K in keyof MyrmoConfig]?: MyrmoConfig[K] |
  * has chosen yet: the clients then publish nothing until the user has been asked once (the MCP
  * server asks the first time an agent wants to publish, with "ask" preselected).
  */
-export function publishChoice(explicit?: PublishMode): { mode: PublishMode; source: "option" | "env" | "file" | "default" } {
+export function publishChoice(explicit?: PublishMode, colonyUrl?: string): { mode: PublishMode; source: "option" | "env" | "file" | "default" } {
   const valid = (v: unknown): v is PublishMode => MODES.includes(v as PublishMode);
   if (valid(explicit)) return { mode: explicit, source: "option" };
   const fromEnv = process.env.MYRMO_PUBLISH?.trim();
   if (valid(fromEnv)) return { mode: fromEnv, source: "env" };
+  // A choice made for the colony in use (an organisation's own) comes before the general one.
+  const forColony = colonyUrl ? fileColony(colonyUrl)?.publish : undefined;
+  if (forColony) return { mode: forColony, source: "file" };
   const fromFile = readConfig().publish;
   if (fromFile) return { mode: fromFile, source: "file" };
   return { mode: "off", source: "default" };

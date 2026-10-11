@@ -8,6 +8,7 @@ import { createServer as createHttpServer, type IncomingMessage, type ServerResp
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { Colony, configPath, minFailedAttempts as resolveMinFailedAttempts, publishChoice, readConfig, setSetting, settingsReport, type PublishMode } from "myrmo";
+import * as sdk from "myrmo";
 import { parseInitArgs, runInit } from "./init.js";
 import { createServer, privateMode, VERSION } from "./server.js";
 
@@ -20,7 +21,11 @@ const option = (name: string, fallback: string) => {
 
 // MYRMO_PUBLISH wins, then ~/.myrmo/config.json, then "nobody has chosen yet": the first time an agent wants to
 // publish, the user is asked (with "ask" preselected) and nothing is sent until they answer.
-const choice = publishChoice();
+// The colony this server talks to: MYRMO_URL, else the one `init --url` saved, else the public one.
+const colonyUrl = new Colony({ agentId: false }).url;
+// `fileColony` arrived with myrmo 0.13; with an older SDK there is no colony in the settings file to read.
+const savedColony = (sdk as { fileColony?: (url?: string) => { private?: boolean } | undefined }).fileColony?.(colonyUrl);
+const choice = (publishChoice as (explicit?: PublishMode, url?: string) => ReturnType<typeof publishChoice>)(undefined, colonyUrl);
 const publishMode: PublishMode = choice.mode;
 const publishChosen = choice.source !== "default";
 const minFailedAttempts = resolveMinFailedAttempts().value;
@@ -75,7 +80,7 @@ if (flag("--http")) {
   await serveHttp(Number(option("--port", process.env.PORT ?? "3333")), option("--host", "0.0.0.0"));
 } else {
   const colony = new Colony({ publish: publishMode });
-  const privacy = privateMode(colony.url);
+  const privacy = privateMode(colony.url, process.env, savedColony?.private === true);
   if (privacy.warning) console.error(`myrmo-mcp: ${privacy.warning}`);
   const server = createServer({
     colony,
@@ -83,7 +88,7 @@ if (flag("--http")) {
     publishMode,
     publishChosen,
     readPublishChoice: () => {
-      const current = publishChoice();
+      const current = (publishChoice as (explicit?: PublishMode, url?: string) => ReturnType<typeof publishChoice>)(undefined, colonyUrl);
       return { mode: current.mode, chosen: current.source !== "default" };
     },
     minFailedAttempts,

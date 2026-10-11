@@ -12,6 +12,15 @@ with `python -m myrmo config publish auto|ask|off`, never from agent code. `agen
 pseudonym the client creates by itself the first time it runs, so that reports from different
 machines behind one address are not mistaken for a single agent. It holds no personal data and can be
 deleted at any time.
+
+`colony` points the clients at another colony, such as an organisation's private one, and holds what
+goes with it:
+
+    "colony": {"url": "https://myrmo.example.internal", "api_key": "myk_...", "private": true, "publish": "auto"}
+
+Its key, private mode and publish choice apply only while the colony in use is that URL, so a key is
+never sent to another colony and a choice made for a private colony never applies to the public one.
+`npx myrmo-mcp init --url` writes it.
 """
 
 from __future__ import annotations
@@ -67,7 +76,36 @@ def read_config() -> Dict[str, Any]:
         config["hook"] = raw["hook"]
     if isinstance(raw.get("anonymous"), bool):
         config["anonymous"] = raw["anonymous"]
+    colony = _parse_colony(raw.get("colony"))
+    if colony:
+        config["colony"] = colony
     return config
+
+
+_URL = re.compile(r"^https?://\S+$")
+_KEY = re.compile(r"^[\x21-\x7e]{8,256}$")
+
+
+def _parse_colony(raw: Any) -> Optional[Dict[str, Any]]:
+    if not isinstance(raw, dict) or not isinstance(raw.get("url"), str) or not _URL.match(raw["url"].strip()):
+        return None
+    colony: Dict[str, Any] = {"url": raw["url"].strip().rstrip("/")}
+    if isinstance(raw.get("api_key"), str) and _KEY.match(raw["api_key"]):
+        colony["api_key"] = raw["api_key"]
+    if isinstance(raw.get("private"), bool):
+        colony["private"] = raw["private"]
+    if raw.get("publish") in MODES:
+        colony["publish"] = raw["publish"]
+    return colony
+
+
+def file_colony(in_use: Optional[str] = None) -> Optional[Dict[str, Any]]:
+    """The file's colony settings, if they apply: when no URL is in use yet (the file then chooses the
+    colony) or when the URL in use is the file's. Never for another colony."""
+    colony = read_config().get("colony")
+    if not colony:
+        return None
+    return colony if in_use is None or in_use.strip().rstrip("/") == colony["url"] else None
 
 
 def write_config(**patch: Any) -> None:
@@ -83,15 +121,19 @@ def write_config(**patch: Any) -> None:
         pass  # not supported on every platform
 
 
-def publish_choice(explicit: Optional[str] = None) -> Tuple[str, str]:
+def publish_choice(explicit: Optional[str] = None, colony_url: Optional[str] = None) -> Tuple[str, str]:
     """`(mode, source)`. `source` is "option", "env", "file" or "default"; "default" means nobody
     has chosen yet, so nothing is published until the user has been asked (the MCP server asks the
-    first time an agent wants to publish, with "ask" preselected)."""
+    first time an agent wants to publish, with "ask" preselected). A choice saved for the colony in
+    use (`colony_url`, an organisation's own) comes before the general one."""
     if explicit in MODES:
         return explicit, "option"
     from_env = os.environ.get("MYRMO_PUBLISH", "").strip()
     if from_env in MODES:
         return from_env, "env"
+    for_colony = (file_colony(colony_url) or {}).get("publish") if colony_url else None
+    if for_colony:
+        return for_colony, "file"
     from_file = read_config().get("publish")
     if from_file:
         return from_file, "file"

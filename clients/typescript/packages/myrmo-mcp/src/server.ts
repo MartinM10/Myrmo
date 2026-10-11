@@ -44,8 +44,9 @@ const PUBLIC_HOSTS = new Set(["myrmo.dev", "www.myrmo.dev"]);
  * Whether the server runs for a private colony. Only the user's environment can say so, and never for the public
  * colony: there, internal names would be published for anyone to read.
  */
-export function privateMode(url: string, env: Record<string, string | undefined> = process.env): { on: boolean; warning?: string } {
-  if (env.MYRMO_PRIVATE !== "1") return { on: false };
+export function privateMode(url: string, env: Record<string, string | undefined> = process.env, fromFile = false): { on: boolean; warning?: string } {
+  // MYRMO_PRIVATE=1, or `"private": true` for this very colony in the settings file (`init --url ... --private`).
+  if (env.MYRMO_PRIVATE !== "1" && !fromFile) return { on: false };
   let host = "";
   try {
     host = new URL(url).hostname.toLowerCase();

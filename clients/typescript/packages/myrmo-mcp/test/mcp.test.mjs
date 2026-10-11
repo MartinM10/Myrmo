@@ -666,3 +666,19 @@ test("MYRMO_PRIVATE is ignored for the public colony", async () => {
   assert.match(client.getInstructions() ?? "", /everything published is public/i);
   await client.close();
 });
+
+test("private mode can come from the settings file that `init --url --private` writes, for that colony only", async () => {
+  const config = freshConfig();
+  writeFileSync(config, JSON.stringify({ colony: { url: colonyUrl, private: true, publish: "auto" } }));
+  const client = await stdioClient("", { env: { MYRMO_CONFIG: config, MYRMO_PRIVATE: "" } });
+  assert.match(client.getInstructions() ?? "", /private colony/);
+  const before = published();
+  await client.callTool({ name: "myrmo_publish", arguments: { trail } });
+  assert.equal(published(), before + 1, "the colony's own publish choice applies");
+  await client.close();
+
+  // The same file, but the server is pointed at another colony: the saved private mode does not follow.
+  const other = await stdioClient("ask", { env: { MYRMO_CONFIG: config, MYRMO_PRIVATE: "", MYRMO_URL: "https://myrmo.dev" } });
+  assert.match(other.getInstructions() ?? "", /everything published is public/i);
+  await other.close();
+});

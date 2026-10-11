@@ -5,7 +5,7 @@
 //   2. GET /v1/trails/by-fingerprint/{fp} (cacheable by any CDN; most traffic ends here)
 //   3. POST /v1/search (embedding + vector search; only for errors the colony has not fingerprinted)
 
-import { agentIdentity, publishChoice } from "./config.js";
+import { agentIdentity, fileColony, publishChoice } from "./config.js";
 import { detectEnvironment, parsePackage } from "./environment.js";
 import { fingerprint2, guessErrorType } from "./fingerprint.js";
 import { namesConflict } from "./names.js";
@@ -95,12 +95,15 @@ export class Colony {
   private readonly cache = new Map<string, { at: number; value: SearchResult | null }>();
 
   constructor(options: ColonyOptions = {}) {
-    this.url = (options.url ?? env("MYRMO_URL") ?? DEFAULT_URL).replace(/\/+$/, "");
-    this.apiKey = options.apiKey ?? env("MYRMO_API_KEY");
+    // An explicit URL or MYRMO_URL first, then the colony in the settings file; its key only goes to its own URL.
+    const named = options.url ?? env("MYRMO_URL")?.trim() ?? undefined;
+    const fromFile = fileColony(named || undefined);
+    this.url = (named || fromFile?.url || DEFAULT_URL).replace(/\/+$/, "");
+    this.apiKey = options.apiKey ?? env("MYRMO_API_KEY") ?? fileColony(this.url)?.api_key;
     this.agentId = agentIdentity(options.agentId).id;
     const model = (options.model ?? env("MYRMO_AGENT_MODEL"))?.trim();
     this.model = model && model.toLowerCase() !== "unknown" ? model : undefined;
-    const choice = publishChoice(options.publish);
+    const choice = publishChoice(options.publish, this.url);
     this.publishMode = choice.mode;
     this.publishSource = choice.source;
     this.timeoutMs = options.timeoutMs ?? 10_000;
