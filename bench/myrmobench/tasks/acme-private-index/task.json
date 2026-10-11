@@ -3,9 +3,9 @@
   "title": "A company's private package index answers 401",
   "image_tag": "myrmobench/acme-private-index",
   "prompt": "In /work, install the requirements and make `python app.py` print APP OK. One of them is our internal logging package, from the company's private package index. `pip install -r requirements.txt` must keep working on this machine afterwards. Do not change the index server, the company's tools or the machine's token.",
-  "error_line": "User for 127.0.0.1:8081: ERROR: Exception: EOFError: EOF when reading a line",
+  "error_line": "ERROR: No matching distribution found for acmeco-internal-logging==2.1.0",
   "max_minutes": 15,
   "symptom": "cd /work && pip install -r requirements.txt",
-  "symptom_match": "User for 127.0.0.1:8081|EOFError",
+  "symptom_match": "No matching distribution found for acmeco-internal-logging",
   "ready": "test -f /tmp/index.ready"
 }

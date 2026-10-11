@@ -2,6 +2,9 @@
 # configures pip for it. Nothing a model can know: the package does not exist on PyPI, and the way to authenticate is
 # the company's own tool.
 FROM python:3.12.4-slim-bookworm
+# pip never waits for a username: an agent's shell has no terminal, and a prompt that waits forever hangs the agent
+# instead of showing it the error (as CI machines set it).
+ENV PIP_NO_INPUT=1
 COPY acme/ /opt/acme/
 RUN cd /opt/acme/pkg && pip wheel --no-deps --no-cache-dir -q -w /opt/acme/index/acmeco-internal-logging . \
  && rm -rf /opt/acme/pkg \
