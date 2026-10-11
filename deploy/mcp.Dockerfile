@@ -6,6 +6,8 @@ COPY clients/typescript/packages/myrmo/package.json packages/myrmo/
 COPY clients/typescript/packages/myrmo-mcp/package.json packages/myrmo-mcp/
 RUN npm ci --no-audit --no-fund
 COPY clients/typescript/packages packages
+# The hook scripts that `init` installs for Antigravity ship inside the package (scripts/copy-hooks.mjs).
+COPY plugins/myrmo/scripts plugins/myrmo/scripts
 RUN npm run build && npm prune --omit=dev
 
 FROM node:22-alpine
