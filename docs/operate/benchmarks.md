@@ -13,13 +13,15 @@ Suites in `bench/`: MyrmoBench, load, retrieval, scale and the leak tests. Each 
 ## MyrmoBench
 
 > [!WARNING]
-> **Measured, no saving shown yet.** The runner and four of the twelve tasks exist in `bench/myrmobench/`. Claude Sonnet
-> solves the four at once; cheaper models struggle with them, and a first full run with two of them (below) shows no saving
-> beyond noise, so no number on this site says Myrmo saves work. The other eight tasks are specified below and not built.
+> **Measured, no saving shown yet.** Eight tasks are built in `bench/myrmobench/`: four public breakages and four problems
+> of a simulated company (`acme-*`). Claude Sonnet solves the public four at once; with cheaper models the runs so far
+> (below) show no saving beyond noise, so no number on this site says Myrmo saves work. The company suite, run against a
+> private colony, is in progress. Eight more public tasks are specified below and not built.
 
 Does following a trail actually save agents work?
 
-**Tasks.** Twelve Docker containers (the first four are built), each with a real breakage agents hit every day:
+**Tasks.** Twelve public breakages agents hit every day, specified as Docker containers (four are built), and a suite of a
+simulated company (below):
 
 | Task | Breakage |
 |---|---|
@@ -142,8 +144,44 @@ What it says, read honestly:
 - How many runs actually searched is not known for this run: the colony counted 41 searches over 72 runs with Myrmo
   connected. Each run now records its Myrmo calls (`myrmo_calls`).
 
-Next: more repetitions per cell, tasks from breakages newer than the models, and a closer look at what makes a weak model
-follow a right trail and ignore a near miss (the relevance check and the way results are worded).
+**GPT-OSS with the rules, then with a reminder hook (2026-10-11).** The same four tasks on Antigravity, follower
+`gpt-oss-120b-medium`, five runs per cell, the seeded colony; the second run adds Myrmo's reminder hook
+(`--hook`: a note after every failed command). Both folders were rebuilt from the runs' console output after the
+originals were lost, so they keep success and tokens but not turns or wall time
+([`myrmobench-20261011-0938`](https://github.com/MartinM10/Myrmo/tree/main/bench/results/myrmobench-20261011-0938),
+[`-1046`](https://github.com/MartinM10/Myrmo/tree/main/bench/results/myrmobench-20261011-1046)):
+
+| Run | Condition | Solved | Runs that searched Myrmo |
+|---|---|---|---|
+| rules only | without | 10 of 20 | — |
+| | unseen | 10 of 20 | 2 of 20 |
+| | with | 12 of 20 | 4 of 20 |
+| rules and reminder hook | unseen | 11 of 20 | 4 of 20 |
+| | with | 11 of 20 | 3 of 20 |
+
+- When it reads the right trail, a weak model solves what it does not on its own: on `pg-scram` GPT-OSS goes from 0 of 5
+  to 2 of 5 with the pioneer's trail, and both successes are runs that searched.
+- But it rarely searches, with the rules in front of it or a reminder after each failure, and on `uv-path` it never
+  consulted the right trail the colony held. So the hooks can now look the error up themselves (`--lookup`; on by default
+  for a private colony): the trail reaches the agent whether or not it thinks of Myrmo.
+
+**A simulated company.** A trail is worth most where a model cannot know the answer, and the clearest case is what is
+internal to one organisation. Four tasks play the problems of a fictional company, Acme, whose own tools are in the image:
+
+| Task | Problem |
+|---|---|
+| `acme-deploy-policy` | the deploy script stops on "policy REL-7 violated"; the policy wants a release record the changelog lacks |
+| `acme-private-index` | `pip install` stops at a username prompt for the company's package index; its auth command fixes it |
+| `acme-db-lock` | a dead CI runner left the migration lock; removing it by hand trips the lock audit, the supported unlock does not |
+| `acme-config-v3` | the internal framework's version 3 moved the settings into sections and only answers `E1042`; it ships bytecode only |
+
+They run against an empty colony in private mode (`--private`: `MYRMO_PRIVATE=1` and the rules of `init --private`), as a
+team's own colony would start. First measured, without Myrmo: GPT-OSS solves `acme-deploy-policy` in 1 of 5 runs and
+`acme-db-lock` in 2 of 5; Gemini Flash solves all of them, in 15 to 20 turns and 160k to 200k tokens each. The `with`
+condition is running.
+
+Next: the company suite with the trails in the colony and the automatic lookup, and a handoff scenario (one agent migrates,
+another deploys) to measure procedures against a Markdown handoff.
 
 ```bash
 python bench/myrmobench/run.py list
@@ -209,6 +247,11 @@ differences with the other agents: its web
 tools (`search_web`, `read_url_content`, the browser) cannot be switched off from its settings, so they are available in
 every condition and each run records how often the agent used them (`web_tool_calls`); and agy reports no exit code for a
 command, so a failed attempt is a command whose output reads like an error, an estimate.
+
+Three options change what Antigravity gets in the conditions with Myrmo: `--hook` installs the plugin's reminder hook
+(`antigravity-hook.mjs`, run before every call to the model), `--lookup` also lets it search the colony itself after a
+failed command and show a strong match (implies `--hook`), and `--private` runs Myrmo in private mode, for the company
+suite. The run's `environment.json` records them.
 
 `run` does nothing without `--execute` and `--approved-usd`, refuses an amount below the plan's ceiling, and stops when
 the cost the agent CLI reports reaches the approved amount. Each run starts from a fresh container that has the agent
