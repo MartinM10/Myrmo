@@ -66,6 +66,28 @@ if (args[0] === "config") {
 }
 
 // `myrmo-mcp init` registers this server with the MCP clients found on the machine.
+// `myrmo-mcp export <dir> [--skill]`: the colony's trails as Markdown notes (an Obsidian vault, a git folder, or with
+// --skill a Claude Code skill), so that what a team learned is never tied to Myrmo.
+if (args[0] === "export") {
+  const dir = args[1];
+  if (!dir || dir.startsWith("--")) {
+    console.error("Usage: myrmo-mcp export <dir> [--skill]");
+    process.exit(2);
+  }
+  const { writeExport } = await import("./export.js");
+  const colony = new Colony({ agentId: false });
+  const feed = (colony as unknown as { allTrails?: () => AsyncGenerator<Record<string, unknown>> }).allTrails;
+  if (!feed) {
+    console.error("This needs myrmo 0.14 or newer next to myrmo-mcp.");
+    process.exit(1);
+  }
+  const items: Record<string, unknown>[] = [];
+  for await (const item of feed.call(colony)) items.push(item);
+  const written = writeExport(dir, items, { skill: flag("--skill"), source: colony.url });
+  console.log(`${written} trails from ${colony.url} written to ${dir}${flag("--skill") ? " as a skill (SKILL.md)" : ""}.`);
+  process.exit(0);
+}
+
 if (args[0] === "init") {
   const parsed = parseInitArgs(args.slice(1));
   if (typeof parsed === "string") {

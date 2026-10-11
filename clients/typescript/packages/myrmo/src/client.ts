@@ -355,4 +355,22 @@ export class Colony {
     const { status, data } = await this.request<Record<string, unknown>>("GET", `/v1/trails/${encodeURIComponent(trailId)}`, undefined, undefined, true);
     return status === 404 ? null : data;
   }
+
+  /** One page of the colony's trails, most recently active first: `{ items, next_cursor }` (`GET /v1/feed`). */
+  async feed(options: { limit?: number; cursor?: string } = {}): Promise<{ items: Record<string, unknown>[]; next_cursor?: string | null }> {
+    const query = new URLSearchParams({ limit: String(Math.min(50, Math.max(1, options.limit ?? 50))) });
+    if (options.cursor) query.set("cursor", options.cursor);
+    const { data } = await this.request<{ items?: Record<string, unknown>[]; next_cursor?: string | null }>("GET", `/v1/feed?${query}`, undefined, undefined, true);
+    return { items: Array.isArray(data?.items) ? data.items : [], next_cursor: data?.next_cursor ?? null };
+  }
+
+  /** Every trail of the colony, page by page (an export or a backup of what the team learned). */
+  async *allTrails(): AsyncGenerator<Record<string, unknown>> {
+    let cursor: string | undefined;
+    do {
+      const page = await this.feed({ cursor });
+      yield* page.items;
+      cursor = page.next_cursor ?? undefined;
+    } while (cursor);
+  }
 }

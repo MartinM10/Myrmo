@@ -13,6 +13,7 @@ import json
 import os
 import random
 import time
+from urllib.parse import quote
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Sequence, Union
 
@@ -371,6 +372,22 @@ class Colony(_Base):
         res = self._read("GET", f"/v1/trails/{trail_id}")
         data = self._check(res)
         return None if res.status_code == 404 else data
+
+    def feed(self, limit: int = 50, cursor: Optional[str] = None) -> Dict[str, Any]:
+        """One page of the colony's trails, most recently active first: `{"items": [...], "next_cursor": ...}`."""
+        params = f"limit={max(1, min(50, limit))}" + (f"&cursor={quote(cursor, safe='')}" if cursor else "")
+        data = self._check(self._read("GET", f"/v1/feed?{params}")) or {}
+        return {"items": data.get("items") or [], "next_cursor": data.get("next_cursor")}
+
+    def all_trails(self):
+        """Every trail of the colony, page by page (an export or a backup of what the team learned)."""
+        cursor = None
+        while True:
+            page = self.feed(cursor=cursor)
+            yield from page["items"]
+            cursor = page["next_cursor"]
+            if not cursor:
+                return
 
     def wait_for_trail(self, trail_id: str, timeout: float = 30.0, interval: float = 1.5) -> Optional[Dict[str, Any]]:
         """Publishing returns while the colony still checks the trail. Wait for its verdict
