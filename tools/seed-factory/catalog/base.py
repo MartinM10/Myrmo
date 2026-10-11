@@ -26,3 +26,5 @@ class Task:
     probe: str = ""
     #: Memory for each container of the task (Docker syntax). Compilers and package managers need more than the default.
     memory: str = "512m"
+    #: What the task was built from, for the trail's provenance: {"kind", "ref", "licence", "used_as"} (see provenance.py).
+    sources: tuple = ()

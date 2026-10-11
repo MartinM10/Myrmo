@@ -47,6 +47,41 @@ def base_image(lead: dict) -> str:
     return f"python:3.{max(minor, 9)}-slim-bookworm"
 
 
+def attempted() -> set[str]:
+    """Leads an earlier batch ended with a verdict on: skipped by every model (nothing to reproduce) or made into a task.
+    Refused ones, and ones whose agent wrote nothing, are tried again: those say little about the lead."""
+    done: set[str] = set()
+    for log in SEED_OUT.glob("*-worker.jsonl"):
+        for line in log.read_text(encoding="utf-8").splitlines():
+            try:
+                result = json.loads(line)
+            except ValueError:
+                continue
+            if result.get("outcome") in ("skip", "valid"):
+                done.add(result["task_id"])
+    return done
+
+
+def reports_block(lead: dict) -> str:
+    """What the radar read about the release in public issues, as pointers: they say where to look and which error to chase."""
+    items = lead.get("evidence") or []
+    if not items:
+        return ""
+    lines = "\n".join(f"  - {e['title']} ({e['repo']}, {e['comments']} comments)" for e in items)
+    return ("\nWHAT PEOPLE REPORT about this release (titles of public issues, only to tell you where to look and which error to chase;\n"
+            "do not copy them: every message in your task must be one you saw yourself):\n" + lines + "\n")
+
+
+def sources_of(lead: dict) -> list[dict]:
+    """The repositories whose issues the agent was shown, for the trail's provenance (discovery only; the radar kept only
+    those whose licence the policy accepts)."""
+    seen: dict[str, dict] = {}
+    for e in lead.get("evidence") or []:
+        seen.setdefault(e["repo"], {"kind": "repository", "ref": f"https://github.com/{e['repo']}", "licence": e["licence"],
+                                    "used_as": "discovery"})
+    return list(seen.values())
+
+
 def task_id(lead: dict) -> str:
     raw = f"radar-{lead['ecosystem']}-{lead['package']}-{lead['version']}-{lead['signal']}"
     return re.sub(r"[^a-z0-9.-]+", "-", raw.lower()).strip("-")[:80]
@@ -56,7 +91,7 @@ PROMPT = """You are preparing a reproducible seed task for Myrmo, a shared memor
 
 THE LEAD (from the package registry, {released}): {ecosystem} package `{package}` {version}: {signal} ({detail}).
 You are inside a fresh container of the image `{image}`. Network access is available.
-
+{reports}
 GOAL: find out whether this release breaks something real that developers or agents will hit, reproduce it here, and
 write a task file. Work by running commands; never guess an error message: every message in the task must be one you saw.
 
@@ -150,7 +185,7 @@ def draft(lead: dict, model: str, retry: str = "") -> tuple[dict | None, dict]:
     """Run the agent on one lead; returns (the task.json it wrote or None, metrics)."""
     image = base_image(lead)
     tid = task_id(lead)
-    prompt = PROMPT.format(task_id=tid, image=image, **lead) + retry
+    prompt = PROMPT.format(task_id=tid, image=image, reports=reports_block(lead), **lead) + retry
     name = f"seed-worker-{tid[:40]}-{int(time.time())}"
     sh("docker", "run", "-d", "--name", name, "-v", f"{AGY_VOLUME}:/seed:ro", "--entrypoint", "sleep", worker_image(image), "infinity")
     started = time.time()
@@ -221,7 +256,7 @@ def work(lead: dict, models: list[str], batch: str) -> dict:
             retry = f"\nANOTHER AGENT skipped this lead with this reason; check it yourself before agreeing: {task['skip']}\n"
             continue
         task.update({"task_id": tid, "ecosystem": "radar", "written_by_model": model,
-                     "_lead": lead, "_drafted_at": datetime.now(timezone.utc).isoformat(timespec="seconds")})
+                     "_lead": lead, "_sources": sources_of(lead), "_drafted_at": datetime.now(timezone.utc).isoformat(timespec="seconds")})
         DRAFTS.mkdir(exist_ok=True)
         path.write_text(json.dumps(task, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
         valid, reason = run_factory(tid, batch)
@@ -240,6 +275,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--limit", type=int, default=3)
     parser.add_argument("--start", type=int, default=0)
     parser.add_argument("--signal", action="append", help="only leads with this signal (repeatable)")
+    parser.add_argument("--retry-skipped", action="store_true", help="also try leads an earlier batch skipped or produced a task for")
     parser.add_argument("--lead", help="one lead as ecosystem:package:version (with --signal); else the radar's")
     parser.add_argument("--models", nargs="+", default=list(DEFAULT_MODELS), help="tried in order, cheapest first")
     parser.add_argument("--batch", default="radar-" + datetime.now(timezone.utc).strftime("%Y%m%d"))
@@ -253,7 +289,12 @@ def main(argv: list[str] | None = None) -> int:
         if args.signal:
             leads = [l for l in leads if l["signal"] in args.signal]
         done = {p.stem for p in DRAFTS.glob("*.json")} if DRAFTS.is_dir() else set()
-        leads = [l for l in leads if task_id(l) not in done][args.start : args.start + args.limit]
+        if not args.retry_skipped:
+            done |= attempted()
+        leads = [l for l in leads if task_id(l) not in done]
+        # Leads with something people report come first: they name an error that exists, which is what the agent needs.
+        leads.sort(key=lambda l: -sum(e["comments"] for e in l.get("evidence") or []))
+        leads = leads[args.start : args.start + args.limit]
     log = SEED_OUT / f"{args.batch}-worker.jsonl"
     SEED_OUT.mkdir(exist_ok=True)
     for lead in leads:

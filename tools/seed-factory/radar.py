@@ -22,14 +22,19 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import shutil
+import subprocess
 import sys
+import time
 import urllib.parse
 import urllib.request
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))
+import provenance  # noqa: E402
 OUT = HERE / "candidates" / "_radar.json"
 USER_AGENT = "myrmo-seed-radar/1.0 (+https://myrmo.dev)"
 
@@ -60,6 +65,28 @@ class Lead:
     signal: str
     detail: str
     source: str  # the registry page the lead came from (discovery only)
+    repo: str = ""  # `owner/name` of the package's source repository on GitHub, when it has one
+    #: Public issues about this release (title, url, comments, repo, licence), read for discovery only: they tell the
+    #: worker which error people actually hit. Only issues of repositories whose licence the policy accepts are kept.
+    evidence: tuple = ()
+
+
+GITHUB_REPO = re.compile(r"github\.com[/:]([\w.-]+)/([\w.-]+?)(?:\.git)?(?:[/#?]|$)", re.I)
+
+
+def repo_of(ecosystem: str, data: dict) -> str:
+    """`owner/name` of the package's GitHub repository, from what its registry says about itself ("" when it names none)."""
+    if ecosystem == "pypi":
+        info = data.get("info") or {}
+        candidates = [*(info.get("project_urls") or {}).values(), info.get("home_page"), info.get("package_url")]
+    else:
+        repository = data.get("repository")
+        candidates = [repository.get("url") if isinstance(repository, dict) else repository, data.get("homepage")]
+    for url in candidates:
+        match = GITHUB_REPO.search(str(url or ""))
+        if match:
+            return f"{match.group(1)}/{match.group(2)}"
+    return ""
 
 
 def get_json(url: str, timeout: int = 30) -> dict:
@@ -178,7 +205,9 @@ def scan(days: int, now: datetime | None = None, fetcher=fetch, watch: dict | No
         parse = pypi_leads if ecosystem == "pypi" else npm_leads
         for package in packages:
             try:
-                leads += parse(package, fetcher(ecosystem, package), since)
+                data = fetcher(ecosystem, package)
+                repo = repo_of(ecosystem, data)
+                leads += [replace(lead, repo=repo) for lead in parse(package, data, since)]
             except Exception as err:  # one package down must not stop the scan
                 errors.append(f"{ecosystem}/{package}: {err}")
     # The rarest, most telling signals first; within each, the newest first.
@@ -187,13 +216,91 @@ def scan(days: int, now: datetime | None = None, fetcher=fetch, watch: dict | No
     return leads, errors
 
 
+# --- what people report ---------------------------------------------------------------------------------------------
+
+#: A title that reads like a problem and not like a question, a feature request or a chore.
+PROBLEM = re.compile(r"error|fail|break|broke|crash|cannot|can't|couldn't|doesn't|does not|not work|no longer|regression|"
+                     r"incompatib|undefined|exception|unexpected|missing|stack overflow|hang|deadlock|ERR_|segfault", re.I)
+
+
+def gh(path: str, **params: str) -> dict | None:
+    """GET a GitHub API path through the `gh` command, which carries the user's login: the search API allows 30 requests a
+    minute that way and 10 without it. None when `gh` is not installed or the call fails."""
+    args = ["gh", "api", "-X", "GET", path]
+    for key, value in params.items():
+        args += ["-f", f"{key}={value}"]
+    try:
+        done = subprocess.run(args, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60)
+        return json.loads(done.stdout) if done.returncode == 0 else None
+    except (OSError, ValueError, subprocess.TimeoutExpired):
+        return None
+
+
+def licence_of(repo: str, call, cache: dict) -> str:
+    """The SPDX id of a repository's licence ("" when it has none or GitHub cannot tell)."""
+    if repo not in cache:
+        data = call(f"repos/{repo}") or {}
+        spdx = (data.get("license") or {}).get("spdx_id") or ""
+        cache[repo] = "" if spdx in ("NOASSERTION", "NONE") else spdx
+    return cache[repo]
+
+
+def evidence_for(lead: Lead, call=gh, cache: dict | None = None, pause: float = 2.2) -> tuple:
+    """Public issues about this release: in the package's own repository since it came out, and in other repositories that
+    name the exact version. Only titles that read like a problem, and only from repositories whose licence the policy
+    accepts (a copyleft or unlicensed repository is not a source the project can build on, even for discovery)."""
+    cache = {} if cache is None else cache
+    queries = []
+    if lead.repo:
+        queries.append(f"repo:{lead.repo} is:issue created:>={lead.released}")
+    queries.append(f'"{lead.package}" "{lead.version}" in:title,body is:issue created:>={lead.released}')
+    found: dict[str, dict] = {}
+    name = lead.package.split("/")[-1].lower()
+    for q in queries:
+        own = q.startswith("repo:")
+        reply = call("search/issues", q=q, sort="comments", order="desc", per_page="10") or {}
+        time.sleep(pause)
+        for item in reply.get("items") or []:
+            repo = "/".join(str(item.get("repository_url", "")).split("/")[-2:])
+            title = " ".join(str(item.get("title", "")).split())
+            user = item.get("user") or {}
+            if not repo or not PROBLEM.search(title) or item.get("html_url") in found or "pull_request" in item:
+                continue
+            # A bot's issue is a tracker's own bookkeeping, not a person's report; and in somebody else's repository a title
+            # that names neither the package nor the version only matched the search by chance.
+            if user.get("type") == "Bot" or str(user.get("login", "")).lower().endswith("bot"):
+                continue
+            if not own and name not in title.lower() and lead.version not in title:
+                continue
+            licence = licence_of(repo, call, cache)
+            time.sleep(pause)
+            if provenance.licence_allowed(licence):
+                found[item["html_url"]] = {"title": title[:200], "url": item["html_url"], "comments": int(item.get("comments") or 0),
+                                           "repo": repo, "licence": licence}
+    return tuple(sorted(found.values(), key=lambda e: e["comments"], reverse=True)[:5])
+
+
+def add_evidence(leads: list[Lead], top: int, call=gh, pause: float = 2.2) -> list[Lead]:
+    """The first `top` leads (the radar's order), each with what people report about it."""
+    cache: dict = {}
+    return [replace(lead, evidence=evidence_for(lead, call, cache, pause)) if i < top else lead for i, lead in enumerate(leads)]
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--days", type=int, default=120, help="how far back to look (default 120)")
     parser.add_argument("--top", type=int, default=30, help="leads to print (all are written to the file)")
+    parser.add_argument("--evidence", type=int, default=12, metavar="N", help="read the public issues of the first N leads (0 skips it)")
     parser.add_argument("--out", type=Path, default=OUT)
     args = parser.parse_args(argv)
+    # Registry text may hold characters the Windows console cannot print: show them as "?" instead of stopping the radar.
+    sys.stdout.reconfigure(errors="replace")
     leads, errors = scan(args.days)
+    if args.evidence:
+        if shutil.which("gh"):
+            leads = add_evidence(leads, args.evidence)
+        else:
+            errors.append("evidence skipped: the `gh` command is not installed")
     args.out.write_text(json.dumps({"generated": datetime.now(timezone.utc).date().isoformat(), "days": args.days,
                                     "leads": [asdict(l) for l in leads], "errors": errors}, indent=1) + "\n",
                         encoding="utf-8")
