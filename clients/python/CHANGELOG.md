@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.14.1](https://github.com/MartinM10/Myrmo/compare/sdk-python-v0.14.0...sdk-python-v0.14.1) (2026-10-11)
+
+
+### Bug fixes
+
+* say when a trail's commands carry no risk flag ([5f461ee](https://github.com/MartinM10/Myrmo/commit/5f461ee3fa776fef7833fc5dfa58309823da25f8))
+* say when a trail's commands carry no risk flag, so an agent working alone does not stop to ask ([f2ed8c7](https://github.com/MartinM10/Myrmo/commit/f2ed8c700fbc4a0a0c9b81537e40d0c05a04c98a))
+
 ## [0.14.0](https://github.com/MartinM10/Myrmo/compare/sdk-python-v0.13.0...sdk-python-v0.14.0) (2026-10-11)
 
 
