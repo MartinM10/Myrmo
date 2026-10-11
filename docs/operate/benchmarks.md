@@ -47,6 +47,7 @@ Each task has a hidden check script that decides success.
 | `without` | not connected | | The baseline: how hard the task is for the model on its own |
 | `unseen` | connected | what it held before the run: a copy of the public trails (`seed`), or nothing | What an agent gets today. When the colony has no trail for the error, it prices what Myrmo costs when it cannot help (its instructions, a search, a wrong trail) |
 | `with` | connected | the same, plus the trail a *pioneer* agent left after solving the task with publishing on | What a trail is worth once the colony has it |
+| `notes` (asked for by name) | not connected | the same trails, exported as Markdown notes into the container (`myrmo-mcp export`), and a rule telling the agent to read them when something fails | The cheap alternative a team could use instead: does Myrmo beat a folder of notes and a rule? Each run records how often the agent read them (`notes_reads`) |
 
 Every `without` and `unseen` run happens before any pioneer runs, so no pioneer's trail can leak into them, and the two
 alternate so that a slow hour of a model's API does not fall on one of them. A pioneer that finds a trail, or whose fix

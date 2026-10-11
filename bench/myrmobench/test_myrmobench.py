@@ -272,7 +272,7 @@ def test_an_antigravity_stream_gives_tokens_turns_and_estimated_failures():
     ]
     m = run.parse_agy_stream("\n".join(json.dumps(x) for x in lines) + "\nexit=0")
     assert m == {"tokens": 23781, "cost_usd": 0.0, "turns": 4, "failed_attempts": 1, "web_tool_calls": 1, "myrmo_calls": 1,
-                 "agent_error": False}
+                 "notes_reads": 0, "agent_error": False}
     assert run.parse_agy_stream("")["agent_error"] is True
     assert run.parse_agy_stream(json.dumps({"event": "result", "result": {"status": "ERROR"}}))["agent_error"] is True
 
@@ -287,3 +287,20 @@ def test_agents_that_drop_mcp_instructions_get_the_rules_init_writes():
         pytest.skip("the MCP server is not built")
     rules = run.myrmo_rules()
     assert rules.startswith("<!-- myrmo:start -->") and "myrmo_search" in rules and "myrmo_report" in rules
+
+
+def test_the_notes_condition_runs_after_the_pioneers_and_only_when_asked_for():
+    order = run.schedule(["a"], "P", ["F"], 1, ("without", "with", "notes"))
+    assert [(x["role"], x["condition"]) for x in order] == [
+        ("follower", "without"), ("pioneer", "with"), ("follower", "with"), ("follower", "notes")]
+    assert "notes" not in run.CONDITIONS and "notes" in run.ALL_CONDITIONS
+    # Notes alone measure the colony as it is: no pioneer runs.
+    assert [x["role"] for x in run.schedule(["a"], "P", ["F"], 2, ("notes",))] == ["follower", "follower"]
+    assert "untrusted" in run.NOTES_RULE and run.NOTES_DIR in run.NOTES_RULE
+
+
+def test_reading_the_notes_is_counted():
+    step = {"step_update": {"step_type": "tool", "state": "DONE", "tool_name": "view_file",
+                            "tool_info": {"parameters": {"AbsolutePath": f"{run.NOTES_DIR}/README.md"}, "output": "..."}}}
+    result = {"event": "result", "result": {"status": "SUCCESS", "usage": {"total_tokens": 10}}}
+    assert run.parse_agy_stream("\n".join(json.dumps(x) for x in (step, result)))["notes_reads"] == 1
