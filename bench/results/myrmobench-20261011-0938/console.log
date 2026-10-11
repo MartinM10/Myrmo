@@ -1,0 +1,68 @@
+node-require-esm   gpt-oss-120b-medium follower without  PASS     18558 tokens $0.000
+node-require-esm   gpt-oss-120b-medium follower unseen   PASS     21786 tokens $0.000
+node-require-esm   gpt-oss-120b-medium follower without  PASS     18270 tokens $0.000
+node-require-esm   gpt-oss-120b-medium follower unseen   PASS     16788 tokens $0.000
+node-require-esm   gpt-oss-120b-medium follower without  PASS     20587 tokens $0.000
+node-require-esm   gpt-oss-120b-medium follower unseen   PASS     19087 tokens $0.000
+node-require-esm   gpt-oss-120b-medium follower without  PASS     19051 tokens $0.000
+node-require-esm   gpt-oss-120b-medium follower unseen   PASS     17264 tokens $0.000
+node-require-esm   gpt-oss-120b-medium follower without  PASS     17734 tokens $0.000
+node-require-esm   gpt-oss-120b-medium follower unseen   PASS     18076 tokens $0.000
+pg-scram           gpt-oss-120b-medium follower without  FAIL     17413 tokens $0.000
+pg-scram           gpt-oss-120b-medium follower unseen   FAIL     19859 tokens $0.000
+pg-scram           gpt-oss-120b-medium follower without  FAIL     27667 tokens $0.000
+pg-scram           gpt-oss-120b-medium follower unseen   FAIL     21684 tokens $0.000
+pg-scram           gpt-oss-120b-medium follower without  FAIL     19108 tokens $0.000
+pg-scram           gpt-oss-120b-medium follower unseen   FAIL     20772 tokens $0.000
+pg-scram           gpt-oss-120b-medium follower without  FAIL     18057 tokens $0.000
+pg-scram           gpt-oss-120b-medium follower unseen   FAIL     27078 tokens $0.000
+pg-scram           gpt-oss-120b-medium follower without  FAIL     21224 tokens $0.000
+pg-scram           gpt-oss-120b-medium follower unseen   FAIL     28147 tokens $0.000
+tls-corporate-ca   gpt-oss-120b-medium follower without  PASS     16111 tokens $0.000
+tls-corporate-ca   gpt-oss-120b-medium follower unseen   PASS     16410 tokens $0.000
+tls-corporate-ca   gpt-oss-120b-medium follower without  PASS     15649 tokens $0.000
+tls-corporate-ca   gpt-oss-120b-medium follower unseen   PASS     21300 tokens $0.000
+tls-corporate-ca   gpt-oss-120b-medium follower without  PASS     15751 tokens $0.000
+tls-corporate-ca   gpt-oss-120b-medium follower unseen   PASS     16199 tokens $0.000
+tls-corporate-ca   gpt-oss-120b-medium follower without  PASS     17158 tokens $0.000
+tls-corporate-ca   gpt-oss-120b-medium follower unseen   PASS      8776 tokens $0.000
+tls-corporate-ca   gpt-oss-120b-medium follower without  PASS     15773 tokens $0.000
+tls-corporate-ca   gpt-oss-120b-medium follower unseen   PASS     16252 tokens $0.000
+uv-path            gpt-oss-120b-medium follower without  FAIL     16217 tokens $0.000
+uv-path            gpt-oss-120b-medium follower unseen   FAIL     27240 tokens $0.000
+uv-path            gpt-oss-120b-medium follower without  FAIL     16538 tokens $0.000
+uv-path            gpt-oss-120b-medium follower unseen   FAIL     19438 tokens $0.000
+uv-path            gpt-oss-120b-medium follower without  FAIL     16851 tokens $0.000
+uv-path            gpt-oss-120b-medium follower unseen   FAIL     17645 tokens $0.000
+uv-path            gpt-oss-120b-medium follower without  FAIL     15400 tokens $0.000
+uv-path            gpt-oss-120b-medium follower unseen   FAIL     21016 tokens $0.000
+uv-path            gpt-oss-120b-medium follower without  FAIL     20329 tokens $0.000
+uv-path            gpt-oss-120b-medium follower unseen   FAIL     24987 tokens $0.000
+node-require-esm   gemini-3.1-pro-high pioneer  with     PASS    102784 tokens $0.000 published=False
+pg-scram           gemini-3.1-pro-high pioneer  with     PASS    128491 tokens $0.000 published=True
+tls-corporate-ca   gemini-3.1-pro-high pioneer  with     PASS    178691 tokens $0.000 published=False
+uv-path            gemini-3.1-pro-high pioneer  with     PASS    215076 tokens $0.000 published=False
+node-require-esm   gpt-oss-120b-medium follower with     PASS     22055 tokens $0.000
+node-require-esm   gpt-oss-120b-medium follower with     PASS     10228 tokens $0.000
+node-require-esm   gpt-oss-120b-medium follower with     PASS     21147 tokens $0.000
+node-require-esm   gpt-oss-120b-medium follower with     PASS     21881 tokens $0.000
+node-require-esm   gpt-oss-120b-medium follower with     PASS     16667 tokens $0.000
+pg-scram           gpt-oss-120b-medium follower with     PASS     22485 tokens $0.000
+pg-scram           gpt-oss-120b-medium follower with     FAIL     38943 tokens $0.000
+pg-scram           gpt-oss-120b-medium follower with     PASS     20090 tokens $0.000
+pg-scram           gpt-oss-120b-medium follower with     FAIL     23844 tokens $0.000
+pg-scram           gpt-oss-120b-medium follower with     FAIL     30251 tokens $0.000
+tls-corporate-ca   gpt-oss-120b-medium follower with     PASS     16848 tokens $0.000
+tls-corporate-ca   gpt-oss-120b-medium follower with     PASS     16543 tokens $0.000
+tls-corporate-ca   gpt-oss-120b-medium follower with     PASS     16367 tokens $0.000
+tls-corporate-ca   gpt-oss-120b-medium follower with     PASS     16441 tokens $0.000
+tls-corporate-ca   gpt-oss-120b-medium follower with     PASS      9802 tokens $0.000
+uv-path            gpt-oss-120b-medium follower with     FAIL     22132 tokens $0.000
+uv-path            gpt-oss-120b-medium follower with     FAIL     17145 tokens $0.000
+uv-path            gpt-oss-120b-medium follower with     FAIL     41169 tokens $0.000
+uv-path            gpt-oss-120b-medium follower with     FAIL         0 tokens $0.000
+uv-path            gpt-oss-120b-medium follower with     FAIL     19134 tokens $0.000
+
+$5.37 spent. Results in bench\results\myrmobench-20261011-0938; publish with publish_results.py.
+
+[exited with code 0]
