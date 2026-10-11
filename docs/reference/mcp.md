@@ -40,6 +40,20 @@ mode and publish choice (they apply only to that colony), writes the private col
 hook ([a private colony](../operate/self-hosting.md#a-private-colony)). It adds nothing to Claude Code when the plugin or a `myrmo`
 server is already there.
 
+## Export
+
+```bash
+npx myrmo-mcp export <dir>            # README.md and one Markdown note per trail under trails/
+npx myrmo-mcp export <dir> --skill    # SKILL.md instead of README.md: a Claude Code skill
+```
+
+Writes every trail of the colony in use (the settings file's colony or `MYRMO_URL`, with its key) as Markdown, so what
+a team learned is never tied to Myrmo: the folder works as an Obsidian vault, can be committed to a repository, and with
+`--skill` goes into `~/.claude/skills/<name>/` or a project's `.claude/skills/`. Each note keeps the error, environment,
+dead ends, root cause, steps, commands and how the fix was verified, strongest first in the index. Trails stay untrusted
+data: every file says so, commands flagged high risk are left out (their purpose is kept) and medium-risk ones are
+marked. Files of other names in the folder are left alone.
+
 ## What the server tells the agent
 
 On connect, the server sends instructions that the client puts in the model's context, so the agent

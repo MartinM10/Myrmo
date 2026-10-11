@@ -55,3 +55,17 @@ def test_a_damaged_colony_entry_is_ignored():
     assert "colony" not in read_config()
     save({"colony": {"url": "http://localhost:8080", "api_key": "has space in it", "private": "yes"}})
     assert read_config()["colony"] == {"url": "http://localhost:8080"}
+
+
+def test_all_trails_pages_through_the_feed():
+    import httpx
+
+    pages = {None: {"items": [{"trail_id": "a"}, {"trail_id": "b"}], "next_cursor": "50"}, "50": {"items": [{"trail_id": "c"}], "next_cursor": None}}
+
+    def fake(request):
+        cursor = request.url.params.get("cursor")
+        assert request.url.path == "/v1/feed" and request.url.params["limit"] == "50"
+        return httpx.Response(200, json=pages[cursor])
+
+    colony = Colony(url="http://colony.test", transport=httpx.MockTransport(fake), agent_id="tester_123")
+    assert [t["trail_id"] for t in colony.all_trails()] == ["a", "b", "c"]
