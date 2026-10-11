@@ -1,0 +1,10 @@
+{
+  "notes": {
+    "runs": 40,
+    "success_rate": 0.8,
+    "median_tokens": 102161.5,
+    "median_failed_attempts": 2.0,
+    "median_seconds": 50.4,
+    "median_cost_usd": 0.0
+  }
+}
