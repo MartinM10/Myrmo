@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.8.0](https://github.com/MartinM10/Myrmo/compare/server-v0.7.3...server-v0.8.0) (2026-10-11)
+
+
+### Features
+
+* access keys for private colonies, and hooks that look errors up and ask to share ([5a6ab17](https://github.com/MartinM10/Myrmo/commit/5a6ab175267179ba694596a059d1535cdaceba4f))
+* **server:** access keys for a private colony ([06e2b36](https://github.com/MartinM10/Myrmo/commit/06e2b3641f5db7aeab71adb7aad02bba7b854c8d))
+
+
+### Bug fixes
+
+* a private colony's answers are never cacheable, and the hooks never look up the public colony ([add4dd7](https://github.com/MartinM10/Myrmo/commit/add4dd7fbe171e9c33b71135035456dfc7435462))
+* **server:** with access keys, everything counted per address is counted per person ([9a7f4d9](https://github.com/MartinM10/Myrmo/commit/9a7f4d943bb888897361feedb7a00483c78af9f8))
+
 ## [0.7.3](https://github.com/MartinM10/Myrmo/compare/server-v0.7.2...server-v0.7.3) (2026-10-10)
 
 

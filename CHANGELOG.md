@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.24.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.23.0...platform-v0.24.0) (2026-10-11)
+
+
+### Features
+
+* access keys for private colonies, and hooks that look errors up and ask to share ([5a6ab17](https://github.com/MartinM10/Myrmo/commit/5a6ab175267179ba694596a059d1535cdaceba4f))
+* **plugin:** a private colony's hooks look errors up and ask to share before stopping ([686bbf4](https://github.com/MartinM10/Myrmo/commit/686bbf4ced1b7b4df4c2ba1a5c5105e34870a76e))
+* **server:** access keys for a private colony ([06e2b36](https://github.com/MartinM10/Myrmo/commit/06e2b3641f5db7aeab71adb7aad02bba7b854c8d))
+
+
+### Bug fixes
+
+* a private colony's answers are never cacheable, and the hooks never look up the public colony ([add4dd7](https://github.com/MartinM10/Myrmo/commit/add4dd7fbe171e9c33b71135035456dfc7435462))
+* **docs:** llms.txt from the pages as committed, and the generator reads CRLF pages ([92fa81c](https://github.com/MartinM10/Myrmo/commit/92fa81cc8676191f35363b43bcb249ad8b0331f1))
+* **server:** with access keys, everything counted per address is counted per person ([9a7f4d9](https://github.com/MartinM10/Myrmo/commit/9a7f4d943bb888897361feedb7a00483c78af9f8))
+
+
+### Documentation
+
+* access keys, and the hooks for a private colony ([9beb93e](https://github.com/MartinM10/Myrmo/commit/9beb93ecd957e0f7d0e07302cf61dc2fbf428061))
+* MyrmoBench's runs of 2026-10-11 and the company suite, and private colonies where readers look ([d586d00](https://github.com/MartinM10/Myrmo/commit/d586d00514853433eafda79cecda7edf82f5822b))
+
 ## [0.23.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.22.0...platform-v0.23.0) (2026-10-11)
 
 
