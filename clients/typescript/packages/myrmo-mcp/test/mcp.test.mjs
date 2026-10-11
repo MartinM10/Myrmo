@@ -633,3 +633,36 @@ test("myrmo_publish's description says the configured minimum of failed attempts
   assert.match(await describe(""), /after at least one failed attempt/);
   assert.match(await describe("3"), /after at least 3 failed attempts/);
 });
+
+test("a private colony keeps the organisation's own names, and says so to the agent and the user", async () => {
+  const config = freshConfig();
+  const shown = [];
+  const client = await stdioClient("", {
+    env: { MYRMO_PUBLISH: "", MYRMO_CONFIG: config, MYRMO_PRIVATE: "1" },
+    answer: async (params) => (shown.push(params.message), { action: "accept", content: { choice: "auto" } }),
+  });
+  const text = client.getInstructions() ?? "";
+  assert.match(text.slice(0, 2000), /private colony/);
+  assert.match(text, /Keep internal tool, service and command names/);
+  assert.match(text, /Never include credentials/);
+  assert.doesNotMatch(text, /everything published is public/i);
+  const { tools } = await client.listTools();
+  assert.match(tools.find((t) => t.name === "myrmo_publish").description, /private to your organisation/);
+
+  // No public terms to accept, and the choice lasts only this session: the settings file is shared with the public colony.
+  const before = published();
+  await client.callTool({ name: "myrmo_publish", arguments: { trail } });
+  await client.callTool({ name: "myrmo_publish", arguments: { trail } });
+  assert.equal(published(), before + 2, "asked once, then the session's choice applies");
+  assert.equal(shown.length, 1);
+  assert.match(shown[0], /private Myrmo colony/);
+  assert.doesNotMatch(shown[0], /CC BY-SA|terms of service/);
+  assert.equal(JSON.parse(readFileSync(config, "utf8")).publish, undefined, "nothing saved for the public colony");
+  await client.close();
+});
+
+test("MYRMO_PRIVATE is ignored for the public colony", async () => {
+  const client = await stdioClient("ask", { env: { MYRMO_URL: "https://myrmo.dev", MYRMO_PRIVATE: "1", MYRMO_CONFIG: freshConfig() } });
+  assert.match(client.getInstructions() ?? "", /everything published is public/i);
+  await client.close();
+});
