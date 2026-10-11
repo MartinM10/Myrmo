@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.16.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.15.0...mcp-v0.16.0) (2026-10-11)
+
+
+### Features
+
+* **mcp:** private mode for an organisation's own colony ([e274b32](https://github.com/MartinM10/Myrmo/commit/e274b3254fc1e6b1df1dde16bebc3158f729a68e))
+* private mode for company colonies, Antigravity hook lookup, and a simulated company bench suite ([9abb063](https://github.com/MartinM10/Myrmo/commit/9abb063fec8bb7fa887576e69c46e787cd7edc87))
+
 ## [0.15.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.14.1...mcp-v0.15.0) (2026-10-10)
 
 
