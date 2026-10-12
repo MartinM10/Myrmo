@@ -3,7 +3,6 @@
 
   acmectl db migrate [--dir migrations]       apply the service's pending migrations to its database
   acmectl db locks                            list the database's locks
-  acmectl db unlock --stale [--older-than N]  release locks whose holder is gone (held for more than N hours, default 1)
 """
 import argparse
 import datetime
@@ -21,9 +20,6 @@ dbp = sub.add_parser("db").add_subparsers(dest="action", required=True)
 migrate = dbp.add_parser("migrate")
 migrate.add_argument("--dir", default="migrations")
 dbp.add_parser("locks")
-unlock = dbp.add_parser("unlock")
-unlock.add_argument("--stale", action="store_true")
-unlock.add_argument("--older-than", type=float, default=1.0)
 args = parser.parse_args()
 db = sqlite3.connect(DB)
 
@@ -42,26 +38,14 @@ def audit_gap():
 if args.action == "locks":
     rows = db.execute("SELECT name, owner, since, generation FROM _acme_locks").fetchall()
     print("\n".join(f"{n}\theld by {o} since {s} (generation {g})" for n, o, s, g in rows) or "no locks")
-elif args.action == "unlock":
-    if not args.stale:
-        print("acmectl: db unlock needs --stale: only locks whose holder is gone may be released", file=sys.stderr)
-        sys.exit(2)
-    released = 0
-    for name, owner, since, generation in db.execute("SELECT name, owner, since, generation FROM _acme_locks").fetchall():
-        age = now - datetime.datetime.strptime(since, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=datetime.timezone.utc)
-        if age.total_seconds() >= args.older_than * 3600:
-            db.execute("DELETE FROM _acme_locks WHERE name = ?", (name,))
-            db.execute("INSERT INTO _acme_audit VALUES (?, ?, ?, 'released', 'acmectl unlock --stale')", (stamp, name, generation))
-            print(f"released stale lock '{name}' held by {owner} (generation {generation})")
-            released += 1
-    db.commit()
-    print(f"{released} lock(s) released")
 elif args.action == "migrate":
     gap = audit_gap()
     if gap:
         print(f"migrate: refusing to run: lock '{gap[0]}' (generation {gap[1]}) vanished without an audit record (MIG-AUDIT)",
               file=sys.stderr)
         sys.exit(5)
+    # Locks are the platform team's business: one whose holder died is released with their tool,
+    # /opt/acme/platform/lockctl, which records the release in the lock audit. Never delete a lock row by hand.
     held = db.execute("SELECT owner, since FROM _acme_locks WHERE name = 'migrate'").fetchone()
     if held:
         print(f"migrate: lock 'migrate' is held by {held[0]} since {held[1]}", file=sys.stderr)

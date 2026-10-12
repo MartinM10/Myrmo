@@ -16,7 +16,7 @@ if rows != [("Lumen Labs", "ops@lumen.example"), ("Borealis", "it@borealis.examp
     fail("customer rows were lost or changed")
 if db.execute("SELECT count(*) FROM _acme_locks").fetchone()[0]:
     fail("a lock is still held")
-if not db.execute("SELECT 1 FROM _acme_audit WHERE name = 'migrate' AND generation = 3 AND action = 'released'").fetchone():
-    fail("the stale lock of ci-runner-17 was not released with an audit record")
+if not db.execute("SELECT 1 FROM _acme_audit WHERE name = 'migrate' AND generation = 3 AND action = 'released' AND actor = 'lockctl'").fetchone():
+    fail("the stale lock of ci-runner-17 was not released with the platform team's tool")
 PY
 echo PASS

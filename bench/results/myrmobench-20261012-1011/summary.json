@@ -1,0 +1,26 @@
+{
+  "without": {
+    "runs": 40,
+    "success_rate": 0.125,
+    "median_tokens": 27029.5,
+    "median_failed_attempts": 1.0,
+    "median_seconds": 71.1,
+    "median_cost_usd": 0.0
+  },
+  "with": {
+    "runs": 40,
+    "success_rate": 0.525,
+    "median_tokens": 25648.5,
+    "median_failed_attempts": 1.0,
+    "median_seconds": 48.9,
+    "median_cost_usd": 0.0
+  },
+  "notes": {
+    "runs": 40,
+    "success_rate": 0.575,
+    "median_tokens": 28720.5,
+    "median_failed_attempts": 2.0,
+    "median_seconds": 69.5,
+    "median_cost_usd": 0.0
+  }
+}

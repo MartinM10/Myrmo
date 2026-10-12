@@ -14,9 +14,9 @@ Suites in `bench/`: MyrmoBench, load, retrieval, scale and the leak tests. Each 
 
 > [!WARNING]
 > **Measured, no saving shown yet.** Eight tasks are built in `bench/myrmobench/`: four public breakages and four problems
-> of a simulated company (`acme-*`). Claude Sonnet solves the public four at once. On the company suite a cheap model
-> solves 14 of 20 when the hooks put the trail in front of it, against 7 with no help and 12 with the same trails as
-> Markdown notes, in fewer tokens and turns than either; five runs per cell cannot yet separate it from the notes. No number on this site says Myrmo
+> of a simulated company (`acme-*`). Claude Sonnet solves the public four at once. On the company suite (40 runs per
+> condition) a cheap model solves 21 of 40 with Myrmo against 5 of 40 with no help, as often as with the same trails as
+> Markdown notes (23) but in half the turns; and the trails exist because Myrmo's hook made the first agents publish. No number on this site says Myrmo
 > saves work. Eight more public tasks are specified below and not built.
 
 Does following a trail actually save agents work?
@@ -219,8 +219,31 @@ What it says, read honestly:
   and 13.5 with the notes and 37k and 23 with no help. Ahead of the notes, but by two runs of twenty: still within what
   five runs per cell cannot separate.
 
-Next: more runs per cell (five are too few to separate conditions on success), harder company tasks, and a handoff
-scenario (one agent migrates, another deploys) to measure procedures against a Markdown handoff.
+**Ten runs per cell (2026-10-12).** The same suite with `acme-db-lock` made harder (the supported release is the platform
+team's own tool, which only a comment in the company CLI's source mentions; the CLI's errors and help no longer give it
+away), an empty colony, the four pioneers with the hooks (all four solved and published, each with the supported fix),
+and GPT-OSS ten times per task in each condition, 40 runs per condition
+([`myrmobench-20261012-1011`](https://github.com/MartinM10/Myrmo/tree/main/bench/results/myrmobench-20261012-1011)):
+
+| Condition | Solved | Median turns, solved runs | Median tokens, solved runs |
+|---|---|---|---|
+| without | 5 of 40 | 22 | 32k |
+| Myrmo, with the hooks' own lookup | **21 of 40** | **9** | **25k** |
+| `notes` (the same trails as Markdown, no Myrmo) | **23 of 40** | 17 | 28k |
+
+- **What the team learned is what helps, and it helps a lot.** With the trails, by Myrmo or as notes, a cheap model solves
+  four times as many of these internal problems (Fisher's exact test against no help: p < 0.001 for both).
+- **On success, Myrmo and the notes are the same** (21 against 23 of 40, p = 0.82).
+- **Myrmo gets there faster:** about half the turns of the notes on solved runs (Mann-Whitney p = 0.0006), and fewer tokens
+  and less time (p = 0.06 and 0.09, not conclusive). The trail arrives at the failure, instead of the agent having to go
+  and read notes, and an agent opened the notes in only half its runs.
+- **The notes were Myrmo's own work.** They are the trails the pioneers published because the hook asked them to as each
+  problem was solved; with rules alone pioneers published nothing. A folder of notes delivers knowledge about as well as
+  Myrmo does, but someone has to write it: Myrmo's value here is capturing what agents learn, then delivering it at the
+  failure; `myrmo-mcp export` turns the colony into such notes whenever a team wants them.
+
+Next: a handoff scenario (one agent migrates, another deploys) to measure procedures against a Markdown handoff, and the
+same comparison on real work in a team's private colony.
 
 ```bash
 python bench/myrmobench/run.py list

@@ -1,0 +1,45 @@
+#!/usr/bin/env python3
+"""lockctl, the platform team's lock tool.
+
+  lockctl list                                  every lock and its holder
+  lockctl release <name> --holder-gone [--reason TEXT]
+                                                release a lock whose holder is gone (idle more than an hour), with an
+                                                audit record
+"""
+import argparse
+import datetime
+import sqlite3
+import sys
+
+DB = "/var/acme/billing.db"
+now = datetime.datetime.now(datetime.timezone.utc)
+
+parser = argparse.ArgumentParser(prog="lockctl", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+sub = parser.add_subparsers(dest="action", required=True)
+sub.add_parser("list")
+release = sub.add_parser("release")
+release.add_argument("name")
+release.add_argument("--holder-gone", action="store_true")
+release.add_argument("--reason", default="holder gone")
+args = parser.parse_args()
+db = sqlite3.connect(DB)
+
+if args.action == "list":
+    for name, owner, since, generation in db.execute("SELECT name, owner, since, generation FROM _acme_locks"):
+        print(f"{name}	{owner}	{since}	generation {generation}")
+    sys.exit(0)
+
+row = db.execute("SELECT owner, since, generation FROM _acme_locks WHERE name = ?", (args.name,)).fetchone()
+if not row:
+    sys.exit(f"lockctl: no lock named {args.name!r}")
+if not args.holder_gone:
+    sys.exit("lockctl: say --holder-gone: only a lock whose holder is gone may be released")
+owner, since, generation = row
+age = now - datetime.datetime.strptime(since, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=datetime.timezone.utc)
+if age.total_seconds() < 3600:
+    sys.exit(f"lockctl: {owner} took {args.name!r} {int(age.total_seconds())}s ago; it may still be running")
+db.execute("DELETE FROM _acme_locks WHERE name = ?", (args.name,))
+db.execute("INSERT INTO _acme_audit VALUES (?, ?, ?, 'released', 'lockctl')",
+           (now.strftime("%Y-%m-%dT%H:%M:%SZ"), args.name, generation))
+db.commit()
+print(f"released {args.name!r} (generation {generation}) held by {owner}: {args.reason}")
