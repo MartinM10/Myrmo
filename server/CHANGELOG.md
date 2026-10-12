@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.10.0](https://github.com/MartinM10/Myrmo/compare/server-v0.9.0...server-v0.10.0) (2026-10-12)
+
+
+### Features
+
+* a team's private colony on one machine, in one command ([7972969](https://github.com/MartinM10/Myrmo/commit/7972969a051fc5aaf82a889eca4a9eafab4429ce))
+* a team's private colony on one machine, in one command ([8e42bd3](https://github.com/MartinM10/Myrmo/commit/8e42bd3c65b037b5ac5903a8bf64d058d6df0c8c))
+
 ## [0.9.0](https://github.com/MartinM10/Myrmo/compare/server-v0.8.0...server-v0.9.0) (2026-10-11)
 
 
