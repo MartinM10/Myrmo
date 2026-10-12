@@ -166,6 +166,19 @@ again by hand, for example to sweep up trails that an older server filed during 
 A colony you host yourself never publishes to the public one, and searches go only to it: falling back to the public
 colony for searches with no private match is not implemented yet. Three things make it a team's own.
 
+**On one Linux machine, in one command.** From the repository's root:
+
+```bash
+bash deploy/private-colony.sh up               # builds and starts it: keys required, no external decision service
+bash deploy/private-colony.sh keys add ana     # one key per person, shown once, with the command they run
+bash deploy/private-colony.sh report 7         # each person's use and reuse between people
+bash deploy/private-colony.sh status | backup | down
+```
+
+It writes its settings once to `.env.private` (random operator token and salt, readable only by you), always builds the
+server from the checkout, and starts only what a private colony needs (no decision model: the deterministic rules judge
+new trails, and nothing is sent to any outside service). The sections below explain each part.
+
 **Access keys.** Set `MYRMO_REQUIRE_KEY=1` on the gateway and give each person a key, so that nobody who can reach the
 address can read or write without one:
 
