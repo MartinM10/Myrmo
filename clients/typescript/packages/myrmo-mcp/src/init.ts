@@ -450,7 +450,11 @@ export function runInit(opts: InitOptions): { configured: string[]; skipped: str
   }
   log("");
   log("Restart your client to load it. Agents learn how to use Myrmo from the server itself: no more setup is needed.");
-  log("Nothing else to configure. The first time an agent wants to publish, you are shown what would be sent and asked (\"ask\" is preselected).");
+  log(
+    opts.url && opts.publish
+      ? `Nothing else to configure. Publishing to ${opts.url.replace(/\/+$/, "")} is "${opts.publish}" (change it with: npx myrmo-mcp init --url ... --publish auto|ask|off).`
+      : "Nothing else to configure. The first time an agent wants to publish, you are shown what would be sent and asked (\"ask\" is preselected).",
+  );
   log("To change a default: npx myrmo-mcp config   (publishing, failed attempts before publishing, the Claude Code hook, anonymity)");
   return { configured, skipped };
 }

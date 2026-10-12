@@ -158,7 +158,7 @@ pub async fn cli(redis_url: &str, args: &[String]) -> Result<()> {
             let key = add(&mut con, person, now).await?;
             println!("{key}");
             eprintln!(
-                "Key for {person}. It is shown only now: give it to them privately (MYRMO_API_KEY on their machine)."
+                "Key for {person}. It is shown only now: give it to them privately. They set up their machine with\n  npx myrmo-mcp init --url <this colony's address> --key <the key> --private --publish auto"
             );
         }
         ["revoke", person] => {

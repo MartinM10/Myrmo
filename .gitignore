@@ -4,6 +4,8 @@ __pycache__/
 .venv/
 venv/
 .env
+# A private colony's settings (deploy/private-colony.sh): operator token and salt
+.env.private
 dist/
 build/
 .pytest_cache/
