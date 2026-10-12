@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.27.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.26.1...platform-v0.27.0) (2026-10-12)
+
+
+### Features
+
+* a team's private colony on one machine, in one command ([7972969](https://github.com/MartinM10/Myrmo/commit/7972969a051fc5aaf82a889eca4a9eafab4429ce))
+* a team's private colony on one machine, in one command ([8e42bd3](https://github.com/MartinM10/Myrmo/commit/8e42bd3c65b037b5ac5903a8bf64d058d6df0c8c))
+* **bench:** --no-pioneer reuses the colony as an earlier run's pioneers left it ([fb7219d](https://github.com/MartinM10/Myrmo/commit/fb7219d7335b367c0036771a0cc1c67cda768b1e))
+* **bench:** keep each agent's transcript locally, to read why a run failed ([61b7ea8](https://github.com/MartinM10/Myrmo/commit/61b7ea8f38160f4d5cb698835cdb31a307e0ee15))
+
+
+### Bug fixes
+
+* **bench:** the Antigravity hook knows the colony and private mode; its lookup only with --lookup ([ce25c0c](https://github.com/MartinM10/Myrmo/commit/ce25c0cfdb9432ecfb7ba629f709db50c853ea18))
+
+
+### Documentation
+
+* the company suite's results, honestly read ([8fb98b0](https://github.com/MartinM10/Myrmo/commit/8fb98b02c9662fe32d6e5f4567bd9d30be0fe0a3))
+
 ## [0.26.1](https://github.com/MartinM10/Myrmo/compare/platform-v0.26.0...platform-v0.26.1) (2026-10-11)
 
 
