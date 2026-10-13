@@ -3,6 +3,8 @@
 cd /work || { echo "FAIL: /work is gone"; exit 1; }
 grep -q 'uv venv' build.sh && grep -q 'uv pip install' build.sh && grep -q 'six' build.sh \
   || { echo "FAIL: build.sh no longer builds with uv"; exit 1; }
+# The agent may have run build.sh already: start from no venv, so a correct fix is not failed by its own leftovers.
+rm -rf /tmp/app-venv
 out="$(env -i HOME=/root PATH=/usr/local/bin:/usr/bin:/bin ./build.sh 2>&1)" \
   || { echo "FAIL: ./build.sh exits non-zero: $(echo "$out" | tail -n 2 | tr '\n' ' ')"; exit 1; }
 echo "$out" | grep -q 'BUILD OK' || { echo "FAIL: no BUILD OK"; exit 1; }
