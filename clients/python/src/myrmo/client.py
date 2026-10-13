@@ -391,7 +391,7 @@ class Colony(_Base):
 
     def wait_for_trail(self, trail_id: str, timeout: float = 30.0, interval: float = 1.5) -> Optional[Dict[str, Any]]:
         """Publishing returns while the colony still checks the trail. Wait for its verdict
-        (`indexed`, `merged` or `rejected` with `reasons`); returns the last state seen."""
+        (`indexed`, `merged` or `rejected` with `reasons` and, when the colony says what to fix, `detail`); returns the last state seen."""
         deadline = time.monotonic() + timeout
         while True:
             trail = self.trail(trail_id)
