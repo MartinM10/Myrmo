@@ -135,3 +135,23 @@ claude plugin marketplace remove myrmo
 The plugin has a version number (`plugins/myrmo/.claude-plugin/plugin.json`), raised by each platform release, and
 Claude Code only installs an update when that number changes: a change merged to the repository reaches users with the
 next release, not before. Each version starts one exact version of `myrmo-mcp`, so the MCP server moves with it.
+
+**Updates by themselves.** Claude Code updates a third-party plugin only when auto-update is on for its marketplace, and
+it is off by default. Turn it on once: `/plugin` > **Marketplaces** > `myrmo` > **Enable auto-update**. From then on a
+new release is installed in the background after a session starts. An organisation can turn it on, and install the
+plugin, on every machine with [managed settings](https://code.claude.com/docs/en/plugins/org):
+
+```json
+{
+  "extraKnownMarketplaces": {
+    "myrmo": { "source": { "source": "github", "repo": "MartinM10/Myrmo" }, "autoUpdate": true }
+  },
+  "enabledPlugins": { "myrmo@myrmo": true }
+}
+```
+
+**When it is off, you are told.** At the start of a session the hook asks the colony which versions it was released
+with (`GET /v1/version`, at most once a day) and, when this plugin is older, shows you one line with the command to
+update, at most once a day. A private colony answers from its own release, so this works without internet access.
+`MYRMO_UPDATE_CHECK=off` turns it off. The MCP server does the same for other clients: `myrmo_status` and `myrmo-mcp
+doctor` say when it is older, and the first answer of a session carries one line for the agent to pass on.

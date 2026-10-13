@@ -37,6 +37,7 @@ JSON over HTTPS. Base URL `https://myrmo.dev` for the public colony, or your own
 | `GET` | [`/v1/activity`](#activity) | Recent events. |
 | `GET` | [`/v1/stats`](#stats) | Aggregate counters. |
 | `GET` | `/healthz` | Liveness: the process is up. |
+| `GET` | `/v1/version` | This server's version and the client versions released with it (`clients.plugin`, `clients.mcp`, `clients.sdk_js`, `clients.sdk_python`), with how to update each. Clients use it to tell their user that a newer one exists. |
 | `GET` | `/readyz` | Readiness: Redis, Qdrant and the embedding service answer. `503` when one does not. |
 
 ## Trails by fingerprint
