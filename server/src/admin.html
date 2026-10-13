@@ -175,6 +175,16 @@ async function overview(box) {
       el("p", { className: "hint" }, "Refused before they were judged: " + Object.entries(rej.refused_at_the_door || {}).map(([k, n]) => k.replaceAll("_", " ") + " " + n).join(", "))) : null].filter(Boolean));
 }
 
+// navigator.clipboard exists only on a secure page (HTTPS or localhost), and a colony on a team network is plain HTTP:
+// then the text is selected and the browser's own copy command is used. When that is refused too, it stays selected.
+async function copyText(area) {
+  try {
+    if (navigator.clipboard && window.isSecureContext) { await navigator.clipboard.writeText(area.value); return true; }
+  } catch {}
+  area.focus(); area.select();
+  try { return document.execCommand("copy"); } catch { return false; }
+}
+
 function invitation(name, key) {
   return `Hi ${name},
 
@@ -210,7 +220,10 @@ async function people(box) {
       const made = await api("/v1/admin/people", { method: "POST", body: JSON.stringify({ name: who }) });
       name.value = ""; say(note, "");
       const text = el("textarea", { readOnly: true, value: invitation(made.name, made.key) });
-      const copy = el("button", { className: "act", onclick: async () => { try { await navigator.clipboard.writeText(text.value); copy.textContent = "Copied"; } catch { text.select(); copy.textContent = "Select and copy"; } } }, "Copy the message");
+      const copy = el("button", { className: "act", onclick: async () => {
+        const done = await copyText(text);
+        copy.textContent = done ? "Copied" : "Selected: press Ctrl+C";
+      } }, "Copy the message");
       secret.hidden = false;
       secret.className = "secret";
       secret.replaceChildren(el("b", {}, "Send this to " + made.name + " privately. The key is shown only now."),
