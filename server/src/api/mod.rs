@@ -12,8 +12,8 @@ mod trails;
 
 use admin::{
     activity as admin_activity, add_person, audit_list, gaps as admin_gaps, get_settings,
-    knowledge as admin_knowledge, page as admin_page, people, put_settings, refused, revoke_person,
-    trails as admin_trails,
+    knowledge as admin_knowledge, map as admin_map, page as admin_page, people, put_settings,
+    refused, revoke_person, trails as admin_trails,
 };
 use feed::{activity, analytics, demand, feed, stats};
 use outcomes::report_outcome;
@@ -81,6 +81,7 @@ pub fn router(state: AppState) -> Router {
         .route("/v1/admin/trails", get(admin_trails))
         .route("/v1/admin/gaps", get(admin_gaps))
         .route("/v1/admin/knowledge", get(admin_knowledge))
+        .route("/v1/admin/map", get(admin_map))
         .route("/v1/admin/refused", get(refused))
         .layer(middleware::from_fn_with_state(state.clone(), rate_limit))
         .route("/admin", get(admin_page))

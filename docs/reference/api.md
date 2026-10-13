@@ -355,6 +355,7 @@ token and answer `Cache-Control: no-store`; `501` when the colony has none, `401
 | `GET /v1/admin/refused` | The addresses refused because their network is not allowed, most recent first, with a count and the last time (30 days, 100 addresses at most). |
 | `GET /v1/admin/audit` | The last 200 changes made through the operator token: keys, settings, removed trails. |
 | `GET /v1/admin/knowledge` | What the colony holds (`kinds`, `sources`), task requests and answers in 30 days, and the `stale`, `contested`, `unconfirmed` and `most_used` entries (a count and the first 15 of each). |
+| `GET /v1/admin/map` | The knowledge map: up to 2,000 entries (`id`, `kind`, `category`, `label`, `strength`, `worked`, `failed`, `health`, `tags`, `source`) and `edges` (`a`, `b`, similarity `s`) to the two entries most like each, from the task index when there is one (`index`). |
 | `GET /v1/admin/gaps` | The task requests nobody's knowledge answered in the last 30 days (redacted, with the person), when `record_gaps` is on (private colonies only). |
 | `GET /metrics` | Prometheus text: whether each dependency answers (`myrmo_up`), the queue, trails, people, and today's counters by metric. With the operator token as a bearer token. |
 

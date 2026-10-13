@@ -237,6 +237,10 @@ prints it again for a key you still have.
   and the **refused connections** with an *Allow* button, so that "why can't Diego connect?" is answered by looking.
 - **Knowledge:** what the colony knows by kind and source, how many task requests found an answer, the requests nobody's
   knowledge answered (when recording is on, with the switch), and the contested, stale, unconfirmed and most used entries.
+- **Map:** every entry as a point, linked to the entries most like it (from the task index), coloured by topic or by kind,
+  sized by strength, with contested, stale and unconfirmed entries marked: groups of linked entries form islands named after
+  their most telling tag. Search, filter, zoom and click a point for its details; the Knowledge tab's lists open it with
+  their entries highlighted.
 - **People:** add a person (the page shows the key once, inside the message to send them, with a copy button that works over
   plain HTTP) and revoke a key; per person, when it was last used and a 14-day activity strip.
 - **Settings:** change, while it runs, the networks allowed to connect and the request and publish limits per person; each
