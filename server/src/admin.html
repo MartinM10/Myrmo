@@ -6,50 +6,135 @@
 <meta name="robots" content="noindex">
 <title>Myrmo colony admin</title>
 <style>
+  /* The same palette as the website: dark loam by default, limestone when the system asks for light. No outside resource. */
   :root {
-    --bg: #fbf9f4; --card: #ffffff; --ink: #231f1a; --muted: #6d655b; --line: #e3ddd2;
-    --accent: #b5521b; --accent-ink: #ffffff; --ok: #2f7d4f; --warn: #a56a00; --bad: #b3261e;
+    --soil: #13100c; --tunnel: #1c1813; --wall: #2d261d; --chalk: #ede4d3; --dust: #9d9282;
+    --amber: #ffb23e; --amber-ink: #ffb23e; --moss: #93d17f; --ember: #ef7a62; --ochre: #e0c35a; --code-bg: #0e0c09;
+    --f-display: ui-monospace, "SF Mono", "Martian Mono", Menlo, Consolas, monospace;
+    --f-body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --radius: 6px; color-scheme: dark;
   }
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) {
-      --bg: #17140f; --card: #211d17; --ink: #efe9df; --muted: #a39a8c; --line: #38322a;
-      --accent: #e08a52; --accent-ink: #1a1208; --ok: #6cc08b; --warn: #e0b04d; --bad: #f0857d;
+  @media (prefers-color-scheme: light) {
+    :root {
+      --soil: #ebe8e1; --tunnel: #f7f5f0; --wall: #d6d0c4; --chalk: #1c1813; --dust: #645c50;
+      --amber: #e8901c; --amber-ink: #a35a00; --moss: #2f7d32; --ember: #b8402a; --ochre: #8a6d00; --code-bg: #1c1813;
+      color-scheme: light;
     }
   }
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
-  header { display: flex; align-items: center; gap: 16px; padding: 14px 20px; border-bottom: 1px solid var(--line); background: var(--card); flex-wrap: wrap; }
-  header h1 { font-size: 17px; margin: 0; }
-  header .where { color: var(--muted); font-size: 13px; }
-  nav { display: flex; gap: 4px; margin-left: auto; flex-wrap: wrap; }
-  nav button { background: none; border: 1px solid transparent; color: var(--muted); padding: 6px 12px; border-radius: 8px; cursor: pointer; font: inherit; }
-  nav button[aria-selected="true"] { color: var(--ink); border-color: var(--line); background: var(--bg); font-weight: 600; }
-  main { max-width: 1040px; margin: 0 auto; padding: 20px 16px 60px; }
-  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; margin-bottom: 16px; }
-  .card h2 { font-size: 15px; margin: 0 0 10px; }
-  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
-  .stat b { display: block; font-size: 24px; }
-  .stat span { color: var(--muted); font-size: 13px; }
-  table { width: 100%; border-collapse: collapse; font-size: 14px; }
-  th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
-  th { color: var(--muted); font-weight: 500; font-size: 12px; text-transform: uppercase; letter-spacing: .03em; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; background: var(--soil); color: var(--chalk); font: 15px/1.55 var(--f-body); }
+  a { color: var(--amber-ink); }
+  code, .mono { font-family: var(--f-display); font-size: .86em; }
+  [hidden] { display: none !important; }
+
+  /* Top bar */
+  .nav { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 18px; flex-wrap: wrap; padding: 12px 28px; background: color-mix(in srgb, var(--soil) 92%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--wall); }
+  .wordmark { display: flex; align-items: baseline; gap: 10px; font-family: var(--f-display); font-weight: 600; letter-spacing: .02em; }
+  .wordmark b { color: var(--amber-ink); font-size: 1.05rem; }
+  .wordmark span { color: var(--dust); font-size: .8rem; font-weight: 400; }
+  .where { color: var(--dust); font-family: var(--f-display); font-size: .75rem; display: inline-flex; gap: 8px; align-items: center; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--dust); display: inline-block; }
+  .dot.ok { background: var(--moss); } .dot.bad { background: var(--ember); } .dot.warn { background: var(--ochre); }
+  .tabs { display: flex; gap: 2px; margin-left: auto; flex-wrap: wrap; }
+  .tabs button { background: none; border: 0; border-bottom: 2px solid transparent; color: var(--dust); padding: 8px 12px; cursor: pointer; font: 500 .9rem var(--f-body); }
+  .tabs button[aria-selected="true"] { color: var(--chalk); border-bottom-color: var(--amber); }
+  .tabs button:hover { color: var(--chalk); }
+
+  /* Heading and stats */
+  .head { padding: 28px 28px 0; max-width: 1480px; margin: 0 auto; }
+  .head h1 { font: 600 1.6rem var(--f-display); margin: 0 0 4px; font-stretch: 87.5%; }
+  .head p { color: var(--dust); margin: 0; max-width: 64ch; }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-top: 20px; }
+  .stat { background: var(--tunnel); border: 1px solid var(--wall); border-radius: var(--radius); padding: 12px 14px; }
+  .stat b { display: block; font: 600 1.45rem var(--f-display); }
+  .stat span { color: var(--dust); font-size: .8rem; }
+  .stat b.ok { color: var(--moss); } .stat b.bad { color: var(--ember); } .stat b.warn { color: var(--ochre); }
+
+  /* Alerts */
+  .alerts { display: grid; gap: 8px; margin-top: 16px; }
+  .alert { display: flex; gap: 10px; align-items: flex-start; border: 1px solid var(--wall); border-left-width: 3px; border-radius: var(--radius); padding: 9px 12px; background: var(--tunnel); font-size: .9rem; }
+  .alert.bad { border-left-color: var(--ember); } .alert.warn { border-left-color: var(--ochre); } .alert.info { border-left-color: var(--amber); }
+  .alert button { margin-left: auto; }
+
+  /* Shell: filters | feed | rail */
+  .shell { display: grid; grid-template-columns: 200px minmax(0, 1fr) 320px; gap: 26px; padding: 22px 28px 70px; max-width: 1480px; margin: 0 auto; align-items: start; }
+  @media (max-width: 1180px) { .shell { grid-template-columns: 180px minmax(0, 1fr); } .rail { grid-column: 1 / -1; } }
+  @media (max-width: 820px) { .shell { grid-template-columns: minmax(0, 1fr); padding: 16px; } .nav, .head { padding-left: 16px; padding-right: 16px; } }
+  .eyebrow { font: 500 .7rem var(--f-display); text-transform: uppercase; letter-spacing: .1em; color: var(--dust); margin: 0 0 8px; }
+  .filters fieldset { border: 0; padding: 0; margin: 0 0 18px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { background: var(--tunnel); border: 1px solid var(--wall); color: var(--dust); border-radius: 999px; padding: 3px 10px; cursor: pointer; font: .8rem var(--f-body); }
+  .chip[aria-pressed="true"] { color: var(--soil); background: var(--amber); border-color: var(--amber); font-weight: 600; }
+  .chip small { opacity: .7; margin-left: 4px; }
+  .toolbar { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+  .toolbar input[type="search"] { flex: 1 1 260px; }
+
+  /* Trail cards */
+  .feed { display: grid; gap: 10px; }
+  .trail { background: var(--tunnel); border: 1px solid var(--wall); border-radius: var(--radius); }
+  .trail > button.top { all: unset; display: block; width: 100%; box-sizing: border-box; padding: 12px 14px; cursor: pointer; }
+  .trail > button.top:focus-visible { outline: 2px solid var(--amber); outline-offset: -2px; }
+  .trail .err { font: 600 .9rem/1.4 var(--f-display); overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .trail[data-open="true"] .err { -webkit-line-clamp: unset; }
+  .trail .sum { color: var(--dust); font-size: .88rem; margin-top: 4px; overflow-wrap: anywhere; }
+  .trail .meta { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-top: 8px; }
+  .pill { display: inline-block; border: 1px solid var(--wall); border-radius: 999px; padding: 0 8px; font: .72rem var(--f-display); color: var(--dust); }
+  .pill.ok { color: var(--moss); border-color: color-mix(in srgb, var(--moss) 45%, transparent); }
+  .pill.warn { color: var(--ochre); border-color: color-mix(in srgb, var(--ochre) 45%, transparent); }
+  .pill.bad { color: var(--ember); border-color: color-mix(in srgb, var(--ember) 50%, transparent); }
+  .pill.amber { color: var(--amber-ink); border-color: color-mix(in srgb, var(--amber) 50%, transparent); }
+  .meter { display: inline-flex; gap: 6px; align-items: center; margin-left: auto; font: .72rem var(--f-display); color: var(--dust); }
+  .meter .cells { display: inline-flex; gap: 2px; }
+  .meter i { width: 5px; height: 11px; border-radius: 1px; background: var(--wall); }
+  .meter i.on { background: var(--amber); }
+  .body { display: none; border-top: 1px solid var(--wall); padding: 12px 14px 14px; }
+  .trail[data-open="true"] .body { display: grid; gap: 14px; }
+  .body h4 { font: 500 .7rem var(--f-display); text-transform: uppercase; letter-spacing: .1em; color: var(--dust); margin: 0 0 4px; }
+  .body p, .body ol, .body ul { margin: 0; padding-left: 0; overflow-wrap: anywhere; }
+  .body ol, .body ul { padding-left: 1.3em; }
+  .cmd { background: var(--code-bg); border: 1px solid var(--wall); border-radius: var(--radius); padding: 8px 10px; margin-top: 6px; color: #ede4d3; }
+  .cmd.risky { border-color: var(--ember); }
+  .cmd pre { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font: .8rem/1.5 var(--f-display); }
+  .cmd .why { color: #9d9282; font-size: .78rem; margin-bottom: 4px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .outcomes { display: flex; gap: 14px; font: .8rem var(--f-display); color: var(--dust); flex-wrap: wrap; }
+  .outcomes b { color: var(--chalk); }
+
+  /* Rail */
+  .rail { display: grid; gap: 20px; }
+  .block { background: var(--tunnel); border: 1px solid var(--wall); border-radius: var(--radius); padding: 14px; }
+  .list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; font-size: .86rem; }
+  .list li { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+  .list .when { margin-left: auto; color: var(--dust); font: .72rem var(--f-display); }
+  .empty { color: var(--dust); font-size: .86rem; margin: 0; }
+  .legend { display: flex; gap: 12px; flex-wrap: wrap; font: .72rem var(--f-display); color: var(--dust); margin-top: 8px; }
+  .legend i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+  svg text { font: 10px var(--f-display); fill: var(--dust); }
+
+  /* Forms, tables, buttons */
+  main.plain { max-width: 1040px; margin: 0 auto; padding: 24px 28px 70px; }
+  @media (max-width: 820px) { main.plain { padding: 16px; } }
+  input, textarea, select { font: inherit; color: var(--chalk); background: var(--soil); border: 1px solid var(--wall); border-radius: var(--radius); padding: 8px 10px; }
+  input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 2px solid var(--amber); outline-offset: 1px; }
+  input[type="text"], input[type="password"], textarea { width: 100%; }
+  textarea { font-family: var(--f-display); font-size: .8rem; min-height: 280px; }
+  label { display: block; font-weight: 600; font-size: .82rem; margin: 14px 0 4px; }
+  .hint { color: var(--dust); font-size: .84rem; margin: 4px 0 0; }
+  button.act { background: var(--amber); color: #1c1813; border: 0; border-radius: var(--radius); padding: 8px 14px; cursor: pointer; font: 600 .88rem var(--f-body); }
+  button.quiet { background: none; border: 1px solid var(--wall); color: var(--chalk); border-radius: var(--radius); padding: 5px 10px; cursor: pointer; font: .84rem var(--f-body); }
+  button.danger { background: none; border: 1px solid var(--ember); color: var(--ember); border-radius: var(--radius); padding: 4px 10px; cursor: pointer; font: .84rem var(--f-body); }
+  button:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .card { background: var(--tunnel); border: 1px solid var(--wall); border-radius: var(--radius); padding: 16px 18px; margin-bottom: 16px; }
+  .card h2 { font: 600 .95rem var(--f-display); margin: 0 0 10px; }
+  table { width: 100%; border-collapse: collapse; font-size: .88rem; }
+  th, td { text-align: left; padding: 8px; border-bottom: 1px solid var(--wall); vertical-align: middle; }
+  th { color: var(--dust); font: 500 .7rem var(--f-display); text-transform: uppercase; letter-spacing: .08em; }
   td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
   .scroll { overflow-x: auto; }
-  input, textarea, select { font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; }
-  input[type="text"], input[type="password"], textarea { width: 100%; }
-  textarea { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; min-height: 260px; }
-  label { display: block; font-weight: 600; font-size: 13px; margin: 12px 0 4px; }
-  .hint { color: var(--muted); font-size: 13px; margin: 4px 0 0; }
-  button.act { background: var(--accent); color: var(--accent-ink); border: 0; border-radius: 8px; padding: 8px 14px; cursor: pointer; font: inherit; font-weight: 600; }
-  button.quiet { background: none; border: 1px solid var(--line); color: var(--ink); border-radius: 8px; padding: 6px 10px; cursor: pointer; font: inherit; }
-  button.danger { background: none; border: 1px solid var(--bad); color: var(--bad); border-radius: 8px; padding: 5px 10px; cursor: pointer; font: inherit; }
-  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-  .ok { color: var(--ok); } .warn { color: var(--warn); } .bad { color: var(--bad); }
-  .msg { margin: 10px 0 0; font-size: 14px; }
-  .pill { display: inline-block; border: 1px solid var(--line); border-radius: 999px; padding: 1px 9px; font-size: 12px; color: var(--muted); }
-  .secret { border: 1px solid var(--warn); background: color-mix(in srgb, var(--warn) 8%, var(--card)); border-radius: 10px; padding: 12px 14px; margin-top: 12px; }
-  #login { max-width: 420px; margin: 12vh auto; }
-  [hidden] { display: none !important; }
+  .msg { margin: 10px 0 0; font-size: .88rem; } .msg.ok { color: var(--moss); } .msg.bad { color: var(--ember); }
+  .secret { border: 1px solid var(--ochre); background: color-mix(in srgb, var(--ochre) 8%, var(--tunnel)); border-radius: var(--radius); padding: 12px 14px; margin-top: 12px; }
+  #login { max-width: 440px; margin: 14vh auto; }
 </style>
 </head>
 <body>
@@ -64,25 +149,18 @@
 </section>
 
 <div id="app" hidden>
-  <header>
-    <h1>Myrmo colony admin</h1>
-    <span class="where" id="where"></span>
-    <nav role="tablist" id="tabs">
-      <button role="tab" data-tab="overview" aria-selected="true">Overview</button>
+  <header class="nav">
+    <div class="wordmark"><b>myrmo</b><span>colony admin</span></div>
+    <span class="where"><i class="dot" id="live"></i><span id="where"></span></span>
+    <nav class="tabs" role="tablist" id="tabs">
+      <button role="tab" data-tab="colony" aria-selected="true">Colony</button>
       <button role="tab" data-tab="people" aria-selected="false">People</button>
-      <button role="tab" data-tab="trails" aria-selected="false">Trails</button>
       <button role="tab" data-tab="settings" aria-selected="false">Settings</button>
-      <button role="tab" data-tab="activity" aria-selected="false">Activity</button>
+      <button role="tab" data-tab="activity" aria-selected="false">Activity log</button>
       <button class="quiet" id="leave">Sign out</button>
     </nav>
   </header>
-  <main>
-    <section id="tab-overview"></section>
-    <section id="tab-people" hidden></section>
-    <section id="tab-trails" hidden></section>
-    <section id="tab-settings" hidden></section>
-    <section id="tab-activity" hidden></section>
-  </main>
+  <div id="view"></div>
 </div>
 
 <script>
@@ -90,7 +168,13 @@
 const $ = (id) => document.getElementById(id);
 const el = (tag, props = {}, ...kids) => {
   const node = Object.assign(document.createElement(tag), props);
-  for (const kid of kids.flat()) if (kid != null) node.append(kid.nodeType ? kid : document.createTextNode(String(kid)));
+  for (const kid of kids.flat(Infinity)) if (kid != null && kid !== false) node.append(kid.nodeType ? kid : document.createTextNode(String(kid)));
+  return node;
+};
+const svg = (tag, attrs = {}, ...kids) => {
+  const node = document.createElementNS("http://www.w3.org/2000/svg", tag);
+  for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, String(v));
+  for (const kid of kids.flat(Infinity)) if (kid != null) node.append(kid.nodeType ? kid : document.createTextNode(String(kid)));
   return node;
 };
 const store = { get: () => { try { return sessionStorage.getItem("myrmo-admin-token") || ""; } catch { return ""; } },
@@ -105,36 +189,47 @@ async function api(path, options = {}) {
   if (!res.ok) throw new Error(body?.error?.message || ("HTTP " + res.status));
   return body;
 }
-const when = (ts) => ts ? new Date(ts * 1000).toLocaleString() : "";
-const day = (ts) => ts ? new Date(ts * 1000).toLocaleDateString() : "";
 const num = (n) => Number(n ?? 0).toLocaleString();
 const cut = (s, n) => (s || "").length > n ? s.slice(0, n - 1) + "…" : (s || "");
 const say = (node, text, kind = "") => { node.className = "msg " + kind; node.textContent = text; };
+const day = (ts) => ts ? new Date(ts * 1000).toLocaleDateString() : "";
+const when = (ts) => ts ? new Date(ts * 1000).toLocaleString() : "";
+function ago(ts) {
+  if (!ts) return "never";
+  const s = Math.max(0, Math.floor(Date.now() / 1000 - ts));
+  if (s < 60) return "just now";
+  if (s < 3600) return Math.floor(s / 60) + " min ago";
+  if (s < 86400) return Math.floor(s / 3600) + " h ago";
+  return Math.floor(s / 86400) + " d ago";
+}
 
 function signOut(message) {
   token = ""; store.set("");
   $("app").hidden = true; $("login").hidden = false;
   say($("login-msg"), message || "", "bad");
 }
-
 async function enter() {
   token = $("token").value.trim();
   if (!token) return;
-  try {
-    await api("/v1/admin/people?days=1");
-  } catch (err) { if (err.message !== "unauthorized") say($("login-msg"), err.message, "bad"); return; }
+  try { await api("/v1/admin/people?days=1"); }
+  catch (err) { if (err.message !== "unauthorized") say($("login-msg"), err.message, "bad"); return; }
   store.set(token); $("token").value = "";
+  start();
+}
+function start() {
   $("login").hidden = true; $("app").hidden = false;
-  $("where").textContent = location.origin;
-  show("overview");
+  $("where").textContent = location.host;
+  show("colony");
 }
 
-const tabs = { overview, people, trails, settings, activity };
+const tabs = { colony, people, settings, activity };
+let current = "colony";
 function show(name) {
+  current = name;
   for (const b of document.querySelectorAll("#tabs [data-tab]")) b.setAttribute("aria-selected", String(b.dataset.tab === name));
-  for (const key of Object.keys(tabs)) $("tab-" + key).hidden = key !== name;
-  const box = $("tab-" + name); box.replaceChildren(el("p", { className: "hint" }, "Loading…"));
-  tabs[name](box).catch((err) => { if (err.message !== "unauthorized") box.replaceChildren(el("p", { className: "msg bad" }, err.message)); });
+  const view = $("view");
+  view.replaceChildren(el("main", { className: "plain" }, el("p", { className: "hint" }, "Loading…")));
+  tabs[name](view).catch((err) => { if (err.message !== "unauthorized") view.replaceChildren(el("main", { className: "plain" }, el("p", { className: "msg bad" }, err.message))); });
 }
 
 function table(headers, rows, numeric = []) {
@@ -143,47 +238,169 @@ function table(headers, rows, numeric = []) {
     el("tbody", {}, rows.map((r) => el("tr", {}, r.map((c, i) => el("td", { className: numeric.includes(i) ? "n" : "" }, c)))))));
 }
 
-async function overview(box) {
-  const [ready, stats, team] = await Promise.all([
-    fetch("/readyz").then((r) => r.json()).catch(() => ({})),
-    api("/v1/stats"), api("/v1/admin/people?days=7"),
-  ]);
-  const rej = stats.rejections_30d || {};
-  const stat = (v, l) => el("div", { className: "stat" }, el("b", {}, v), el("span", {}, l));
-  const reuse = team.reuse || [];
-  const people = team.people || [];
-  box.replaceChildren(...[
-    el("div", { className: "card" }, el("h2", {}, "Colony"), el("div", { className: "grid" },
-      el("div", { className: "stat" }, el("b", { className: ready.ready ? "ok" : "bad" }, ready.ready ? "Ready" : "Not ready"),
-        el("span", {}, ["redis", "qdrant", "embedding"].filter((k) => ready[k] === false).map((k) => k + " is down").join(", ") || "all parts answer")),
-      stat(num(stats.trails), "trails"),
-      stat(num(ready.queue_depth) + (ready.queue_max ? " / " + num(ready.queue_max) : ""), "waiting to be checked"),
-      stat(num(people.length), "people with a key"),
-      stat(num(stats.searches_30d), "searches, 30 days"),
-      stat(num(rej.rejected) + " of " + num(rej.judged), "trails rejected, 30 days"))),
-    el("div", { className: "card" }, el("h2", {}, "Last 7 days, per person"),
-      people.length ? table(["Person", "Searches", "Published", "Reports", "Used others' (worked)", "Helped others (worked)"],
-        people.map((p) => [p.name, num(p.searches), num(p.published), num(p.reports), num(p.used_others) + " (" + num(p.used_others_worked) + ")", num(p.helped_others) + " (" + num(p.helped_others_worked) + ")"]), [1, 2, 3, 4, 5])
-        : el("p", { className: "hint" }, "Nobody has a key yet: add people in the People tab.")),
-    el("div", { className: "card" }, el("h2", {}, "Reuse between people"),
-      el("p", { className: "hint" }, "Each time one person's agent reported on a trail another person's agent published: what a shared colony is for."),
-      reuse.length ? table(["Date", "Published by", "Used by", "Outcome", "Trail"],
-        reuse.slice(0, 20).map((e) => [day(e.ts), e.author, e.reporter, e.outcome, cut(e.label || e.trail, 70)]))
-        : el("p", { className: "hint" }, "None yet.")),
-    rej.rejected ? el("div", { className: "card" }, el("h2", {}, "Why trails were rejected, 30 days"),
-      table(["Reason", "Trails"], Object.entries(rej.by_reason || {}).filter(([, n]) => n).map(([k, n]) => [k.replaceAll("_", " "), num(n)]), [1]),
-      el("p", { className: "hint" }, "Refused before they were judged: " + Object.entries(rej.refused_at_the_door || {}).map(([k, n]) => k.replaceAll("_", " ") + " " + n).join(", "))) : null].filter(Boolean));
+/* ---------- Colony: the trails, with the colony's pulse beside them ---------- */
+
+function meter(strength) {
+  const on = Math.max(0, Math.min(10, Math.round(Number(strength || 0) * 10)));
+  return el("span", { className: "meter", title: "Trail strength " + Number(strength || 0).toFixed(2) }, Number(strength || 0).toFixed(2),
+    el("span", { className: "cells" }, Array.from({ length: 10 }, (_, k) => el("i", { className: k < on ? "on" : "" }))));
+}
+const riskPill = (risk) => !risk || risk.level === "low" ? el("span", { className: "pill ok" }, "risk low") : el("span", { className: "pill " + (risk.level === "high" ? "bad" : "warn") }, "risk " + risk.level);
+
+function trailCard(t, onRemove) {
+  const p = t.trail?.problem || {}, s = t.trail?.solution || {};
+  const flags = new Map((t.risk?.flags || []).map((f) => [f.command_index, f]));
+  const card = el("article", { className: "trail" });
+  card.dataset.open = "false";
+  const top = el("button", { className: "top", type: "button", "aria-expanded": "false" },
+    el("div", { className: "err" }, p.error_message || "(no error line)"),
+    el("div", { className: "sum" }, cut(p.summary, 180)),
+    el("div", { className: "meta" },
+      t.category ? el("span", { className: "pill amber" }, t.category.replaceAll("_", " ")) : null,
+      t.trail?.environment?.runtime?.name ? el("span", { className: "pill" }, t.trail.environment.runtime.name) : null,
+      riskPill(t.risk),
+      t.seed ? el("span", { className: "pill" }, "seed") : null,
+      el("span", { className: "pill" }, t.author ? "by " + t.author : "author unknown"),
+      el("span", { className: "pill" }, day(Date.parse(t.created_at) / 1000)),
+      meter(t.strength)));
+  const list = (items, tag = "ol") => el(tag, {}, (items || []).map((x) => el("li", {}, x)));
+  const body = el("div", { className: "body" },
+    p.summary ? el("section", {}, el("h4", {}, "Summary"), el("p", {}, p.summary)) : null,
+    s.root_cause ? el("section", {}, el("h4", {}, "Root cause"), el("p", {}, s.root_cause)) : null,
+    (p.failed_approaches || []).length ? el("section", {}, el("h4", {}, "Dead ends"), list(p.failed_approaches.map((a) => `${a.approach} — ${a.why_it_failed}`), "ul")) : null,
+    (s.steps || []).length ? el("section", {}, el("h4", {}, "Steps"), list(s.steps)) : null,
+    (s.shell_commands_executed || []).length ? el("section", {}, el("h4", {}, "Commands"), ...s.shell_commands_executed.map((c, i) => {
+      const f = flags.get(i);
+      return el("div", { className: "cmd" + (f ? " risky" : "") },
+        el("div", { className: "why" }, f ? el("span", { className: "pill " + (f.level === "high" ? "bad" : "warn") }, f.flag.replaceAll("_", " ") + " · " + f.level) : null, c.purpose),
+        el("pre", {}, "$ " + c.command));
+    })) : null,
+    s.verification_method ? el("section", {}, el("h4", {}, "How it was checked"), el("p", {}, `${s.verification_method.type}: ${s.verification_method.description || ""}`), s.verification_method.evidence ? el("p", { className: "hint" }, "Evidence: " + s.verification_method.evidence) : null) : null,
+    el("section", {}, el("h4", {}, "Outcomes"), el("div", { className: "outcomes" },
+      ["worked", "partially_worked", "failed", "not_applicable"].map((k) => el("span", {}, k.replaceAll("_", " ") + " ", el("b", {}, num(t.outcomes?.[k]))))),
+      el("p", { className: "hint" }, `${num(t.environments_confirmed)} environment(s) confirmed. Trail ${t.trail_id}.`)),
+    el("div", { className: "row" }, el("button", { className: "danger", type: "button", onclick: () => onRemove(t) }, "Remove this trail")));
+  top.onclick = () => { const open = card.dataset.open !== "true"; card.dataset.open = String(open); top.setAttribute("aria-expanded", String(open)); };
+  card.append(top, body);
+  return card;
 }
 
-// navigator.clipboard exists only on a secure page (HTTPS or localhost), and a colony on a team network is plain HTTP:
-// then the text is selected and the browser's own copy command is used. When that is refused too, it stays selected.
-async function copyText(area) {
-  try {
-    if (navigator.clipboard && window.isSecureContext) { await navigator.clipboard.writeText(area.value); return true; }
-  } catch {}
-  area.focus(); area.select();
-  try { return document.execCommand("copy"); } catch { return false; }
+function chart(days) {
+  const W = 300, H = 110, pad = 14, bw = (W - pad * 2) / Math.max(1, days.length);
+  const max = Math.max(4, ...days.map((d) => d.searches));
+  const bars = days.map((d, i) => {
+    const x = pad + i * bw, h = (d.searches / max) * (H - 34), a = (Math.min(d.answered, d.searches) / max) * (H - 34);
+    return [
+      svg("rect", { x: x + 1.5, y: H - 18 - h, width: bw - 3, height: Math.max(h, d.searches ? 2 : 0), rx: 1.5, fill: "var(--wall)" }, svg("title", {}, `${d.date}: ${d.searches} searches, ${d.answered} answered, ${d.published} published`)),
+      svg("rect", { x: x + 1.5, y: H - 18 - a, width: bw - 3, height: Math.max(a, d.answered ? 2 : 0), rx: 1.5, fill: "var(--moss)" }),
+      d.published ? svg("circle", { cx: x + bw / 2, cy: H - 18 - h - 6, r: 3, fill: "var(--amber)" }) : null,
+      d.rejected ? svg("circle", { cx: x + bw / 2, cy: H - 18 - h - (d.published ? 14 : 6), r: 3, fill: "var(--ember)" }) : null,
+    ];
+  });
+  const label = (i) => svg("text", { x: pad + i * bw + bw / 2, y: H - 4, "text-anchor": "middle" }, days[i].date.slice(8));
+  return svg("svg", { viewBox: `0 0 ${W} ${H}`, width: "100%", role: "img", "aria-label": "Searches per day" },
+    svg("line", { x1: pad, x2: W - pad, y1: H - 18, y2: H - 18, stroke: "var(--wall)" }), bars, label(0), label(days.length - 1));
 }
+
+async function colony(view) {
+  const [ready, stats, team, act, refused, first] = await Promise.all([
+    fetch("/readyz").then((r) => r.json()).catch(() => ({})),
+    api("/v1/stats"), api("/v1/admin/people?days=7"), api("/v1/admin/activity?days=14"), api("/v1/admin/refused"),
+    api("/v1/admin/trails?limit=30"),
+  ]);
+  $("live").className = "dot " + (ready.ready ? "ok" : "bad");
+  const rej = stats.rejections_30d || {}, people = team.people || [], seen = act.last_seen || {};
+  const items = first.items || []; let cursor = first.next_cursor;
+  const state = { q: "", category: "", author: "", sort: "new" };
+
+  // What needs a look.
+  const alerts = [];
+  if (!ready.ready) alerts.push(["bad", "The colony is not ready: " + (["redis", "qdrant", "embedding"].filter((k) => ready[k] === false).join(", ") || "see the logs") + "."]);
+  if (ready.queue_max && ready.queue_depth >= 0.8 * ready.queue_max) alerts.push(["warn", `The queue is ${num(ready.queue_depth)} of ${num(ready.queue_max)}: new trails wait to be checked.`]);
+  const day1 = Date.now() / 1000 - 86400;
+  const recentRefused = (refused.items || []).filter((r) => r.last >= day1);
+  if (recentRefused.length) alerts.push(["warn", `${recentRefused.length} address(es) were refused in the last day because their network is not allowed. See "Refused connections" on the right: if one is a colleague, allow it from there.`]);
+  const waiting = people.filter((p) => !seen[p.name] && p.name !== "claude-vm");
+  if (waiting.length) alerts.push(["info", "Has a key but has not connected yet: " + waiting.map((p) => p.name).join(", ") + "."]);
+  const rejectedWeek = (act.days || []).slice(-7).reduce((n, d) => n + d.rejected, 0);
+  if (rejectedWeek) alerts.push(["info", `${rejectedWeek} trail(s) were rejected in the last 7 days (${Object.entries(rej.by_reason || {}).filter(([, n]) => n).map(([k, n]) => `${k.replaceAll("_", " ")} ${n}`).join(", ") || "see Activity log"}).`]);
+
+  const stat = (value, label, kind = "") => el("div", { className: "stat" }, el("b", { className: kind }, value), el("span", {}, label));
+  const feed = el("div", { className: "feed" });
+  const more = el("button", { className: "quiet", type: "button", hidden: !cursor }, "Load more trails");
+  const filtersBox = el("aside", { className: "filters", "aria-label": "Filters" });
+
+  const remove = async (t) => {
+    const reason = prompt("Why is this trail removed? (kept in the activity log)", "");
+    if (reason === null) return;
+    try { await api("/v1/trails/" + t.trail_id, { method: "DELETE", body: JSON.stringify({ reason }) }); items.splice(items.indexOf(t), 1); draw(); }
+    catch (err) { alert(err.message); }
+  };
+  const chips = (key, values) => el("div", { className: "chips" }, values.map(([v, n]) => {
+    const b = el("button", { className: "chip", type: "button", "aria-pressed": String(state[key] === v) }, v.replaceAll("_", " "), el("small", {}, String(n)));
+    b.onclick = () => { state[key] = state[key] === v ? "" : v; draw(); };
+    return b;
+  }));
+  const count = (f) => { const m = new Map(); for (const t of items) { const k = f(t); if (k) m.set(k, (m.get(k) || 0) + 1); } return [...m.entries()].sort((a, b) => b[1] - a[1]); };
+  function draw() {
+    const q = state.q.toLowerCase();
+    let shown = items.filter((t) => (!state.category || t.category === state.category) && (!state.author || t.author === state.author)
+      && (!q || JSON.stringify([t.trail?.problem, t.trail?.solution?.root_cause, t.category, t.author]).toLowerCase().includes(q)));
+    if (state.sort === "strength") shown = [...shown].sort((a, b) => b.strength - a.strength);
+    if (state.sort === "reports") shown = [...shown].sort((a, b) => ((b.outcomes?.worked || 0) + (b.outcomes?.failed || 0)) - ((a.outcomes?.worked || 0) + (a.outcomes?.failed || 0)));
+    feed.replaceChildren(...(shown.length ? shown.map((t) => trailCard(t, remove)) : [el("p", { className: "empty" }, items.length ? "No trail matches these filters." : "No trails yet. They appear here as soon as an agent publishes one.")]));
+    filtersBox.replaceChildren(
+      el("fieldset", {}, el("legend", { className: "eyebrow" }, "Category"), chips("category", count((t) => t.category))),
+      el("fieldset", {}, el("legend", { className: "eyebrow" }, "Published by"), chips("author", count((t) => t.author))),
+      el("p", { className: "hint" }, `${shown.length} of ${items.length} loaded.`));
+  }
+  more.onclick = async () => {
+    try { const page = await api("/v1/admin/trails?limit=30&cursor=" + encodeURIComponent(cursor)); items.push(...page.items); cursor = page.next_cursor; more.hidden = !cursor; draw(); }
+    catch (err) { alert(err.message); }
+  };
+
+  // The rail.
+  const allow = async (address) => {
+    try {
+      const s = await api("/v1/admin/settings");
+      const list = [...s.allowed_networks.filter((n) => !n.startsWith(address + "/")), address];
+      await api("/v1/admin/settings", { method: "PUT", body: JSON.stringify({ allowed_networks: list.join(", ") }) });
+      show("colony");
+    } catch (err) { alert(err.message); }
+  };
+  const days = act.days || [];
+  const rail = el("aside", { className: "rail", "aria-label": "Activity" },
+    el("div", { className: "block" }, el("p", { className: "eyebrow" }, "Searches, last 14 days"), days.length ? chart(days) : null,
+      el("div", { className: "legend" }, el("span", {}, el("i", { style: "background:var(--wall)" }), "searches"), el("span", {}, el("i", { style: "background:var(--moss)" }), "answered"),
+        el("span", {}, el("i", { style: "background:var(--amber)" }), "published"), el("span", {}, el("i", { style: "background:var(--ember)" }), "rejected"))),
+    el("div", { className: "block" }, el("p", { className: "eyebrow" }, "People"),
+      people.length ? el("ul", { className: "list" }, people.map((p) => el("li", {}, el("span", {}, p.name), el("span", { className: "when" }, seen[p.name] ? "seen " + ago(seen[p.name]) : "not connected yet")))) : el("p", { className: "empty" }, "Nobody has a key yet.")),
+    el("div", { className: "block" }, el("p", { className: "eyebrow" }, "Reuse between people"),
+      (team.reuse || []).length ? el("ul", { className: "list" }, team.reuse.slice(0, 6).map((e) => el("li", {}, el("span", {}, `${e.reporter} used ${e.author}'s: ${cut(e.label || e.trail, 40)}`), el("span", { className: "pill " + (e.outcome === "worked" ? "ok" : "warn") }, e.outcome)))) : el("p", { className: "empty" }, "None yet: it shows the first time one person's agent uses what another published.")),
+    el("div", { className: "block" }, el("p", { className: "eyebrow" }, "Refused connections"),
+      (refused.items || []).length ? el("ul", { className: "list" }, refused.items.slice(0, 8).map((r) => el("li", {}, el("code", {}, r.address), el("span", { className: "when" }, `${num(r.count)}× · ${ago(r.last)}`),
+        el("button", { className: "quiet", type: "button", onclick: () => confirm(`Allow ${r.address} to connect to this colony?`) && allow(r.address) }, "Allow"))))
+        : el("p", { className: "empty" }, "None. An address that is not in the allowed networks shows up here, so you can tell who is being turned away.")));
+
+  const search = el("input", { type: "search", placeholder: "Search the trails: an error, a tool, a person…", spellcheck: false, "aria-label": "Search the trails" });
+  search.oninput = () => { state.q = search.value; draw(); };
+  const sort = el("select", { "aria-label": "Sort" }, [["new", "Newest first"], ["strength", "Strongest first"], ["reports", "Most reported"]].map(([v, l]) => el("option", { value: v }, l)));
+  sort.onchange = () => { state.sort = sort.value; draw(); };
+
+  view.replaceChildren(
+    el("div", { className: "head" }, el("h1", {}, "Colony"), el("p", {}, "What the team's agents have published, who published it, and how the colony is doing."),
+      el("div", { className: "stats" },
+        stat(ready.ready ? "Ready" : "Not ready", "all parts answer", ready.ready ? "ok" : "bad"), stat(num(stats.trails), "trails"),
+        stat(num(ready.queue_depth) + (ready.queue_max ? " / " + num(ready.queue_max) : ""), "waiting to be checked"),
+        stat(num(people.length), "people with a key"), stat(num(stats.searches_30d), "searches, 30 days"),
+        stat(num(rej.rejected) + " of " + num(rej.judged), "trails rejected, 30 days", rej.rejected ? "warn" : ""),
+        stat(num(stats.answered_30d), "searches answered, 30 days")),
+      alerts.length ? el("div", { className: "alerts" }, alerts.map(([kind, text]) => el("div", { className: "alert " + kind }, text))) : null),
+    el("div", { className: "shell" }, filtersBox, el("main", {}, el("div", { className: "toolbar" }, search, sort), feed, el("div", { className: "row", style: "margin-top:12px" }, more)), rail));
+  draw();
+}
+
+/* ---------- People ---------- */
 
 function invitation(name, key) {
   return `Hi ${name},
@@ -197,8 +414,9 @@ You need: Node.js 20 or newer (node --version) and Claude Code and/or Antigravit
 
    npx myrmo-mcp@latest init --url ${location.origin} --key ${key} --private --publish auto
 
-2. Restart Claude Code / Antigravity. In Antigravity, accept the permission for the myrmo tools ("always").
-3. Check it:   npx myrmo-mcp@latest doctor     (it says what to fix, if anything)
+2. If you use Claude Code, also update its plugin:  claude plugin marketplace update myrmo && claude plugin update myrmo@myrmo
+3. Restart Claude Code / Antigravity. In Antigravity, accept the permission for the myrmo tools ("always").
+4. Check it:   npx myrmo-mcp@latest doctor     (it says what to fix, if anything)
 
 The command is in your shell history with the key in it: delete that line (history -d) or edit it out. To keep the key out
 of it, save this message to a file, delete the key line from your chat, and use --key-file <that file> instead of --key <key>
@@ -209,84 +427,72 @@ person who set this up if something looks wrong or gets in the way.
 `;
 }
 
-async function people(box) {
-  const data = await api("/v1/admin/people?days=30");
+// navigator.clipboard exists only on a secure page (HTTPS or localhost), and a colony on a team network is plain HTTP:
+// then the text is selected and the browser's own copy command is used. When that is refused too, it stays selected.
+async function copyText(area) {
+  try {
+    if (navigator.clipboard && window.isSecureContext) { await navigator.clipboard.writeText(area.value); return true; }
+  } catch {}
+  area.focus(); area.select();
+  try { return document.execCommand("copy"); } catch { return false; }
+}
+
+function spark(values) {
+  const W = 84, H = 20, max = Math.max(1, ...values), bw = W / values.length;
+  return svg("svg", { viewBox: `0 0 ${W} ${H}`, width: W, height: H, role: "img", "aria-label": "Activity, last 14 days" },
+    values.map((v, i) => svg("rect", { x: i * bw + 0.5, y: H - (v / max) * (H - 2) - 1, width: Math.max(1, bw - 1.5), height: Math.max(v ? 2 : 1, (v / max) * (H - 2)), fill: v ? "var(--amber)" : "var(--wall)", rx: 1 })));
+}
+
+async function people(view) {
+  const [data, act] = await Promise.all([api("/v1/admin/people?days=30"), api("/v1/admin/activity?days=14")]);
+  const seen = act.last_seen || {};
   const note = el("p", { className: "msg" });
   const secret = el("div", { hidden: true });
-  const name = el("input", { type: "text", placeholder: "ana", maxLength: 32, autocomplete: "off", spellcheck: false });
+  const name = el("input", { type: "text", placeholder: "ana", maxLength: 32, autocomplete: "off", spellcheck: false, "aria-label": "Name of the person" });
   const add = el("button", { className: "act", onclick: async () => {
     const who = name.value.trim().toLowerCase();
     try {
       const made = await api("/v1/admin/people", { method: "POST", body: JSON.stringify({ name: who }) });
       name.value = ""; say(note, "");
-      const text = el("textarea", { readOnly: true, value: invitation(made.name, made.key) });
-      const copy = el("button", { className: "act", onclick: async () => {
-        const done = await copyText(text);
-        copy.textContent = done ? "Copied" : "Selected: press Ctrl+C";
-      } }, "Copy the message");
-      secret.hidden = false;
-      secret.className = "secret";
+      const text = el("textarea", { readOnly: true, value: invitation(made.name, made.key), "aria-label": "Invitation message" });
+      const copy = el("button", { className: "act", onclick: async () => { copy.textContent = (await copyText(text)) ? "Copied" : "Selected: press Ctrl+C"; } }, "Copy the message");
+      secret.hidden = false; secret.className = "secret";
       secret.replaceChildren(el("b", {}, "Send this to " + made.name + " privately. The key is shown only now."),
-        el("p", { className: "hint" }, "It is not stored anywhere readable: if it is lost, revoke the person and add them again."), text, el("div", { className: "row", style: "margin-top:8px" }, copy,
-        el("button", { className: "quiet", onclick: () => people(box) }, "Done, hide the key")));
+        el("p", { className: "hint" }, "It is not stored anywhere readable: if it is lost, revoke the person and add them again."), text,
+        el("div", { className: "row", style: "margin-top:8px" }, copy, el("button", { className: "quiet", onclick: () => show("people") }, "Done, hide the key")));
     } catch (err) { say(note, err.message, "bad"); }
   } }, "Add person");
-  box.replaceChildren(
-    el("div", { className: "card" }, el("h2", {}, "Add a person"),
-      el("label", {}, "Name (a handle: lowercase letters, digits, . - _)"), el("div", { className: "row" }, name, add), note, secret),
-    el("div", { className: "card" }, el("h2", {}, "People with a key (last 30 days)"),
-      data.people.length ? table(["Person", "Since", "Searches", "Published", "Reports", "Used others'", "Helped others", ""],
-        data.people.map((p) => [p.name, day(p.created), num(p.searches), num(p.published), num(p.reports), num(p.used_others), num(p.helped_others),
+  const perDay = (n) => (act.days || []).map((d) => { const p = d.people?.[n] || {}; return (p.searches || 0) + (p.published || 0) + (p.reports || 0); });
+  view.replaceChildren(el("main", { className: "plain" },
+    el("div", { className: "card" }, el("h2", {}, "Add a person"), el("label", {}, "Name (a handle: lowercase letters, digits, . - _)"), el("div", { className: "row" }, name, add), note, secret),
+    el("div", { className: "card" }, el("h2", {}, "People with a key"),
+      data.people.length ? table(["Person", "Since", "Last seen", "14 days", "Searches", "Published", "Reports", "Used others'", "Helped others", ""],
+        data.people.map((p) => [p.name, day(p.created), seen[p.name] ? ago(seen[p.name]) : el("span", { className: "pill warn" }, "not connected yet"), spark(perDay(p.name)),
+          num(p.searches), num(p.published), num(p.reports), num(p.used_others), num(p.helped_others),
           el("button", { className: "danger", onclick: async () => {
             if (!confirm("Revoke the key of " + p.name + "? It stops working at once.")) return;
-            try { await api("/v1/admin/people/" + encodeURIComponent(p.name), { method: "DELETE" }); people(box); } catch (err) { alert(err.message); }
-          } }, "Revoke")]), [2, 3, 4, 5, 6])
-        : el("p", { className: "hint" }, "Nobody yet.")));
+            try { await api("/v1/admin/people/" + encodeURIComponent(p.name), { method: "DELETE" }); show("people"); } catch (err) { alert(err.message); }
+          } }, "Revoke")]), [4, 5, 6, 7, 8])
+        : el("p", { className: "empty" }, "Nobody yet."),
+      el("p", { className: "hint" }, "Counts are the last 30 days. \"Last seen\" is the last time the person's key was used for anything, a check included."))));
 }
 
-async function trails(box) {
-  let cursor = null; const seen = [];
-  const body = el("tbody"); const filter = el("input", { type: "text", placeholder: "Filter what is shown", spellcheck: false });
-  const more = el("button", { className: "quiet" }, "Load more"); const note = el("p", { className: "msg" });
-  const draw = () => {
-    const f = filter.value.toLowerCase();
-    body.replaceChildren(...seen.filter((t) => !f || JSON.stringify([t.trail?.problem?.error_message, t.trail?.problem?.summary, t.category]).toLowerCase().includes(f)).map((t) => {
-      const remove = el("button", { className: "danger", onclick: async () => {
-        const reason = prompt("Why is this trail removed? (kept in the activity log)", "");
-        if (reason === null) return;
-        try { await api("/v1/trails/" + t.trail_id, { method: "DELETE", body: JSON.stringify({ reason }) }); seen.splice(seen.indexOf(t), 1); draw(); }
-        catch (err) { say(note, err.message, "bad"); }
-      } }, "Remove");
-      return el("tr", {}, el("td", {}, day(Date.parse(t.created_at) / 1000)), el("td", {}, cut(t.trail?.problem?.error_message, 90)),
-        el("td", {}, cut(t.trail?.problem?.summary, 110)), el("td", {}, t.category || ""), el("td", { className: "n" }, t.strength != null ? Number(t.strength).toFixed(2) : ""), el("td", {}, remove));
-    }));
-  };
-  const load = async () => {
-    const page = await api("/v1/feed?limit=50" + (cursor ? "&cursor=" + encodeURIComponent(cursor) : ""));
-    seen.push(...(page.items || [])); cursor = page.next_cursor; more.hidden = !cursor; draw();
-  };
-  more.onclick = () => load().catch((e) => say(note, e.message, "bad")); filter.oninput = draw;
-  box.replaceChildren(el("div", { className: "card" }, el("h2", {}, "Trails"),
-    el("p", { className: "hint" }, "Review what was published. Remove one that is wrong or carries something it should not; the reason is written to the activity log. To keep a copy of everything as Markdown: npx myrmo-mcp export <folder>."),
-    filter, note, el("div", { className: "scroll", style: "margin-top:10px" }, el("table", {}, el("thead", {}, el("tr", {}, ["Date", "Error", "Summary", "Category", "Strength", ""].map((h) => el("th", {}, h)))), body)),
-    el("div", { className: "row", style: "margin-top:10px" }, more)));
-  await load();
-}
+/* ---------- Settings ---------- */
 
-async function settings(box) {
+async function settings(view) {
   const s = await api("/v1/admin/settings");
   const note = el("p", { className: "msg" });
   const nets = el("input", { type: "text", value: s.allowed_networks.join(", "), placeholder: "192.168.219.0/24 (empty: everyone)", spellcheck: false });
   const rate = el("input", { type: "text", value: String(s.rate_limit_per_minute), inputMode: "numeric" });
   const pub = el("input", { type: "text", value: String(s.publish_limit_per_hour), inputMode: "numeric" });
-  const origin = (k) => s.overridden.includes(k) ? el("span", { className: "pill" }, "changed here") : el("span", { className: "pill" }, "from the environment");
+  const origin = (k) => el("span", { className: "pill" }, s.overridden.includes(k) ? "changed here" : "from the environment");
   const send = async (patch, ok) => {
-    try { await api("/v1/admin/settings", { method: "PUT", body: JSON.stringify(patch) }); say(note, ok, "ok"); await new Promise((r) => setTimeout(r, 700)); settings(box); }
+    try { await api("/v1/admin/settings", { method: "PUT", body: JSON.stringify(patch) }); say(note, ok, "ok"); await new Promise((r) => setTimeout(r, 700)); show("settings"); }
     catch (err) { say(note, err.message, "bad"); }
   };
   const field = (title, key, input, help) => el("div", {}, el("label", {}, title, " ", origin(key)), el("div", { className: "row" }, input,
     s.overridden.includes(key) ? el("button", { className: "quiet", onclick: () => send({ [key]: null }, "Back to the environment's value.") }, "Reset") : null), el("p", { className: "hint" }, help));
-  box.replaceChildren(el("div", { className: "card" }, el("h2", {}, "Settings you can change while it runs"),
+  view.replaceChildren(el("main", { className: "plain" }, el("div", { className: "card" }, el("h2", {}, "Settings you can change while it runs"),
     field("Networks allowed to connect", "allowed_networks", nets, "Addresses or ranges, separated by commas. Everyone else gets 403. You are connecting from " + s.your_address + ": a list that would shut it out is refused. The machine itself always gets in."),
     field("Requests per minute, per person", "rate_limit_per_minute", rate, "0 means no limit."),
     field("Trails published per hour, per person", "publish_limit_per_hour", pub, "0 means no limit."),
@@ -302,13 +508,20 @@ async function settings(box) {
     el("div", { className: "card" }, el("h2", {}, "Set when the colony starts (read only)"),
       table(["Setting", "Value"], [["Access keys required", s.read_only.require_key ? "yes" : "no"], ["Decision engine", s.read_only.decision_engine], ["Server version", s.read_only.version],
         ["Networks from the environment", s.from_environment.allowed_networks.join(", ") || "everyone"]]),
-      el("p", { className: "hint" }, "The operator token, the salt, the ports and the engine are not changed from a web page on purpose: they live in .env.private, readable only on the colony's machine.")));
+      el("p", { className: "hint" }, "The operator token, the salt, the ports and the engine are not changed from a web page on purpose: they live in .env.private, readable only on the colony's machine."))));
 }
 
-async function activity(box) {
-  const a = await api("/v1/admin/audit");
-  box.replaceChildren(el("div", { className: "card" }, el("h2", {}, "What operators did (last 200)"),
-    a.items.length ? table(["When", "What"], a.items.map((i) => [when(i.ts), i.what])) : el("p", { className: "hint" }, "Nothing yet.")));
+/* ---------- Activity log ---------- */
+
+async function activity(view) {
+  const [a, r] = await Promise.all([api("/v1/admin/audit"), api("/v1/admin/refused")]);
+  view.replaceChildren(el("main", { className: "plain" },
+    el("div", { className: "card" }, el("h2", {}, "What operators did (last 200)"),
+      a.items.length ? table(["When", "What"], a.items.map((i) => [when(i.ts), i.what])) : el("p", { className: "empty" }, "Nothing yet.")),
+    el("div", { className: "card" }, el("h2", {}, "Connections refused because their network is not allowed (30 days)"),
+      (r.items || []).length ? table(["Address", "Times", "Last"], r.items.map((i) => [el("code", {}, i.address), num(i.count), when(i.last)]), [1])
+        : el("p", { className: "empty" }, "None."),
+      el("p", { className: "hint" }, "An address behind a router that translates addresses is the router's, shared by many machines: allowing it allows all of them."))));
 }
 
 $("enter").onclick = enter;
@@ -317,9 +530,7 @@ $("leave").onclick = () => signOut("");
 $("tabs").onclick = (e) => { const t = e.target.closest("[data-tab]"); if (t) show(t.dataset.tab); };
 
 (async () => {
-  if (token) {
-    try { await api("/v1/admin/people?days=1"); $("app").hidden = false; $("where").textContent = location.origin; show("overview"); return; } catch {}
-  }
+  if (token) { try { await api("/v1/admin/people?days=1"); start(); return; } catch {} }
   $("login").hidden = false;
 })();
 </script>

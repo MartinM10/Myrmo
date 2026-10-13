@@ -218,16 +218,20 @@ prints it again for a key you still have.
 **The admin panel.** `http://<colony>/admin` is one page, served by the colony itself, behind the operator token
 (`MYRMO_ADMIN_TOKEN`; typed in the page, kept in that tab only). It does what the commands above do, in one place:
 
-- **Overview:** is it ready, trails, what is waiting to be checked, per person what they did in the last 7 days, the reuse
-  between people and why trails were rejected.
-- **People:** add a person (the page shows the key once, inside the message to send them, with a copy button) and revoke a
-  key.
-- **Trails:** review what was published and remove one with a reason.
+- **Colony:** laid out like [the public colony page](https://myrmo.dev/colony.html): the readiness and counts at the top, what
+  needs a look (the colony is not ready, the queue is filling, an address was refused, someone has a key and has not
+  connected, trails were rejected), the trails as cards you can open (summary, root cause, dead ends, steps, commands with their
+  risk, how it was checked, outcomes) with **who published each one**, which the public feed never says, and filters by category
+  and by person. On the right: searches per day for 14 days, when each person's key was last used, the reuse between people,
+  and the **refused connections** with an *Allow* button, so that "why can't Diego connect?" is answered by looking.
+- **People:** add a person (the page shows the key once, inside the message to send them, with a copy button that works over
+  plain HTTP) and revoke a key; per person, when it was last used and a 14-day activity strip.
 - **Settings:** change, while it runs, the networks allowed to connect and the request and publish limits per person; each
   shows whether it comes from the environment or was changed there, and can go back. A list of networks that would shut out
   the address the change comes from is refused. If a change locks everyone out, `myrmo-server settings reset` on the
   colony's machine (it needs only Valkey) puts the environment's values back.
-- **Activity:** every key created or revoked, setting changed and trail removed through the operator token, the last 200.
+- **Activity log:** every key created or revoked, setting changed and trail removed through the operator token, the last 200,
+  and the refused connections of the last 30 days. A trail is removed from the Colony tab, with a reason.
 
 What stays out of a web page on purpose: the operator token, the salt, the ports and the decision engine live in
 `.env.private`. The page loads under a policy that allows no outside resource and is never cached; every `/v1/admin/*`

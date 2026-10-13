@@ -408,6 +408,102 @@ pub(super) async fn audit_list(
     Ok(private(Json(json!({ "items": items }))))
 }
 
+/// GET /v1/admin/activity?days=14: for each day, oldest first, the colony's totals (searches, how many were answered,
+/// trails rejected) and what each person did; and when each person's key was last used.
+pub(super) async fn activity(
+    State(st): State<AppState>,
+    headers: HeaderMap,
+    Query(q): Query<Days>,
+) -> ApiResult<Response> {
+    authorize_operator(&st, &headers)?;
+    let days = q.days.unwrap_or(14).clamp(1, 90);
+    let mut con = st.redis();
+    let now = keys::now();
+    let per_person = crate::team::daily(&mut con, days, now)
+        .await
+        .map_err(|e| internal(&e))?;
+    let totals = crate::analytics::export(&mut con, days)
+        .await
+        .map_err(|e| internal(&e.into()))?;
+    let last_seen = crate::team::last_seen(&mut con)
+        .await
+        .map_err(|e| internal(&e))?;
+    let series: Vec<Value> = per_person
+        .into_iter()
+        .map(|(date, people)| {
+            let iso = format!("{}-{}-{}", &date[0..4], &date[4..6], &date[6..8]);
+            let row = totals.iter().find(|r| r["date"] == iso);
+            let total = |k: &str| row.map_or(0, |r| r["totals"][k].as_i64().unwrap_or(0));
+            json!({
+                "date": iso,
+                "searches": total("searches"), "answered": total("search_hits"),
+                "published": total("trails"), "rejected": total("rejected"),
+                "people": people,
+            })
+        })
+        .collect();
+    Ok(private(Json(
+        json!({ "days": series, "last_seen": last_seen }),
+    )))
+}
+
+#[derive(serde::Deserialize)]
+pub(super) struct TrailsQuery {
+    limit: Option<usize>,
+    cursor: Option<usize>,
+}
+
+/// GET /v1/admin/trails?limit=20&cursor=0: the colony's trails as the feed lists them (full content, risk, outcomes,
+/// strength), each with who published it, which the public feed never says.
+pub(super) async fn trails(
+    State(st): State<AppState>,
+    headers: HeaderMap,
+    Query(q): Query<TrailsQuery>,
+) -> ApiResult<Response> {
+    authorize_operator(&st, &headers)?;
+    let limit = q.limit.unwrap_or(20).clamp(1, 50);
+    let start = q.cursor.unwrap_or(0).min(100_000);
+    let mut con = st.redis();
+    let ids: Vec<String> = con
+        .zrevrange(keys::FEED, start as isize, (start + limit) as isize - 1)
+        .await?;
+    let mut items = super::feed::feed_items(&st, &ids).await?;
+    for item in &mut items {
+        let id = item["trail_id"].as_str().unwrap_or_default().to_string();
+        let meta: HashMap<String, String> = con.hgetall(keys::trail(&id)).await?;
+        let author = match super::trail_author(&mut con, &id, &meta).await? {
+            // An address hash kept for a day is not a person.
+            Some(a)
+                if a.starts_with("person:")
+                    || !a.is_empty() && !a.chars().all(|c| c.is_ascii_hexdigit()) =>
+            {
+                Some(crate::team::handle(&a).to_string())
+            }
+            _ => None,
+        };
+        item["author"] = json!(author);
+    }
+    let next = (ids.len() == limit).then(|| (start + limit).to_string());
+    Ok(private(Json(
+        json!({ "items": items, "next_cursor": next }),
+    )))
+}
+
+/// GET /v1/admin/refused: the addresses whose connection was refused because their network is not allowed, most recent
+/// first: what an operator needs to answer "why can't Diego connect?".
+pub(super) async fn refused(State(st): State<AppState>, headers: HeaderMap) -> ApiResult<Response> {
+    authorize_operator(&st, &headers)?;
+    let rows = crate::analytics::refused_networks(&mut st.redis())
+        .await
+        .map_err(|e| internal(&e.into()))?;
+    let items: Vec<Value> = rows
+        .into_iter()
+        .take(30)
+        .map(|(address, count, last)| json!({ "address": address, "count": count, "last": last }))
+        .collect();
+    Ok(private(Json(json!({ "items": items }))))
+}
+
 /// `myrmo-server settings [show|reset]`: what the panel changed, and the way back when a change locks everyone out. It
 /// needs only Valkey, so it works from the colony's machine while the gateway refuses every network.
 pub async fn cli(redis_url: &str, args: &[String]) -> anyhow::Result<()> {

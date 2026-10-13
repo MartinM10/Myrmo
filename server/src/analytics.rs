@@ -510,6 +510,71 @@ pub fn rejections(rows: &[Value]) -> Value {
     })
 }
 
+const REFUSED: &str = "admin:refused";
+const REFUSED_LAST: &str = "admin:refused:last";
+const REFUSED_KEEP: isize = 100;
+const REFUSED_TTL: i64 = 30 * 86_400;
+
+/// A connection refused because its network is not allowed: the address, a count and the last time. The operator's
+/// own network, kept 30 days at most and cut to the 100 addresses seen most.
+pub async fn note_refused_network(con: &mut ConnectionManager, address: &str, now: i64) {
+    let result: redis::RedisResult<()> = redis::pipe()
+        .cmd("ZINCRBY")
+        .arg(REFUSED)
+        .arg(1)
+        .arg(address)
+        .ignore()
+        .cmd("HSET")
+        .arg(REFUSED_LAST)
+        .arg(address)
+        .arg(now)
+        .ignore()
+        .cmd("EXPIRE")
+        .arg(REFUSED)
+        .arg(REFUSED_TTL)
+        .ignore()
+        .cmd("EXPIRE")
+        .arg(REFUSED_LAST)
+        .arg(REFUSED_TTL)
+        .ignore()
+        .cmd("ZREMRANGEBYRANK")
+        .arg(REFUSED)
+        .arg(0)
+        .arg(-(REFUSED_KEEP + 1))
+        .ignore()
+        .query_async(con)
+        .await;
+    if let Err(err) = result {
+        tracing::warn!(error = %err, "refused connection not noted");
+    }
+}
+
+/// The refused addresses, most recent first: (address, count, last).
+pub async fn refused_networks(
+    con: &mut ConnectionManager,
+) -> redis::RedisResult<Vec<(String, i64, i64)>> {
+    let counted: Vec<(String, f64)> = redis::cmd("ZRANGE")
+        .arg(REFUSED)
+        .arg(0)
+        .arg(-1)
+        .arg("WITHSCORES")
+        .query_async(con)
+        .await?;
+    let last: std::collections::HashMap<String, i64> = redis::cmd("HGETALL")
+        .arg(REFUSED_LAST)
+        .query_async(con)
+        .await?;
+    let mut rows: Vec<(String, i64, i64)> = counted
+        .into_iter()
+        .map(|(a, n)| {
+            let at = last.get(&a).copied().unwrap_or(0);
+            (a, n as i64, at)
+        })
+        .collect();
+    rows.sort_by_key(|row| std::cmp::Reverse(row.2));
+    Ok(rows)
+}
+
 /// Seed trails laid over the exported days.
 pub fn seed_laid(rows: &[Value]) -> i64 {
     rows.iter()
