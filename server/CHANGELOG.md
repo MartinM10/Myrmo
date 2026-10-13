@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.12.0](https://github.com/MartinM10/Myrmo/compare/server-v0.11.0...server-v0.12.0) (2026-10-13)
+
+
+### Features
+
+* private colony network filter, invitations and doctor ([d474cdc](https://github.com/MartinM10/Myrmo/commit/d474cdcefb511456e6179198765de635e229b7d1))
+* **server:** admin panel for the operator ([a532866](https://github.com/MartinM10/Myrmo/commit/a532866cc90daca33b2255eed4804a132a07c8e9))
+* **server:** an admin panel for the operator, at /admin ([c399a51](https://github.com/MartinM10/Myrmo/commit/c399a517084664756507dc22df207853d32766ab))
+* **server:** MYRMO_ALLOWED_NETWORKS, only the listed networks may connect ([1639b1e](https://github.com/MartinM10/Myrmo/commit/1639b1eefb666626a8a1dd0846ffc18b43892baf))
+
 ## [0.11.0](https://github.com/MartinM10/Myrmo/compare/server-v0.10.0...server-v0.11.0) (2026-10-13)
 
 

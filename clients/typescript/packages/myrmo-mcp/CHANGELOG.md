@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.21.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.20.0...mcp-v0.21.0) (2026-10-13)
+
+
+### Features
+
+* **mcp:** myrmo-mcp doctor tells a person what is wrong with their setup ([396ab65](https://github.com/MartinM10/Myrmo/commit/396ab65edd4fb54f1bb789b987d4c87aaa28b04f))
+* private colony network filter, invitations and doctor ([d474cdc](https://github.com/MartinM10/Myrmo/commit/d474cdcefb511456e6179198765de635e229b7d1))
+
 ## [0.20.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.19.0...mcp-v0.20.0) (2026-10-13)
 
 
