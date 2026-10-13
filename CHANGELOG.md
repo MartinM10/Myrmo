@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.30.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.29.0...platform-v0.30.0) (2026-10-13)
+
+
+### Features
+
+* say which colony every answer is about, and smaller private-colony fixes ([614e8c4](https://github.com/MartinM10/Myrmo/commit/614e8c4babb924754a03ee968c3906ef5a90b779))
+* **server:** a refused network is told which address the colony sees, and the refusal is logged ([7b49d34](https://github.com/MartinM10/Myrmo/commit/7b49d34cd12548fb570c3e47546db95a771d61d4))
+
+
+### Bug fixes
+
+* **deploy:** restore keeps the service set; docs on weekly backups ([17dc009](https://github.com/MartinM10/Myrmo/commit/17dc0095ec63bcea3717fe55717e6bf3f792c72c))
+* **deploy:** restore starts only the services it names; docs: backups on a machine that restarts ([5996beb](https://github.com/MartinM10/Myrmo/commit/5996beb7e180accc09abb953bb115d02a58b2476))
+
+
+### Documentation
+
+* myrmo_status, the commands, --key-file and the refusal message ([acd374a](https://github.com/MartinM10/Myrmo/commit/acd374a3efc32b26d34fb0650dc57e58f949fb23))
+
 ## [0.29.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.28.0...platform-v0.29.0) (2026-10-13)
 
 

@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.22.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.21.0...mcp-v0.22.0) (2026-10-13)
+
+
+### Features
+
+* **mcp:** say which colony every answer is about; unknown commands fail; init --key-file ([28d8362](https://github.com/MartinM10/Myrmo/commit/28d8362efcaab6f3491ef7632782f553f082fc75))
+* say which colony every answer is about, and smaller private-colony fixes ([614e8c4](https://github.com/MartinM10/Myrmo/commit/614e8c4babb924754a03ee968c3906ef5a90b779))
+
+
+### Bug fixes
+
+* **mcp:** doctor does not advise allowing Docker's own network ([bc82c87](https://github.com/MartinM10/Myrmo/commit/bc82c872e7e570665cbb193204db5aa5cf1b99a8))
+* **mcp:** doctor does not advise allowing Docker's own network ([6c869d1](https://github.com/MartinM10/Myrmo/commit/6c869d1d3b43d53470bbceaefb5f0d950ee79437))
+
 ## [0.21.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.20.0...mcp-v0.21.0) (2026-10-13)
 
 

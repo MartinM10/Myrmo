@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.13.0](https://github.com/MartinM10/Myrmo/compare/server-v0.12.0...server-v0.13.0) (2026-10-13)
+
+
+### Features
+
+* say which colony every answer is about, and smaller private-colony fixes ([614e8c4](https://github.com/MartinM10/Myrmo/commit/614e8c4babb924754a03ee968c3906ef5a90b779))
+* **server:** a refused network is told which address the colony sees, and the refusal is logged ([7b49d34](https://github.com/MartinM10/Myrmo/commit/7b49d34cd12548fb570c3e47546db95a771d61d4))
+
 ## [0.12.0](https://github.com/MartinM10/Myrmo/compare/server-v0.11.0...server-v0.12.0) (2026-10-13)
 
 
