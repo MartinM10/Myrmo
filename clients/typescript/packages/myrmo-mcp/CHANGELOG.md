@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.20.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.19.0...mcp-v0.20.0) (2026-10-13)
+
+
+### Features
+
+* count rejected trails by reason, and tell a publisher what to fix ([29da03d](https://github.com/MartinM10/Myrmo/commit/29da03d8a40684da0e96f10baa2a4362f018d905))
+* **mcp:** the verdict of a rejected trail tells the agent what to fix and to try once; nothing for injection ([ddf6cfe](https://github.com/MartinM10/Myrmo/commit/ddf6cfe4ebfdca60c5e60296b925d7f82f6bca20))
+
 ## [0.19.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.18.0...mcp-v0.19.0) (2026-10-12)
 
 

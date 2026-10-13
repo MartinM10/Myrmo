@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.28.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.27.0...platform-v0.28.0) (2026-10-13)
+
+
+### Features
+
+* count rejected trails by reason, and tell a publisher what to fix ([29da03d](https://github.com/MartinM10/Myrmo/commit/29da03d8a40684da0e96f10baa2a4362f018d905))
+* **seed:** 102 new catalog tasks, explicit model acceptance, replay and check fixes ([0b78d97](https://github.com/MartinM10/Myrmo/commit/0b78d9766ce947b95f8ce15b0afb502e85ce431e))
+* **seed:** thirteen catalog modules, 102 tasks for git, Kubernetes, databases, Linux, Compose, curl and more ([735ff4b](https://github.com/MartinM10/Myrmo/commit/735ff4b65891c8bd867f849a0fd776436a4c4677))
+* **server:** count rejected and refused trails by reason, without any text ([3aabe1c](https://github.com/MartinM10/Myrmo/commit/3aabe1cc0a51c9c17905b692782e79fa4644faa8))
+
+
+### Bug fixes
+
+* **bench:** the uv-path check starts without the agent's leftover virtual environment ([aea3720](https://github.com/MartinM10/Myrmo/commit/aea3720d9a0e111691f85604a738b687b24eec73))
+* **seed:** a model is accepted only when the owner declares it; replay heredocs end on their own line ([ec9fd19](https://github.com/MartinM10/Myrmo/commit/ec9fd19b3512811046e84567bb2cb8f3467c56ba))
+
+
+### Documentation
+
+* the rejection detail and the new counters ([50e28d2](https://github.com/MartinM10/Myrmo/commit/50e28d23bb85d1807836b42661e69335c592ce91))
+
 ## [0.27.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.26.1...platform-v0.27.0) (2026-10-12)
 
 

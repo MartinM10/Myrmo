@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.11.0](https://github.com/MartinM10/Myrmo/compare/server-v0.10.0...server-v0.11.0) (2026-10-13)
+
+
+### Features
+
+* count rejected trails by reason, and tell a publisher what to fix ([29da03d](https://github.com/MartinM10/Myrmo/commit/29da03d8a40684da0e96f10baa2a4362f018d905))
+* **server:** a rejected trail says what to fix: the parts the model flagged, and a hint ([dde0123](https://github.com/MartinM10/Myrmo/commit/dde01232686e1c6306578e6f7a99772702d8fef4))
+* **server:** count rejected and refused trails by reason, without any text ([3aabe1c](https://github.com/MartinM10/Myrmo/commit/3aabe1cc0a51c9c17905b692782e79fa4644faa8))
+
 ## [0.10.0](https://github.com/MartinM10/Myrmo/compare/server-v0.9.0...server-v0.10.0) (2026-10-12)
 
 
