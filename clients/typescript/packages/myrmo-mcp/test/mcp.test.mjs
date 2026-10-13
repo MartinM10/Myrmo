@@ -81,6 +81,8 @@ const factHit = {
 
 let colony;
 let colonyUrl;
+/** The myrmo-mcp version the fake colony says it was released with; null answers 404 like an older colony. */
+let announced = null;
 
 before(async () => {
   colony = createServer(async (req, res) => {
@@ -90,6 +92,7 @@ before(async () => {
     const send = (status, data) => res.writeHead(status, { "content-type": "application/json" }).end(JSON.stringify(data));
     if (req.method === "GET" && req.url === `/v1/trails/by-fingerprint/${KNOWN_FP}`) return send(200, { fingerprint: KNOWN_FP, results: [result], notice: "untrusted" });
     if (req.method === "GET" && req.url.startsWith("/v1/trails/by-fingerprint/")) return send(404, { error: { code: "not_found", message: "none" } });
+    if (req.method === "GET" && req.url === "/v1/version") return announced ? send(200, { server: "9.9.9", clients: { mcp: announced, plugin: "9.9.9" } }) : send(404, { error: { code: "not_found", message: "old colony" } });
     if (req.method === "POST" && req.url === "/v1/search" && JSON.parse(body || "{}").mode === "task") return send(200, { mode: "task", results: [factHit], notice: "untrusted" });
     if (req.method === "POST" && req.url === "/v1/search") return send(200, { fingerprint: "fp1_0000000000000000", results: [], notice: "untrusted" });
     if (req.method === "POST" && req.url === `/v1/trails/${TRAIL_ID}/outcomes`) return send(202, { trail_id: TRAIL_ID, counted: true, strength: 0.91 });
@@ -741,4 +744,26 @@ test("a colony that is not private has no myrmo_brief and refuses procedures and
   assert.match(answer, /kept only by an organisation's private colony/);
   assert.equal(published(), before);
   await client.close();
+});
+
+test("a newer myrmo-mcp released with the colony is said once a session, in myrmo_status, and to the colony who runs what", async () => {
+  announced = "99.0.0";
+  try {
+    const client = await stdioClient("ask", { env: { MYRMO_CONFIG: freshConfig() } });
+    await new Promise((r) => setTimeout(r, 300)); // the version is asked in the background
+    const status = textOf(await client.callTool({ name: "myrmo_status", arguments: {} }));
+    assert.match(status, /myrmo-mcp 99\.0\.0 is available/);
+    const first = textOf(await client.callTool({ name: "myrmo_search", arguments: { error: "ModuleNotFoundError: No module named 'distutils'" } }));
+    assert.match(first, /Myrmo note for the user: myrmo-mcp 99\.0\.0 is available/);
+    assert.match(first, /claude plugin update myrmo@myrmo/);
+    const second = textOf(await client.callTool({ name: "myrmo_search", arguments: { error: "ModuleNotFoundError: No module named 'distutils'" } }));
+    assert.doesNotMatch(second, /is available/, "once a session");
+    const asked = requests.filter((r) => r.url === "/v1/version").at(-1);
+    assert.match(asked.headers["x-myrmo-client"], /^myrmo-mcp\/\d+\.\d+\.\d+/);
+    const searched = requests.filter((r) => r.url.startsWith("/v1/trails/by-fingerprint/")).at(-1);
+    assert.match(searched.headers["x-myrmo-client"] ?? "", /^myrmo-mcp\//);
+    await client.close();
+  } finally {
+    announced = null;
+  }
 });
