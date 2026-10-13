@@ -154,3 +154,25 @@ test("the plugin manifest has a version that release-please keeps", () => {
   assert.ok(config.packages["."]["extra-files"].some((f) => f.path === "plugins/myrmo/.claude-plugin/plugin.json" && f.jsonpath === "$.version"));
   assert.equal(manifest.version, json(join(repo, ".release-please-manifest.json"))["."]);
 });
+
+test("a pipeline that hides an earlier stage's failure is caught although it exits 0", async () => {
+  const { hiddenProducer } = await import("../scripts/on-failure.mjs");
+  const ran = (command, stdout, state = {}) => decide({ hook_event_name: "PostToolUse", tool_name: "Bash", tool_input: { command }, tool_response: { stdout } }, { env: {}, settings: {}, state });
+  // An earlier stage could not run: the shell says so in the output, and the exit code is the last stage's.
+  const missing = ran("cargo test 2>&1 | tail -30", "/bin/bash: line 1: cargo: command not found");
+  assert.match(missing.note, /pipeline finished with exit 0, but an earlier stage could not run: «\/bin\/bash: line 1: cargo: command not found»/);
+  assert.match(missing.note, /call myrmo_search/);
+  // A build filtered down to nothing: an empty output is no proof it worked. Said once per command.
+  const quietBuild = ran('cd server; cargo build 2>&1 | grep -E "^(error|warning)" -A6 | head -60', "");
+  assert.match(quietBuild.note, /`cargo build` ran inside a pipeline that printed nothing/);
+  assert.match(quietBuild.note, /set -o pipefail/);
+  assert.equal(ran("cargo build 2>&1 | grep error", "", quietBuild.state).note, null, "once per command");
+  // Not a hidden producer: pipefail set, a probe, an output to read, an alternative instead of a pipe.
+  assert.equal(hiddenProducer("set -o pipefail; cargo build | head"), "");
+  assert.equal(hiddenProducer("ls | grep x"), "");
+  assert.equal(hiddenProducer("cargo build || true"), "");
+  assert.equal(hiddenProducer("cat f | python3 x.py"), "");
+  assert.equal(hiddenProducer("npm test 2>&1 | grep -c fail"), "npm test");
+  assert.equal(ran("npm test 2>&1 | tail -3", "# pass 61\n# fail 0").note, null, "what it printed is there to read");
+  assert.equal(ran("ls src | grep main", "").note, null);
+});
