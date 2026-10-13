@@ -470,19 +470,30 @@ async function people(view) {
         el("div", { className: "row", style: "margin-top:8px" }, copy, el("button", { className: "quiet", onclick: () => show("people") }, "Done, hide the key")));
     } catch (err) { say(note, err.message, "bad"); }
   } }, "Add person");
+  // Which Myrmo each person runs, against what the colony was released with: who needs to update.
+  const older = (a, b) => { const x = String(a).split(".").map(Number), y = String(b).split(".").map(Number); for (let i = 0; i < 3; i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) < (y[i] || 0); } return false; };
+  const released = data.released || {};
+  const versions = (p) => {
+    const c = p.clients || {};
+    const parts = [["myrmo-plugin", "plugin", released.plugin], ["myrmo-mcp", "mcp", released.mcp]].filter(([k]) => c[k]).map(([k, label, latest]) =>
+      latest && older(c[k], latest) ? el("span", { className: "pill warn", style: "white-space:nowrap", title: `${latest} released with this colony` }, `${label} ${c[k]} · update`) : el("span", { className: "pill", style: "white-space:nowrap" }, `${label} ${c[k]}`));
+    return parts.length ? el("span", { style: "display:inline-flex;gap:4px;flex-wrap:wrap" }, parts) : el("span", { className: "hint" }, "–");
+  };
+  const behind = data.people.filter((p) => Object.entries(p.clients || {}).some(([k, v]) => (k === "myrmo-plugin" && released.plugin && older(v, released.plugin)) || (k === "myrmo-mcp" && released.mcp && older(v, released.mcp)))).length;
   const perDay = (n) => (act.days || []).map((d) => { const p = d.people?.[n] || {}; return (p.searches || 0) + (p.published || 0) + (p.reports || 0); });
   view.replaceChildren(el("main", { className: "plain" },
     el("div", { className: "card" }, el("h2", {}, "Add a person"), el("label", {}, "Name (a handle: lowercase letters, digits, . - _)"), el("div", { className: "row" }, name, add), note, secret),
     el("div", { className: "card" }, el("h2", {}, "People with a key"),
-      data.people.length ? table(["Person", "Since", "Last seen", "14 days", "Searches", "Published", "Reports", "Used others'", "Helped others", ""],
-        data.people.map((p) => [p.name, day(p.created), seen[p.name] ? ago(seen[p.name]) : el("span", { className: "pill warn" }, "not connected yet"), spark(perDay(p.name)),
+      data.people.length ? table(["Person", "Since", "Last seen", "Myrmo", "14 days", "Searches", "Published", "Reports", "Used others'", "Helped others", ""],
+        data.people.map((p) => [p.name, day(p.created), seen[p.name] ? ago(seen[p.name]) : el("span", { className: "pill warn" }, "not connected yet"), versions(p), spark(perDay(p.name)),
           num(p.searches), num(p.published), num(p.reports), num(p.used_others), num(p.helped_others),
           el("button", { className: "danger", onclick: async () => {
             if (!confirm("Revoke the key of " + p.name + "? It stops working at once.")) return;
             try { await api("/v1/admin/people/" + encodeURIComponent(p.name), { method: "DELETE" }); show("people"); } catch (err) { alert(err.message); }
-          } }, "Revoke")]), [4, 5, 6, 7, 8])
+          } }, "Revoke")]), [5, 6, 7, 8, 9])
         : el("p", { className: "empty" }, "Nobody yet."),
-      el("p", { className: "hint" }, "Counts are the last 30 days. \"Last seen\" is the last time the person's key was used for anything, a check included."))));
+      el("p", { className: "hint" }, "Counts are the last 30 days. \"Last seen\" is the last time the person's key was used for anything, a check included."),
+      behind ? el("p", { className: "msg" }, `${behind} ${behind === 1 ? "person runs" : "people run"} an older Myrmo than this colony was released with. They are told when a session starts; in Claude Code it updates by itself once auto-update is on (/plugin > Marketplaces > myrmo > Enable auto-update), else: claude plugin update myrmo@myrmo. Other clients: npx myrmo-mcp@latest init with the same options as the first time.`) : null)));
 }
 
 /* ---------- Map: every entry as a point, linked to the entries most like it ---------- */

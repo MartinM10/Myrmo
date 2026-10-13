@@ -68,6 +68,10 @@ pub fn router(state: AppState) -> Router {
         .route("/v1/feed", get(feed))
         .route("/v1/activity", get(activity))
         .route("/v1/stats", get(stats))
+        .route(
+            "/v1/version",
+            get(|| async { Json(crate::versions::describe()) }),
+        )
         .route("/v1/analytics", get(analytics))
         .route("/v1/demand", get(demand))
         .route("/v1/admin/people", get(people).post(add_person))
@@ -323,6 +327,14 @@ async fn rate_limit(
     }
     if st.cfg.require_key && declared {
         crate::team::seen(&mut pipe, &agent, now);
+        if let Some(label) = req
+            .headers()
+            .get("x-myrmo-client")
+            .and_then(|v| v.to_str().ok())
+            .and_then(crate::versions::client_label)
+        {
+            crate::team::client(&mut pipe, &agent, &label);
+        }
     }
     // Only a caller that declared an id is an agent. An address hash changes every day, and a browser that opens
     // the colony page has no id, so counting it would make "agents" mean "anything that sent a request".

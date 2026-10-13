@@ -125,6 +125,35 @@ pub fn seen(pipe: &mut redis::Pipeline, agent: &str, now: i64) {
         .ignore();
 }
 
+const CLIENTS: &str = "team:clients";
+
+/// The version of a client a person's agent last declared (`myrmo-mcp/0.23.0`), one per kind of client, so the operator
+/// sees who runs an old one.
+pub fn client(pipe: &mut redis::Pipeline, agent: &str, label: &str) {
+    let (name, version) = label.split_once('/').unwrap_or((label, ""));
+    pipe.cmd("HSET")
+        .arg(CLIENTS)
+        .arg(format!("{}|{name}", handle(agent)))
+        .arg(version)
+        .ignore();
+}
+
+/// For each person, the version of each kind of client their agents last declared.
+pub async fn clients<C: ConnectionLike + Send>(
+    con: &mut C,
+) -> Result<BTreeMap<String, BTreeMap<String, String>>> {
+    let all: Vec<(String, String)> = redis::cmd("HGETALL").arg(CLIENTS).query_async(con).await?;
+    let mut out: BTreeMap<String, BTreeMap<String, String>> = BTreeMap::new();
+    for (field, version) in all {
+        if let Some((person, name)) = field.split_once('|') {
+            out.entry(person.to_string())
+                .or_default()
+                .insert(name.to_string(), version);
+        }
+    }
+    Ok(out)
+}
+
 /// When each person's key was last used.
 pub async fn last_seen<C: ConnectionLike + Send>(con: &mut C) -> Result<BTreeMap<String, i64>> {
     let all: Vec<(String, i64)> = redis::cmd("HGETALL")

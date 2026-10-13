@@ -171,6 +171,7 @@ pub(super) async fn people(
     let (tally, reuse) = crate::team::summary(&mut con, days, keys::now(), 100)
         .await
         .map_err(|e| internal(&e))?;
+    let clients = crate::team::clients(&mut con).await.unwrap_or_default();
     let people: Vec<Value> = holders
         .into_iter()
         .map(|(name, created)| {
@@ -187,11 +188,12 @@ pub(super) async fn people(
                 "searches": get("searches"), "published": get("published"), "reports": get("reports"),
                 "used_others": sum("used"), "used_others_worked": get("used_worked"),
                 "helped_others": sum("helped"), "helped_others_worked": get("helped_worked"),
+                "clients": clients.get(&name).cloned().unwrap_or_default(),
             })
         })
         .collect();
     Ok(private(Json(
-        json!({ "days": days, "people": people, "reuse": reuse }),
+        json!({ "days": days, "people": people, "reuse": reuse, "released": crate::versions::describe()["clients"] }),
     )))
 }
 
