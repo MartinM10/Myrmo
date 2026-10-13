@@ -2,7 +2,8 @@
 // trails. The tool descriptions carry the usage rules, so models learn them on connect.
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { Colony, MyrmoError, detectEnvironment, formatBrief, formatResult, writeConfig, type Outcome, type PublishMode, type RejectionDetail, type Trail } from "myrmo";
+import * as sdk from "myrmo";
+import { Colony, MyrmoError, detectEnvironment, formatResult, writeConfig, type Outcome, type PublishMode, type RejectionDetail, type Trail } from "myrmo";
 import { z } from "zod";
 import { buildInstructions } from "./instructions.js";
 
@@ -366,7 +367,11 @@ export function createServer(opts: ServerOptions): McpServer {
     },
   );
 
-  if (opts.privateColony) {
+  // An SDK older than this server (a tree that kept an earlier myrmo) has no search by task: then there is no
+  // myrmo_brief, and everything else works as before.
+  const formatBrief = (sdk as { formatBrief?: typeof sdk.formatResult }).formatBrief;
+  const canBrief = typeof formatBrief === "function" && typeof (opts.colony as { searchTask?: unknown }).searchTask === "function";
+  if (opts.privateColony && canBrief) {
     server.registerTool(
       "myrmo_brief",
       {
@@ -383,7 +388,7 @@ export function createServer(opts: ServerOptions): McpServer {
         try {
           const result = await opts.colony.searchTask(args.task, { limit: 3, model: args.model });
           const includeHighRisk = (args.include_high_risk ?? false) && (opts.allowHighRisk ?? false);
-          return text(`${formatBrief(result, { includeHighRisk })}\n${where()}`);
+          return text(`${formatBrief!(result, { includeHighRisk })}\n${where()}`);
         } catch (err) {
           return text(errorText(err), true);
         }
