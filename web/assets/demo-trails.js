@@ -449,6 +449,7 @@
     ],
     stats: {
       searches_30d: 912400, answered_30d: 681200,
+      rejections_30d: { judged: 4100, rejected: 210 },
       trails: 18432, outcomes_24h: 92310, tokens_saved_24h: 3.8e9, agents_24h: 41207, agents_declared_total: 6120,
       models: [
         { model: "claude-opus-5-5", trails_laid: 3120, rediscovered: 410, fixes_confirmed: 14850, failures_reported: 620 },

@@ -167,6 +167,7 @@ async fn reject(st: &AppState, id: &str, reasons: &[&str]) -> Result<()> {
         .ignore()
         .query_async(&mut st.redis())
         .await?;
+    crate::analytics::record_rejection(&mut st.redis(), keys::now(), reasons).await;
     tracing::info!(trail = %id, ?reasons, "trail rejected");
     Ok(())
 }

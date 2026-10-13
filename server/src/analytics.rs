@@ -453,6 +453,57 @@ pub fn public_leaderboard(rows: &[Value], limit: usize) -> Vec<Value> {
         .collect()
 }
 
+/// Why the judgement rejected a trail after it was queued. Counted per day, never with any text.
+pub const REJECTION_REASONS: [&str; 3] = ["prompt_injection", "sensitive_content", "low_quality"];
+/// Why a trail was refused before it was queued (the error code the publisher received).
+pub const REFUSAL_CODES: [&str; 3] = ["invalid_trail", "publish_limited", "busy"];
+
+/// Count one trail rejected by the judgement, in total and under each reason (the fixed set above).
+pub async fn record_rejection(con: &mut ConnectionManager, ts: i64, reasons: &[&str]) {
+    let named: Vec<String> = reasons
+        .iter()
+        .filter(|r| REJECTION_REASONS.contains(r))
+        .map(|r| format!("rejected_{r}"))
+        .collect();
+    let mut increments: Vec<(&str, Option<String>, i64)> = vec![("rejected", None, 1)];
+    increments.extend(named.iter().map(|n| (n.as_str(), None, 1)));
+    record(con, ts, &increments).await;
+}
+
+/// Count one publish refused at the door (an invalid trail, the hourly quota, a full queue).
+pub async fn record_refusal(con: &mut ConnectionManager, ts: i64, code: &str) {
+    if REFUSAL_CODES.contains(&code) {
+        let field = format!("refused_{code}");
+        record(con, ts, &[(field.as_str(), None, 1)]).await;
+    }
+}
+
+/// What became of the trails agents sent over the exported days: how many the colony judged, how many it rejected and
+/// why, and how many were refused at the door. Counts only.
+pub fn rejections(rows: &[Value]) -> Value {
+    let total = |k: &str| -> i64 {
+        rows.iter()
+            .map(|r| r["totals"][k].as_i64().unwrap_or(0))
+            .sum()
+    };
+    let laid: i64 = rows
+        .iter()
+        .flat_map(|r| {
+            r["models"]
+                .as_object()
+                .into_iter()
+                .flat_map(|m| m.values().map(|v| v["laid"].as_i64().unwrap_or(0)))
+        })
+        .sum();
+    let rejected = total("rejected");
+    json!({
+        "judged": laid + rejected,
+        "rejected": rejected,
+        "by_reason": REJECTION_REASONS.iter().map(|r| (r.to_string(), json!(total(&format!("rejected_{r}"))))).collect::<Map<String, Value>>(),
+        "refused_at_the_door": REFUSAL_CODES.iter().map(|c| (c.to_string(), json!(total(&format!("refused_{c}"))))).collect::<Map<String, Value>>(),
+    })
+}
+
 /// Seed trails laid over the exported days.
 pub fn seed_laid(rows: &[Value]) -> i64 {
     rows.iter()
@@ -467,6 +518,42 @@ pub fn seed_laid(rows: &[Value]) -> i64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn rejections_are_counted_by_reason_and_never_with_text() {
+        let day = |hash: &[(&str, &str)]| {
+            let h = hash
+                .iter()
+                .map(|(k, v)| (k.to_string(), v.to_string()))
+                .collect();
+            row("20261013", 1, &h)
+        };
+        let rows = [
+            day(&[
+                ("laid|claude-opus-5-5", "6"),
+                ("laid|seed", "4"),
+                ("rejected", "3"),
+                ("rejected_prompt_injection", "1"),
+                ("rejected_sensitive_content", "2"),
+                ("refused_invalid_trail", "5"),
+            ]),
+            day(&[
+                ("rejected", "1"),
+                ("rejected_low_quality", "1"),
+                ("refused_busy", "2"),
+            ]),
+        ];
+        let r = rejections(&rows);
+        assert_eq!(r["judged"], 14, "ten laid and four rejected");
+        assert_eq!(r["rejected"], 4);
+        assert_eq!(r["by_reason"]["sensitive_content"], 2);
+        assert_eq!(r["by_reason"]["prompt_injection"], 1);
+        assert_eq!(r["by_reason"]["low_quality"], 1);
+        assert_eq!(r["refused_at_the_door"]["invalid_trail"], 5);
+        assert_eq!(r["refused_at_the_door"]["busy"], 2);
+        assert_eq!(r["refused_at_the_door"]["publish_limited"], 0);
+        assert_eq!(rejections(&[])["judged"], 0);
+    }
 
     #[test]
     fn the_public_leaderboard_leaves_out_checks_and_models_that_did_nothing() {

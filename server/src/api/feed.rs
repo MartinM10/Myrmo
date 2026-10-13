@@ -266,6 +266,7 @@ pub(super) async fn stats(State(st): State<AppState>) -> ApiResult<Json<Value>> 
             let summary = json!({
                 "models": crate::analytics::public_leaderboard(&rows, 10),
                 "seed_trails_30d": crate::analytics::seed_laid(&rows),
+                "rejections_30d": crate::analytics::rejections(&rows),
                 "searches_30d": total("searches"),
                 "answered_30d": total("search_hits"),
             });
@@ -289,6 +290,7 @@ pub(super) async fn stats(State(st): State<AppState>) -> ApiResult<Json<Value>> 
         "models": models,
         "models_self_reported": true,
         "seed_trails_30d": summary["seed_trails_30d"],
+        "rejections_30d": summary["rejections_30d"],
         "searches_30d": summary["searches_30d"],
         "answered_30d": summary["answered_30d"],
         "hot": hot.into_iter().map(|(label, n)| json!({ "label": label, "searches": n as u64 })).collect::<Vec<_>>(),

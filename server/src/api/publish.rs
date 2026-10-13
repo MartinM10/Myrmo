@@ -28,6 +28,7 @@ async fn enforce_publish_limits(st: &AppState, caller: &Caller) -> ApiResult<()>
         let depth: u64 = con.xlen(keys::STREAM).await?;
         if depth >= queue_max {
             tracing::warn!(depth, queue_max, "publish queue is full");
+            crate::analytics::record_refusal(&mut con, keys::now(), "busy").await;
             let mut err = ApiError::new(
                 StatusCode::SERVICE_UNAVAILABLE,
                 "busy",
@@ -51,6 +52,7 @@ async fn enforce_publish_limits(st: &AppState, caller: &Caller) -> ApiResult<()>
             .query_async(&mut con)
             .await?;
         if used > limit {
+            crate::analytics::record_refusal(&mut con, now, "publish_limited").await;
             let mut err = ApiError::new(
                 StatusCode::TOO_MANY_REQUESTS,
                 "publish_limited",
@@ -135,6 +137,20 @@ fn prepare_trail(body: Result<Bytes, BytesRejection>) -> ApiResult<(Value, Repor
     Ok((trail, report, fp))
 }
 
+/// [`prepare_trail`] for the paths that publish: a trail that does not validate is counted as refused at the door.
+async fn prepare_counted(
+    st: &AppState,
+    body: Result<Bytes, BytesRejection>,
+) -> ApiResult<(Value, Report, String)> {
+    match prepare_trail(body) {
+        Err(err) if err.code == "invalid_trail" => {
+            crate::analytics::record_refusal(&mut st.redis(), keys::now(), "invalid_trail").await;
+            Err(err)
+        }
+        other => other,
+    }
+}
+
 /// POST /v1/validate: what publishing would check, without publishing. A client shows a person
 /// the trail it is about to send, and this tells it whether the colony would accept it, so a
 /// payload that looks right in the preview is not refused afterwards. Nothing is stored and no
@@ -151,7 +167,7 @@ pub(super) async fn publish(
     Extension(caller): Extension<Caller>,
     body: Result<Bytes, BytesRejection>,
 ) -> ApiResult<Response> {
-    let (trail, report, fp) = prepare_trail(body)?;
+    let (trail, report, fp) = prepare_counted(&st, body).await?;
     enforce_publish_limits(&st, &caller).await?;
     let id = queue_trail(&st, &caller, &trail, &fp).await?;
     let body = json!({
@@ -188,7 +204,7 @@ pub(super) async fn create_draft(
     Extension(caller): Extension<Caller>,
     body: Result<Bytes, BytesRejection>,
 ) -> ApiResult<Response> {
-    let (trail, report, fp) = prepare_trail(body)?;
+    let (trail, report, fp) = prepare_counted(&st, body).await?;
     let mut con = st.redis();
     let hour = keys::hour(keys::now());
     // Per client, and overall: a draft holds up to 64 KB for half an hour.
