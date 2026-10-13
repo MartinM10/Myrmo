@@ -55,6 +55,8 @@ The admin panel's **Knowledge** tab shows the operator:
 - how many task requests found an answer in the last 30 days;
 - **contested** entries (more failures than successes), **stale** ones (no success in 90 days), **unconfirmed** ones
   (no report in two weeks: imported handovers start here) and the **most used**;
+- a **map** of everything, where entries about the same kind of task form islands, so a topic with much stale or
+  contested knowledge, an isolated entry or two near duplicates show at a glance;
 - optionally, the **requests nobody's knowledge answered** (redacted, kept 30 days, off until the operator turns it
   on): what to write down next.
 

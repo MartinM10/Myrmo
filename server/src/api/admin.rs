@@ -709,3 +709,166 @@ pub(super) async fn knowledge(
         "most_used": most_used,
     }))))
 }
+
+// ---------------------------------------------------------------------------
+// The knowledge map: every entry as a node, linked to the entries most like it.
+
+/// How an entry is doing, by the same rules as the health report.
+fn health(c: &super::Candidate, now: i64) -> &'static str {
+    let o = &c.outcomes;
+    let created = c.payload["created_ts"].as_i64().unwrap_or(now);
+    let last = if o.last_success_ts > 0 {
+        o.last_success_ts
+    } else {
+        created
+    };
+    if o.failed >= 2 && o.failed > o.worked + o.partially_worked {
+        "contested"
+    } else if now - last > 90 * 86_400 {
+        "stale"
+    } else if o.worked + o.partially_worked + o.failed == 0 && now - created > 14 * 86_400 {
+        "unconfirmed"
+    } else {
+        "ok"
+    }
+}
+
+/// The links of the map: one per pair of entries, whatever the direction it was found in, with its similarity, when
+/// it reaches `min` and is among the `per_entry` closest of at least one of the two. Every weak link drawn makes the
+/// map a tangle; the closest few make topics show as islands.
+fn map_edges(
+    pairs: &[(String, String, f64)],
+    min: f64,
+    per_entry: usize,
+) -> Vec<(String, String, f64)> {
+    let mut best: HashMap<(String, String), f64> = HashMap::new();
+    for (a, b, score) in pairs {
+        if a == b || *score < min {
+            continue;
+        }
+        let key = if a < b {
+            (a.clone(), b.clone())
+        } else {
+            (b.clone(), a.clone())
+        };
+        let entry = best.entry(key).or_insert(*score);
+        *entry = entry.max(*score);
+    }
+    let mut edges: Vec<(String, String, f64)> =
+        best.into_iter().map(|((a, b), s)| (a, b, s)).collect();
+    edges.sort_by(|x, y| y.2.total_cmp(&x.2).then_with(|| x.0.cmp(&y.0)));
+    let mut degree: HashMap<String, usize> = HashMap::new();
+    edges.retain(|(a, b, _)| {
+        let keep = degree.get(a).copied().unwrap_or(0) < per_entry
+            || degree.get(b).copied().unwrap_or(0) < per_entry;
+        if keep {
+            *degree.entry(a.clone()).or_default() += 1;
+            *degree.entry(b.clone()).or_default() += 1;
+        }
+        keep
+    });
+    edges
+}
+
+const MAP_MAX: usize = 2000;
+
+/// GET /v1/admin/map: the entries (up to 2,000) with their kind, strength and health, and links to the entries most
+/// like each, from the task index when the colony has one (what an entry is about), else from the error index.
+pub(super) async fn map(State(st): State<AppState>, headers: HeaderMap) -> ApiResult<Response> {
+    authorize_operator(&st, &headers)?;
+    let mut con = st.redis();
+    let total: usize = con.zcard(keys::FEED).await?;
+    let (index, qdrant, min) = match &st.tasks {
+        Some(t) => ("task", &t.qdrant, st.cfg.task_min_similarity * 0.8),
+        None => ("error", &st.qdrant, st.cfg.min_similarity * 0.85),
+    };
+    let sample = total.min(MAP_MAX);
+    let pairs = if sample >= 2 {
+        qdrant
+            .neighbour_pairs(sample, 4)
+            .await
+            .map_err(|e| internal(&e))?
+    } else {
+        Vec::new()
+    };
+    let mut ids: Vec<String> = pairs
+        .iter()
+        .flat_map(|(a, b, _)| [a.clone(), b.clone()])
+        .collect();
+    if ids.is_empty() {
+        ids = con.zrevrange(keys::FEED, 0, MAP_MAX as isize - 1).await?;
+    }
+    ids.sort();
+    ids.dedup();
+    let mut nodes = Vec::new();
+    let now = keys::now();
+    for chunk in ids.chunks(256) {
+        for c in super::load(&st, chunk).await? {
+            let t = &c.payload["trail"];
+            nodes.push(json!({
+                "id": c.id,
+                "kind": c.payload["kind"].as_str().unwrap_or("fix"),
+                "category": c.payload["category"],
+                "label": c.label(),
+                "summary": t["problem"]["summary"],
+                "strength": super::round3(c.strength(now)),
+                "worked": c.outcomes.worked,
+                "failed": c.outcomes.failed,
+                "health": health(&c, now),
+                "tags": t["tags"],
+                "source": t["source"]["type"],
+                "created_at": c.payload["created_at"],
+            }));
+        }
+    }
+    let known: std::collections::HashSet<&str> =
+        nodes.iter().filter_map(|n| n["id"].as_str()).collect();
+    let edges: Vec<Value> = map_edges(&pairs, min, 2)
+        .into_iter()
+        .filter(|(a, b, _)| known.contains(a.as_str()) && known.contains(b.as_str()))
+        .map(|(a, b, s)| json!({ "a": a, "b": b, "s": super::round3(s) }))
+        .collect();
+    Ok(private(Json(json!({
+        "index": index,
+        "total": total,
+        "nodes": nodes,
+        "edges": edges,
+    }))))
+}
+
+#[cfg(test)]
+mod map_tests {
+    use super::*;
+
+    #[test]
+    fn one_link_per_pair_the_strongest_and_none_below_the_bar() {
+        let p = |a: &str, b: &str, s: f64| (a.to_string(), b.to_string(), s);
+        let pairs = [
+            p("a", "b", 0.7),
+            p("b", "a", 0.72),
+            p("a", "c", 0.3),
+            p("c", "c", 1.0),
+            p("b", "c", 0.6),
+        ];
+        assert_eq!(
+            map_edges(&pairs, 0.5, 3),
+            vec![p("a", "b", 0.72), p("b", "c", 0.6)]
+        );
+    }
+
+    #[test]
+    fn each_entry_keeps_its_closest_links_only() {
+        let p = |a: &str, b: &str, s: f64| (a.to_string(), b.to_string(), s);
+        // a, b and h are all close; with one link each, h-b goes. d's only link, to h, stays: it is d's closest.
+        let pairs = [
+            p("h", "a", 0.9),
+            p("h", "b", 0.8),
+            p("a", "b", 0.85),
+            p("h", "d", 0.55),
+        ];
+        assert_eq!(
+            map_edges(&pairs, 0.5, 1),
+            vec![p("a", "h", 0.9), p("a", "b", 0.85), p("d", "h", 0.55)]
+        );
+    }
+}

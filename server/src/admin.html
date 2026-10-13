@@ -155,6 +155,7 @@
     <nav class="tabs" role="tablist" id="tabs">
       <button role="tab" data-tab="colony" aria-selected="true">Colony</button>
       <button role="tab" data-tab="knowledge" aria-selected="false">Knowledge</button>
+      <button role="tab" data-tab="map" aria-selected="false">Map</button>
       <button role="tab" data-tab="people" aria-selected="false">People</button>
       <button role="tab" data-tab="settings" aria-selected="false">Settings</button>
       <button role="tab" data-tab="activity" aria-selected="false">Activity log</button>
@@ -223,9 +224,10 @@ function start() {
   show("colony");
 }
 
-const tabs = { colony, knowledge, people, settings, activity };
+const tabs = { colony, knowledge, map, people, settings, activity };
 let current = "colony";
 function show(name) {
+  if (mapStop && name !== "map") mapStop();
   current = name;
   for (const b of document.querySelectorAll("#tabs [data-tab]")) b.setAttribute("aria-selected", String(b.dataset.tab === name));
   const view = $("view");
@@ -483,6 +485,249 @@ async function people(view) {
       el("p", { className: "hint" }, "Counts are the last 30 days. \"Last seen\" is the last time the person's key was used for anything, a check included."))));
 }
 
+/* ---------- Map: every entry as a point, linked to the entries most like it ---------- */
+
+let mapFocus = null; // "contested", "stale", "unconfirmed" or "used": highlighted when the map opens
+let mapStop = null;  // stops the previous map's animation and listeners when the tab is left
+
+async function map(view) {
+  if (mapStop) mapStop();
+  const g = await api("/v1/admin/map");
+  const css = getComputedStyle(document.documentElement);
+  const color = (v) => css.getPropertyValue(v).trim();
+  const KIND = { fix: color("--amber"), procedure: color("--moss"), fact: "#6fb3e0" };
+  // Topics: the category of each entry (procedures and facts are their own), in colours that read on both themes.
+  const PALETTE = ["#e8901c", "#2f9e44", "#1c7ed6", "#ae3ec9", "#e8590c", "#0ca678", "#d6336c", "#5c7cfa", "#74b816", "#15aabf", "#b08900", "#868e96"];
+  const topicOf = (n) => (n.kind === "fix" ? n.category || "other" : n.kind);
+  const topics = [...g.nodes.reduce((m, n) => m.set(topicOf(n), (m.get(topicOf(n)) || 0) + 1), new Map())].sort((a, b) => b[1] - a[1]).map(([t]) => t);
+  const TOPIC = new Map(topics.map((t, i) => [t, PALETTE[Math.min(i, PALETTE.length - 1)]]));
+  let colorBy = "topic";
+  const fillOf = (n) => (colorBy === "topic" ? TOPIC.get(topicOf(n)) : KIND[n.kind]) || color("--dust");
+  const nodes = g.nodes.map((n, i) => {
+    const a = i * 2.39996, r = 10 * Math.sqrt(i); // a sunflower spiral: an even start, no overlaps
+    return { ...n, x: Math.cos(a) * r, y: Math.sin(a) * r, vx: 0, vy: 0, r: 3.5 + 9 * Math.min(1, n.strength || 0), links: [] };
+  });
+  const byId = new Map(nodes.map((n) => [n.id, n]));
+  const edges = g.edges.map((e) => ({ a: byId.get(e.a), b: byId.get(e.b), s: e.s })).filter((e) => e.a && e.b);
+  for (const e of edges) { e.a.links.push(e); e.b.links.push(e); }
+  // Islands: the groups of linked entries, each named after its most common tag (or topic) once there are four or more.
+  const root = new Map(nodes.map((n) => [n, n]));
+  const find = (n) => { while (root.get(n) !== n) { root.set(n, root.get(root.get(n))); n = root.get(n); } return n; };
+  for (const e of edges) root.set(find(e.a), find(e.b));
+  const groups = new Map();
+  for (const n of nodes) { const r = find(n); (groups.get(r) || groups.set(r, []).get(r)).push(n); }
+  // A tag on more than a fifth of all entries (a provenance mark, the main stack) says nothing about one island.
+  const tagUse = new Map();
+  for (const n of nodes) for (const t of n.tags || []) tagUse.set(t, (tagUse.get(t) || 0) + 1);
+  const telling = (t) => (tagUse.get(t) || 0) <= Math.max(3, nodes.length / 5);
+  const islands = [...groups.values()].filter((m) => m.length >= 4).map((members) => {
+    const count = new Map();
+    for (const n of members) {
+      const tags = (n.tags || []).filter(telling);
+      for (const t of tags.length ? tags : [topicOf(n)]) count.set(t, (count.get(t) || 0) + 1);
+    }
+    const [name] = [...count].sort((a, b) => b[1] - a[1])[0] || ["?"];
+    return { members, name: String(name).replaceAll("_", " ") };
+  });
+
+  const kinds = { fix: true, procedure: true, fact: true };
+  let query = "", focus = mapFocus, selected = null, hover = null;
+  mapFocus = null;
+  const matches = (n) => {
+    if (!kinds[n.kind]) return false;
+    if (focus === "used" ? !(n.worked > 0) : focus && n.health !== focus) return false;
+    if (!query) return true;
+    const text = (n.label + " " + (n.summary || "") + " " + (n.tags || []).join(" ")).toLowerCase();
+    return query.split(/\s+/).every((w) => text.includes(w));
+  };
+
+  const canvas = el("canvas", { style: "width:100%;height:68vh;display:block;cursor:grab;background:var(--tunnel);border-radius:var(--radius);touch-action:none" });
+  const detail = el("div", { className: "card", style: "margin:0" }, el("p", { className: "hint" }, "Click a point to see what it is. Drag to move around, scroll to zoom."));
+  const count = el("span", { className: "hint" });
+  const SHAPE = { fix: "border-radius:50%", procedure: "border-radius:1px", fact: "transform:rotate(45deg) scale(.85)" };
+  const box = (k, label) => el("label", { style: "display:inline-flex;gap:6px;align-items:center;margin-right:12px" },
+    el("input", { type: "checkbox", checked: true, onchange: (e) => { kinds[k] = e.target.checked; refresh(); } }),
+    el("i", { style: `display:inline-block;width:10px;height:10px;background:var(--dust);${SHAPE[k]}` }), label);
+  const legend = el("div", { className: "row", style: "flex-wrap:wrap;gap:6px 14px;margin-top:8px" });
+  const paint = el("select", { onchange: (e) => { colorBy = e.target.value; refresh(); } },
+    el("option", { value: "topic" }, "Colour by topic"), el("option", { value: "kind" }, "Colour by kind"));
+  const search = el("input", { type: "search", placeholder: "Search: lldap, deploy, 403…", style: "max-width:260px", oninput: (e) => { query = e.target.value.trim().toLowerCase(); refresh(); } });
+  const focusPill = el("span");
+  const setFocus = (f) => { focus = f; refresh(); };
+  function refresh() {
+    const shown = nodes.filter(matches).length;
+    count.textContent = `${num(shown)} of ${num(nodes.length)} shown · ${num(edges.length)} links`;
+    focusPill.replaceChildren(focus ? el("button", { className: "quiet", onclick: () => setFocus(null) }, `Showing: ${focus === "used" ? "most used" : focus} ✕`) : "");
+    const swatch = (c, text) => el("span", { className: "hint", style: "display:inline-flex;gap:6px;align-items:center" }, el("i", { style: `display:inline-block;width:10px;height:10px;border-radius:50%;background:${c}` }), text);
+    legend.replaceChildren(...(colorBy === "topic" ? topics.slice(0, 11).map((t) => swatch(TOPIC.get(t), t.replaceAll("_", " "))) : Object.entries(KIND).map(([k, c]) => swatch(c, k))));
+    draw();
+  }
+
+  view.replaceChildren(el("main", { className: "plain", style: "max-width:1400px" },
+    el("div", { className: "card" },
+      el("div", { className: "row", style: "flex-wrap:wrap;gap:10px;align-items:center" },
+        box("fix", "fixes"), box("procedure", "procedures"), box("fact", "facts"), paint, search, focusPill, count),
+      legend,
+      el("p", { className: "hint", style: "margin:8px 0 0" },
+        `Each point is an entry (a circle: a fix; a square: a procedure; a diamond: a fact); its size is its strength. A red ring: contested (fails more than it works). Faded: stale (no success in 90 days). A dashed ring: nobody has reported on it yet. A line joins entries that are about the same kind of task (${g.index === "task" ? "task index" : "error index"}), so islands are topics. ${g.total > g.nodes.length ? `Showing ${num(g.nodes.length)} of ${num(g.total)} entries.` : ""}`)),
+    el("div", { style: "display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:12px;align-items:start" }, canvas, detail)));
+
+  // Camera and canvas size.
+  let scale = 1, tx = 0, ty = 0, W = 0, H = 0;
+  const ctx = canvas.getContext("2d");
+  function resize() {
+    const dpr = window.devicePixelRatio || 1, rect = canvas.getBoundingClientRect();
+    W = rect.width; H = rect.height;
+    canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    draw();
+  }
+
+  // Forces: links pull similar entries together, every pair nearby pushes apart (on a grid, so it stays fast), and a
+  // weak pull to the centre keeps islands on screen.
+  let alpha = 1;
+  function tick() {
+    const cell = 90, grid = new Map();
+    for (const n of nodes) { const k = Math.floor(n.x / cell) + "," + Math.floor(n.y / cell); (grid.get(k) || grid.set(k, []).get(k)).push(n); }
+    for (const n of nodes) {
+      const cx = Math.floor(n.x / cell), cy = Math.floor(n.y / cell);
+      for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) {
+        for (const m of grid.get((cx + dx) + "," + (cy + dy)) || []) {
+          if (m === n) continue;
+          let x = n.x - m.x, y = n.y - m.y, d2 = x * x + y * y;
+          if (d2 < 0.01) { x = Math.random() - 0.5; y = Math.random() - 0.5; d2 = 0.5; }
+          if (d2 > cell * cell) continue;
+          const f = (400 * alpha) / d2;
+          n.vx += x * f; n.vy += y * f;
+        }
+      }
+      n.vx -= n.x * 0.002 * alpha; n.vy -= n.y * 0.002 * alpha;
+    }
+    for (const e of edges) {
+      const x = e.b.x - e.a.x, y = e.b.y - e.a.y, d = Math.sqrt(x * x + y * y) || 1;
+      const target = 18 + 60 * (1 - e.s), f = ((d - target) / d) * 0.5 * alpha;
+      e.a.vx += x * f; e.a.vy += y * f; e.b.vx -= x * f; e.b.vy -= y * f;
+    }
+    for (const n of nodes) {
+      n.vx *= 0.55; n.vy *= 0.55;
+      n.x += Math.max(-30, Math.min(30, n.vx)); n.y += Math.max(-30, Math.min(30, n.vy));
+    }
+    alpha = Math.max(0.02, alpha * 0.993);
+  }
+
+  function draw() {
+    if (!W) return;
+    ctx.clearRect(0, 0, W, H);
+    ctx.save();
+    ctx.translate(W / 2 + tx, H / 2 + ty); ctx.scale(scale, scale);
+    const lit = new Set();
+    if (selected) { lit.add(selected); for (const e of selected.links) { lit.add(e.a); lit.add(e.b); } }
+    ctx.lineWidth = 1 / scale;
+    for (const e of edges) {
+      const on = matches(e.a) && matches(e.b);
+      const near = selected && (e.a === selected || e.b === selected);
+      ctx.strokeStyle = near ? color("--chalk") : color("--dust");
+      ctx.globalAlpha = near ? 0.9 : on ? 0.08 + 0.35 * Math.max(0, (e.s - 0.4) / 0.6) : 0.03;
+      ctx.beginPath(); ctx.moveTo(e.a.x, e.a.y); ctx.lineTo(e.b.x, e.b.y); ctx.stroke();
+    }
+    for (const n of nodes) {
+      const on = matches(n);
+      ctx.globalAlpha = !on ? 0.1 : n.health === "stale" ? 0.4 : selected && !lit.has(n) ? 0.35 : 1;
+      ctx.fillStyle = fillOf(n);
+      ctx.beginPath();
+      if (n.kind === "procedure") ctx.rect(n.x - n.r * 0.9, n.y - n.r * 0.9, n.r * 1.8, n.r * 1.8);
+      else if (n.kind === "fact") { ctx.moveTo(n.x, n.y - n.r * 1.2); ctx.lineTo(n.x + n.r * 1.2, n.y); ctx.lineTo(n.x, n.y + n.r * 1.2); ctx.lineTo(n.x - n.r * 1.2, n.y); ctx.closePath(); }
+      else ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2);
+      ctx.fill();
+      if (on && (n.health === "contested" || n.health === "unconfirmed" || n === selected || n === hover)) {
+        ctx.lineWidth = (n === selected ? 2.5 : 1.8) / scale;
+        ctx.setLineDash(n.health === "unconfirmed" && n !== selected && n !== hover ? [3 / scale, 3 / scale] : []);
+        ctx.strokeStyle = n.health === "contested" ? color("--ember") : color("--chalk");
+        ctx.beginPath(); ctx.arc(n.x, n.y, n.r + 2.5 / scale, 0, Math.PI * 2); ctx.stroke();
+        ctx.setLineDash([]);
+      }
+    }
+    ctx.globalAlpha = 1;
+    // Island names, when nothing narrows the view.
+    if (!query && !focus && !selected) {
+      ctx.font = `600 ${11 / scale}px ${color("--f-display")}`;
+      ctx.fillStyle = color("--dust"); ctx.textAlign = "center";
+      for (const isl of islands) {
+        const xs = isl.members.map((n) => n.x), ys = isl.members.map((n) => n.y);
+        const x = xs.reduce((a, b) => a + b, 0) / xs.length, top = Math.min(...ys);
+        ctx.fillText(isl.name, x, top - 10 / scale);
+      }
+      ctx.textAlign = "start";
+    }
+    const label = hover || selected;
+    if (label) {
+      ctx.font = `${12 / scale}px ${color("--f-body")}`;
+      const text = cut(label.label, 70), w = ctx.measureText(text).width, x = label.x + label.r + 6 / scale, y = label.y - 8 / scale;
+      ctx.fillStyle = color("--soil"); ctx.globalAlpha = 0.85; ctx.fillRect(x - 3 / scale, y - 12 / scale, w + 6 / scale, 17 / scale);
+      ctx.globalAlpha = 1; ctx.fillStyle = color("--chalk"); ctx.fillText(text, x, y);
+    }
+    ctx.restore();
+  }
+
+  // The layout is computed before anything is drawn (measured: 500 steps bring linked entries to under a fifth of the
+  // average distance), then fitted to the canvas.
+  let running = true;
+  function fit() {
+    const xs = nodes.map((n) => n.x), ys = nodes.map((n) => n.y);
+    if (!xs.length) return;
+    const w = Math.max(...xs) - Math.min(...xs) + 80, h = Math.max(...ys) - Math.min(...ys) + 80;
+    scale = Math.min(3, Math.max(0.15, Math.min(W / w, H / h)));
+    tx = -((Math.max(...xs) + Math.min(...xs)) / 2) * scale; ty = -((Math.max(...ys) + Math.min(...ys)) / 2) * scale;
+  }
+  function layout() {
+    for (let i = 0; i < 500; i++) tick();
+    fit();
+    if (running) draw();
+  }
+
+  // Pointer: drag to pan, scroll to zoom, hover to name, click to open.
+  const world = (ev) => { const r = canvas.getBoundingClientRect(); return { x: (ev.clientX - r.left - W / 2 - tx) / scale, y: (ev.clientY - r.top - H / 2 - ty) / scale }; };
+  const pick = (p) => { let best = null, bd = Infinity; for (const n of nodes) { if (!matches(n)) continue; const d = Math.hypot(n.x - p.x, n.y - p.y); if (d < n.r + 6 / scale && d < bd) { best = n; bd = d; } } return best; };
+  let drag = null;
+  canvas.onpointerdown = (ev) => { drag = { x: ev.clientX, y: ev.clientY, tx, ty, moved: false }; canvas.setPointerCapture(ev.pointerId); canvas.style.cursor = "grabbing"; };
+  canvas.onpointermove = (ev) => {
+    if (drag) { const dx = ev.clientX - drag.x, dy = ev.clientY - drag.y; if (Math.abs(dx) + Math.abs(dy) > 3) drag.moved = true; tx = drag.tx + dx; ty = drag.ty + dy; draw(); return; }
+    const h = pick(world(ev)); if (h !== hover) { hover = h; canvas.style.cursor = h ? "pointer" : "grab"; draw(); }
+  };
+  canvas.onpointerup = (ev) => { const moved = drag?.moved; drag = null; canvas.style.cursor = "grab"; if (!moved) { selected = pick(world(ev)); describe(selected); draw(); } };
+  canvas.onwheel = (ev) => {
+    ev.preventDefault();
+    const r = canvas.getBoundingClientRect(), mx = ev.clientX - r.left - W / 2, my = ev.clientY - r.top - H / 2;
+    const k = Math.exp(-ev.deltaY * 0.0015), next = Math.min(8, Math.max(0.05, scale * k));
+    tx = mx - ((mx - tx) * next) / scale; ty = my - ((my - ty) * next) / scale; scale = next; draw();
+  };
+
+  function describe(n) {
+    if (!n) return detail.replaceChildren(el("p", { className: "hint" }, "Click a point to see what it is. Drag to move around, scroll to zoom."));
+    const near = n.links.map((e) => ({ m: e.a === n ? e.b : e.a, s: e.s })).sort((x, y) => y.s - x.s).slice(0, 6);
+    detail.replaceChildren(
+      el("div", { className: "row", style: "gap:6px;flex-wrap:wrap" }, el("span", { className: "pill " + (n.kind === "fix" ? "amber" : "ok") }, n.kind),
+        n.kind === "fix" && n.category ? el("span", { className: "pill" }, String(n.category).replaceAll("_", " ")) : null,
+        n.health !== "ok" ? el("span", { className: "pill " + (n.health === "contested" ? "bad" : "warn") }, n.health) : null,
+        n.source ? el("span", { className: "pill" }, "from " + n.source) : null),
+      el("h3", { style: "margin:10px 0 6px" }, n.label),
+      n.summary && n.summary !== n.label ? el("p", {}, n.summary) : null,
+      el("p", { style: "margin:8px 0" }, meter(n.strength), ` worked ${num(n.worked)} · failed ${num(n.failed)}`),
+      (n.tags || []).length ? el("p", { className: "hint" }, "Tags: " + n.tags.join(", ")) : null,
+      el("p", { className: "hint" }, `Since ${day(Date.parse(n.created_at) / 1000)} · id `, el("code", {}, n.id.slice(0, 8))),
+      near.length ? el("div", {}, el("h4", { style: "margin:12px 0 4px" }, "Most alike"),
+        el("ul", { style: "padding-left:18px;margin:0" }, near.map(({ m, s }) => el("li", {}, el("a", { href: "#", onclick: (e) => { e.preventDefault(); selected = m; describe(m); draw(); } }, cut(m.label, 60)), el("span", { className: "hint" }, ` ${s.toFixed(2)}`))))) : null);
+  }
+
+  const onResize = () => resize();
+  window.addEventListener("resize", onResize);
+  mapStop = () => { running = false; window.removeEventListener("resize", onResize); mapStop = null; };
+  resize();
+  layout();
+  refresh();
+  if (!nodes.length) detail.replaceChildren(el("p", { className: "empty" }, "The colony holds nothing yet."));
+}
+
 /* ---------- Knowledge: what the colony knows, how much of it holds, and what it is missing ---------- */
 
 async function knowledge(view) {
@@ -493,7 +738,8 @@ async function knowledge(view) {
   const kindPill = (kind) => el("span", { className: "pill " + (kind === "fix" ? "" : "ok") }, kind);
   const rows = (block) => (block.items || []).map((i) => [kindPill(i.kind), cut(i.label, 90), meter(i.strength), num(i.outcomes?.worked), num(i.outcomes?.failed),
     i.source?.type ? el("span", { className: "hint" }, i.source.type + (i.source.ref ? ": " + cut(i.source.ref, 40) : "")) : "agent", el("code", {}, i.trail_id.slice(0, 8))]);
-  const block = (title, b, help) => el("div", { className: "card" }, el("h2", {}, `${title} (${num(b.count)})`), el("p", { className: "hint" }, help),
+  const onMap = (focus) => el("button", { className: "quiet", onclick: () => { mapFocus = focus; show("map"); } }, "Show on the map");
+  const block = (title, b, help, focus) => el("div", { className: "card" }, el("div", { className: "row", style: "justify-content:space-between" }, el("h2", {}, `${title} (${num(b.count)})`), b.count ? onMap(focus) : null), el("p", { className: "hint" }, help),
     (b.items || []).length ? table(["Kind", "About", "Strength", "Worked", "Failed", "Source", "Id"], rows(b), [3, 4]) : el("p", { className: "empty" }, "None."));
   const note = el("p", { className: "msg" });
   const toggle = s.read_only.private ? el("button", { className: gaps.enabled ? "quiet" : "act", onclick: async () => {
@@ -512,10 +758,10 @@ async function knowledge(view) {
       el("p", { className: "hint" }, gaps.enabled ? "What people asked their agents to do that the colony knew nothing about: what to write down next. Kept redacted for 30 days." : s.read_only.private ? "Off. When on, the task requests the colony could not answer are kept (redacted, 30 days) so you can see what knowledge is missing. Tell the team before turning it on." : "Only a private colony keeps requests."),
       el("div", { className: "row" }, toggle), note,
       (gaps.items || []).length ? table(["When", "Who", "Request"], gaps.items.slice(0, 100).map((g) => [new Date(g.at).toLocaleString(), g.who || "–", g.text])) : null),
-    block("Contested", k.contested || {}, "More failures than successes: probably wrong or out of date. Check it, correct it (publish a new version) or remove it from the Colony tab."),
-    block("Stale", k.stale || {}, "Nobody has confirmed it for 90 days: its strength halved. Fine for rare tasks; for frequent ones it may no longer be true."),
-    block("Unconfirmed", k.unconfirmed || {}, "No agent reported on it in its first two weeks. Imported handovers start here until agents use them."),
-    block("Most used", k.most_used || {}, "What saves the team most work.")));
+    block("Contested", k.contested || {}, "More failures than successes: probably wrong or out of date. Check it, correct it (publish a new version) or remove it from the Colony tab.", "contested"),
+    block("Stale", k.stale || {}, "Nobody has confirmed it for 90 days: its strength halved. Fine for rare tasks; for frequent ones it may no longer be true.", "stale"),
+    block("Unconfirmed", k.unconfirmed || {}, "No agent reported on it in its first two weeks. Imported handovers start here until agents use them.", "unconfirmed"),
+    block("Most used", k.most_used || {}, "What saves the team most work.", "used")));
 }
 
 /* ---------- Settings ---------- */

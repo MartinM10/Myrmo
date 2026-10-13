@@ -152,6 +152,34 @@ impl Qdrant {
             .collect())
     }
 
+    /// The nearest neighbours of a sample of the points (`limit` each), as `(a, b, score)`: Qdrant's distance matrix,
+    /// which is what the admin panel's knowledge map is drawn from.
+    pub async fn neighbour_pairs(
+        &self,
+        sample: usize,
+        limit: usize,
+    ) -> Result<Vec<(String, String, f64)>> {
+        let result = self
+            .call(
+                self.http
+                    .post(self.url("/points/search/matrix/pairs"))
+                    .json(&json!({ "sample": sample, "limit": limit })),
+            )
+            .await?;
+        Ok(result["pairs"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .map(|p| {
+                (
+                    id_string(&p["a"]),
+                    id_string(&p["b"]),
+                    p["score"].as_f64().unwrap_or(0.0),
+                )
+            })
+            .collect())
+    }
+
     /// Merge a payload update into each point, in one batch request.
     pub async fn set_payloads(&self, updates: Vec<(String, Value)>) -> Result<()> {
         if updates.is_empty() {
