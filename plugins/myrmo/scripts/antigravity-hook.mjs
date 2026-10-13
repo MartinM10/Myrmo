@@ -19,7 +19,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { decide, readSettings } from "./on-failure.mjs";
-import { lookup, lookupEnabled, lookupNote as sharedLookupNote } from "./lookup.mjs";
+import { briefEnabled, briefNote as sharedBriefNote, lookup, lookupEnabled, lookupNote as sharedLookupNote, lookupTask, taskOf } from "./lookup.mjs";
 
 const EXIT = /The command exited with code (-?\d+)\./;
 // What Antigravity prints around a command's output.
@@ -101,6 +101,16 @@ export function events(steps, from = 0) {
   return out;
 }
 
+/** The newest request the user sent since `from` (a USER_INPUT step), as text; "" when there is none. */
+export function newRequest(steps, from = 0) {
+  let request = "";
+  steps.forEach((step, i) => {
+    const index = Number(step.step_index ?? i);
+    if (index >= from && step.type === "USER_INPUT") request = String(step.content ?? "");
+  });
+  return request;
+}
+
 /** Run the steps since the last call through `decide`; the last note it produced is the one to show. */
 export function step(input, state = {}, { now = Date.now(), env = process.env, settings = {}, transcript } = {}) {
   const steps = readSteps(transcript ?? "");
@@ -116,12 +126,19 @@ export function step(input, state = {}, { now = Date.now(), env = process.env, s
   const next = { ...current, agyNext: doneUntil(steps, from) };
   // The error line a reminder to search quotes: what an automatic lookup searches for.
   const failure = note && /a command just failed|finished with exit 0/.test(note) ? (/«(.+?)»/.exec(note)?.[1] ?? "") : "";
-  return { note: note && note.includes("myrmo_") ? note + HOW : note, state: next, failure };
+  // A request the user just sent: what the task lookup searches for.
+  const task = taskOf(newRequest(steps, from));
+  return { note: note && note.includes("myrmo_") ? note + HOW : note, state: next, failure, task };
 }
 
 // --- automatic lookup (lookup.mjs): on for a private colony, MYRMO_HOOK_LOOKUP=1 elsewhere --------------------------
 
 export { lookup };
+
+/** lookup.mjs's task list, with the way Antigravity reaches Myrmo's tools. */
+export function briefNote(task, body, state, now = Date.now()) {
+  return sharedBriefNote(task, body, state, now, HOW);
+}
 
 /** lookup.mjs's note, with the way Antigravity reaches Myrmo's tools. */
 export function lookupNote(line, body, state, now = Date.now()) {
@@ -150,6 +167,15 @@ async function main() {
   if (out.failure && lookupEnabled(process.env, settings)) {
     const body = await lookup(out.failure, { settings, agent: "myrmo-antigravity-hook/1" });
     if (body) Object.assign(out, lookupNote(out.failure, body, out.state));
+  }
+  // A new request: what the organisation already knows about the task, before the model plans it.
+  if (out.task && briefEnabled(process.env, settings)) {
+    const body = await lookupTask(out.task, { settings, agent: "myrmo-antigravity-hook/1" });
+    const brief = briefNote(out.task, body, out.state);
+    if (brief.note) {
+      out.note = out.note ? `${brief.note}\n\n${out.note}` : brief.note;
+      out.state = brief.state;
+    }
   }
   try {
     mkdirSync(dirname(file), { recursive: true });

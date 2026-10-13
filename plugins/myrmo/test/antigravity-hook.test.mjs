@@ -155,3 +155,16 @@ test("the lookup asks the colony set in MYRMO_URL and gives up quietly when it c
   assert.equal(await lookup("x", { env: {}, fetcher: async () => { throw new Error("down"); } }), null);
   assert.equal(await lookup("x", { env: {}, fetcher: async () => ({ ok: false }) }), null);
 });
+
+test("Antigravity: a new request is read from the transcript once, without its USER_REQUEST wrapper", async () => {
+  const { step, newRequest } = await import("../scripts/antigravity-hook.mjs");
+  const user = (text) => ({ step_index: index++, source: "USER_EXPLICIT", type: "USER_INPUT", status: "DONE", content: `<USER_REQUEST>\n${text}\n</USER_REQUEST>` });
+  const steps = [user("Despliega un tenant nuevo en dev")];
+  const transcript = steps.map((s) => JSON.stringify(s)).join("\n");
+  const first = step({}, {}, { env: {}, transcript });
+  assert.equal(first.task, "Despliega un tenant nuevo en dev");
+  const again = step({}, first.state, { env: {}, transcript });
+  assert.equal(again.task, "", "the same request is not looked up twice");
+  assert.equal(newRequest([user("sí")], 0).includes("sí"), true);
+  assert.equal(step({}, {}, { env: {}, transcript: JSON.stringify(user("sí")) }).task, "", "a follow-up is no task");
+});
