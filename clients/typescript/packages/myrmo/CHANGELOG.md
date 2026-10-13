@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.15.0](https://github.com/MartinM10/Myrmo/compare/sdk-js-v0.14.1...sdk-js-v0.15.0) (2026-10-13)
+
+
+### Features
+
+* count rejected trails by reason, and tell a publisher what to fix ([29da03d](https://github.com/MartinM10/Myrmo/commit/29da03d8a40684da0e96f10baa2a4362f018d905))
+* **sdk-js:** the draft state carries the rejection detail ([7967693](https://github.com/MartinM10/Myrmo/commit/7967693ecbf78e456dcfbe101c7109e309877118))
+
 ## [0.14.1](https://github.com/MartinM10/Myrmo/compare/sdk-js-v0.14.0...sdk-js-v0.14.1) (2026-10-11)
 
 

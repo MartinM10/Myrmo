@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.15.0](https://github.com/MartinM10/Myrmo/compare/sdk-python-v0.14.1...sdk-python-v0.15.0) (2026-10-13)
+
+
+### Features
+
+* count rejected trails by reason, and tell a publisher what to fix ([29da03d](https://github.com/MartinM10/Myrmo/commit/29da03d8a40684da0e96f10baa2a4362f018d905))
+
+
+### Documentation
+
+* the rejection detail and the new counters ([50e28d2](https://github.com/MartinM10/Myrmo/commit/50e28d23bb85d1807836b42661e69335c592ce91))
+
 ## [0.14.1](https://github.com/MartinM10/Myrmo/compare/sdk-python-v0.14.0...sdk-python-v0.14.1) (2026-10-11)
 
 
