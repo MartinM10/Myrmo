@@ -616,7 +616,15 @@ test("the hosted HTTP transport serves the same tools statelessly", async () => 
     env: { ...process.env, MYRMO_URL: colonyUrl },
     stdio: ["ignore", "ignore", "pipe"],
   });
-  await new Promise((resolve) => proc.stderr.once("data", resolve));
+  // The first line on stderr can come before the port accepts connections (slower runners, Windows): wait until it
+  // answers, or the process ends.
+  let exited = false;
+  proc.once("exit", () => { exited = true; });
+  for (let i = 0; i < 100 && !exited; i++) {
+    const up = await fetch(`http://127.0.0.1:${port}/mcp`, { method: "GET", signal: AbortSignal.timeout(1000) }).then(() => true, () => false);
+    if (up) break;
+    await new Promise((r) => setTimeout(r, 100));
+  }
   try {
     const client = new Client({ name: "http-client", version: "1.0.0" });
     await client.connect(new StreamableHTTPClientTransport(new URL(`http://127.0.0.1:${port}/mcp`)));
