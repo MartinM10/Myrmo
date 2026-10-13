@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.32.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.31.0...platform-v0.32.0) (2026-10-13)
+
+
+### Features
+
+* **plugin:** catch failures a pipeline hides behind exit 0 ([7d3bc3e](https://github.com/MartinM10/Myrmo/commit/7d3bc3e308af7b7b450704c5df04c21c931bf622))
+
 ## [0.31.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.30.0...platform-v0.31.0) (2026-10-13)
 
 
