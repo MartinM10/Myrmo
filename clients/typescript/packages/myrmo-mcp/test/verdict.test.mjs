@@ -36,9 +36,10 @@ import { spawnSync } from "node:child_process";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { parseInitArgs } from "../dist/init.js";
 
-const CLI = new URL("../dist/index.js", import.meta.url).pathname;
+const CLI = fileURLToPath(new URL("../dist/index.js", import.meta.url));
 const isolated = () => ({ ...process.env, MYRMO_CONFIG: join(mkdtempSync(join(tmpdir(), "myrmo-")), "c.json"), MYRMO_URL: "", MYRMO_API_KEY: "" });
 
 test("every publication answer says which colony it went to, and as whom", () => {
