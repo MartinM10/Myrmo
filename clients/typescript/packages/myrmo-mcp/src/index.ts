@@ -24,7 +24,7 @@ const option = (name: string, fallback: string) => {
 // The colony this server talks to: MYRMO_URL, else the one `init --url` saved, else the public one.
 const colonyUrl = new Colony({ agentId: false }).url;
 // `fileColony` arrived with myrmo 0.13; with an older SDK there is no colony in the settings file to read.
-const savedColony = (sdk as { fileColony?: (url?: string) => { private?: boolean } | undefined }).fileColony?.(colonyUrl);
+const savedColony = (sdk as { fileColony?: (url?: string) => { private?: boolean; api_key?: string } | undefined }).fileColony?.(colonyUrl);
 const choice = (publishChoice as (explicit?: PublishMode, url?: string) => ReturnType<typeof publishChoice>)(undefined, colonyUrl);
 const publishMode: PublishMode = choice.mode;
 const publishChosen = choice.source !== "default";
@@ -86,6 +86,21 @@ if (args[0] === "export") {
   const written = writeExport(dir, items, { skill: flag("--skill"), source: colony.url });
   console.log(`${written} trails from ${colony.url} written to ${dir}${flag("--skill") ? " as a skill (SKILL.md)" : ""}.`);
   process.exit(0);
+}
+
+// `myrmo-mcp doctor`: checks that this machine can use the colony and says what to fix.
+if (args[0] === "doctor") {
+  const { diagnose, render } = await import("./doctor.js");
+  const checks = await diagnose({
+    url: colonyUrl,
+    saved: savedColony !== undefined,
+    apiKey: process.env.MYRMO_API_KEY?.trim() || savedColony?.api_key,
+    privateMode: privateMode(colonyUrl, process.env, savedColony?.private === true).on,
+    publish: publishMode,
+    home: (await import("node:os")).homedir(),
+  });
+  console.log(render(checks));
+  process.exit(checks.some((c) => c.level === "fail") ? 1 : 0);
 }
 
 if (args[0] === "init") {

@@ -67,6 +67,19 @@ impl Cidr {
     }
 }
 
+/// Whether a connection from `peer` may be served when only `allowed` networks may connect. An empty list allows
+/// everyone. Loopback is always allowed: the machine itself (health checks, its own operator commands) is not a client
+/// to keep out. It looks at the peer of the connection and never at `X-Forwarded-For`, which any host of a private
+/// network could write; behind a reverse proxy the proxy has to do the filtering, or its network has to be listed.
+pub fn allows(peer: IpAddr, allowed: &[Cidr]) -> bool {
+    let loopback = match peer {
+        IpAddr::V6(v6) => v6.to_ipv4_mapped().map_or(peer, IpAddr::V4),
+        v4 => v4,
+    }
+    .is_loopback();
+    allowed.is_empty() || loopback || allowed.iter().any(|c| c.contains(peer))
+}
+
 /// The address quotas are counted against: the first `X-Forwarded-For` entry when the peer is a trusted proxy (the
 /// proxy writes the real client there), otherwise the peer itself, whatever the header says.
 pub fn client_address(peer: IpAddr, forwarded_for: Option<&str>, trusted: &[Cidr]) -> String {
@@ -87,6 +100,26 @@ mod tests {
 
     fn ip(s: &str) -> IpAddr {
         s.parse().unwrap()
+    }
+
+    #[test]
+    fn only_the_listed_networks_may_connect_and_the_machine_itself_always_may() {
+        let none: Vec<Cidr> = Vec::new();
+        assert!(allows(ip("8.8.8.8"), &none), "no list, no filter");
+        let team = Cidr::parse_list("192.168.219.0/24, 10.9.9.9");
+        assert!(allows(ip("192.168.219.87"), &team));
+        assert!(allows(ip("10.9.9.9"), &team));
+        assert!(allows(ip("::ffff:192.168.219.5"), &team));
+        for outside in [
+            "192.168.220.4",
+            "192.168.212.9",
+            "192.168.218.255",
+            "10.9.9.8",
+            "8.8.8.8",
+        ] {
+            assert!(!allows(ip(outside), &team), "{outside}");
+        }
+        assert!(allows(ip("127.0.0.1"), &team) && allows(ip("::1"), &team));
     }
 
     #[test]

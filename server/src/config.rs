@@ -30,6 +30,8 @@ pub struct Config {
     /// address is counted under that address, whatever header it sends, so a caller that reaches the gateway directly
     /// cannot pick the address its quotas are counted against.
     pub trusted_proxies: Vec<Cidr>,
+    /// Networks allowed to connect at all (`MYRMO_ALLOWED_NETWORKS`); empty means everyone. See `net::allows`.
+    pub allowed_networks: Vec<Cidr>,
     /// Requests per minute per hashed client. 0 disables rate limiting.
     pub rate_limit_per_minute: u64,
     /// Trails a hashed client may publish per hour. 0 disables the quota.
@@ -91,6 +93,7 @@ impl Config {
                 "MYRMO_TRUSTED_PROXIES",
                 crate::net::PRIVATE_NETWORKS,
             )),
+            allowed_networks: Cidr::parse_list(&get("MYRMO_ALLOWED_NETWORKS", "")),
             rate_limit_per_minute: get("MYRMO_RATE_LIMIT", "120").parse().unwrap_or(120),
             publish_limit_per_hour: get("MYRMO_PUBLISH_LIMIT", "30").parse().unwrap_or(30),
             votes_per_address: get("MYRMO_VOTES_PER_ADDRESS", "3").parse().unwrap_or(3),

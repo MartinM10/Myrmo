@@ -40,6 +40,18 @@ mode and publish choice (they apply only to that colony), writes the private col
 hook ([a private colony](../operate/self-hosting.md#a-private-colony)). It adds nothing to Claude Code when the plugin or a `myrmo`
 server is already there.
 
+## Doctor
+
+```bash
+npx myrmo-mcp doctor
+```
+
+Checks that this machine can use the colony and says what to do about each failure, in plain words: Node.js 20 or newer,
+that the colony answers and lets this network in (`403` means the colony does not allow it), that the key opens it
+(a `401` means the key was copied wrong or revoked), private mode, the publish choice, and that an agent on this machine
+(Claude Code's plugin, or the rules Gemini CLI and Antigravity read) is set up. It changes nothing, reads no trail, and
+exits 1 when something fails. It does not probe the public colony: it only reports that it is the one in use.
+
 ## Export
 
 ```bash
