@@ -113,6 +113,45 @@ pub fn tally(days: &[Vec<(String, i64)>]) -> BTreeMap<String, BTreeMap<String, i
     people
 }
 
+const LAST_SEEN: &str = "team:last";
+
+/// Note that a person's key was used just now, by any authenticated request (a `doctor` run counts: it proves the
+/// machine reaches the colony). Only the time is kept.
+pub fn seen(pipe: &mut redis::Pipeline, agent: &str, now: i64) {
+    pipe.cmd("HSET")
+        .arg(LAST_SEEN)
+        .arg(handle(agent))
+        .arg(now)
+        .ignore();
+}
+
+/// When each person's key was last used.
+pub async fn last_seen<C: ConnectionLike + Send>(con: &mut C) -> Result<BTreeMap<String, i64>> {
+    let all: Vec<(String, i64)> = redis::cmd("HGETALL")
+        .arg(LAST_SEEN)
+        .query_async(con)
+        .await?;
+    Ok(all.into_iter().collect())
+}
+
+/// The last `days` days, oldest first: for each, the date and what each person did that day.
+pub async fn daily<C: ConnectionLike + Send>(
+    con: &mut C,
+    days: i64,
+    now: i64,
+) -> Result<Vec<(String, BTreeMap<String, BTreeMap<String, i64>>)>> {
+    let mut out = Vec::new();
+    for d in (0..days.clamp(1, 90)).rev() {
+        let ts = now - d * 86_400;
+        let fields: Vec<(String, i64)> = redis::cmd("HGETALL")
+            .arg(day_key(ts))
+            .query_async(con)
+            .await?;
+        out.push((day(ts), tally(&[fields])));
+    }
+    Ok(out)
+}
+
 /// What the panel shows: per person, the counts of the last `days` days, and the reuse records of the period (newest
 /// first, up to `limit`), each with the label of the trail it was about.
 pub async fn summary<C: ConnectionLike + Send>(

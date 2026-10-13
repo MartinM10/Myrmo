@@ -11,7 +11,8 @@ mod search;
 mod trails;
 
 use admin::{
-    add_person, audit_list, get_settings, page as admin_page, people, put_settings, revoke_person,
+    activity as admin_activity, add_person, audit_list, get_settings, page as admin_page, people,
+    put_settings, refused, revoke_person, trails as admin_trails,
 };
 use feed::{activity, analytics, demand, feed, stats};
 use outcomes::report_outcome;
@@ -75,6 +76,9 @@ pub fn router(state: AppState) -> Router {
         )
         .route("/v1/admin/settings", get(get_settings).put(put_settings))
         .route("/v1/admin/audit", get(audit_list))
+        .route("/v1/admin/activity", get(admin_activity))
+        .route("/v1/admin/trails", get(admin_trails))
+        .route("/v1/admin/refused", get(refused))
         .layer(middleware::from_fn_with_state(state.clone(), rate_limit))
         .route("/admin", get(admin_page))
         .route("/healthz", get(|| async { "ok" }))
@@ -250,6 +254,8 @@ async fn network_filter(
         return next.run(req).await;
     }
     tracing::warn!(peer = %peer.ip(), "connection refused: its network is not allowed");
+    crate::analytics::note_refused_network(&mut st.redis(), &peer.ip().to_string(), keys::now())
+        .await;
     ApiError::new(
         StatusCode::FORBIDDEN,
         "network_not_allowed",
@@ -309,6 +315,9 @@ async fn rate_limit(
         && let Some(kind) = crate::team::activity(req.method().as_str(), req.uri().path())
     {
         crate::team::count(&mut pipe, &agent, kind, now);
+    }
+    if st.cfg.require_key && declared {
+        crate::team::seen(&mut pipe, &agent, now);
     }
     // Only a caller that declared an id is an agent. An address hash changes every day, and a browser that opens
     // the colony page has no id, so counting it would make "agents" mean "anything that sent a request".
