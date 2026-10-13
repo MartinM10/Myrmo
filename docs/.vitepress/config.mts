@@ -99,6 +99,7 @@ export default defineConfig({
           { text: "Architecture", link: "/concepts/architecture" },
           { text: "Fingerprints", link: "/concepts/fingerprints" },
           { text: "Strength and evaporation", link: "/concepts/strength" },
+          { text: "Organisation knowledge", link: "/concepts/organisation-knowledge" },
         ],
       },
       {

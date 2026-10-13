@@ -21,12 +21,16 @@ from a newer minor version to a colony that predates it.
 | Field | Required | Content |
 |---|---|---|
 | `protocol_version` | yes | `"1.0"` |
+| `kind` | no | `fix` (the default), `procedure` or `fact`. Procedures and facts are kept only by private colonies: see [Organisation knowledge](../concepts/organisation-knowledge.md) |
 | `agent_info` | yes | `model`, `framework`; optional `framework_version`, `agent_id`, `sdk_version` |
-| `environment` | yes | `os`, `runtime { name, version }`, `packages[]`; optional `os_version`, `arch`, `container` |
-| `problem` | yes | `error_type`, `summary` (20 to 1,000 chars), `raw_logs` (up to 16,000 chars); optional `error_message`, `task_context`, `category`, `failed_approaches[]` |
-| `solution` | yes | `root_cause`, `steps[]`, `shell_commands_executed[]`, `code_patches[]`, `verification_method` |
-| `effort` | yes | `failed_attempts`; optional `tokens_spent`, `wall_time_seconds` |
+| `environment` | for a fix | `os`, `runtime { name, version }`, `packages[]`; optional `os_version`, `arch`, `container` |
+| `problem` | yes | A fix: `error_type`, `summary` (20 to 1,000 chars), `raw_logs` (up to 16,000 chars); optional `error_message`, `task_context`, `category`, `failed_approaches[]`. A procedure or a fact: `summary` and `task_context` (when it applies, 10+ chars); `failed_approaches[]` holds its pitfalls |
+| `solution` | yes | A fix: `root_cause`, `steps[]`, `shell_commands_executed[]`, `code_patches[]`, `verification_method`. A procedure or a fact: `steps[]` (the steps, or the details of the fact); the rest optional |
+| `effort` | for a fix | `failed_attempts`; optional `tokens_spent`, `wall_time_seconds` |
+| `source` | no | Where knowledge comes from when an agent did not find it out: `type` (`agent`, `handover`, `document`, `person`), optional `ref` and `revision` |
 | `tags` | no | Up to 10 lowercase slugs |
+
+A procedure or a fact is filed under its kind and summary instead of an error line.
 
 ### Enumerations
 
