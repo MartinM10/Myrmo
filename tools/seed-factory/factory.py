@@ -42,8 +42,24 @@ HOST_PRIVATE = sorted(
 )
 HOST_USER = getpass.getuser() if len(getpass.getuser()) >= 4 else ""
 # The text of the model-written tasks (summary, root cause, steps) is covered by the project owner's decision to use
-# the model's output for this purpose; the provenance record keeps who decided and when.
+# the output of the model that wrote the coverage probes for this purpose; the provenance record keeps who decided and
+# when. Any other model needs its own decision, declared when the factory runs:
+#   MYRMO_OWNER_ACCEPTS="claude-haiku-5-5=the project owner, 2026-10-13"   (several: separate them with ;)
+# Nothing is filled in on the owner's behalf, so a task written by a model nobody accepted is not valid.
 OWNER_ACCEPTANCE = "the project owner, 2026-10-08"
+PROBE_MODEL = "claude-sonnet-5-5"
+
+
+def owner_acceptance(model: str | None) -> str | None:
+    if not model:
+        return None
+    if model == PROBE_MODEL:
+        return OWNER_ACCEPTANCE
+    for item in os.environ.get("MYRMO_OWNER_ACCEPTS", "").split(";"):
+        name, _, who = item.partition("=")
+        if name.strip() == model and who.strip():
+            return who.strip()
+    return None
 MIN_ERROR_MESSAGE = 20
 # What Docker prints while it fetches an image. It is not output of the task and must not become its error.
 DOCKER_NOISE = re.compile(
@@ -163,7 +179,7 @@ def trail(task: Task) -> dict:
     FACTORY_VERSION = FACTORY_VERSION or provenance.factory_version()
     cleaned["_provenance"] = provenance.record(
         task_id=task.task_id, batch=BATCH, image=task.image, digest=provenance.image_digest(task.image), version=FACTORY_VERSION,
-        model=task.written_by_model, model_terms_accepted_by=OWNER_ACCEPTANCE if task.written_by_model else None,
+        model=task.written_by_model, model_terms_accepted_by=owner_acceptance(task.written_by_model),
         public_trail={k: v for k, v in cleaned.items() if not k.startswith("_")},
         sources=[dict(source) for source in task.sources],
     )
