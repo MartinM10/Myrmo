@@ -531,10 +531,43 @@ static RULES: LazyLock<Vec<Rule>> = LazyLock::new(|| {
 /// Kinds of data removed, with counts.
 pub type Report = BTreeMap<&'static str, usize>;
 
+/// What a colony removes. The public colony removes everything below; an organisation's private colony keeps the
+/// addresses and host names of its own network, because "which machine does what" is exactly what its agents need
+/// and nobody outside the organisation reads it. Credentials, personal data and customer names are removed in both.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Policy {
+    pub keep_network: bool,
+}
+
+impl Policy {
+    pub const PUBLIC: Policy = Policy {
+        keep_network: false,
+    };
+    pub const ORGANISATION: Policy = Policy { keep_network: true };
+
+    pub fn for_colony(private: bool) -> Self {
+        if private {
+            Self::ORGANISATION
+        } else {
+            Self::PUBLIC
+        }
+    }
+
+    fn skips(&self, kind: &str) -> bool {
+        self.keep_network && matches!(kind, "ip" | "ipv6" | "mac" | "hostname")
+    }
+}
+
+/// The public colony's redaction.
+#[cfg(test)]
 pub fn redact_str(input: &str, report: &mut Report) -> String {
+    redact_str_with(input, report, Policy::PUBLIC)
+}
+
+pub fn redact_str_with(input: &str, report: &mut Report, policy: Policy) -> String {
     let mut text = input.to_string();
     for rule in RULES.iter() {
-        if !rule.pattern.is_match(&text) {
+        if policy.skips(rule.kind) || !rule.pattern.is_match(&text) {
             continue;
         }
         let mut hits = 0usize;
@@ -555,17 +588,26 @@ pub fn redact_str(input: &str, report: &mut Report) -> String {
     text
 }
 
-/// Redact every string inside a JSON value in place.
+/// Redact every string inside a JSON value in place, as the public colony does.
+#[cfg(test)]
 pub fn redact_value(value: &mut Value, report: &mut Report) {
+    redact_value_with(value, report, Policy::PUBLIC)
+}
+
+pub fn redact_value_with(value: &mut Value, report: &mut Report, policy: Policy) {
     match value {
         Value::String(s) => {
-            let redacted = redact_str(s, report);
+            let redacted = redact_str_with(s, report, policy);
             if redacted != *s {
                 *s = redacted;
             }
         }
-        Value::Array(items) => items.iter_mut().for_each(|v| redact_value(v, report)),
-        Value::Object(map) => map.values_mut().for_each(|v| redact_value(v, report)),
+        Value::Array(items) => items
+            .iter_mut()
+            .for_each(|v| redact_value_with(v, report, policy)),
+        Value::Object(map) => map
+            .values_mut()
+            .for_each(|v| redact_value_with(v, report, policy)),
         _ => {}
     }
 }
@@ -603,6 +645,35 @@ mod tests {
         let (out, _) =
             r("-----BEGIN OPENSSH PRIVATE KEY-----\nAAAA\n-----END OPENSSH PRIVATE KEY-----");
         assert_eq!(out, "<redacted:private_key>");
+    }
+
+    #[test]
+    fn an_organisation_keeps_its_network_but_not_its_secrets() {
+        let org = |s: &str| {
+            let mut report = Report::new();
+            (
+                redact_str_with(s, &mut report, Policy::ORGANISATION),
+                report,
+            )
+        };
+        let (out, rep) = org(
+            "ssh ops@10.40.2.17 then curl http://lldap.corp:17170 and postgres://admin:hunter2@db.internal:5432/app",
+        );
+        assert_eq!(
+            out,
+            "ssh ops@10.40.2.17 then curl http://lldap.corp:17170 and postgres://<redacted:connection_string>@db.internal:5432/app"
+        );
+        assert_eq!(rep.get("connection_string"), Some(&1));
+        assert!(!rep.contains_key("ip") && !rep.contains_key("hostname"));
+        // Secrets and personal data go, as in the public colony.
+        assert_eq!(
+            org("password=SuperSecret123").0,
+            "password=<redacted:secret>"
+        );
+        assert_eq!(org("mail ana.garcia@acme.com").0, "mail <redacted:email>");
+        assert_eq!(org("/home/martin/x").0, "/home/<user>/x");
+        // The public policy is unchanged.
+        assert_eq!(r("ssh 10.40.2.17").0, "ssh <redacted:ip>");
     }
 
     #[test]

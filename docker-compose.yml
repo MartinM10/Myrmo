@@ -10,6 +10,10 @@ x-server-env: &server-env
   REDIS_URL: redis://valkey:6379
   QDRANT_URL: http://qdrant:6333
   MYRMO_EMBED_URL: http://embed:80
+  # The task index of a private colony (deploy/private-colony.sh sets it): http://embed:80/task. Empty: off.
+  MYRMO_TASK_EMBED_URL: ${MYRMO_TASK_EMBED_URL:-}
+  MYRMO_PRIVATE: ${MYRMO_PRIVATE:-}
+  MYRMO_RECORD_GAPS: ${MYRMO_RECORD_GAPS:-0}
   MYRMO_DECISION_URL: ${MYRMO_DECISION_URL-http://laya:8000/v1/systemone}
   MYRMO_DECISION_API_KEY: ${MYRMO_DECISION_API_KEY:-}
   MYRMO_DECISION_MODEL: ${MYRMO_DECISION_MODEL:-}
@@ -92,6 +96,9 @@ services:
       context: .
       dockerfile: deploy/embed/Dockerfile
     image: myrmo/embed:dev
+    environment:
+      # Loads the multilingual task model next to the error model (about 300 MB more memory). Empty: not loaded.
+      EMBED_TASK_MODEL: ${EMBED_TASK_MODEL:-}
     restart: unless-stopped
 
   laya:

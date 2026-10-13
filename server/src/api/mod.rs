@@ -11,8 +11,9 @@ mod search;
 mod trails;
 
 use admin::{
-    activity as admin_activity, add_person, audit_list, get_settings, page as admin_page, people,
-    put_settings, refused, revoke_person, trails as admin_trails,
+    activity as admin_activity, add_person, audit_list, gaps as admin_gaps, get_settings,
+    knowledge as admin_knowledge, page as admin_page, people, put_settings, refused, revoke_person,
+    trails as admin_trails,
 };
 use feed::{activity, analytics, demand, feed, stats};
 use outcomes::report_outcome;
@@ -78,10 +79,13 @@ pub fn router(state: AppState) -> Router {
         .route("/v1/admin/audit", get(audit_list))
         .route("/v1/admin/activity", get(admin_activity))
         .route("/v1/admin/trails", get(admin_trails))
+        .route("/v1/admin/gaps", get(admin_gaps))
+        .route("/v1/admin/knowledge", get(admin_knowledge))
         .route("/v1/admin/refused", get(refused))
         .layer(middleware::from_fn_with_state(state.clone(), rate_limit))
         .route("/admin", get(admin_page))
         .route("/healthz", get(|| async { "ok" }))
+        .route("/metrics", get(metrics))
         .route("/readyz", get(readyz))
         .layer(DefaultBodyLimit::max(MAX_BODY))
         .layer(CompressionLayer::new())
@@ -492,6 +496,7 @@ fn current_risk(payload: &Value) -> Value {
 fn result_json(c: &Candidate, via: &str, score: f64, overlap: Option<f64>, now: i64) -> Value {
     json!({
         "trail_id": c.id,
+        "kind": c.payload["kind"].as_str().unwrap_or("fix"),
         "match": { "via": via, "score": round3(score), "environment_overlap": overlap.map(round3) },
         "strength": round3(c.strength(now)),
         "outcomes": c.outcomes.json(),
@@ -619,7 +624,12 @@ async fn readyz(State(st): State<AppState>) -> Response {
         .await
         .is_ok();
     let (qdrant_ok, embed_ok) = tokio::join!(st.qdrant.healthy(), st.embedder.healthy());
-    let ready = redis_ok && qdrant_ok && embed_ok;
+    // The task index, when the colony has one: a request by task fails without it.
+    let tasks_ok = match &st.tasks {
+        Some(t) => Some(t.embedder.healthy().await && t.qdrant.healthy().await),
+        None => None,
+    };
+    let ready = redis_ok && qdrant_ok && embed_ok && tasks_ok != Some(false);
     // Trails waiting for enrichment and the depth at which publishing is refused: what a monitor needs to see the
     // queue filling up before it is full. Not part of `ready`: a deep queue is slow, not down.
     let queue_depth: u64 = redis::cmd("XLEN")
@@ -636,10 +646,87 @@ async fn readyz(State(st): State<AppState>) -> Response {
         status,
         Json(json!({
             "ready": ready, "redis": redis_ok, "qdrant": qdrant_ok, "embedding": embed_ok,
+            "task_index": tasks_ok,
             "queue_depth": queue_depth, "queue_max": st.cfg.queue_max,
         })),
     )
         .into_response()
+}
+
+/// GET /metrics: Prometheus text for a monitor, with the operator token (`Authorization: Bearer <MYRMO_ADMIN_TOKEN>`,
+/// Prometheus' `authorization` setting). Whether each dependency answers, the queue, how many trails and people, and
+/// today's counters (searches by mode and whether they were answered, publications, reports by outcome). Counts only.
+async fn metrics(State(st): State<AppState>, headers: HeaderMap) -> ApiResult<Response> {
+    authorize_operator(&st, &headers)?;
+    let mut con = st.redis();
+    let redis_ok = redis::cmd("PING")
+        .query_async::<String>(&mut con)
+        .await
+        .is_ok();
+    let (qdrant_ok, embed_ok) = tokio::join!(st.qdrant.healthy(), st.embedder.healthy());
+    let tasks_ok = match &st.tasks {
+        Some(t) => t.embedder.healthy().await && t.qdrant.healthy().await,
+        None => false,
+    };
+    let queue: u64 = redis::cmd("XLEN")
+        .arg(keys::STREAM)
+        .query_async(&mut con)
+        .await
+        .unwrap_or(0);
+    let trails: i64 = con.get(keys::STAT_TRAILS).await.unwrap_or(0);
+    let people = crate::access::list(&mut con)
+        .await
+        .map(|l| l.len())
+        .unwrap_or(0);
+    let today: HashMap<String, String> = con
+        .hgetall(crate::analytics::day_key(keys::now()))
+        .await
+        .unwrap_or_default();
+    let b = |ok: bool| u8::from(ok);
+    let mut out = String::new();
+    out.push_str(
+        "# HELP myrmo_up Whether a dependency answers (1) or not (0).\n# TYPE myrmo_up gauge\n",
+    );
+    for (name, ok) in [
+        ("valkey", redis_ok),
+        ("qdrant", qdrant_ok),
+        ("embedding", embed_ok),
+    ] {
+        out.push_str(&format!("myrmo_up{{component=\"{name}\"}} {}\n", b(ok)));
+    }
+    if st.tasks.is_some() {
+        out.push_str(&format!(
+            "myrmo_up{{component=\"task_index\"}} {}\n",
+            b(tasks_ok)
+        ));
+    }
+    out.push_str(&format!(
+        "# HELP myrmo_queue_depth Trails waiting for enrichment.\n# TYPE myrmo_queue_depth gauge\nmyrmo_queue_depth {queue}\n\
+         # HELP myrmo_queue_max Depth at which publishing is refused.\n# TYPE myrmo_queue_max gauge\nmyrmo_queue_max {}\n\
+         # HELP myrmo_trails Trails ever indexed.\n# TYPE myrmo_trails gauge\nmyrmo_trails {trails}\n\
+         # HELP myrmo_people People with an access key.\n# TYPE myrmo_people gauge\nmyrmo_people {people}\n",
+        st.cfg.queue_max
+    ));
+    out.push_str("# HELP myrmo_today Counters of the current UTC day, by metric.\n# TYPE myrmo_today gauge\n");
+    let mut fields: Vec<(&String, &String)> =
+        today.iter().filter(|(k, _)| !k.contains('|')).collect();
+    fields.sort();
+    for (metric, value) in fields {
+        let metric: String = metric
+            .chars()
+            .filter(|c| c.is_ascii_alphanumeric() || *c == '_')
+            .collect();
+        out.push_str(&format!(
+            "myrmo_today{{metric=\"{metric}\"}} {}\n",
+            value.parse::<i64>().unwrap_or(0)
+        ));
+    }
+    let mut response = out.into_response();
+    response.headers_mut().insert(
+        header::CONTENT_TYPE,
+        HeaderValue::from_static("text/plain; version=0.0.4"),
+    );
+    Ok(response)
 }
 
 #[cfg(test)]

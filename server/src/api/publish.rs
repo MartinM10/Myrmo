@@ -2,6 +2,7 @@
 
 use super::*;
 use crate::keys;
+use crate::knowledge::Kind;
 use crate::redact::{self, Report};
 use crate::state::AppState;
 use crate::{fingerprint, risk, schema};
@@ -121,7 +122,10 @@ async fn queue_trail(st: &AppState, caller: &Caller, trail: &Value, fp: &str) ->
 }
 
 /// Validate against protocol v1 and redact: what both publishing paths do first.
-fn prepare_trail(body: Result<Bytes, BytesRejection>) -> ApiResult<(Value, Report, String)> {
+fn prepare_trail(
+    st: &AppState,
+    body: Result<Bytes, BytesRejection>,
+) -> ApiResult<(Value, Report, String)> {
     let mut trail = parse_body(body)?;
     schema::validate_trail(&trail).map_err(|details| {
         ApiError::new(
@@ -131,8 +135,17 @@ fn prepare_trail(body: Result<Bytes, BytesRejection>) -> ApiResult<(Value, Repor
         )
         .details(json!(details))
     })?;
+    // Procedures and facts describe an organisation's own systems: only its private colony keeps them.
+    if Kind::of(&trail).is_knowledge() && !st.cfg.private {
+        return Err(ApiError::new(
+            StatusCode::BAD_REQUEST,
+            "invalid_trail",
+            "This colony keeps fixes only: procedures and facts belong in an organisation's private colony.",
+        )
+        .details(json!([{ "path": "/kind", "message": "only \"fix\" is accepted by this colony" }])));
+    }
     let mut report = Report::new();
-    redact::redact_value(&mut trail, &mut report);
+    redact::redact_value_with(&mut trail, &mut report, st.cfg.redaction());
     let fp = fingerprint::of_trail(&trail);
     Ok((trail, report, fp))
 }
@@ -142,7 +155,7 @@ async fn prepare_counted(
     st: &AppState,
     body: Result<Bytes, BytesRejection>,
 ) -> ApiResult<(Value, Report, String)> {
-    match prepare_trail(body) {
+    match prepare_trail(st, body) {
         Err(err) if err.code == "invalid_trail" => {
             crate::analytics::record_refusal(&mut st.redis(), keys::now(), "invalid_trail").await;
             Err(err)
@@ -155,8 +168,11 @@ async fn prepare_counted(
 /// the trail it is about to send, and this tells it whether the colony would accept it, so a
 /// payload that looks right in the preview is not refused afterwards. Nothing is stored and no
 /// publishing quota is used.
-pub(super) async fn validate(body: Result<Bytes, BytesRejection>) -> ApiResult<Json<Value>> {
-    let (_trail, report, fp) = prepare_trail(body)?;
+pub(super) async fn validate(
+    State(st): State<AppState>,
+    body: Result<Bytes, BytesRejection>,
+) -> ApiResult<Json<Value>> {
+    let (_trail, report, fp) = prepare_trail(&st, body)?;
     Ok(Json(
         json!({ "valid": true, "fingerprint": fp, "redactions": report }),
     ))

@@ -127,6 +127,9 @@ struct SearchRequest {
     environment: Value,
     limit: Option<usize>,
     min_strength: Option<f64>,
+    /// `error` (the default): the query is an error line. `task`: the query is what a person asked the agent to do,
+    /// matched against the task index.
+    mode: Option<String>,
 }
 
 /// `Type: message` → `Type`, for callers that do not send `error_type`.
@@ -161,7 +164,12 @@ pub(super) async fn search(
     }
 
     // Never trust the client to have redacted. The query is used, never stored.
-    let query = redact::redact_str(&req.query, &mut Report::new());
+    let query = redact::redact_str_with(&req.query, &mut Report::new(), st.cfg.redaction());
+    match req.mode.as_deref() {
+        None | Some("error") => {}
+        Some("task") => return search_task(&st, &caller, &query, limit, min_strength).await,
+        Some(_) => return Err(ApiError::bad_request("mode must be \"error\" or \"task\".")),
+    }
     let error_type = req
         .error_type
         .clone()
@@ -259,6 +267,68 @@ pub(super) async fn search(
 
     Ok(Json(json!({
         "fingerprint": fp,
+        "results": ranked.into_iter().map(|(_, v)| v).collect::<Vec<_>>(),
+        "notice": NOTICE,
+    })))
+}
+
+/// What the organisation already knows about a task: the trails (procedures, facts and fixes) whose task text is close
+/// to the request, by the task index. No error-line filter applies here: a request names no error, and the threshold
+/// is the task index's own (`MYRMO_TASK_MIN_SIMILARITY`).
+async fn search_task(
+    st: &AppState,
+    caller: &Caller,
+    query: &str,
+    limit: usize,
+    min_strength: f64,
+) -> ApiResult<Json<Value>> {
+    let Some(tasks) = &st.tasks else {
+        return Err(ApiError::new(
+            StatusCode::NOT_IMPLEMENTED,
+            "no_task_index",
+            "This colony has no task index (MYRMO_TASK_EMBED_URL is not set): search by error line instead.",
+        ));
+    };
+    let hits = tasks
+        .qdrant
+        .search(&tasks.embedder.embed(query).await?, 20)
+        .await?;
+    let scores: HashMap<String, f64> = hits
+        .iter()
+        .filter(|h| h.score >= st.cfg.task_min_similarity)
+        .map(|h| (h.id.clone(), h.score))
+        .collect();
+    let ids: Vec<String> = scores.keys().cloned().collect();
+    let now = keys::now();
+    let candidates = load(st, &ids).await?;
+    let mut ranked: Vec<(f64, Value)> = candidates
+        .iter()
+        .filter(|c| c.strength(now) >= min_strength)
+        .map(|c| {
+            let score = scores[&c.id];
+            (
+                score * (0.4 + 0.6 * c.strength(now)),
+                result_json(c, "task", score, None, now),
+            )
+        })
+        .collect();
+    ranked.sort_by(|a, b| b.0.total_cmp(&a.0));
+    ranked.truncate(limit);
+    let answered = !ranked.is_empty();
+    crate::analytics::record(
+        &mut st.redis(),
+        now,
+        &[
+            ("task_searches", None, 1),
+            ("task_answered", None, i64::from(answered)),
+        ],
+    )
+    .await;
+    if !answered {
+        super::admin::record_gap(st, caller, query, now).await;
+    }
+    Ok(Json(json!({
+        "mode": "task",
         "results": ranked.into_iter().map(|(_, v)| v).collect::<Vec<_>>(),
         "notice": NOTICE,
     })))

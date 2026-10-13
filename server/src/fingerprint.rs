@@ -227,6 +227,10 @@ pub fn message_for_problem(problem: &Value) -> String {
 
 /// Fingerprint of a protocol trail: its error message, as a searcher would hold it.
 pub fn of_trail(trail: &Value) -> String {
+    // A procedure or a fact has no error line: it is filed under what it is about.
+    if crate::knowledge::Kind::of(trail).is_knowledge() {
+        return fingerprint2(&crate::knowledge::subject(trail));
+    }
     fingerprint2(&message_for_problem(&trail["problem"]))
 }
 

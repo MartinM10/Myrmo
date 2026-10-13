@@ -19,6 +19,14 @@ pub struct Inner {
     pub qdrant: Qdrant,
     pub embedder: Embedder,
     pub decision: Decision,
+    /// The task index (`MYRMO_TASK_EMBED_URL`): a second model and collection for task requests. `None` when off.
+    pub tasks: Option<TaskIndex>,
+}
+
+/// The second index: every trail, embedded by what the agent was doing rather than by its error line.
+pub struct TaskIndex {
+    pub embedder: Embedder,
+    pub qdrant: Qdrant,
 }
 
 impl std::ops::Deref for AppState {
@@ -87,12 +95,33 @@ impl AppState {
             "connected to redis, qdrant and the embedding service"
         );
 
+        let tasks = match &cfg.task_embed_url {
+            None => None,
+            Some(url) => {
+                let embedder = Embedder::new(http.clone(), url);
+                let qdrant = Qdrant::new(http.clone(), &cfg.qdrant_url, &cfg.task_collection);
+                let dimension = retry("task embedding service", 200, || {
+                    let embedder = embedder.clone();
+                    async move { Ok(embedder.embed("dimension probe").await?.len()) }
+                })
+                .await?;
+                retry("qdrant (tasks)", 100, || {
+                    let qdrant = qdrant.clone();
+                    async move { qdrant.ensure_collection(dimension).await }
+                })
+                .await?;
+                tracing::info!(dimension, collection = %cfg.task_collection, "task index on");
+                Some(TaskIndex { embedder, qdrant })
+            }
+        };
+
         Ok(AppState(Arc::new(Inner {
             cfg,
             redis,
             qdrant,
             embedder,
             decision,
+            tasks,
         })))
     }
 

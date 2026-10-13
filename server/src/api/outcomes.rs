@@ -89,7 +89,7 @@ pub(super) async fn report_outcome(
         )
         .details(json!(details))
     })?;
-    redact::redact_value(&mut report, &mut Report::new());
+    redact::redact_value_with(&mut report, &mut Report::new(), st.cfg.redaction());
 
     let mut con = st.redis();
     let meta: HashMap<String, String> = con.hgetall(keys::trail(&id)).await?;
