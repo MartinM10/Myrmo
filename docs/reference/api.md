@@ -85,6 +85,7 @@ POST /v1/search
 | `environment` | object | no | Same shape as the protocol's `environment`, every field optional. Used to rank by overlap. |
 | `limit` | integer | no | 1 to 10, default 5. |
 | `min_strength` | number | no | 0 to 1, default 0. |
+| `mode` | string | no | `error` (the default): `query` is an error line. `task`: `query` is what a person asked the agent to do, matched against the task index of a [private colony](../concepts/organisation-knowledge.md) in any language, with its own threshold (`MYRMO_TASK_MIN_SIMILARITY`, default 0.55) and none of the error-line filters. A colony without a task index answers `501 no_task_index`. |
 
 A semantic match is returned only if it is close enough (`MYRMO_MIN_SIMILARITY`), shares a distinctive word with the
 query unless it is nearly identical, and **does not name something else than the query**. The embedding scores `No
@@ -117,7 +118,8 @@ Response:
 
 | Field | Notes |
 |---|---|
-| `match.via` | `fingerprint` for exact matches, `semantic` for vector matches. |
+| `kind` | `fix`, `procedure` or `fact`. |
+| `match.via` | `fingerprint` for exact matches, `semantic` for vector matches, `task` for the task index. |
 | `match.score` | 1.0 for fingerprint matches, cosine similarity otherwise. |
 | `match.environment_overlap` | 0 to 1: OS, architecture, runtime and its major version, and shared packages. Spellings of a runtime (`java` and `jvm`, `node` and `nodejs`, `python` and `python3`) count as the same. |
 | `risk.flags[]` | `{ command_index, flag, level, detail }`, see [Safety](../security/safety.md). |
@@ -347,11 +349,14 @@ token and answer `Cache-Control: no-store`; `501` when the colony has none, `401
 | `POST /v1/admin/people` `{"name": "ana"}` | Creates a key for a person and returns it **once** (`201`); `409` when the person has one. |
 | `DELETE /v1/admin/people/{name}` | Revokes the key; it stops working at once. |
 | `GET /v1/admin/settings` | The settings in force, which of them were changed through the API, the environment's values, and the address the request came from. |
-| `PUT /v1/admin/settings` | Changes `allowed_networks` (a comma-separated list), `rate_limit_per_minute` and `publish_limit_per_hour` (0 to 100000, 0 is no limit) while the colony runs; `null` goes back to the environment's value. A list that would shut out the requester is refused with `400`. Applies within five seconds on every gateway. |
+| `PUT /v1/admin/settings` | Changes `allowed_networks` (a comma-separated list), `rate_limit_per_minute` and `publish_limit_per_hour` (0 to 100000, 0 is no limit) and, in a private colony, `record_gaps` (true or false) while the colony runs; `null` goes back to the environment's value. A list that would shut out the requester is refused with `400`. Applies within five seconds on every gateway. |
 | `GET /v1/admin/activity?days=14` | For each day, oldest first, the colony's totals (`searches`, `answered`, `published`, `rejected`) and what each person did (`people`), and when each person's key was last used (`last_seen`). |
 | `GET /v1/admin/trails?limit=20&cursor=0` | The trails as `/v1/feed` lists them, each with `author`: the person who published it, which the public feed never says. |
 | `GET /v1/admin/refused` | The addresses refused because their network is not allowed, most recent first, with a count and the last time (30 days, 100 addresses at most). |
 | `GET /v1/admin/audit` | The last 200 changes made through the operator token: keys, settings, removed trails. |
+| `GET /v1/admin/knowledge` | What the colony holds (`kinds`, `sources`), task requests and answers in 30 days, and the `stale`, `contested`, `unconfirmed` and `most_used` entries (a count and the first 15 of each). |
+| `GET /v1/admin/gaps` | The task requests nobody's knowledge answered in the last 30 days (redacted, with the person), when `record_gaps` is on (private colonies only). |
+| `GET /metrics` | Prometheus text: whether each dependency answers (`myrmo_up`), the queue, trails, people, and today's counters by metric. With the operator token as a bearer token. |
 
 ## Analytics and demand
 

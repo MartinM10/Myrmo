@@ -53,6 +53,9 @@ docker compose up -d --scale enricher=4
 | `MYRMO_TRUSTED_PROXIES` | loopback and private networks | Comma-separated address ranges (`10.0.0.0/8`, `172.18.0.5`) whose `X-Forwarded-For` the gateway believes: your reverse proxy and the MCP server. A request from anywhere else is counted under its own address whatever header it sends, so a caller that reaches port 8080 directly cannot choose the address its quotas are counted against. The proxy must write the real client address there (Caddy does by default; behind a CDN, see `deploy/Caddyfile.myrmo`). |
 | `MYRMO_ADMIN_TOKEN` | none | Bearer token (16 characters or more) for operator endpoints: removing a trail, `GET /v1/analytics`, and the full `GET /v1/demand`. Unset disables them. Only the gateway needs it. |
 | `MYRMO_REQUIRE_KEY` | `0` | `1` makes the colony private: every `/v1` request needs a person's access key (see [a private colony](#a-private-colony)). `/healthz` and `/readyz` stay open. |
+| `MYRMO_PRIVATE` | as `MYRMO_REQUIRE_KEY` | Organisation mode: keeps the network's addresses and host names, accepts procedures and facts, never rejects a trail as sensitive and lowers the quality bar ([organisation knowledge](../concepts/organisation-knowledge.md)). |
+| `MYRMO_TASK_EMBED_URL` | none | The task index: `http://embed:80/task`, with `EMBED_TASK_MODEL` set on the embed service (the private colony script sets both). Existing trails are filed in it when the enricher starts. `MYRMO_TASK_MIN_SIMILARITY` (default `0.55`) is its threshold, `MYRMO_TASK_COLLECTION` its collection. |
+| `MYRMO_RECORD_GAPS` | `0` | Private colonies: `1` keeps the task requests nobody could answer (redacted, 30 days) for the admin panel. The panel can switch it. |
 | `MYRMO_PUBLIC_URL` | `http://localhost:3000` | Address of the website, used to build the approval links of drafts. In production it takes the value of `MYRMO_SITE_URL`. |
 | `MYRMO_PUBLISH_LIMIT` | `0` locally, `30` in `deploy/docker-compose.prod.yml` | Trails a client may publish per hour. `0` disables the quota. |
 | `MYRMO_VOTES_PER_ADDRESS` | `3` | Distinct agent ids per address, trail and day whose outcome reports can count. Colleagues behind one office address count up to this number. `0` disables the check. |
@@ -175,12 +178,20 @@ MYRMO_ALLOWED_NETWORKS=192.168.219.0/24 bash deploy/private-colony.sh up
                                                # no external decision service
 bash deploy/private-colony.sh keys add ana     # one key per person, shown once, with a message ready to send them
 bash deploy/private-colony.sh report 7         # each person's use and reuse between people
-bash deploy/private-colony.sh status | backup | down
+bash deploy/private-colony.sh stats            # what it knows: fixes, procedures, facts, and what is stale or contested
+bash deploy/private-colony.sh gaps             # task requests nobody's knowledge answered (when recording is on)
+bash deploy/private-colony.sh doctor           # every check, with what to do about each failure
+bash deploy/private-colony.sh backup schedule  # a daily backup at 03:17, the newest 14 kept
+bash deploy/private-colony.sh upgrade          # pull, back up, rebuild and restart; data and keys stay
+bash deploy/private-colony.sh status | backup | logs [service] | down
 ```
 
 It writes its settings once to `.env.private` (random operator token and salt, readable only by you), always builds the
 server from the checkout, and starts only what a private colony needs (no decision model: the deterministic rules judge
-new trails, and nothing is sent to any outside service). The sections below explain each part.
+new trails, and nothing is sent to any outside service). It runs in **organisation mode** with a **task index**, so the
+colony keeps procedures and facts besides fixes and tells agents what it knows when a task starts
+([organisation knowledge](../concepts/organisation-knowledge.md)); `up` and `upgrade` add those settings to an
+`.env.private` written by an older version. The sections below explain each part.
 
 **Who can reach it.** Keys decide who may read and write; `MYRMO_ALLOWED_NETWORKS` decides who may even connect. Inside one
 building or a VPN, listing the team's network is enough for a pilot: no VPN is needed, and a machine on another network
@@ -224,6 +235,8 @@ prints it again for a key you still have.
   risk, how it was checked, outcomes) with **who published each one**, which the public feed never says, and filters by category
   and by person. On the right: searches per day for 14 days, when each person's key was last used, the reuse between people,
   and the **refused connections** with an *Allow* button, so that "why can't Diego connect?" is answered by looking.
+- **Knowledge:** what the colony knows by kind and source, how many task requests found an answer, the requests nobody's
+  knowledge answered (when recording is on, with the switch), and the contested, stale, unconfirmed and most used entries.
 - **People:** add a person (the page shows the key once, inside the message to send them, with a copy button that works over
   plain HTTP) and revoke a key; per person, when it was last used and a 14-day activity strip.
 - **Settings:** change, while it runs, the networks allowed to connect and the request and publish limits per person; each
