@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Myrmo colony admin</title>
+<style>
+  :root {
+    --bg: #fbf9f4; --card: #ffffff; --ink: #231f1a; --muted: #6d655b; --line: #e3ddd2;
+    --accent: #b5521b; --accent-ink: #ffffff; --ok: #2f7d4f; --warn: #a56a00; --bad: #b3261e;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #17140f; --card: #211d17; --ink: #efe9df; --muted: #a39a8c; --line: #38322a;
+      --accent: #e08a52; --accent-ink: #1a1208; --ok: #6cc08b; --warn: #e0b04d; --bad: #f0857d;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  header { display: flex; align-items: center; gap: 16px; padding: 14px 20px; border-bottom: 1px solid var(--line); background: var(--card); flex-wrap: wrap; }
+  header h1 { font-size: 17px; margin: 0; }
+  header .where { color: var(--muted); font-size: 13px; }
+  nav { display: flex; gap: 4px; margin-left: auto; flex-wrap: wrap; }
+  nav button { background: none; border: 1px solid transparent; color: var(--muted); padding: 6px 12px; border-radius: 8px; cursor: pointer; font: inherit; }
+  nav button[aria-selected="true"] { color: var(--ink); border-color: var(--line); background: var(--bg); font-weight: 600; }
+  main { max-width: 1040px; margin: 0 auto; padding: 20px 16px 60px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; margin-bottom: 16px; }
+  .card h2 { font-size: 15px; margin: 0 0 10px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+  .stat b { display: block; font-size: 24px; }
+  .stat span { color: var(--muted); font-size: 13px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 500; font-size: 12px; text-transform: uppercase; letter-spacing: .03em; }
+  td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
+  .scroll { overflow-x: auto; }
+  input, textarea, select { font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; }
+  input[type="text"], input[type="password"], textarea { width: 100%; }
+  textarea { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; min-height: 260px; }
+  label { display: block; font-weight: 600; font-size: 13px; margin: 12px 0 4px; }
+  .hint { color: var(--muted); font-size: 13px; margin: 4px 0 0; }
+  button.act { background: var(--accent); color: var(--accent-ink); border: 0; border-radius: 8px; padding: 8px 14px; cursor: pointer; font: inherit; font-weight: 600; }
+  button.quiet { background: none; border: 1px solid var(--line); color: var(--ink); border-radius: 8px; padding: 6px 10px; cursor: pointer; font: inherit; }
+  button.danger { background: none; border: 1px solid var(--bad); color: var(--bad); border-radius: 8px; padding: 5px 10px; cursor: pointer; font: inherit; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .ok { color: var(--ok); } .warn { color: var(--warn); } .bad { color: var(--bad); }
+  .msg { margin: 10px 0 0; font-size: 14px; }
+  .pill { display: inline-block; border: 1px solid var(--line); border-radius: 999px; padding: 1px 9px; font-size: 12px; color: var(--muted); }
+  .secret { border: 1px solid var(--warn); background: color-mix(in srgb, var(--warn) 8%, var(--card)); border-radius: 10px; padding: 12px 14px; margin-top: 12px; }
+  #login { max-width: 420px; margin: 12vh auto; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+
+<section id="login" class="card" hidden>
+  <h2>Myrmo colony admin</h2>
+  <p class="hint">Enter this colony's operator token (<code>MYRMO_ADMIN_TOKEN</code> in <code>.env.private</code>). It stays in this tab only and goes to this colony only.</p>
+  <label for="token">Operator token</label>
+  <input id="token" type="password" autocomplete="off" spellcheck="false">
+  <div class="row" style="margin-top:12px"><button class="act" id="enter">Enter</button></div>
+  <p id="login-msg" class="msg bad"></p>
+</section>
+
+<div id="app" hidden>
+  <header>
+    <h1>Myrmo colony admin</h1>
+    <span class="where" id="where"></span>
+    <nav role="tablist" id="tabs">
+      <button role="tab" data-tab="overview" aria-selected="true">Overview</button>
+      <button role="tab" data-tab="people" aria-selected="false">People</button>
+      <button role="tab" data-tab="trails" aria-selected="false">Trails</button>
+      <button role="tab" data-tab="settings" aria-selected="false">Settings</button>
+      <button role="tab" data-tab="activity" aria-selected="false">Activity</button>
+      <button class="quiet" id="leave">Sign out</button>
+    </nav>
+  </header>
+  <main>
+    <section id="tab-overview"></section>
+    <section id="tab-people" hidden></section>
+    <section id="tab-trails" hidden></section>
+    <section id="tab-settings" hidden></section>
+    <section id="tab-activity" hidden></section>
+  </main>
+</div>
+
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const el = (tag, props = {}, ...kids) => {
+  const node = Object.assign(document.createElement(tag), props);
+  for (const kid of kids.flat()) if (kid != null) node.append(kid.nodeType ? kid : document.createTextNode(String(kid)));
+  return node;
+};
+const store = { get: () => { try { return sessionStorage.getItem("myrmo-admin-token") || ""; } catch { return ""; } },
+                set: (v) => { try { v ? sessionStorage.setItem("myrmo-admin-token", v) : sessionStorage.removeItem("myrmo-admin-token"); } catch {} } };
+let token = store.get();
+
+async function api(path, options = {}) {
+  const res = await fetch(path, { ...options, headers: { accept: "application/json", "content-type": "application/json", authorization: "Bearer " + token, ...(options.headers || {}) } });
+  let body = null;
+  try { body = await res.json(); } catch {}
+  if (res.status === 401 && path.startsWith("/v1/admin")) { signOut("That token was not accepted."); throw new Error("unauthorized"); }
+  if (!res.ok) throw new Error(body?.error?.message || ("HTTP " + res.status));
+  return body;
+}
+const when = (ts) => ts ? new Date(ts * 1000).toLocaleString() : "";
+const day = (ts) => ts ? new Date(ts * 1000).toLocaleDateString() : "";
+const num = (n) => Number(n ?? 0).toLocaleString();
+const cut = (s, n) => (s || "").length > n ? s.slice(0, n - 1) + "…" : (s || "");
+const say = (node, text, kind = "") => { node.className = "msg " + kind; node.textContent = text; };
+
+function signOut(message) {
+  token = ""; store.set("");
+  $("app").hidden = true; $("login").hidden = false;
+  say($("login-msg"), message || "", "bad");
+}
+
+async function enter() {
+  token = $("token").value.trim();
+  if (!token) return;
+  try {
+    await api("/v1/admin/people?days=1");
+  } catch (err) { if (err.message !== "unauthorized") say($("login-msg"), err.message, "bad"); return; }
+  store.set(token); $("token").value = "";
+  $("login").hidden = true; $("app").hidden = false;
+  $("where").textContent = location.origin;
+  show("overview");
+}
+
+const tabs = { overview, people, trails, settings, activity };
+function show(name) {
+  for (const b of document.querySelectorAll("#tabs [data-tab]")) b.setAttribute("aria-selected", String(b.dataset.tab === name));
+  for (const key of Object.keys(tabs)) $("tab-" + key).hidden = key !== name;
+  const box = $("tab-" + name); box.replaceChildren(el("p", { className: "hint" }, "Loading…"));
+  tabs[name](box).catch((err) => { if (err.message !== "unauthorized") box.replaceChildren(el("p", { className: "msg bad" }, err.message)); });
+}
+
+function table(headers, rows, numeric = []) {
+  return el("div", { className: "scroll" }, el("table", {},
+    el("thead", {}, el("tr", {}, headers.map((h, i) => el("th", { className: numeric.includes(i) ? "n" : "" }, h)))),
+    el("tbody", {}, rows.map((r) => el("tr", {}, r.map((c, i) => el("td", { className: numeric.includes(i) ? "n" : "" }, c)))))));
+}
+
+async function overview(box) {
+  const [ready, stats, team] = await Promise.all([
+    fetch("/readyz").then((r) => r.json()).catch(() => ({})),
+    api("/v1/stats"), api("/v1/admin/people?days=7"),
+  ]);
+  const rej = stats.rejections_30d || {};
+  const stat = (v, l) => el("div", { className: "stat" }, el("b", {}, v), el("span", {}, l));
+  const reuse = team.reuse || [];
+  const people = team.people || [];
+  box.replaceChildren(...[
+    el("div", { className: "card" }, el("h2", {}, "Colony"), el("div", { className: "grid" },
+      el("div", { className: "stat" }, el("b", { className: ready.ready ? "ok" : "bad" }, ready.ready ? "Ready" : "Not ready"),
+        el("span", {}, ["redis", "qdrant", "embedding"].filter((k) => ready[k] === false).map((k) => k + " is down").join(", ") || "all parts answer")),
+      stat(num(stats.trails), "trails"),
+      stat(num(ready.queue_depth) + (ready.queue_max ? " / " + num(ready.queue_max) : ""), "waiting to be checked"),
+      stat(num(people.length), "people with a key"),
+      stat(num(stats.searches_30d), "searches, 30 days"),
+      stat(num(rej.rejected) + " of " + num(rej.judged), "trails rejected, 30 days"))),
+    el("div", { className: "card" }, el("h2", {}, "Last 7 days, per person"),
+      people.length ? table(["Person", "Searches", "Published", "Reports", "Used others' (worked)", "Helped others (worked)"],
+        people.map((p) => [p.name, num(p.searches), num(p.published), num(p.reports), num(p.used_others) + " (" + num(p.used_others_worked) + ")", num(p.helped_others) + " (" + num(p.helped_others_worked) + ")"]), [1, 2, 3, 4, 5])
+        : el("p", { className: "hint" }, "Nobody has a key yet: add people in the People tab.")),
+    el("div", { className: "card" }, el("h2", {}, "Reuse between people"),
+      el("p", { className: "hint" }, "Each time one person's agent reported on a trail another person's agent published: what a shared colony is for."),
+      reuse.length ? table(["Date", "Published by", "Used by", "Outcome", "Trail"],
+        reuse.slice(0, 20).map((e) => [day(e.ts), e.author, e.reporter, e.outcome, cut(e.label || e.trail, 70)]))
+        : el("p", { className: "hint" }, "None yet.")),
+    rej.rejected ? el("div", { className: "card" }, el("h2", {}, "Why trails were rejected, 30 days"),
+      table(["Reason", "Trails"], Object.entries(rej.by_reason || {}).filter(([, n]) => n).map(([k, n]) => [k.replaceAll("_", " "), num(n)]), [1]),
+      el("p", { className: "hint" }, "Refused before they were judged: " + Object.entries(rej.refused_at_the_door || {}).map(([k, n]) => k.replaceAll("_", " ") + " " + n).join(", "))) : null].filter(Boolean));
+}
+
+function invitation(name, key) {
+  return `Hi ${name},
+
+We now have a shared memory for our coding agents: when your agent solves an error, the next agent that hits it
+gets the solution automatically. It runs on our own machine; nothing goes to the internet. You need the team network.
+
+You need: Node.js 20 or newer (node --version) and Claude Code and/or Antigravity.
+
+1. Run this once (it sets up the agents on your machine):
+
+   npx myrmo-mcp@latest init --url ${location.origin} --key ${key} --private --publish auto
+
+2. Restart Claude Code / Antigravity. In Antigravity, accept the permission for the myrmo tools ("always").
+3. Check it:   npx myrmo-mcp@latest doctor     (it says what to fix, if anything)
+
+The command is in your shell history with the key in it: delete that line (history -d) or edit it out.
+What it does: your agent looks the error up when a command fails, and shares what it solved with the team. Credentials,
+people's names, e-mails and customer data are removed; internal tool and service names are kept on purpose. Tell the
+person who set this up if something looks wrong or gets in the way.
+`;
+}
+
+async function people(box) {
+  const data = await api("/v1/admin/people?days=30");
+  const note = el("p", { className: "msg" });
+  const secret = el("div", { hidden: true });
+  const name = el("input", { type: "text", placeholder: "ana", maxLength: 32, autocomplete: "off", spellcheck: false });
+  const add = el("button", { className: "act", onclick: async () => {
+    const who = name.value.trim().toLowerCase();
+    try {
+      const made = await api("/v1/admin/people", { method: "POST", body: JSON.stringify({ name: who }) });
+      name.value = ""; say(note, "");
+      const text = el("textarea", { readOnly: true, value: invitation(made.name, made.key) });
+      const copy = el("button", { className: "act", onclick: async () => { try { await navigator.clipboard.writeText(text.value); copy.textContent = "Copied"; } catch { text.select(); copy.textContent = "Select and copy"; } } }, "Copy the message");
+      secret.hidden = false;
+      secret.className = "secret";
+      secret.replaceChildren(el("b", {}, "Send this to " + made.name + " privately. The key is shown only now."),
+        el("p", { className: "hint" }, "It is not stored anywhere readable: if it is lost, revoke the person and add them again."), text, el("div", { className: "row", style: "margin-top:8px" }, copy,
+        el("button", { className: "quiet", onclick: () => people(box) }, "Done, hide the key")));
+    } catch (err) { say(note, err.message, "bad"); }
+  } }, "Add person");
+  box.replaceChildren(
+    el("div", { className: "card" }, el("h2", {}, "Add a person"),
+      el("label", {}, "Name (a handle: lowercase letters, digits, . - _)"), el("div", { className: "row" }, name, add), note, secret),
+    el("div", { className: "card" }, el("h2", {}, "People with a key (last 30 days)"),
+      data.people.length ? table(["Person", "Since", "Searches", "Published", "Reports", "Used others'", "Helped others", ""],
+        data.people.map((p) => [p.name, day(p.created), num(p.searches), num(p.published), num(p.reports), num(p.used_others), num(p.helped_others),
+          el("button", { className: "danger", onclick: async () => {
+            if (!confirm("Revoke the key of " + p.name + "? It stops working at once.")) return;
+            try { await api("/v1/admin/people/" + encodeURIComponent(p.name), { method: "DELETE" }); people(box); } catch (err) { alert(err.message); }
+          } }, "Revoke")]), [2, 3, 4, 5, 6])
+        : el("p", { className: "hint" }, "Nobody yet.")));
+}
+
+async function trails(box) {
+  let cursor = null; const seen = [];
+  const body = el("tbody"); const filter = el("input", { type: "text", placeholder: "Filter what is shown", spellcheck: false });
+  const more = el("button", { className: "quiet" }, "Load more"); const note = el("p", { className: "msg" });
+  const draw = () => {
+    const f = filter.value.toLowerCase();
+    body.replaceChildren(...seen.filter((t) => !f || JSON.stringify([t.trail?.problem?.error_message, t.trail?.problem?.summary, t.category]).toLowerCase().includes(f)).map((t) => {
+      const remove = el("button", { className: "danger", onclick: async () => {
+        const reason = prompt("Why is this trail removed? (kept in the activity log)", "");
+        if (reason === null) return;
+        try { await api("/v1/trails/" + t.trail_id, { method: "DELETE", body: JSON.stringify({ reason }) }); seen.splice(seen.indexOf(t), 1); draw(); }
+        catch (err) { say(note, err.message, "bad"); }
+      } }, "Remove");
+      return el("tr", {}, el("td", {}, day(Date.parse(t.created_at) / 1000)), el("td", {}, cut(t.trail?.problem?.error_message, 90)),
+        el("td", {}, cut(t.trail?.problem?.summary, 110)), el("td", {}, t.category || ""), el("td", { className: "n" }, t.strength != null ? Number(t.strength).toFixed(2) : ""), el("td", {}, remove));
+    }));
+  };
+  const load = async () => {
+    const page = await api("/v1/feed?limit=50" + (cursor ? "&cursor=" + encodeURIComponent(cursor) : ""));
+    seen.push(...(page.items || [])); cursor = page.next_cursor; more.hidden = !cursor; draw();
+  };
+  more.onclick = () => load().catch((e) => say(note, e.message, "bad")); filter.oninput = draw;
+  box.replaceChildren(el("div", { className: "card" }, el("h2", {}, "Trails"),
+    el("p", { className: "hint" }, "Review what was published. Remove one that is wrong or carries something it should not; the reason is written to the activity log. To keep a copy of everything as Markdown: npx myrmo-mcp export <folder>."),
+    filter, note, el("div", { className: "scroll", style: "margin-top:10px" }, el("table", {}, el("thead", {}, el("tr", {}, ["Date", "Error", "Summary", "Category", "Strength", ""].map((h) => el("th", {}, h)))), body)),
+    el("div", { className: "row", style: "margin-top:10px" }, more)));
+  await load();
+}
+
+async function settings(box) {
+  const s = await api("/v1/admin/settings");
+  const note = el("p", { className: "msg" });
+  const nets = el("input", { type: "text", value: s.allowed_networks.join(", "), placeholder: "192.168.219.0/24 (empty: everyone)", spellcheck: false });
+  const rate = el("input", { type: "text", value: String(s.rate_limit_per_minute), inputMode: "numeric" });
+  const pub = el("input", { type: "text", value: String(s.publish_limit_per_hour), inputMode: "numeric" });
+  const origin = (k) => s.overridden.includes(k) ? el("span", { className: "pill" }, "changed here") : el("span", { className: "pill" }, "from the environment");
+  const send = async (patch, ok) => {
+    try { await api("/v1/admin/settings", { method: "PUT", body: JSON.stringify(patch) }); say(note, ok, "ok"); await new Promise((r) => setTimeout(r, 700)); settings(box); }
+    catch (err) { say(note, err.message, "bad"); }
+  };
+  const field = (title, key, input, help) => el("div", {}, el("label", {}, title, " ", origin(key)), el("div", { className: "row" }, input,
+    s.overridden.includes(key) ? el("button", { className: "quiet", onclick: () => send({ [key]: null }, "Back to the environment's value.") }, "Reset") : null), el("p", { className: "hint" }, help));
+  box.replaceChildren(el("div", { className: "card" }, el("h2", {}, "Settings you can change while it runs"),
+    field("Networks allowed to connect", "allowed_networks", nets, "Addresses or ranges, separated by commas. Everyone else gets 403. You are connecting from " + s.your_address + ": a list that would shut it out is refused. The machine itself always gets in."),
+    field("Requests per minute, per person", "rate_limit_per_minute", rate, "0 means no limit."),
+    field("Trails published per hour, per person", "publish_limit_per_hour", pub, "0 means no limit."),
+    el("div", { className: "row", style: "margin-top:14px" }, el("button", { className: "act", onclick: () => {
+      const patch = {};
+      if (nets.value.trim() !== s.allowed_networks.join(", ")) patch.allowed_networks = nets.value.trim();
+      if (rate.value.trim() !== String(s.rate_limit_per_minute)) patch.rate_limit_per_minute = Number(rate.value);
+      if (pub.value.trim() !== String(s.publish_limit_per_hour)) patch.publish_limit_per_hour = Number(pub.value);
+      if (!Object.keys(patch).length) return say(note, "Nothing changed.");
+      send(patch, "Saved. It applies within seconds, on every gateway.");
+    } }, "Save")), note,
+    el("p", { className: "hint" }, "If a change locks everyone out, on the colony's machine run: docker compose -p myrmo-private --env-file .env.private exec gateway myrmo-server settings reset")),
+    el("div", { className: "card" }, el("h2", {}, "Set when the colony starts (read only)"),
+      table(["Setting", "Value"], [["Access keys required", s.read_only.require_key ? "yes" : "no"], ["Decision engine", s.read_only.decision_engine], ["Server version", s.read_only.version],
+        ["Networks from the environment", s.from_environment.allowed_networks.join(", ") || "everyone"]]),
+      el("p", { className: "hint" }, "The operator token, the salt, the ports and the engine are not changed from a web page on purpose: they live in .env.private, readable only on the colony's machine.")));
+}
+
+async function activity(box) {
+  const a = await api("/v1/admin/audit");
+  box.replaceChildren(el("div", { className: "card" }, el("h2", {}, "What operators did (last 200)"),
+    a.items.length ? table(["When", "What"], a.items.map((i) => [when(i.ts), i.what])) : el("p", { className: "hint" }, "Nothing yet.")));
+}
+
+$("enter").onclick = enter;
+$("token").onkeydown = (e) => { if (e.key === "Enter") enter(); };
+$("leave").onclick = () => signOut("");
+$("tabs").onclick = (e) => { const t = e.target.closest("[data-tab]"); if (t) show(t.dataset.tab); };
+
+(async () => {
+  if (token) {
+    try { await api("/v1/admin/people?days=1"); $("app").hidden = false; $("where").textContent = location.origin; show("overview"); return; } catch {}
+  }
+  $("login").hidden = false;
+})();
+</script>
+</body>
+</html>

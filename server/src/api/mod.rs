@@ -3,12 +3,16 @@
 //! This module holds the router, errors, caller identity and rate limiting, and the helpers that load and score
 //! trails; the handlers live in the submodules, one per part of the API.
 
+pub mod admin;
 mod feed;
 mod outcomes;
 mod publish;
 mod search;
 mod trails;
 
+use admin::{
+    add_person, audit_list, get_settings, page as admin_page, people, put_settings, revoke_person,
+};
 use feed::{activity, analytics, demand, feed, stats};
 use outcomes::report_outcome;
 use publish::{create_draft, discard_draft, get_draft, publish, publish_draft, validate};
@@ -64,7 +68,15 @@ pub fn router(state: AppState) -> Router {
         .route("/v1/stats", get(stats))
         .route("/v1/analytics", get(analytics))
         .route("/v1/demand", get(demand))
+        .route("/v1/admin/people", get(people).post(add_person))
+        .route(
+            "/v1/admin/people/{name}",
+            axum::routing::delete(revoke_person),
+        )
+        .route("/v1/admin/settings", get(get_settings).put(put_settings))
+        .route("/v1/admin/audit", get(audit_list))
         .layer(middleware::from_fn_with_state(state.clone(), rate_limit))
+        .route("/admin", get(admin_page))
         .route("/healthz", get(|| async { "ok" }))
         .route("/readyz", get(readyz))
         .layer(DefaultBodyLimit::max(MAX_BODY))
@@ -234,7 +246,7 @@ async fn network_filter(
     req: Request,
     next: Next,
 ) -> Response {
-    if crate::net::allows(peer.ip(), &st.cfg.allowed_networks) {
+    if crate::net::allows(peer.ip(), &admin::live(&st).await.allowed) {
         return next.run(req).await;
     }
     ApiError::new(
@@ -286,7 +298,7 @@ async fn rate_limit(
     });
 
     let now = keys::now();
-    let limit = st.cfg.rate_limit_per_minute;
+    let limit = admin::live(&st).await.rate_limit;
     let minute = now / 60;
     let mut con = st.redis();
     let mut pipe = redis::pipe();

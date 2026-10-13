@@ -52,6 +52,10 @@ async fn main() -> Result<()> {
         let args: Vec<String> = std::env::args().skip(2).collect();
         return access::cli(&cfg.redis_url, &args).await;
     }
+    if mode == "settings" {
+        let args: Vec<String> = std::env::args().skip(2).collect();
+        return api::admin::cli(&cfg.redis_url, &args).await;
+    }
     if mode == "team-report" {
         let args: Vec<String> = std::env::args().skip(2).collect();
         return team::cli(&cfg.redis_url, &args).await;
