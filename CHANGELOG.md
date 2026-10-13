@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.33.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.32.0...platform-v0.33.0) (2026-10-13)
+
+
+### Features
+
+* **plugin:** tell the person when a newer Myrmo plugin is out ([651b627](https://github.com/MartinM10/Myrmo/commit/651b6276f109f8c847f5a2f5ef1dfb110109c333))
+
+
+### Documentation
+
+* how Myrmo updates by itself in Claude Code, for a person and for an organisation ([c13b88e](https://github.com/MartinM10/Myrmo/commit/c13b88ef1677e8139b6696820e267ff816c9efa8))
+
 ## [0.32.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.31.0...platform-v0.32.0) (2026-10-13)
 
 

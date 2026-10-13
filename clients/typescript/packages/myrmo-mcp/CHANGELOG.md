@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.24.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.23.0...mcp-v0.24.0) (2026-10-13)
+
+
+### Features
+
+* **mcp:** say when a newer myrmo-mcp was released with the colony ([ad318ba](https://github.com/MartinM10/Myrmo/commit/ad318baf89346814bf81df9a9a40c07835e1837f))
+
 ## [0.23.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.22.0...mcp-v0.23.0) (2026-10-13)
 
 
