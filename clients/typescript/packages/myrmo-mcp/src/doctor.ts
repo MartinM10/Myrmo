@@ -88,14 +88,17 @@ export async function diagnose(input: DoctorInput): Promise<Check[]> {
     } catch {
       said = "";
     }
-    const seen = /it sees you as ([0-9a-f.:]+)/i.exec(said)?.[1];
+    const seen = /it sees you as ([0-9a-f]+(?:[.:][0-9a-f]+)+)/i.exec(said)?.[1];
+    const dockerNetwork = !!seen && /^172\.(1[6-9]|2\d|3[01])\./.test(seen);
     checks.push({
       level: "fail",
       name: "Reaching the colony",
       detail: `the colony refuses connections from this network (403)${seen ? `: it sees you as ${seen}` : ""}`,
-      fix: seen
-        ? `Tell whoever runs the colony to allow ${seen}. If that is not your machine's address, a router between you and the colony is translating it, and that shared address is the one to allow.${/^(127\.|172\.(1[6-9]|2\d|3[01])\.)/.test(seen) ? " If you are on the colony's own machine, use its network address in the URL, not localhost." : ""}`
-        : "Your machine is not in the networks the colony allows. Tell whoever runs it your address.",
+      fix: dockerNetwork
+        ? "You are probably on the colony's own machine: use its network address in the URL (not localhost or 127.0.0.1), and run the setup command again."
+        : seen
+          ? `Tell whoever runs the colony to allow ${seen}. If that is not your machine's address, a router between you and the colony is translating it, and that shared address is the one to allow.`
+          : "Your machine is not in the networks the colony allows. Tell whoever runs it your address.",
     });
     return checks;
   }
