@@ -249,10 +249,11 @@ async fn network_filter(
     if crate::net::allows(peer.ip(), &admin::live(&st).await.allowed) {
         return next.run(req).await;
     }
+    tracing::warn!(peer = %peer.ip(), "connection refused: its network is not allowed");
     ApiError::new(
         StatusCode::FORBIDDEN,
         "network_not_allowed",
-        "This colony is not open to your network.",
+        crate::net::refusal(peer.ip()),
     )
     .into_response()
 }

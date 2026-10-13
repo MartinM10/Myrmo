@@ -41,3 +41,14 @@ test("the public colony is flagged and never probed with a key; the report count
   assert.match(text, /\[FAIL\] Reaching the colony/);
   assert.match(text, /1 problem to fix/);
 });
+
+test("a refusal says what address the colony sees, and what to do about it", async () => {
+  const body = JSON.stringify({ error: { code: "network_not_allowed", message: "This colony is not open to your network: it sees you as 150.214.40.121." } });
+  const nat = await diagnose({ ...base, fetchImpl: answer({ "/readyz": { status: 403, body } }) });
+  const c = find(nat, "Reaching the colony");
+  assert.match(c.detail, /it sees you as 150\.214\.40\.121/);
+  assert.match(c.fix, /allow 150\.214\.40\.121/);
+  assert.match(c.fix, /translating/);
+  const docker = await diagnose({ ...base, fetchImpl: answer({ "/readyz": { status: 403, body: body.replace("150.214.40.121", "172.19.0.1") } }) });
+  assert.match(find(docker, "Reaching the colony").fix, /not localhost/);
+});

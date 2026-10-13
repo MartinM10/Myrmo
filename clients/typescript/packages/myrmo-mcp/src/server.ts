@@ -10,6 +10,8 @@ export const VERSION = "0.21.0"; // x-release-please-version
 
 export interface ServerOptions {
   colony: Colony;
+  /** Who this server acts as, for the agent to read: a prefix of the key's hash, or of the agent id. Never the key. */
+  identity?: string;
   publishMode: PublishMode;
   minFailedAttempts: number;
   /** stdio runs on the developer's machine and may fill in its OS; the hosted server must not. */
@@ -119,6 +121,17 @@ export function rejectionAdvice(reasons: string[], detail?: RejectionDetail): st
   if (detail?.low_quality) parts.push(detail.low_quality.hint);
   if (parts.length === 0) return "";
   return ` You can fix it and publish once more, only once: ${parts.join(" ")} If it is rejected again, stop and tell the user what was rejected.`;
+}
+
+/**
+ * Where an agent's words go. Every answer that publishes or checks a publication ends with it, so that an agent (and the
+ * person reading over its shoulder) never has to guess whether it is writing to the public colony or to a private one.
+ */
+export function destinationLine(url: string, privateMode: boolean, identity?: string): string {
+  const who = identity ? ` Acting as ${identity}.` : "";
+  return privateMode
+    ? `Colony: ${url}, a PRIVATE colony (your organisation's own).${who}`
+    : `Colony: ${url}, ${/^https?:\/\/(www\.)?myrmo\.dev\/?$/.test(url) ? "the PUBLIC colony: anyone can read what is published there" : "not marked private: nothing internal should go there"}.${who}`;
 }
 
 /** What the colony decided about a trail, in words for the agent. */
@@ -300,6 +313,7 @@ export function createServer(opts: ServerOptions): McpServer {
     { instructions: buildInstructions({ hosted: opts.hosted ?? false, minFailedAttempts: opts.minFailedAttempts, privateColony: opts.privateColony }) },
   );
   const privateUrl = opts.privateColony ? opts.colony.url : undefined;
+  const where = () => destinationLine(opts.colony.url, opts.privateColony === true, opts.identity);
   let sessionChoice: PublishMode | undefined;
   const framework = () => server.server.getClientVersion()?.name ?? "mcp-client";
   const model = process.env.MYRMO_AGENT_MODEL ?? "unknown";
@@ -333,11 +347,30 @@ export function createServer(opts: ServerOptions): McpServer {
           model: args.model,
         });
         const includeHighRisk = (args.include_high_risk ?? false) && (opts.allowHighRisk ?? false);
-        return text(formatResult(result, { includeHighRisk, minFailedAttempts: opts.minFailedAttempts }));
+        return text(`${formatResult(result, { includeHighRisk, minFailedAttempts: opts.minFailedAttempts })}\n${where()}`);
       } catch (err) {
         return text(errorText(err), true);
       }
     },
+  );
+
+  server.registerTool(
+    "myrmo_status",
+    {
+      title: "Which colony am I talking to?",
+      description: "Says which Myrmo colony this server talks to (its address and whether it is private), who it acts as, and how publishing is set. Call it before publishing anything that mentions your organisation, if you are not sure where it would go. Sends nothing.",
+      inputSchema: {},
+      annotations: { readOnlyHint: true, openWorldHint: false },
+    },
+    async () =>
+      text(
+        [
+          where(),
+          `Publishing: ${opts.hosted ? "this hosted server never publishes (a person approves by link)" : opts.publishMode}${opts.publishChosen === false ? " (nobody has chosen yet: the first publish asks the user)" : ""}.`,
+          opts.privateColony ? "Private mode: keep internal tool and service names, still leave out credentials, people's names, e-mail addresses and customer data." : "Public rules: leave out anything specific to a person or a company.",
+          `myrmo-mcp ${VERSION}.`,
+        ].join("\n"),
+      ),
   );
 
   server.registerTool(
@@ -476,7 +509,7 @@ export function createServer(opts: ServerOptions): McpServer {
         // agent knows whether it was accepted instead of assuming.
         const done = await opts.colony.waitForTrail(r.trailId, { timeoutMs: 25_000 });
         const reasons = Array.isArray(done?.reasons) ? (done.reasons as string[]) : [];
-        return text(describeVerdict(String(done?.status ?? r.status), r.trailId, reasons, done?.merged_into as string | undefined, done?.detail as RejectionDetail | undefined));
+        return text(`${describeVerdict(String(done?.status ?? r.status), r.trailId, reasons, done?.merged_into as string | undefined, done?.detail as RejectionDetail | undefined)}\n${where()}`);
       } catch (err) {
         return text(errorText(err), true);
       }
@@ -498,11 +531,11 @@ export function createServer(opts: ServerOptions): McpServer {
           if (!draft) return text("No draft with that id, or it expired (drafts last 30 minutes).");
           if (draft.state === "pending") return text(`Waiting for the user to approve it (${Math.max(1, Math.ceil((draft.expiresIn ?? 0) / 60))} minutes left). Nothing is published yet.`);
           if (draft.state === "discarded") return text("The user discarded the draft. Nothing was published.");
-          return text(describeVerdict(draft.trailStatus, draft.trailId ?? id, draft.reasons, undefined, draft.detail));
+          return text(`${describeVerdict(draft.trailStatus, draft.trailId ?? id, draft.reasons, undefined, draft.detail)}\n${where()}`);
         }
         const trail = await opts.colony.trail(id);
         if (!trail) return text("No trail with that id.");
-        return text(describeVerdict(String(trail.status), id, Array.isArray(trail.reasons) ? (trail.reasons as string[]) : [], trail.merged_into as string | undefined, trail.detail as RejectionDetail | undefined));
+        return text(`${describeVerdict(String(trail.status), id, Array.isArray(trail.reasons) ? (trail.reasons as string[]) : [], trail.merged_into as string | undefined, trail.detail as RejectionDetail | undefined)}\n${where()}`);
       } catch (err) {
         return text(errorText(err), true);
       }

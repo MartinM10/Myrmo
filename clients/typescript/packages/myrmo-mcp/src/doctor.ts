@@ -82,7 +82,21 @@ export async function diagnose(input: DoctorInput): Promise<Check[]> {
     return checks;
   }
   if (ready.status === 403) {
-    checks.push({ level: "fail", name: "Reaching the colony", detail: "the colony refuses connections from this network (403)", fix: "Your machine is not in the networks the colony allows. Tell whoever runs it your IP address (hostname -I)." });
+    let said = "";
+    try {
+      said = JSON.parse(ready.body)?.error?.message ?? "";
+    } catch {
+      said = "";
+    }
+    const seen = /it sees you as ([0-9a-f.:]+)/i.exec(said)?.[1];
+    checks.push({
+      level: "fail",
+      name: "Reaching the colony",
+      detail: `the colony refuses connections from this network (403)${seen ? `: it sees you as ${seen}` : ""}`,
+      fix: seen
+        ? `Tell whoever runs the colony to allow ${seen}. If that is not your machine's address, a router between you and the colony is translating it, and that shared address is the one to allow.${/^(127\.|172\.(1[6-9]|2\d|3[01])\.)/.test(seen) ? " If you are on the colony's own machine, use its network address in the URL, not localhost." : ""}`
+        : "Your machine is not in the networks the colony allows. Tell whoever runs it your address.",
+    });
     return checks;
   }
   checks.push(

@@ -4,6 +4,7 @@
 //   npx -y myrmo-mcp                    stdio, for one developer (redaction happens on this machine)
 //   myrmo-mcp --http --port 3333        Streamable HTTP, stateless, for hosting next to a colony
 
+import { createHash } from "node:crypto";
 import { createServer as createHttpServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
@@ -34,6 +35,28 @@ const allowHighRisk = process.env.MYRMO_ALLOW_HIGH_RISK === "1";
 if (flag("--version")) {
   console.log(VERSION);
   process.exit(0);
+}
+
+const USAGE = `myrmo-mcp ${VERSION}: the Myrmo MCP server and its commands.
+
+  myrmo-mcp                          run the MCP server on stdio (what an agent's client launches)
+  myrmo-mcp --http [--port N]        run it over Streamable HTTP, stateless
+  myrmo-mcp init [options]           set this machine's agents up (add --url, --key or --key-file, --private for a team colony)
+  myrmo-mcp doctor                   check that this machine can use the colony, and say what to fix
+  myrmo-mcp config [setting value]   show or change a setting (publish, hook, ...)
+  myrmo-mcp export <dir> [--skill]   write the colony's trails as Markdown notes
+  myrmo-mcp --version
+
+Docs: https://myrmo.dev/docs/reference/mcp`;
+const COMMANDS = ["init", "doctor", "config", "export"];
+if (flag("--help") || flag("-h") || args[0] === "help") {
+  console.log(USAGE);
+  process.exit(0);
+}
+// A word that is not a command is a mistake, not a request to start the server and wait for input that never comes.
+if (args[0] && !args[0].startsWith("-") && !COMMANDS.includes(args[0])) {
+  console.error(`Unknown command "${args[0]}".\n\n${USAGE}`);
+  process.exit(2);
 }
 
 // `myrmo-mcp config` shows every setting, where its value comes from and what it does;
@@ -122,6 +145,12 @@ if (flag("--http")) {
   const server = createServer({
     colony,
     privateColony: privacy.on,
+    identity: (() => {
+      const key = process.env.MYRMO_API_KEY?.trim() || savedColony?.api_key;
+      if (key) return `key ${createHash("sha256").update(key).digest("hex").slice(0, 8)}`;
+      const id = readConfig().agent_id;
+      return id ? `agent ${id.slice(0, 8)}` : undefined;
+    })(),
     publishMode,
     publishChosen,
     readPublishChoice: () => {

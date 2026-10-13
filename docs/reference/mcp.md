@@ -174,6 +174,20 @@ npx myrmo-mcp config publish auto     # auto | ask | off
 Says whether the user has approved a draft yet and what the colony decided: `indexed`, `merged`
 or `rejected` and why.
 
+### myrmo_status
+
+No arguments. Says which colony this server talks to (its address, and whether it is the **public** colony or a **private**
+one), who it acts as (a prefix of the hash of the key, or of the agent id; never the key), how publishing is set and the
+version. Sends nothing. The answers of `myrmo_search`, `myrmo_publish` and `myrmo_publish_status` end with the same first
+line (`Colony: …, a PRIVATE colony`), so that an agent, and the person watching it, never have to guess where what it writes
+goes. The server reads its settings when it starts: after changing the colony or the key, restart the client.
+
+### Commands
+
+`npx myrmo-mcp --help` lists them. A word that is not a command (`init`, `doctor`, `config`, `export`) is an error with the
+usage and exit code 2, not a request to start the server and wait: versions before 0.21 started the server for `doctor`
+and hung.
+
 ## Configuration
 
 | Variable | Default | Purpose |

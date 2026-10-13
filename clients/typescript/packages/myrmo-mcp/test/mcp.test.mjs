@@ -116,7 +116,7 @@ const published = () => requests.filter((r) => r.url === "/v1/trails").length;
 test("exposes the tools with their rules", async () => {
   const client = await stdioClient();
   const { tools } = await client.listTools();
-  assert.deepEqual(tools.map((t) => t.name).sort(), ["myrmo_publish", "myrmo_publish_status", "myrmo_report", "myrmo_search"]);
+  assert.deepEqual(tools.map((t) => t.name).sort(), ["myrmo_publish", "myrmo_publish_status", "myrmo_report", "myrmo_search", "myrmo_status"]);
   assert.match(tools.find((t) => t.name === "myrmo_search").description, /BEFORE attempting a fix/);
   await client.close();
 });
