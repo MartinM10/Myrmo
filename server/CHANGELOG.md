@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.14.0](https://github.com/MartinM10/Myrmo/compare/server-v0.13.0...server-v0.14.0) (2026-10-13)
+
+
+### Features
+
+* **server:** a knowledge map in the admin panel ([47a20f6](https://github.com/MartinM10/Myrmo/commit/47a20f6f0b3d8d16130e887ba54c31a4cfaddd9e))
+* **server:** a Knowledge tab in the admin panel ([2bcbdaa](https://github.com/MartinM10/Myrmo/commit/2bcbdaaecc59c98ed0c8bf816c91e2493899017d))
+* **server:** admin panel v2: the colony, trails with authors, activity, alerts ([1f1aede](https://github.com/MartinM10/Myrmo/commit/1f1aede11dda93564e1b92834cfbc40218e84a41))
+* **server:** organisation mode and a task index for private colonies ([2483c73](https://github.com/MartinM10/Myrmo/commit/2483c734c8f7313d1232e9c73be59abc23da0bf3))
+* **server:** the admin panel shows the colony like its public page: trails with their author, activity per day and per person, alerts ([a7e5c2e](https://github.com/MartinM10/Myrmo/commit/a7e5c2e5e7962fb67df76617101f9fd7fd631cad))
+
+
+### Bug fixes
+
+* **server:** panel copy button on plain HTTP ([9aae967](https://github.com/MartinM10/Myrmo/commit/9aae9670a3f8bad7218b8d89cba13f087c46b4c5))
+* **server:** the panel's copy button works on a plain HTTP page ([f3cc344](https://github.com/MartinM10/Myrmo/commit/f3cc344dd15830ed3b420c2194351c00cbfa3d8d))
+
 ## [0.13.0](https://github.com/MartinM10/Myrmo/compare/server-v0.12.0...server-v0.13.0) (2026-10-13)
 
 

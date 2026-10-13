@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.31.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.30.0...platform-v0.31.0) (2026-10-13)
+
+
+### Features
+
+* **deploy:** a private colony installer that also upgrades, checks, backs up and reports ([b40152b](https://github.com/MartinM10/Myrmo/commit/b40152b4a606283baa7e8ce037a289608994661b))
+* **plugin:** tell the agent what the organisation knows when a task starts, and a skill to import handovers ([b21ab2c](https://github.com/MartinM10/Myrmo/commit/b21ab2cab300c1950ef429f1fda2d1b6faba3e01))
+* **server:** a knowledge map in the admin panel ([47a20f6](https://github.com/MartinM10/Myrmo/commit/47a20f6f0b3d8d16130e887ba54c31a4cfaddd9e))
+* **server:** admin panel v2: the colony, trails with authors, activity, alerts ([1f1aede](https://github.com/MartinM10/Myrmo/commit/1f1aede11dda93564e1b92834cfbc40218e84a41))
+* **server:** organisation mode and a task index for private colonies ([2483c73](https://github.com/MartinM10/Myrmo/commit/2483c734c8f7313d1232e9c73be59abc23da0bf3))
+
+
+### Bug fixes
+
+* **deploy:** stats and gaps no longer pass escaped quotes to Python ([896e28b](https://github.com/MartinM10/Myrmo/commit/896e28b63907bbb0e4ece23f79cc3c83f7db2dd8))
+
+
+### Documentation
+
+* list the organisation knowledge page in llms.txt ([42f511e](https://github.com/MartinM10/Myrmo/commit/42f511e0b767828670df0245d8613635b9e46705))
+* organisation knowledge, the task index, and the private colony's new commands and endpoints ([be1f784](https://github.com/MartinM10/Myrmo/commit/be1f784dba017e740e58b71db924e55f9b13bc4a))
+* the panel's Colony tab and the new operator endpoints ([1fd0aa8](https://github.com/MartinM10/Myrmo/commit/1fd0aa8f558f38307ee344694c71972b2df5bf73))
+
 ## [0.30.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.29.0...platform-v0.30.0) (2026-10-13)
 
 

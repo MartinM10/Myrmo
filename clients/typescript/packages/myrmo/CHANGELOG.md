@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.0](https://github.com/MartinM10/Myrmo/compare/sdk-js-v0.15.0...sdk-js-v0.16.0) (2026-10-13)
+
+
+### Features
+
+* **mcp:** ask a private colony what the organisation knows about a task, and share procedures and facts ([83f5d55](https://github.com/MartinM10/Myrmo/commit/83f5d557066098302af037ad0f30c2d893cd5a67))
+
 ## [0.15.0](https://github.com/MartinM10/Myrmo/compare/sdk-js-v0.14.1...sdk-js-v0.15.0) (2026-10-13)
 
 

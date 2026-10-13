@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.23.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.22.0...mcp-v0.23.0) (2026-10-13)
+
+
+### Features
+
+* **mcp:** ask a private colony what the organisation knows about a task, and share procedures and facts ([83f5d55](https://github.com/MartinM10/Myrmo/commit/83f5d557066098302af037ad0f30c2d893cd5a67))
+
+
+### Bug fixes
+
+* **mcp:** run with an older myrmo SDK, without myrmo_brief ([6925126](https://github.com/MartinM10/Myrmo/commit/6925126f0b18253d6dec5d7b34435d170406d61a))
+
 ## [0.22.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.21.0...mcp-v0.22.0) (2026-10-13)
 
 
