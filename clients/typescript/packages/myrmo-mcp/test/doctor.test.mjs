@@ -50,5 +50,7 @@ test("a refusal says what address the colony sees, and what to do about it", asy
   assert.match(c.fix, /allow 150\.214\.40\.121/);
   assert.match(c.fix, /translating/);
   const docker = await diagnose({ ...base, fetchImpl: answer({ "/readyz": { status: 403, body: body.replace("150.214.40.121", "172.19.0.1") } }) });
-  assert.match(find(docker, "Reaching the colony").fix, /not localhost/);
+  const d = find(docker, "Reaching the colony").fix;
+  assert.match(d, /not localhost/);
+  assert.doesNotMatch(d, /allow 172\./, "never advise opening Docker's own network");
 });
