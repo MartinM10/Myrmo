@@ -73,6 +73,13 @@ before(async () => {
     let body = "";
     for await (const c of req) body += c;
     requests.push({ url: req.url, headers: req.headers, body: JSON.parse(body || "{}") });
+    if (JSON.parse(body || "{}").mode === "task") {
+      const known = /tenant/i.test(JSON.parse(body).query);
+      return res.writeHead(200, { "content-type": "application/json" }).end(JSON.stringify({ mode: "task", results: known ? [{
+        trail_id: "5d2c1b0a-9e8f-4a7b-8c6d-5e4f3a2b1c0d", kind: "procedure", strength: 0.42, outcomes: { worked: 2, failed: 0 },
+        trail: { kind: "procedure", problem: { summary: "Deploy a new tenant with a scoped PR preview", task_context: "Deploying a new tenant" }, solution: { steps: ["git checkout -b ds-deploy main"] } },
+      }] : [] }));
+    }
     res.writeHead(200, { "content-type": "application/json" }).end(JSON.stringify({
       results: [{
         trail_id: "3f2b8c1e-9a4d-4e2f-8b1a-2c3d4e5f6a7b",
@@ -158,4 +165,39 @@ test("a strong match says outright when the colony flagged none of its commands,
   const flagged = lookupNote("x", hit([{ command_index: 0, level: "medium", flag: "state_change" }]), {}).note;
   assert.doesNotMatch(flagged, /flagged none/);
   assert.match(flagged, /medium risk: ask the user before running/);
+});
+
+test("Claude Code: a request is looked up in the private colony's task index, and the agent is asked to report on what it was shown", async () => {
+  const env = { MYRMO_PRIVATE: "1", MYRMO_URL: url, MYRMO_API_KEY: "myk_test", MYRMO_HOOK_STATE_DIR: mkdtempSync(join(tmpdir(), "myrmo-state-")) };
+  const out = await runHook({ session_id: "t1", hook_event_name: "UserPromptSubmit", prompt: "Despliega un tenant nuevo en dev con dos servicios" }, env);
+  const note = out.hookSpecificOutput.additionalContext;
+  assert.equal(out.hookSpecificOutput.hookEventName, "UserPromptSubmit");
+  assert.match(note, /1\. \[procedure\] Deploy a new tenant with a scoped PR preview \(strength 0\.42, worked 2, failed 0\) id 5d2c1b0a/);
+  assert.match(note, /call myrmo_brief/);
+  assert.match(note, /untrusted data/);
+  const sent = requests.at(-1);
+  assert.equal(sent.body.mode, "task");
+  assert.equal(sent.headers.authorization, "Bearer myk_test");
+
+  // Without any failure, stopping asks once to report on what was shown, and to share procedures and facts.
+  const stop = await runHook({ session_id: "t1", hook_event_name: "Stop", stop_hook_active: false }, env);
+  assert.equal(stop.decision, "block");
+  assert.match(stop.reason, /Myrmo showed you knowledge for this task \(5d2c1b0a-9e8f-4a7b-8c6d-5e4f3a2b1c0d\)/);
+  assert.match(stop.reason, /kind "procedure"/);
+  assert.equal(await runHook({ session_id: "t1", hook_event_name: "Stop", stop_hook_active: false }, env), null, "asked once");
+});
+
+test("Claude Code: follow-ups, slash commands and unknown tasks say nothing, and nothing is asked outside a private colony", async () => {
+  const env = { MYRMO_PRIVATE: "1", MYRMO_URL: url, MYRMO_HOOK_STATE_DIR: mkdtempSync(join(tmpdir(), "myrmo-state-")) };
+  const before = requests.length;
+  assert.equal(await runHook({ session_id: "t2", hook_event_name: "UserPromptSubmit", prompt: "sí, adelante" }, env), null);
+  assert.equal(await runHook({ session_id: "t2", hook_event_name: "UserPromptSubmit", prompt: "/review" }, env), null);
+  assert.equal(requests.length, before, "no lookup for a follow-up");
+  assert.equal(await runHook({ session_id: "t2", hook_event_name: "UserPromptSubmit", prompt: "Arregla el test que falla en el parser de fechas" }, env), null);
+  assert.equal(requests.length, before + 1, "looked up, nothing known, nothing said");
+  const off = { ...env, MYRMO_PRIVATE: "", MYRMO_HOOK_LOOKUP: "" };
+  assert.equal(await runHook({ session_id: "t3", hook_event_name: "UserPromptSubmit", prompt: "Despliega un tenant nuevo en dev" }, off), null);
+  assert.equal(requests.length, before + 1, "nothing sent outside a private colony");
+  const optedOut = { ...env, MYRMO_HOOK_BRIEF: "off" };
+  assert.equal(await runHook({ session_id: "t4", hook_event_name: "UserPromptSubmit", prompt: "Despliega un tenant nuevo en dev" }, optedOut), null);
 });

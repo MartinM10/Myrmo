@@ -13,10 +13,13 @@
 //   4. A command that failed earlier now SUCCEEDS and Myrmo had returned trails for it: the agent is reminded to report
 //      what happened with them (myrmo_report), which is what makes good trails rise and stale ones fade.
 //
-// For an organisation's private colony (`npx myrmo-mcp init --url ... --private`, or MYRMO_PRIVATE=1 and MYRMO_URL), two more:
+// For an organisation's private colony (`npx myrmo-mcp init --url ... --private`, or MYRMO_PRIVATE=1 and MYRMO_URL), three more:
 //   5. After a failed command, the hook searches the colony itself and shows a strong match (lookup.mjs).
-//   6. When the agent stops after a turn in which commands failed, it is asked once to share what the next person's agent
-//      would need before it finishes (Stop hook): what is learned in a session otherwise leaves with it.
+//   6. When the user sends a request, the hook asks the colony what the organisation already knows about that task and
+//      shows a short list (UserPromptSubmit; lookup.mjs `briefNote`). MYRMO_HOOK_BRIEF=off turns only this off.
+//   7. When the agent stops after a turn in which commands failed or knowledge was shown, it is asked once to report what
+//      it relied on and to share what the next person's agent would need (Stop hook): what is learned in a session
+//      otherwise leaves with it.
 //
 // Switch it off with `npx myrmo-mcp config hook off`, or keep only the reminders after a failure with
 // `config hook failures`; MYRMO_HOOK=off|failures does the same for one session. Tunables: MYRMO_HOOK_MIN_SECONDS
@@ -25,7 +28,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { lookup, lookupEnabled, lookupNote, privateColony } from "./lookup.mjs";
+import { briefEnabled, briefNote, lookup, lookupEnabled, lookupNote, lookupTask, privateColony, taskOf } from "./lookup.mjs";
 
 // Commands that fail or print errors as part of normal work: a probe that found nothing, a diff that differs, a log
 // being read. Their output is not a problem of the user's.
@@ -209,7 +212,10 @@ export function decide(input, { now = Date.now(), state = {}, env = process.env,
     return quiet(state);
   }
   // 4b. The agent reported: nothing left to remind.
-  if (REPORT_TOOL.test(String(tool))) return quiet(state.found ? { ...state, found: null } : state);
+  if (REPORT_TOOL.test(String(tool))) {
+    const brief = state.brief ? { ...state.brief, reported: true } : state.brief;
+    return quiet(state.found || state.brief ? { ...state, found: null, brief } : state);
+  }
   if (!SHELLS.has(tool)) return quiet(state);
 
   const command = String(input.tool_input?.command ?? "");
@@ -300,16 +306,25 @@ export function decideStop(input, { now = Date.now(), state = {}, env = process.
   if (hookMode(env, settings) === "off" || !privateColony(env, settings) || env.MYRMO_HARVEST === "off") return none;
   if (input?.stop_hook_active === true) return none;
   const failures = Number(state.failures ?? 0);
-  if (failures <= Number(state.harvestedAt ?? 0)) return none;
+  // Knowledge shown at the start of the task and not reported on yet: worth asking once, failures or not.
+  const shown = state.brief && !state.brief.reported && !state.brief.asked ? state.brief : null;
+  if (failures <= Number(state.harvestedAt ?? 0) && !shown) return none;
   const minMs = Number(env.MYRMO_HARVEST_MINUTES ?? 30) * 60_000;
   if ((state.harvests ?? 0) >= 3 || (state.harvestedTs && now - state.harvestedTs < minMs)) return none;
+  const reportShown = shown
+    ? `Myrmo showed you knowledge for this task (${shown.ids.join(", ")}): call myrmo_report once for each entry you relied on (worked, partially_worked, failed if it was wrong or out of date, saying what changed) and not_applicable for the others. `
+    : "For a trail Myrmo gave you, call myrmo_report if you have not. ";
   const reason =
     "Myrmo (your organisation's private colony): before you finish, share what the next person's agent would need, because what you " +
-    "learned in this session otherwise leaves with it. For each error you solved after a failed attempt that Myrmo did not already have, " +
-    "call myrmo_publish (one trail per error, with the dead ends in failed_approaches and the command that verified the fix). " +
-    "For a trail Myrmo gave you, call myrmo_report if you have not. Keep internal names as printed; never include credentials or personal data. " +
+    "learned in this session otherwise leaves with it. " +
+    reportShown +
+    "For each error you solved after a failed attempt that Myrmo did not already have, call myrmo_publish (one trail per error, with the dead ends " +
+    "in failed_approaches and the command that verified the fix). If you completed a task your organisation will repeat and Myrmo had no procedure " +
+    "for it, publish it with kind \"procedure\"; if you found out something about its systems an agent could not guess (which machine or service does " +
+    "what, where something is configured), publish it with kind \"fact\". Keep internal names and addresses as printed; never include credentials or personal data. " +
     "If nothing qualifies, say so in one line and finish.";
-  return { reason, state: { ...state, harvestedAt: failures, harvestedTs: now, harvests: (state.harvests ?? 0) + 1 } };
+  const brief = shown ? { ...shown, asked: true } : state.brief;
+  return { reason, state: { ...state, brief, harvestedAt: failures, harvestedTs: now, harvests: (state.harvests ?? 0) + 1 } };
 }
 
 function stateFile(session) {
@@ -339,6 +354,16 @@ async function main() {
     state = {};
   }
   const settings = readSettings();
+  // 6. The user sent a request: what does the organisation already know about this task?
+  if (input.hook_event_name === "UserPromptSubmit") {
+    const task = taskOf(input.prompt);
+    if (!task || hookMode(process.env, settings) === "off" || !briefEnabled(process.env, settings)) return;
+    const body = await lookupTask(task, { settings, agent: "myrmo-claude-code-hook/1" });
+    const out = briefNote(task, body, state);
+    save(file, state, out.state);
+    if (out.note) process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: "UserPromptSubmit", additionalContext: out.note } }));
+    return;
+  }
   if (input.hook_event_name === "Stop") {
     const stop = decideStop(input, { state, settings });
     save(file, state, stop.state);

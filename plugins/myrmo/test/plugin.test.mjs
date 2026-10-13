@@ -62,7 +62,9 @@ test("the user can switch it off", () => {
 });
 
 test("the script speaks the hook protocol and exits 0 whatever it receives", () => {
-  const run = (input) => spawnSync(process.execPath, [join(root, "scripts", "on-failure.mjs")], { input, encoding: "utf8", env: { ...process.env, MYRMO_HOOK: "" } });
+  // Its own settings file: the machine's may point at a private colony, where the hook would look the error up itself.
+  const config = join(mkdtempSync(join(tmpdir(), "myrmo-plugin-")), "config.json");
+  const run = (input) => spawnSync(process.execPath, [join(root, "scripts", "on-failure.mjs")], { input, encoding: "utf8", env: { ...process.env, MYRMO_HOOK: "", MYRMO_CONFIG: config } });
   const ok = run(JSON.stringify({ ...fail("cargo build"), session_id: `test-${Date.now()}` }));
   assert.equal(ok.status, 0);
   const body = JSON.parse(ok.stdout);
