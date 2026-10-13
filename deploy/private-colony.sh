@@ -108,24 +108,40 @@ wait_ready() {
 }
 
 show_stats() {
-  admin /v1/admin/knowledge | python3 -c '
+  admin /v1/admin/knowledge | python3 -c "$(cat <<'PY'
 import json, sys
 k = json.load(sys.stdin)
-if "error" in k: sys.exit("The colony answered: " + k["error"].get("message", "error"))
+if "error" in k:
+    sys.exit("The colony answered: " + k["error"].get("message", "error"))
 kinds = k.get("kinds", {})
-print(f"What the colony knows: {k.get(\"total\", 0)} entries ({kinds.get(\"fix\", 0)} fixes, {kinds.get(\"procedure\", 0)} procedures, {kinds.get(\"fact\", 0)} facts)")
-src = ", ".join(f"{v} from {s}" for s, v in sorted(k.get("sources", {}).items()))
-print(f"Where it came from: {src or \"nothing yet\"}")
+print("What the colony knows: %d entries (%d fixes, %d procedures, %d facts)" % (k.get("total", 0), kinds.get("fix", 0), kinds.get("procedure", 0), kinds.get("fact", 0)))
+src = ", ".join("%d from %s" % (v, s) for s, v in sorted(k.get("sources", {}).items()))
+print("Where it came from: " + (src or "nothing yet"))
 asked, answered = k.get("task_searches_30d", 0), k.get("task_answered_30d", 0)
-rate = f"{100 * answered // asked}%" if asked else "no requests yet"
-print(f"Tasks in the last 30 days: {asked} looked up, {answered} with an answer ({rate})")
+rate = ("%d%%" % (100 * answered // asked)) if asked else "no requests yet"
+print("Tasks in the last 30 days: %d looked up, %d with an answer (%s)" % (asked, answered, rate))
 for name, what in [("stale", "no success in 90 days"), ("contested", "fails more than it works"), ("unconfirmed", "nobody reported on it after 2 weeks"), ("most_used", "most confirmed")]:
     block = k.get(name, {})
-    print(f"\n{name.replace(\"_\", \" \").capitalize()} ({what}): {block.get(\"count\", 0)}")
+    print("\n%s (%s): %d" % (name.replace("_", " ").capitalize(), what, block.get("count", 0)))
     for item in block.get("items", [])[:5]:
         o = item.get("outcomes", {})
-        print(f"  [{item[\"kind\"]}] {item[\"label\"][:70]}  strength {item[\"strength\"]}  worked {o.get(\"worked\", 0)} failed {o.get(\"failed\", 0)}  {item[\"trail_id\"][:8]}")
-'
+        print("  [%s] %s  strength %s  worked %d failed %d  %s" % (item["kind"], item["label"][:70], item["strength"], o.get("worked", 0), o.get("failed", 0), item["trail_id"][:8]))
+PY
+)"
+}
+
+show_gaps() {
+  admin /v1/admin/gaps | python3 -c "$(cat <<'PY'
+import json, sys
+g = json.load(sys.stdin)
+if not g.get("enabled"):
+    print("Recording of unanswered task requests is off. Turn it on in the admin panel (Knowledge) or with MYRMO_RECORD_GAPS=1 in .env.private and up.")
+items = g.get("items", [])
+print("%d task requests without an answer in the last %d days:" % (len(items), g.get("days", 30)))
+for i in items[:50]:
+    print("  %s  %-12s %s" % (i["at"][:16], i.get("who") or "-", i["text"][:110]))
+PY
+)"
 }
 
 case "${1:-}" in
@@ -212,16 +228,7 @@ EOF
     show_stats
     ;;
   gaps)
-    admin /v1/admin/gaps | python3 -c '
-import json, sys
-g = json.load(sys.stdin)
-if not g.get("enabled"):
-    print("Recording of unanswered task requests is off. Turn it on in the admin panel (Knowledge) or with MYRMO_RECORD_GAPS=1 in .env.private and up.")
-items = g.get("items", [])
-print(f"{len(items)} task requests without an answer in the last {g.get(\"days\", 30)} days:")
-for i in items[:50]:
-    print(f"  {i[\"at\"][:16]}  {(i.get(\"who\") or \"-\"):<12} {i[\"text\"][:110]}")
-'
+    show_gaps
     ;;
   report)
     compose exec -T gateway myrmo-server team-report "${2:-7}"
