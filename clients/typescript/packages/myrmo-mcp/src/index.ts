@@ -141,7 +141,21 @@ if (flag("--http")) {
 } else {
   const privacy = privateMode(colonyUrl, process.env, savedColony?.private === true);
   // In a private colony the network's addresses and host names stay in what is sent (the colony keeps them too).
-  const colony = new Colony({ publish: publishMode, private: privacy.on });
+  // It says which client it is, so an operator sees in the admin panel who runs an old one.
+  const colony = new Colony({ publish: publishMode, private: privacy.on, headers: { "x-myrmo-client": `myrmo-mcp/${VERSION}` } });
+  // Which myrmo-mcp the colony was released with, asked once in the background: never holds the server up.
+  let latest: string | undefined;
+  {
+    // The saved key belongs to the saved colony only (fileColony matches the URL), as the SDK's own requests do.
+    const key = process.env.MYRMO_API_KEY?.trim() || savedColony?.api_key;
+    fetch(`${colony.url}/v1/version`, {
+      headers: { accept: "application/json", "x-myrmo-client": `myrmo-mcp/${VERSION}`, ...(key ? { authorization: `Bearer ${key}` } : {}) },
+      signal: AbortSignal.timeout(5000),
+    })
+      .then(async (res) => (res.ok ? ((await res.json()) as { clients?: { mcp?: string } }) : null))
+      .then((body) => { latest = body?.clients?.mcp; })
+      .catch(() => {});
+  }
   if (privacy.warning) console.error(`myrmo-mcp: ${privacy.warning}`);
   const server = createServer({
     colony,
@@ -159,6 +173,7 @@ if (flag("--http")) {
       return { mode: current.mode, chosen: current.source !== "default" };
     },
     minFailedAttempts,
+    latestVersion: () => latest,
     fillLocalEnvironment: true,
     allowHighRisk,
   });

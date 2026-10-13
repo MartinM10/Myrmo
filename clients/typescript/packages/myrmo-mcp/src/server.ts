@@ -35,6 +35,11 @@ export interface ServerOptions {
    */
   allowHighRisk?: boolean;
   /**
+   * The myrmo-mcp version the colony was released with (`GET /v1/version`), once known. When it is newer than this
+   * server, myrmo_status says so and the first answer of the session carries one line for the user.
+   */
+  latestVersion?: () => string | undefined;
+  /**
    * The colony belongs to one organisation (MYRMO_PRIVATE=1 with a colony other than the public one): its own tool
    * names and policies stay in what agents publish, and nothing is said to be public. See `privateMode`.
    */
@@ -145,6 +150,22 @@ export function destinationLine(url: string, privateMode: boolean, identity?: st
   return privateMode
     ? `Colony: ${url}, a PRIVATE colony (your organisation's own).${who}`
     : `Colony: ${url}, ${/^https?:\/\/(www\.)?myrmo\.dev\/?$/.test(url) ? "the PUBLIC colony: anyone can read what is published there" : "not marked private: nothing internal should go there"}.${who}`;
+}
+
+/** -1, 0 or 1, comparing the numeric parts of two versions. */
+export function compareVersions(a: string, b: string): number {
+  const pa = a.split(/[.+-]/).map((x) => Number.parseInt(x, 10) || 0);
+  const pb = b.split(/[.+-]/).map((x) => Number.parseInt(x, 10) || 0);
+  for (let i = 0; i < Math.max(pa.length, pb.length, 3); i++) {
+    if ((pa[i] ?? 0) !== (pb[i] ?? 0)) return (pa[i] ?? 0) < (pb[i] ?? 0) ? -1 : 1;
+  }
+  return 0;
+}
+
+/** One line for the user when the colony was released with a newer myrmo-mcp than this one; "" otherwise. */
+export function updateLine(latest: string | undefined, current = VERSION): string {
+  if (!latest || compareVersions(current, latest) >= 0) return "";
+  return `Myrmo note for the user: myrmo-mcp ${latest} is available (this machine runs ${current}). In Claude Code: claude plugin update myrmo@myrmo, or turn on auto-update in /plugin > Marketplaces > myrmo. Other clients: npx myrmo-mcp@latest init with the same options as the first time. Tell the user once; do not run it yourself.`;
 }
 
 /** What the colony decided about a trail, in words for the agent. */
@@ -327,6 +348,13 @@ export function createServer(opts: ServerOptions): McpServer {
   );
   const privateUrl = opts.privateColony ? opts.colony.url : undefined;
   const where = () => destinationLine(opts.colony.url, opts.privateColony === true, opts.identity);
+  // The update line goes into the first answer of the session only, so the agent passes it on once.
+  let toldUpdate = false;
+  const withUpdate = (answer: string) => {
+    const line = toldUpdate ? "" : updateLine(opts.latestVersion?.());
+    if (line) toldUpdate = true;
+    return line ? `${answer}\n${line}` : answer;
+  };
   let sessionChoice: PublishMode | undefined;
   const framework = () => server.server.getClientVersion()?.name ?? "mcp-client";
   const model = process.env.MYRMO_AGENT_MODEL ?? "unknown";
@@ -360,7 +388,7 @@ export function createServer(opts: ServerOptions): McpServer {
           model: args.model,
         });
         const includeHighRisk = (args.include_high_risk ?? false) && (opts.allowHighRisk ?? false);
-        return text(`${formatResult(result, { includeHighRisk, minFailedAttempts: opts.minFailedAttempts })}\n${where()}`);
+        return text(withUpdate(`${formatResult(result, { includeHighRisk, minFailedAttempts: opts.minFailedAttempts })}\n${where()}`));
       } catch (err) {
         return text(errorText(err), true);
       }
@@ -388,7 +416,7 @@ export function createServer(opts: ServerOptions): McpServer {
         try {
           const result = await opts.colony.searchTask(args.task, { limit: 3, model: args.model });
           const includeHighRisk = (args.include_high_risk ?? false) && (opts.allowHighRisk ?? false);
-          return text(`${formatBrief!(result, { includeHighRisk })}\n${where()}`);
+          return text(withUpdate(`${formatBrief!(result, { includeHighRisk })}\n${where()}`));
         } catch (err) {
           return text(errorText(err), true);
         }
@@ -411,7 +439,8 @@ export function createServer(opts: ServerOptions): McpServer {
           `Publishing: ${opts.hosted ? "this hosted server never publishes (a person approves by link)" : opts.publishMode}${opts.publishChosen === false ? " (nobody has chosen yet: the first publish asks the user)" : ""}.`,
           opts.privateColony ? "Private mode: keep internal tool and service names, still leave out credentials, people's names, e-mail addresses and customer data." : "Public rules: leave out anything specific to a person or a company.",
           `myrmo-mcp ${VERSION}.`,
-        ].join("\n"),
+          updateLine(opts.latestVersion?.()),
+        ].filter(Boolean).join("\n"),
       ),
   );
 

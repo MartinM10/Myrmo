@@ -5,6 +5,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { claudeCodeSetUp } from "./init.js";
+import { compareVersions, VERSION } from "./server.js";
 
 export type Level = "ok" | "warn" | "fail";
 export interface Check {
@@ -136,6 +137,22 @@ export async function diagnose(input: DoctorInput): Promise<Check[]> {
         ? { level: "ok", name: "Publishing", detail: "you approve each trail before it is sent" }
         : { level: "warn", name: "Publishing", detail: `agents do not publish (${input.publish})`, fix: "npx myrmo-mcp config publish auto   (or ask, to approve each one)" },
   );
+
+  // Is this client the one the colony was released with? An older one misses what came after it.
+  const version = await call(fetchImpl, `${input.url.replace(/\/+$/, "")}/v1/version`, input.apiKey);
+  if ("status" in version && version.status === 200) {
+    let latest: string | undefined;
+    try {
+      latest = (JSON.parse(version.body) as { clients?: { mcp?: string } }).clients?.mcp;
+    } catch {
+      latest = undefined;
+    }
+    if (latest && compareVersions(VERSION, latest) < 0) {
+      checks.push({ level: "warn", name: "Myrmo version", detail: `myrmo-mcp ${VERSION} here, ${latest} released with this colony`, fix: "Claude Code: claude plugin update myrmo@myrmo (or /plugin > Marketplaces > myrmo > Enable auto-update). Other clients: npx myrmo-mcp@latest init with the same options as the first time." });
+    } else if (latest) {
+      checks.push({ level: "ok", name: "Myrmo version", detail: `myrmo-mcp ${VERSION}, up to date with this colony` });
+    }
+  }
 
   const claude = claudeCodeSetUp(input.home);
   const gemini = join(input.home, ".gemini", "GEMINI.md");
