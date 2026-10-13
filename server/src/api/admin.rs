@@ -8,6 +8,7 @@
 use super::*;
 use crate::net::Cidr;
 use axum::extract::{ConnectInfo, Path, Query};
+use std::collections::BTreeMap;
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
@@ -22,6 +23,8 @@ pub(super) struct Live {
     pub allowed: Vec<Cidr>,
     pub rate_limit: u64,
     pub publish_limit: u64,
+    /// Keep the task requests nobody could answer (private colonies only).
+    pub record_gaps: bool,
     /// The settings an operator has changed (the others are as the environment says).
     pub overridden: Vec<&'static str>,
 }
@@ -34,6 +37,7 @@ fn from_environment(st: &AppState) -> Live {
         allowed: st.cfg.allowed_networks.clone(),
         rate_limit: st.cfg.rate_limit_per_minute,
         publish_limit: st.cfg.publish_limit_per_hour,
+        record_gaps: st.cfg.private && st.cfg.record_gaps,
         overridden: Vec::new(),
     }
 }
@@ -67,6 +71,10 @@ pub(super) async fn live(st: &AppState) -> Live {
             {
                 live.publish_limit = n;
                 live.overridden.push("publish_limit_per_hour");
+            }
+            if let Some(v) = stored.get("record_gaps") {
+                live.record_gaps = st.cfg.private && v == "1";
+                live.overridden.push("record_gaps");
             }
         }
         Err(err) => {
@@ -252,15 +260,19 @@ fn describe(st: &AppState, live: &Live, peer: &str) -> Value {
         "allowed_networks": list(&live.allowed),
         "rate_limit_per_minute": live.rate_limit,
         "publish_limit_per_hour": live.publish_limit,
+        "record_gaps": live.record_gaps,
         "overridden": live.overridden,
         "from_environment": {
             "allowed_networks": list(&env.allowed),
             "rate_limit_per_minute": env.rate_limit,
             "publish_limit_per_hour": env.publish_limit,
+            "record_gaps": env.record_gaps,
         },
         "your_address": peer,
         "read_only": {
             "require_key": st.cfg.require_key,
+            "private": st.cfg.private,
+            "task_index": st.tasks.is_some(),
             "decision_engine": if st.cfg.decision_url.is_some() { "configured" } else { "none (rules only)" },
             "version": env!("CARGO_PKG_VERSION"),
         },
@@ -341,6 +353,18 @@ pub(super) async fn put_settings(
                     }
                 }
             }
+            ("record_gaps", Value::Null) => unset.push("record_gaps"),
+            ("record_gaps", Value::Bool(on)) => {
+                if !st.cfg.private {
+                    return Err(ApiError::bad_request(
+                        "Requests are only ever kept by an organisation's private colony.",
+                    ));
+                }
+                set.push(("record_gaps", if *on { "1" } else { "0" }.to_string()));
+            }
+            ("record_gaps", _) => {
+                return Err(ApiError::bad_request("record_gaps is true or false."));
+            }
             (other, _) => {
                 return Err(ApiError::bad_request(format!(
                     "{other:?} cannot be changed here."
@@ -376,6 +400,7 @@ pub(super) async fn put_settings(
         let was = match *name {
             "allowed_networks" => list(&before.allowed),
             "rate_limit_per_minute" => before.rate_limit.to_string(),
+            "record_gaps" => if before.record_gaps { "1" } else { "0" }.to_string(),
             _ => before.publish_limit.to_string(),
         };
         audit(&st, &format!("setting {name}: {was} -> {value}")).await;
@@ -532,4 +557,155 @@ pub async fn cli(redis_url: &str, args: &[String]) -> anyhow::Result<()> {
         _ => anyhow::bail!("Usage: myrmo-server settings [show|reset]"),
     }
     Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Knowledge gaps and knowledge health: what the colony does not know, and what it knows that may no longer be true.
+
+const GAPS: &str = "admin:gaps";
+const GAPS_KEEP: isize = 499;
+const GAP_DAYS: i64 = 30;
+
+/// A task request the colony could not answer, kept for the operator when they chose so (private colonies only):
+/// redacted already, cut to 300 characters, with the person whose key asked. Listed for 30 days.
+pub(super) async fn record_gap(st: &AppState, caller: &Caller, query: &str, now: i64) {
+    if !st.cfg.private || !live(st).await.record_gaps {
+        return;
+    }
+    let who = caller
+        .agent
+        .starts_with("person:")
+        .then(|| crate::team::handle(&caller.agent).to_string());
+    let entry =
+        json!({ "ts": now, "who": who, "text": query.chars().take(300).collect::<String>() });
+    let result: redis::RedisResult<()> = redis::pipe()
+        .cmd("LPUSH")
+        .arg(GAPS)
+        .arg(entry.to_string())
+        .ignore()
+        .cmd("LTRIM")
+        .arg(GAPS)
+        .arg(0)
+        .arg(GAPS_KEEP)
+        .ignore()
+        .query_async(&mut st.redis())
+        .await;
+    if let Err(err) = result {
+        tracing::warn!(error = %err, "knowledge gap not recorded");
+    }
+}
+
+/// GET /v1/admin/gaps: the task requests nobody's knowledge answered in the last 30 days, newest first.
+pub(super) async fn gaps(State(st): State<AppState>, headers: HeaderMap) -> ApiResult<Response> {
+    authorize_operator(&st, &headers)?;
+    let enabled = live(&st).await.record_gaps;
+    let raw: Vec<String> = st.redis().lrange(GAPS, 0, GAPS_KEEP).await?;
+    let since = keys::now() - GAP_DAYS * 86_400;
+    let items: Vec<Value> = raw
+        .iter()
+        .filter_map(|r| serde_json::from_str::<Value>(r).ok())
+        .filter(|v| v["ts"].as_i64().unwrap_or(0) >= since)
+        .map(|v| json!({ "at": keys::iso(v["ts"].as_i64().unwrap_or(0)), "who": v["who"], "text": v["text"] }))
+        .collect();
+    Ok(private(Json(json!({
+        "enabled": enabled,
+        "private": st.cfg.private,
+        "days": GAP_DAYS,
+        "items": items,
+    }))))
+}
+
+/// One line about a trail for the health report.
+fn health_item(c: &super::Candidate, now: i64) -> Value {
+    let p = &c.payload;
+    let last = if c.outcomes.last_success_ts > 0 {
+        c.outcomes.last_success_ts
+    } else {
+        p["created_ts"].as_i64().unwrap_or(now)
+    };
+    json!({
+        "trail_id": c.id,
+        "kind": p["kind"].as_str().unwrap_or("fix"),
+        "label": c.label(),
+        "strength": super::round3(c.strength(now)),
+        "outcomes": c.outcomes.json(),
+        "created_at": p["created_at"],
+        "last_success_at": keys::iso(last),
+        "source": p["trail"]["source"],
+    })
+}
+
+/// GET /v1/admin/knowledge: what the colony holds and how much of it can still be trusted. Stale: no success for 90
+/// days (its strength has halved). Contested: more failures than successes. Unconfirmed: nobody reported on it after
+/// two weeks (an imported handover often is). Most used: the most confirmed. Plus how often a task found an answer.
+pub(super) async fn knowledge(
+    State(st): State<AppState>,
+    headers: HeaderMap,
+) -> ApiResult<Response> {
+    authorize_operator(&st, &headers)?;
+    let mut con = st.redis();
+    let ids: Vec<String> = con.zrevrange(keys::FEED, 0, 4999).await?;
+    let mut all = Vec::new();
+    for chunk in ids.chunks(256) {
+        all.extend(super::load(&st, chunk).await?);
+    }
+    let now = keys::now();
+    let mut kinds: BTreeMap<String, i64> = BTreeMap::new();
+    let mut sources: BTreeMap<String, i64> = BTreeMap::new();
+    for c in &all {
+        *kinds
+            .entry(c.payload["kind"].as_str().unwrap_or("fix").to_string())
+            .or_default() += 1;
+        let source = c.payload["trail"]["source"]["type"]
+            .as_str()
+            .unwrap_or("agent");
+        *sources.entry(source.to_string()).or_default() += 1;
+    }
+    let reports =
+        |c: &super::Candidate| c.outcomes.worked + c.outcomes.partially_worked + c.outcomes.failed;
+    let since_success = |c: &super::Candidate| {
+        let last = if c.outcomes.last_success_ts > 0 {
+            c.outcomes.last_success_ts
+        } else {
+            c.payload["created_ts"].as_i64().unwrap_or(now)
+        };
+        now - last
+    };
+    let pick = |filter: &dyn Fn(&super::Candidate) -> bool,
+                key: &dyn Fn(&super::Candidate) -> i64| {
+        let mut rows: Vec<&super::Candidate> = all.iter().filter(|c| filter(c)).collect();
+        let count = rows.len();
+        rows.sort_by_key(|c| std::cmp::Reverse(key(c)));
+        json!({ "count": count, "items": rows.iter().take(15).map(|c| health_item(c, now)).collect::<Vec<_>>() })
+    };
+    let stale = pick(&|c| since_success(c) > 90 * 86_400, &since_success);
+    let contested = pick(
+        &|c| {
+            c.outcomes.failed >= 2
+                && c.outcomes.failed > c.outcomes.worked + c.outcomes.partially_worked
+        },
+        &|c| c.outcomes.failed as i64,
+    );
+    let unconfirmed = pick(
+        &|c| reports(c) == 0 && now - c.payload["created_ts"].as_i64().unwrap_or(now) > 14 * 86_400,
+        &|c| now - c.payload["created_ts"].as_i64().unwrap_or(now),
+    );
+    let most_used = pick(&|c| c.outcomes.worked > 0, &|c| c.outcomes.worked as i64);
+    let rows = crate::analytics::export(&mut con, 30).await?;
+    let total = |name: &str| -> i64 {
+        rows.iter()
+            .map(|r| r["totals"][name].as_i64().unwrap_or(0))
+            .sum()
+    };
+    Ok(private(Json(json!({
+        "total": all.len(),
+        "kinds": kinds,
+        "sources": sources,
+        "task_searches_30d": total("task_searches"),
+        "task_answered_30d": total("task_answered"),
+        "stale": stale,
+        "contested": contested,
+        "unconfirmed": unconfirmed,
+        "most_used": most_used,
+    }))))
 }

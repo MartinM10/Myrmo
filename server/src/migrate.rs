@@ -101,3 +101,49 @@ async fn move_sets(st: &AppState) -> Result<(usize, usize)> {
     }
     Ok((sets.len(), moved))
 }
+
+/// Fills the task index with every trail indexed before it existed (or while its model was down): a trail missing
+/// from the task collection is embedded and filed. Idempotent and cheap to repeat; it runs in the background at every
+/// start of a colony with a task index, so turning the index on later, or changing its model, needs nothing else.
+pub async fn backfill_tasks(st: AppState) -> Result<usize> {
+    let Some(tasks) = &st.tasks else {
+        return Ok(0);
+    };
+    let mut con = st.redis();
+    let locked: Option<String> = redis::cmd("SET")
+        .arg("lock:task-backfill")
+        .arg(keys::now())
+        .arg("NX")
+        .arg("EX")
+        .arg(3600)
+        .query_async(&mut con)
+        .await?;
+    if locked.is_none() {
+        return Ok(0);
+    }
+    let ids: Vec<String> = con.zrange(keys::FEED, 0, -1).await?;
+    let mut filed = 0;
+    for chunk in ids.chunks(BATCH) {
+        let present: std::collections::HashSet<String> = tasks
+            .qdrant
+            .get(chunk)
+            .await?
+            .into_iter()
+            .map(|(id, _)| id)
+            .collect();
+        let missing: Vec<String> = chunk
+            .iter()
+            .filter(|id| !present.contains(*id))
+            .cloned()
+            .collect();
+        for (id, payload) in st.qdrant.get(&missing).await? {
+            crate::enricher::index_task(&st, &id, &payload["trail"]).await?;
+            filed += 1;
+        }
+    }
+    let _: redis::RedisResult<()> = con.del("lock:task-backfill").await;
+    if filed > 0 {
+        tracing::info!(filed, "task index filled with existing trails");
+    }
+    Ok(filed)
+}

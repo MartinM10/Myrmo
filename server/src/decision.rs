@@ -54,6 +54,9 @@ const QUALITY_LEVELS: [&str; 5] = [
 pub const INJECTION_THRESHOLD: f64 = 0.8;
 pub const SENSITIVE_THRESHOLD: f64 = 0.85;
 pub const MIN_QUALITY: f64 = 0.35;
+/// The bar in an organisation's private colony: a trail only has to say something. Its agents are asked to share a
+/// lot, and outcome reports, not this gate, decide what rises.
+pub const MIN_QUALITY_PRIVATE: f64 = 0.25;
 
 #[derive(Debug, Clone)]
 pub struct Judgement {

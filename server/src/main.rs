@@ -16,6 +16,7 @@ mod embed;
 mod enricher;
 mod fingerprint;
 mod keys;
+mod knowledge;
 mod migrate;
 mod net;
 mod norm;
@@ -68,6 +69,15 @@ async fn main() -> Result<()> {
         tokio::spawn(async move {
             if let Err(err) = migrate::run_once(moving, false).await {
                 tracing::warn!(error = %err, "fingerprint migration failed; it runs again at the next start");
+            }
+        });
+    }
+    if matches!(mode.as_str(), "enrich" | "all") && st.tasks.is_some() {
+        // Trails indexed before the task index existed are filed in it too.
+        let filling = st.clone();
+        tokio::spawn(async move {
+            if let Err(err) = migrate::backfill_tasks(filling).await {
+                tracing::warn!(error = %err, "task index backfill failed; it runs again at the next start");
             }
         });
     }

@@ -136,6 +136,9 @@ pub(super) async fn remove_trail(
     };
     if status == "indexed" {
         st.qdrant.delete(&id).await?;
+        if let Some(tasks) = &st.tasks {
+            tasks.qdrant.delete(&id).await?;
+        }
     }
     let mut pipe = redis::pipe();
     if let Some(fp) = meta.get("fingerprint") {

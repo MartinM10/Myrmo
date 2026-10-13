@@ -4,6 +4,7 @@
 
 use crate::decision::{self, Judgement};
 use crate::keys;
+use crate::knowledge::{self, Kind};
 use crate::redact::{self, Report};
 use crate::state::AppState;
 use crate::{fingerprint, risk, strength};
@@ -215,6 +216,13 @@ fn same_environment(a: &Value, b: &Value) -> bool {
 /// Text embedded for semantic search: what a searching agent will most likely type.
 fn embedding_text(trail: &Value) -> String {
     let s = |p: &str| trail.pointer(p).and_then(Value::as_str).unwrap_or_default();
+    if Kind::of(trail).is_knowledge() {
+        return format!(
+            "{}\n{}",
+            knowledge::subject(trail),
+            s("/problem/task_context")
+        );
+    }
     let message = fingerprint::message_for_problem(&trail["problem"]);
     let error_type = s("/problem/error_type");
     let head = if message.starts_with(error_type) {
@@ -232,6 +240,13 @@ fn embedding_text(trail: &Value) -> String {
 }
 
 fn label(trail: &Value) -> String {
+    if Kind::of(trail).is_knowledge() {
+        let summary = trail
+            .pointer("/problem/summary")
+            .and_then(Value::as_str)
+            .unwrap_or_default();
+        return summary.trim().chars().take(80).collect();
+    }
     let error_type = trail
         .pointer("/problem/error_type")
         .and_then(Value::as_str)
@@ -257,10 +272,20 @@ async fn enrich(st: &AppState, id: &str, mut trail: Value) -> Result<()> {
         return Ok(());
     }
     // Second redaction pass: the gateway already ran it, rules may have been updated since.
-    redact::redact_value(&mut trail, &mut Report::new());
+    redact::redact_value_with(&mut trail, &mut Report::new(), st.cfg.redaction());
     let fp = fingerprint::of_trail(&trail);
+    let kind = Kind::of(&trail);
+    // The gateway refuses these already; a trail queued before a colony stopped being private is dropped here.
+    if kind.is_knowledge() && !st.cfg.private {
+        return reject(st, id, &["not_accepted_here"], Value::Null).await;
+    }
 
-    let judgement: Judgement = st.decision.judge(&trail).await;
+    let mut judgement: Judgement = st.decision.judge(&trail).await;
+    if kind.is_knowledge() {
+        // The decision model and the rules score error fixes; a procedure or a fact has its own measure.
+        judgement.quality = knowledge::heuristic_quality(&trail);
+        judgement.category = kind.as_str().to_string();
+    }
     if let Some(score) = judgement.model_injection {
         // Not a verdict (see MYRMO_MODEL_INJECTION_GATE): kept so the question can be calibrated.
         tracing::info!(trail = %id, model_injection = score, "decision model injection score");
@@ -274,10 +299,18 @@ async fn enrich(st: &AppState, id: &str, mut trail: Value) -> Result<()> {
     if judgement.injection >= decision::INJECTION_THRESHOLD {
         reasons.push("prompt_injection");
     }
-    if judgement.sensitive >= decision::SENSITIVE_THRESHOLD {
+    // In an organisation's own colony, what is internal is what its agents need: only credentials and personal data
+    // are removed (by redaction), nothing is rejected for being "sensitive", and the bar is only that a trail says
+    // something. Outcome reports, not a gate at the door, decide what rises.
+    if !st.cfg.private && judgement.sensitive >= decision::SENSITIVE_THRESHOLD {
         reasons.push("sensitive_content");
     }
-    if judgement.quality < decision::MIN_QUALITY {
+    let min_quality = if st.cfg.private {
+        decision::MIN_QUALITY_PRIVATE
+    } else {
+        decision::MIN_QUALITY
+    };
+    if judgement.quality < min_quality {
         reasons.push("low_quality");
     }
     if !reasons.is_empty() {
@@ -432,6 +465,7 @@ async fn enrich(st: &AppState, id: &str, mut trail: Value) -> Result<()> {
     let payload = json!({
         "trail_id": id,
         "fingerprint": fp,
+        "kind": kind.as_str(),
         "category": judgement.category,
         "quality": (judgement.quality * 1000.0).round() / 1000.0,
         "judged_by": judgement.engine,
@@ -448,6 +482,7 @@ async fn enrich(st: &AppState, id: &str, mut trail: Value) -> Result<()> {
         .upsert(id, vector, payload)
         .await
         .context("indexing")?;
+    index_task(st, id, &trail).await?;
 
     let event = json!({
         "kind": "laid", "agent": agent_info, "trail_id": id,
@@ -529,6 +564,24 @@ async fn enrich(st: &AppState, id: &str, mut trail: Value) -> Result<()> {
     .await;
     tracing::info!(trail = %id, category = %judgement.category, quality = judgement.quality, engine = judgement.engine, "trail indexed");
     Ok(())
+}
+
+/// File a trail in the task index too, when the colony has one. Only the vector and the kind live there: results are
+/// read back from the main index, which holds the trail and its strength.
+pub async fn index_task(st: &AppState, id: &str, trail: &Value) -> Result<()> {
+    let Some(tasks) = &st.tasks else {
+        return Ok(());
+    };
+    let vector = tasks
+        .embedder
+        .embed(&knowledge::task_text(trail))
+        .await
+        .context("task embedding")?;
+    tasks
+        .qdrant
+        .upsert(id, vector, json!({ "kind": Kind::of(trail).as_str() }))
+        .await
+        .context("task indexing")
 }
 
 /// Every 2 seconds, fold outcome counters of recently reported trails into Qdrant.

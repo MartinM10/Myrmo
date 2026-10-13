@@ -50,6 +50,22 @@ pub struct Config {
     /// A private colony: every `/v1` request needs a person's access key (`myrmo-server keys add`), and that person is
     /// the caller's identity. `MYRMO_REQUIRE_KEY=1`.
     pub require_key: bool,
+    /// An organisation's own colony (`MYRMO_PRIVATE=1`; by default whenever keys are required). It keeps the addresses
+    /// and host names of the organisation's network, accepts procedures and facts besides fixes, and never rejects a
+    /// trail for "sensitive content": what is internal to the organisation is what its agents need. Credentials and
+    /// personal data are still removed, and prompt injection is still refused.
+    pub private: bool,
+    /// The second embedding model, for task requests ("deploy a new tenant") rather than error lines: its
+    /// `/embed` endpoint (`MYRMO_TASK_EMBED_URL`). Unset disables search by task.
+    pub task_embed_url: Option<String>,
+    /// The vector collection of that index (`MYRMO_TASK_COLLECTION`, default `<collection>_tasks`).
+    pub task_collection: String,
+    /// Minimum cosine similarity for a task match (`MYRMO_TASK_MIN_SIMILARITY`). Its own threshold: a multilingual
+    /// model scores a right answer lower than the error model does an exact error line.
+    pub task_min_similarity: f64,
+    /// Keep the task requests the colony could not answer (redacted, 30 days), so the operator sees what knowledge is
+    /// missing (`MYRMO_RECORD_GAPS=1`). Private colonies only; the panel can switch it while the colony runs.
+    pub record_gaps: bool,
     /// Public address of the website, used to build approval links for drafts.
     pub public_url: String,
     /// Minimum cosine similarity for a semantic match.
@@ -74,13 +90,23 @@ fn var(key: &str) -> Option<String> {
 impl Config {
     pub fn from_env() -> Self {
         let get = |key: &str, default: &str| var(key).unwrap_or_else(|| default.to_string());
+        let require_key = get("MYRMO_REQUIRE_KEY", "0") == "1";
+        let collection = get("MYRMO_COLLECTION", "trails");
         Self {
             bind: get("MYRMO_BIND", "0.0.0.0:8080"),
             redis_url: get("REDIS_URL", "redis://127.0.0.1:6379"),
             qdrant_url: get("QDRANT_URL", "http://127.0.0.1:6333")
                 .trim_end_matches('/')
                 .to_string(),
-            collection: get("MYRMO_COLLECTION", "trails"),
+            task_collection: get("MYRMO_TASK_COLLECTION", &format!("{collection}_tasks")),
+            collection,
+            task_embed_url: var("MYRMO_TASK_EMBED_URL")
+                .map(|u| u.trim_end_matches('/').to_string()),
+            task_min_similarity: get("MYRMO_TASK_MIN_SIMILARITY", "0.55")
+                .parse()
+                .unwrap_or(0.55),
+            record_gaps: var("MYRMO_RECORD_GAPS").is_some_and(|v| v == "1"),
+            private: var("MYRMO_PRIVATE").map_or(require_key, |v| v == "1"),
             embed_url: get("MYRMO_EMBED_URL", "http://127.0.0.1:8081")
                 .trim_end_matches('/')
                 .to_string(),
@@ -108,12 +134,17 @@ impl Config {
                 .trim_end_matches('/')
                 .to_string(),
             admin_token: var("MYRMO_ADMIN_TOKEN").filter(|t| t.len() >= 16),
-            require_key: get("MYRMO_REQUIRE_KEY", "0") == "1",
+            require_key,
             min_similarity: get("MYRMO_MIN_SIMILARITY", "0.75").parse().unwrap_or(0.75),
             max_per_fingerprint: get("MYRMO_MAX_PER_FINGERPRINT", "64").parse().unwrap_or(64),
             demand_min_agents: get("MYRMO_DEMAND_MIN_AGENTS", "3").parse().unwrap_or(3),
             salt: var("MYRMO_SALT").unwrap_or_else(|| uuid::Uuid::new_v4().to_string()),
             consumer_name: get("HOSTNAME", "enricher"),
         }
+    }
+
+    /// What this colony removes from trails, searches and reports.
+    pub fn redaction(&self) -> crate::redact::Policy {
+        crate::redact::Policy::for_colony(self.private)
     }
 }
