@@ -201,3 +201,39 @@ test("Claude Code: follow-ups, slash commands and unknown tasks say nothing, and
   const optedOut = { ...env, MYRMO_HOOK_BRIEF: "off" };
   assert.equal(await runHook({ session_id: "t4", hook_event_name: "UserPromptSubmit", prompt: "Despliega un tenant nuevo en dev" }, optedOut), null);
 });
+
+test("a session start tells the person once a day when the colony was released with a newer plugin", async () => {
+  const { updateNotice, compareVersions, pluginVersion } = await import("../scripts/lookup.mjs");
+  assert.equal(compareVersions("0.32.0", "0.33.0"), -1);
+  assert.equal(compareVersions("0.33.0", "0.33"), 0);
+  assert.equal(compareVersions("1.0.0", "0.99.9"), 1);
+  assert.match(pluginVersion() ?? "", /^\d+\.\d+\.\d+/);
+  let asked = 0, sent = null;
+  const fetcher = async (url, init) => {
+    asked++;
+    sent = { url, headers: init.headers };
+    return { ok: true, json: async () => ({ clients: { plugin: "0.40.0" } }) };
+  };
+  const cacheFile = join(mkdtempSync(join(tmpdir(), "myrmo-upd-")), "update-check.json");
+  const env = { MYRMO_URL: "http://colony.example:8080", MYRMO_API_KEY: "myk_test", MYRMO_PRIVATE: "1" };
+  const first = await updateNotice({ env, current: "0.32.0", cacheFile, fetcher, now: 1_000 });
+  assert.match(first, /Myrmo 0\.40\.0 is available \(this machine has 0\.32\.0\)/);
+  assert.match(first, /claude plugin update myrmo@myrmo/);
+  assert.match(first, /Enable auto-update/);
+  assert.equal(sent.url, "http://colony.example:8080/v1/version");
+  assert.equal(sent.headers.authorization, "Bearer myk_test");
+  assert.equal(sent.headers["x-myrmo-client"], "myrmo-plugin/0.32.0");
+  assert.equal(await updateNotice({ env, current: "0.32.0", cacheFile, fetcher, now: 2_000 }), null, "once a day");
+  assert.equal(asked, 1, "the answer is cached for a day");
+  assert.match(await updateNotice({ env, current: "0.32.0", cacheFile, fetcher, now: 1_000 + 25 * 3600_000 }), /0\.40\.0/);
+  assert.equal(await updateNotice({ env, current: "0.40.0", cacheFile: cacheFile + ".2", fetcher, now: 1_000 }), null, "up to date");
+  assert.equal(await updateNotice({ env: { ...env, MYRMO_UPDATE_CHECK: "off" }, current: "0.1.0", cacheFile: cacheFile + ".3", fetcher }), null);
+  const down = async () => { throw new Error("ECONNREFUSED"); };
+  assert.equal(await updateNotice({ env, current: "0.1.0", cacheFile: cacheFile + ".4", fetcher: down }), null, "a colony that does not answer says nothing");
+});
+
+test("Claude Code: the session start hook speaks to the person, and says nothing when there is nothing to say", async () => {
+  const env = { MYRMO_PRIVATE: "1", MYRMO_URL: url, MYRMO_HOOK_STATE_DIR: mkdtempSync(join(tmpdir(), "myrmo-state-")) };
+  // The fake colony answers every request with search results, so /v1/version has no clients: nothing to announce.
+  assert.equal(await runHook({ session_id: "u1", hook_event_name: "SessionStart", source: "startup" }, env), null);
+});

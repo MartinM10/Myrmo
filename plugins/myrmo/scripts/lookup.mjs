@@ -7,6 +7,9 @@
 // --url` writes, whose key and private mode apply only to that very URL. For another colony of one's own it is opt-in
 // with MYRMO_HOOK_LOOKUP=1; it never runs against the public colony, and MYRMO_HOOK_LOOKUP=0 turns it off everywhere.
 
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname } from "node:path";
+
 const PUBLIC_HOSTS = new Set(["myrmo.dev", "www.myrmo.dev"]);
 const trim = (url) => String(url ?? "").trim().replace(/\/+$/, "");
 
@@ -53,7 +56,7 @@ export const clip = (text, max) => {
 export async function lookup(line, { env = process.env, settings = {}, fetcher = fetch, timeoutMs = 6000, agent = "myrmo-hook/1" } = {}) {
   const colony = colonyOf(env, settings);
   const url = `${colony.url}/v1/search`;
-  const headers = { "content-type": "application/json", "user-agent": agent };
+  const headers = { "content-type": "application/json", "user-agent": agent, ...clientHeader() };
   if (env.MYRMO_AGENT_ID) headers["x-myrmo-agent"] = env.MYRMO_AGENT_ID;
   // A private colony needs the person's access key, the same one the MCP server sends.
   if (colony.apiKey) headers.authorization = `Bearer ${colony.apiKey}`;
@@ -157,7 +160,7 @@ export function briefEnabled(env = process.env, settings = {}) {
 /** Ask the colony's task index; null when it cannot be reached or has none. */
 export async function lookupTask(task, { env = process.env, settings = {}, fetcher = fetch, timeoutMs = 5000, agent = "myrmo-hook/1" } = {}) {
   const colony = colonyOf(env, settings);
-  const headers = { "content-type": "application/json", "user-agent": agent };
+  const headers = { "content-type": "application/json", "user-agent": agent, ...clientHeader() };
   if (env.MYRMO_AGENT_ID) headers["x-myrmo-agent"] = env.MYRMO_AGENT_ID;
   if (colony.apiKey) headers.authorization = `Bearer ${colony.apiKey}`;
   const ctrl = new AbortController();
@@ -198,4 +201,78 @@ export function briefNote(task, body, state = {}, now = Date.now(), how = "") {
     `Before you plan, call myrmo_brief with the task to read the details. After the task, report each entry you relied on with myrmo_report.${how}`,
   ].join("\n");
   return { note, state: { ...state, brief: { at: now, ids, task: clip(task, 200), reported: false } } };
+}
+
+// --- updates: tell the person when their Myrmo is older than what their colony was released with -------------------
+//
+// Claude Code updates a third-party plugin only when its user (or an admin) turned on auto-update for the marketplace.
+// So at the start of a session the hook asks the colony which versions it was released with (GET /v1/version: a
+// private colony may have no internet, and it knows what goes with it) and, when this plugin is older, says so to the
+// person, once a day at most. MYRMO_UPDATE_CHECK=off turns it off.
+
+/** This plugin's version, from its manifest; null when the scripts run outside the plugin (the Antigravity copy). */
+export function pluginVersion(dir = new URL(".", import.meta.url)) {
+  try {
+    return JSON.parse(readFileSync(new URL("../.claude-plugin/plugin.json", dir), "utf8")).version ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** -1, 0 or 1, comparing the numeric parts of two versions (`0.32.0` < `0.33.0` < `0.33.0` = `0.33`). */
+export function compareVersions(a, b) {
+  const pa = String(a).split(/[.+-]/).map((x) => Number.parseInt(x, 10) || 0);
+  const pb = String(b).split(/[.+-]/).map((x) => Number.parseInt(x, 10) || 0);
+  for (let i = 0; i < Math.max(pa.length, pb.length, 3); i++) {
+    if ((pa[i] ?? 0) !== (pb[i] ?? 0)) return (pa[i] ?? 0) < (pb[i] ?? 0) ? -1 : 1;
+  }
+  return 0;
+}
+
+/** The header a client sends to say what it is, so an operator sees who runs an old version. */
+export function clientHeader(version = pluginVersion()) {
+  return version ? { "x-myrmo-client": `myrmo-plugin/${version}` } : {};
+}
+
+/**
+ * What to tell the person at session start, or null: the colony's released plugin version when it is newer than this
+ * one, checked at most once a day (`cacheFile` keeps the last answer) and shown at most once a day per version.
+ */
+export async function updateNotice({ env = process.env, settings = {}, now = Date.now(), current = pluginVersion(), cacheFile, fetcher = fetch, timeoutMs = 2500 } = {}) {
+  if (env.MYRMO_UPDATE_CHECK === "off" || !current || !cacheFile) return null;
+  const colony = colonyOf(env, settings);
+  let cache = {};
+  try {
+    cache = JSON.parse(readFileSync(cacheFile, "utf8")) ?? {};
+  } catch {
+    cache = {};
+  }
+  const day = 24 * 3600_000;
+  let latest = cache.url === colony.url && now - Number(cache.at ?? 0) < day ? cache.latest : undefined;
+  if (latest === undefined) {
+    const headers = { accept: "application/json", "user-agent": "myrmo-claude-code-hook/1", ...clientHeader(current) };
+    if (colony.apiKey) headers.authorization = `Bearer ${colony.apiKey}`;
+    try {
+      const res = await fetcher(`${colony.url}/v1/version`, { headers, signal: AbortSignal.timeout(timeoutMs) });
+      latest = res.ok ? ((await res.json())?.clients?.plugin ?? null) : null;
+    } catch {
+      latest = null;
+    }
+    cache = { ...cache, url: colony.url, at: now, latest };
+  }
+  let notice = null;
+  const alreadyToday = cache.told === latest && now - Number(cache.toldAt ?? 0) < day;
+  if (latest && compareVersions(current, latest) < 0 && !alreadyToday) {
+    notice =
+      `Myrmo ${latest} is available (this machine has ${current}). Update with: claude plugin update myrmo@myrmo, then restart Claude Code. ` +
+      `To get updates by themselves: /plugin > Marketplaces > myrmo > Enable auto-update.`;
+    cache = { ...cache, told: latest, toldAt: now };
+  }
+  try {
+    mkdirSync(dirname(cacheFile), { recursive: true });
+    writeFileSync(cacheFile, JSON.stringify(cache));
+  } catch {
+    /* without the cache it simply asks again next time */
+  }
+  return notice;
 }
