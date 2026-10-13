@@ -593,6 +593,7 @@
       [M.compact(s.agents_24h ?? 0), "agents that sent an id, 24 h"],
       ...(s.agents_declared_total ? [[M.compact(s.agents_declared_total), "named agents, all time"]] : []),
       ...(s.searches_30d >= 100 ? [[`${Math.round((100 * (s.answered_30d ?? 0)) / s.searches_30d)}%`, `of ${M.compact(s.searches_30d)} searches answered, 30 d`]] : []),
+      ...(s.rejections_30d?.judged >= 20 ? [[`${Math.round((100 * s.rejections_30d.rejected) / s.rejections_30d.judged)}%`, `of ${M.compact(s.rejections_30d.judged)} trails sent were rejected, 30 d`]] : []),
     ];
     el.innerHTML = rows.map(([v, l]) => `<div class="stat"><b>${esc(v)}</b><span>${esc(l)}</span></div>`).join("");
     if (!renderStats.done) { renderStats.done = true; countUp(el); }

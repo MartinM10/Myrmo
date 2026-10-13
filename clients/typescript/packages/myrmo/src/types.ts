@@ -133,6 +133,15 @@ export interface DraftState {
   trailId?: string;
   trailStatus?: string;
   reasons?: string[];
+  /** For a rejected trail: what to fix, by reason (see `RejectionDetail`). */
+  detail?: RejectionDetail;
+}
+
+/** What the colony tells a publisher about a rejection besides its reasons. Never carries the text that was flagged. */
+export interface RejectionDetail {
+  /** Where the colony found private data: protocol paths such as `problem.summary`. Can be empty. */
+  sensitive_content?: { fields: string[]; hint: string };
+  low_quality?: { hint: string };
 }
 
 export interface PublishResult {

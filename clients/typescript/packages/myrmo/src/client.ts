@@ -332,9 +332,10 @@ export class Colony {
       trail_id?: string;
       trail_status?: string;
       reasons?: string[];
+      detail?: DraftState["detail"];
     }>("GET", `/v1/drafts/${encodeURIComponent(draftId)}`);
     if (status === 404) return null;
-    return { draftId, state: data.state, expiresIn: data.expires_in, trailId: data.trail_id, trailStatus: data.trail_status, reasons: data.reasons };
+    return { draftId, state: data.state, expiresIn: data.expires_in, trailId: data.trail_id, trailStatus: data.trail_status, reasons: data.reasons, detail: data.detail };
   }
 
   /**

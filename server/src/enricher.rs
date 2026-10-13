@@ -118,11 +118,11 @@ async fn handle(st: AppState, entry: StreamId) {
         .unwrap_or(1);
 
     let result = if attempts > MAX_ATTEMPTS {
-        reject(&st, &id, &["enrichment_failed"]).await
+        reject(&st, &id, &["enrichment_failed"], Value::Null).await
     } else {
         match serde_json::from_str::<Value>(&raw) {
             Ok(trail) => enrich(&st, &id, trail).await,
-            Err(_) => reject(&st, &id, &["invalid_trail"]).await,
+            Err(_) => reject(&st, &id, &["invalid_trail"], Value::Null).await,
         }
     };
     match result {
@@ -152,21 +152,30 @@ async fn handle(st: AppState, entry: StreamId) {
     }
 }
 
-async fn reject(st: &AppState, id: &str, reasons: &[&str]) -> Result<()> {
-    let _: () = redis::pipe()
-        .cmd("HSET")
+async fn reject(st: &AppState, id: &str, reasons: &[&str], detail: Value) -> Result<()> {
+    let mut pipe = redis::pipe();
+    pipe.cmd("HSET")
         .arg(keys::trail(id))
         .arg("status")
         .arg("rejected")
         .arg("reasons")
         .arg(json!(reasons).to_string())
-        .ignore()
+        .ignore();
+    if !detail.is_null() {
+        pipe.cmd("HSET")
+            .arg(keys::trail(id))
+            .arg("detail")
+            .arg(detail.to_string())
+            .ignore();
+    }
+    let _: () = pipe
         .cmd("EXPIRE")
         .arg(keys::trail(id))
         .arg(7 * 86_400)
         .ignore()
         .query_async(&mut st.redis())
         .await?;
+    crate::analytics::record_rejection(&mut st.redis(), keys::now(), reasons).await;
     tracing::info!(trail = %id, ?reasons, "trail rejected");
     Ok(())
 }
@@ -272,7 +281,18 @@ async fn enrich(st: &AppState, id: &str, mut trail: Value) -> Result<()> {
         reasons.push("low_quality");
     }
     if !reasons.is_empty() {
-        return reject(st, id, &reasons).await;
+        let fields = if reasons.contains(&"sensitive_content") {
+            st.decision.locate_sensitive(&trail).await
+        } else {
+            Vec::new()
+        };
+        return reject(
+            st,
+            id,
+            &reasons,
+            decision::rejection_detail(&reasons, &fields),
+        )
+        .await;
     }
 
     let mut con = st.redis();

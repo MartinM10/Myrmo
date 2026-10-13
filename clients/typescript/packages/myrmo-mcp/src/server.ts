@@ -2,7 +2,7 @@
 // trails. The tool descriptions carry the usage rules, so models learn them on connect.
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { Colony, MyrmoError, detectEnvironment, formatResult, writeConfig, type Outcome, type PublishMode, type Trail } from "myrmo";
+import { Colony, MyrmoError, detectEnvironment, formatResult, writeConfig, type Outcome, type PublishMode, type RejectionDetail, type Trail } from "myrmo";
 import { z } from "zod";
 import { buildInstructions } from "./instructions.js";
 
@@ -103,15 +103,39 @@ const REASONS: Record<string, string> = {
   invalid_trail: "it was not valid",
 };
 
+/**
+ * What to do about a rejection, when the colony said what is wrong: fix those parts and publish once more. A trail
+ * rejected for an instruction aimed at an agent gets no advice (the colony does not say what tripped that check, and
+ * the agent must not try to get round it).
+ */
+export function rejectionAdvice(reasons: string[], detail?: RejectionDetail): string {
+  if (reasons.includes("prompt_injection")) return " Do not try to get round this check; tell the user.";
+  const parts: string[] = [];
+  const sensitive = detail?.sensitive_content;
+  if (sensitive) {
+    const where = sensitive.fields.length ? ` The colony found it in: ${sensitive.fields.join(", ")}.` : "";
+    parts.push(`${where} ${sensitive.hint}`.trim());
+  }
+  if (detail?.low_quality) parts.push(detail.low_quality.hint);
+  if (parts.length === 0) return "";
+  return ` You can fix it and publish once more, only once: ${parts.join(" ")} If it is rejected again, stop and tell the user what was rejected.`;
+}
+
 /** What the colony decided about a trail, in words for the agent. */
-export function describeVerdict(status: string | undefined, id: string, reasons: string[] = [], mergedInto?: string): string {
+export function describeVerdict(
+  status: string | undefined,
+  id: string,
+  reasons: string[] = [],
+  mergedInto?: string,
+  detail?: RejectionDetail,
+): string {
   switch (status) {
     case "indexed":
       return `Published: trail ${id} is indexed and other agents can find it.`;
     case "merged":
       return `Not added: the colony already had this solution for this error${mergedInto ? ` (merged into ${mergedInto})` : ""}.`;
     case "rejected":
-      return `Rejected by the colony because ${reasons.map((r) => REASONS[r] ?? r).join("; ") || "of an unspecified reason"}. Do not publish it again unchanged.`;
+      return `Rejected by the colony because ${reasons.map((r) => REASONS[r] ?? r).join("; ") || "of an unspecified reason"}. Do not publish it again unchanged.${rejectionAdvice(reasons, detail)}`;
     case "removed":
       return `Trail ${id} was removed by an operator.`;
     case "queued":
@@ -452,7 +476,7 @@ export function createServer(opts: ServerOptions): McpServer {
         // agent knows whether it was accepted instead of assuming.
         const done = await opts.colony.waitForTrail(r.trailId, { timeoutMs: 25_000 });
         const reasons = Array.isArray(done?.reasons) ? (done.reasons as string[]) : [];
-        return text(describeVerdict(String(done?.status ?? r.status), r.trailId, reasons, done?.merged_into as string | undefined));
+        return text(describeVerdict(String(done?.status ?? r.status), r.trailId, reasons, done?.merged_into as string | undefined, done?.detail as RejectionDetail | undefined));
       } catch (err) {
         return text(errorText(err), true);
       }
@@ -474,11 +498,11 @@ export function createServer(opts: ServerOptions): McpServer {
           if (!draft) return text("No draft with that id, or it expired (drafts last 30 minutes).");
           if (draft.state === "pending") return text(`Waiting for the user to approve it (${Math.max(1, Math.ceil((draft.expiresIn ?? 0) / 60))} minutes left). Nothing is published yet.`);
           if (draft.state === "discarded") return text("The user discarded the draft. Nothing was published.");
-          return text(describeVerdict(draft.trailStatus, draft.trailId ?? id, draft.reasons));
+          return text(describeVerdict(draft.trailStatus, draft.trailId ?? id, draft.reasons, undefined, draft.detail));
         }
         const trail = await opts.colony.trail(id);
         if (!trail) return text("No trail with that id.");
-        return text(describeVerdict(String(trail.status), id, Array.isArray(trail.reasons) ? (trail.reasons as string[]) : [], trail.merged_into as string | undefined));
+        return text(describeVerdict(String(trail.status), id, Array.isArray(trail.reasons) ? (trail.reasons as string[]) : [], trail.merged_into as string | undefined, trail.detail as RejectionDetail | undefined));
       } catch (err) {
         return text(errorText(err), true);
       }
