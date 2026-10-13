@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.0](https://github.com/MartinM10/Myrmo/compare/protocol-v1.5.0...protocol-v1.6.0) (2026-10-13)
+
+
+### Features
+
+* **protocol:** procedures and facts besides fixes, and where knowledge comes from ([debb4f5](https://github.com/MartinM10/Myrmo/commit/debb4f5022bcc31bf248bb21c77a68754b46c411))
+
 ## [1.5.0](https://github.com/MartinM10/Myrmo/compare/protocol-v1.4.0...protocol-v1.5.0) (2026-10-11)
 
 
