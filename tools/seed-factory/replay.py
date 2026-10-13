@@ -46,7 +46,8 @@ def replay_one(base: str, row: dict) -> dict:
     if not commands:
         return {"task": task_id, "ok": False, "why": "the served trail has no commands"}
     changed = [c for c, original in zip(commands, [x["command"] for x in row["solution"]["shell_commands_executed"]]) if c != original]
-    steps = " && ".join(f"{{ {c}; }}" for c in commands)
+    # A newline before the closing brace: a heredoc in the command must end on its own line.
+    steps = " && ".join(f"{{ {c}\n}}" for c in commands)
     script = f"( {task.failing_command} ) >/dev/null 2>&1; echo __FAILING_EXIT__=$?; {steps}; echo __TRAIL_EXIT__=$?"
     try:
         result = factory.run(task, script)

@@ -77,6 +77,31 @@ def test_the_policy_names_real_tasks_and_keeps_the_valuable_ones():
     assert all(reason for reason in catalog.POLICY_EXCLUDED.values())
 
 
+def test_no_publishable_task_is_made_for_a_reserved_coverage_error():
+    reserved = {
+        row["id"]
+        for row in map(json.loads, (ROOT.parents[1] / "bench/coverage/lines.jsonl").read_text(encoding="utf-8").splitlines())
+        if row["split"] == "reserved"
+    }
+    kept = {t.task_id for t in catalog.publishable()}
+    assert not kept & reserved, "coverage is measured on the reserved errors: no trail may be made from them"
+    # Tasks found to repeat a reserved error stay in the catalog, unpublished, with the reason.
+    for task_id in ("jvm-javac-release-newer-than-jdk", "rust-cargo-edition2024-on-182", "net-curl-private-ca-unknown-issuer"):
+        assert task_id in catalog.POLICY_EXCLUDED and catalog.POLICY_EXCLUDED[task_id].startswith(("coverage:", "replay:"))
+
+
+def test_a_model_is_accepted_only_when_the_owner_declares_it(monkeypatch):
+    monkeypatch.delenv("MYRMO_OWNER_ACCEPTS", raising=False)
+    assert factory.owner_acceptance(None) is None
+    assert factory.owner_acceptance("claude-sonnet-5-5") == factory.OWNER_ACCEPTANCE
+    assert factory.owner_acceptance("claude-haiku-5-5") is None, "nothing is filled in on the owner's behalf"
+    monkeypatch.setenv("MYRMO_OWNER_ACCEPTS", "claude-haiku-5-5=the project owner, 2026-10-13; other-model=someone, 2026-10-14")
+    assert factory.owner_acceptance("claude-haiku-5-5") == "the project owner, 2026-10-13"
+    assert factory.owner_acceptance("unknown-model") is None
+    monkeypatch.setenv("MYRMO_OWNER_ACCEPTS", "claude-haiku-5-5=")
+    assert factory.owner_acceptance("claude-haiku-5-5") is None
+
+
 def test_container_paths_are_left_alone_because_they_are_not_private():
     out = factory.clean({"command": "mkdir -p /tmp/app && cd /tmp/app && ./run.sh", "approach": "chmod +x /tmp/app/run.sh"})
     assert out["command"] == "mkdir -p /tmp/app && cd /tmp/app && ./run.sh"

@@ -100,6 +100,7 @@ one without a record or whose content changed after it was recorded.
 | How a source is used | Only as `discovery` (it told us an error exists) or `environment` (an image or pinned repository that the factory runs itself). Copying its text or code is never accepted, whatever its licence. |
 | Models | A model that produced a trail is named, with a licence the project can pass on (an open-weights model under Apache-2.0, for example) or with its terms marked as reviewed for this use. |
 | Catalog tasks | Written by the project, scripted commands, no model and no outside source. |
+| Whose decision covers a model | The project owner's, by name and date. The model that wrote the coverage probes is covered by a recorded decision; any other model is accepted only when the owner declares it for the run, `MYRMO_OWNER_ACCEPTS="<model>=<who>, <YYYY-MM-DD>"` (several: separate them with `;`). Nothing is filled in on the owner's behalf: a task written by a model nobody accepted is not valid. A run made only to check that tasks work declares itself as such, and its output is never published. |
 
 Stack Overflow content is CC BY-SA and so stays reference only. A source that is not on the list can be added to the
 policy deliberately (`ALLOWED_LICENCES`), never case by case.

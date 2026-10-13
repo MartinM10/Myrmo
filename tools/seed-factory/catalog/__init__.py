@@ -10,7 +10,12 @@ from .base import Task
 from .legacy import LEGACY
 
 #: One module per ecosystem (catalog/<name>.py exporting TASKS). Add a name here to bring its tasks in.
-MODULES = ("python", "node", "jvm", "go", "rust", "dotnet", "docker", "tls", "platform", "drafts")
+MODULES = (
+    "python", "node", "jvm", "go", "rust", "dotnet", "docker", "tls", "platform", "drafts",
+    "so_discovery", "seed_linux_dns", "seed_cloud_ci", "seed_net_tls", "seed_dev_tools",
+    "seed_git_ssh", "seed_compose", "seed_k8s", "seed_linux_sys",
+    "seed_py_tooling", "seed_node_tooling", "seed_toolchains", "seed_db_cli",
+)
 
 
 def _load() -> tuple[Task, ...]:
@@ -38,6 +43,18 @@ TASKS = _load()
 # never searched, and errors in someone's source code have fixes that do not transfer. Tasks listed
 # here stay in the catalog (they are reproducible and useful as tests) but are not published.
 POLICY_EXCLUDED = {
+    # The colony serves a fix that does not replay for a follower.
+    "jvm-maven-java-home-invalid": "replay: the colony serves a fix that does not replay (working directory); also a reserved coverage error",
+    "node-bin-not-on-path": "replay: the colony serves a fix that does not replay (npx command)",
+    # The fix has to set access key variables, and the colony redacts their values by design, so the served fix breaks.
+    "aws-cli-unable-locate-credentials": "replay: the colony redacts the credential values of the fix command",
+    # The same error as one of the reserved half of bench/coverage, which no trail may be made from: coverage is measured on it.
+    "jvm-javac-release-newer-than-jdk": "coverage: the same error as the reserved line of the same name",
+    "rust-cargo-edition2024-on-182": "coverage: the same error as the reserved line rust-edition2024-old-cargo",
+    "dev-tools-maven-java-home-missing-jdk": "coverage: the same error as the reserved line jvm-maven-java-home-invalid",
+    "net-curl-private-ca-unknown-issuer": "coverage: the same error as the reserved line tls-curl-private-ca",
+    "dev-tools-rust-openssl-sys-libssl-missing": "coverage: the same error as the reserved line rust-openssl-sys-no-pkgconfig",
+    "py-pip-newest-release-requires-python": "coverage: the same error as the reserved line py-numpy21-requires-newer-python",
     # The fix is a change to the user's own source code.
     "rust-borrow-checker": "code-level: the fix depends on the user's code",
     "rust-use-after-move": "code-level: the fix depends on the user's code",
