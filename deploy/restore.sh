@@ -63,12 +63,12 @@ for _ in $(seq 1 30); do docker exec "${PROJECT}-valkey-1" valkey-cli ping >/dev
 echo "valkey holds $(docker exec "${PROJECT}-valkey-1" valkey-cli dbsize) keys"
 
 echo "restoring Qdrant"
-compose up -d qdrant gateway
+compose up -d --no-deps qdrant gateway
 for _ in $(seq 1 60); do docker exec "$GATEWAY" curl -fsS http://qdrant:6333/readyz >/dev/null 2>&1 && break; sleep 1; done
 # Uploaded through stdin: nothing is left behind in the container.
 docker exec -i "$GATEWAY" curl -fsS -X POST "$QDRANT/upload?priority=snapshot" \
   -F "snapshot=@-;filename=restore.snapshot" < "$work/qdrant.snapshot" >/dev/null
 
 echo "starting the colony"
-compose up -d gateway enricher
+compose up -d --no-deps gateway enricher
 echo "restored. Check: GET /v1/stats and /readyz"

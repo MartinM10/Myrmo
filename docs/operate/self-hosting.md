@@ -231,6 +231,36 @@ What stays out of a web page on purpose: the operator token, the salt, the ports
 `.env.private`. The page loads under a policy that allows no outside resource and is never cached; every `/v1/admin/*`
 call needs the token and is subject to the allowed networks too.
 
+**Backups on a machine that restarts.** `bash deploy/private-colony.sh backup` writes one archive of everything the colony
+knows (the access keys, the trails, the reuse records) to `~/myrmo-backups`, without stopping it, and keeps the newest 14
+(`MYRMO_BACKUP_KEEP`). Make the folder private (`chmod 700`): the archive holds what your team published. A weekly timer
+that also runs at the next boot when the machine was off at the time (cron would simply skip that week):
+
+```ini
+# /etc/systemd/system/myrmo-backup.service
+[Service]
+Type=oneshot
+User=<you>
+WorkingDirectory=<the repository>
+UMask=0077
+Environment=MYRMO_PROJECT=myrmo-private
+Environment=MYRMO_BACKUP_KEEP=8
+ExecStart=/bin/bash deploy/backup.sh
+
+# /etc/systemd/system/myrmo-backup.timer
+[Timer]
+OnCalendar=Fri *-*-* 18:00:00
+Persistent=true
+[Install]
+WantedBy=timers.target
+```
+
+Then `sudo systemctl daemon-reload && sudo systemctl enable --now myrmo-backup.timer`. The archive does not hold
+`.env.private` (the operator token and the salt): keep a copy of that file yourself. Archives on the same disk do not
+survive the disk; copy them elsewhere, or set `MYRMO_BACKUP_S3_URI` ([off-site copy](#backups)). To restore, into a
+colony that is up: `MYRMO_PROJECT=myrmo-private MYRMO_COMPOSE="--env-file .env.private" bash deploy/restore.sh <archive>`;
+it asks before it replaces anything.
+
 **Each person, one command.**
 
 ```bash
