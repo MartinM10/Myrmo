@@ -70,6 +70,10 @@ pub fn router(state: AppState) -> Router {
         .layer(DefaultBodyLimit::max(MAX_BODY))
         .layer(CompressionLayer::new())
         .layer(cors)
+        .layer(middleware::from_fn_with_state(
+            state.clone(),
+            network_filter,
+        ))
         .with_state(state)
 }
 
@@ -221,6 +225,24 @@ fn valid_agent_id(id: &str) -> bool {
         && id
             .chars()
             .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
+}
+
+/// A colony that serves a network (`MYRMO_ALLOWED_NETWORKS`) answers `403` to everyone else, before anything is read.
+async fn network_filter(
+    State(st): State<AppState>,
+    ConnectInfo(peer): ConnectInfo<SocketAddr>,
+    req: Request,
+    next: Next,
+) -> Response {
+    if crate::net::allows(peer.ip(), &st.cfg.allowed_networks) {
+        return next.run(req).await;
+    }
+    ApiError::new(
+        StatusCode::FORBIDDEN,
+        "network_not_allowed",
+        "This colony is not open to your network.",
+    )
+    .into_response()
 }
 
 async fn rate_limit(
