@@ -139,8 +139,9 @@ if (args[0] === "init") {
 if (flag("--http")) {
   await serveHttp(Number(option("--port", process.env.PORT ?? "3333")), option("--host", "0.0.0.0"));
 } else {
-  const colony = new Colony({ publish: publishMode });
-  const privacy = privateMode(colony.url, process.env, savedColony?.private === true);
+  const privacy = privateMode(colonyUrl, process.env, savedColony?.private === true);
+  // In a private colony the network's addresses and host names stay in what is sent (the colony keeps them too).
+  const colony = new Colony({ publish: publishMode, private: privacy.on });
   if (privacy.warning) console.error(`myrmo-mcp: ${privacy.warning}`);
   const server = createServer({
     colony,

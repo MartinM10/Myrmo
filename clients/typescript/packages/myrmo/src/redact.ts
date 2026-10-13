@@ -203,9 +203,21 @@ const RULES: Rule[] = [
   r("org", String.raw`(^|[^A-Za-z0-9_.\-])(` + ORG_KEY + String.raw`['\x22]?[ \t]*[=:][ \t]*)([^\s'\x22<>,;]{2,80})`, "i", orgValue(3, true)),
 ];
 
-export function redactText(input: string, report: RedactionReport = {}): string {
+/**
+ * What is removed. The public colony removes everything; an organisation's private colony keeps the addresses and host
+ * names of its own network (`keepNetwork`), because which machine does what is exactly what its agents need. Credentials,
+ * personal data and customer names are removed in both. The colony applies the same policy again on arrival.
+ */
+export interface RedactionPolicy {
+  keepNetwork?: boolean;
+}
+
+const NETWORK_KINDS = new Set(["ip", "ipv6", "mac", "hostname"]);
+
+export function redactText(input: string, report: RedactionReport = {}, policy: RedactionPolicy = {}): string {
   let text = input;
   for (const rule of RULES) {
+    if (policy.keepNetwork && NETWORK_KINDS.has(rule.kind)) continue;
     rule.pattern.lastIndex = 0;
     if (!rule.pattern.test(text)) continue;
     rule.pattern.lastIndex = 0;
@@ -224,11 +236,11 @@ export function redactText(input: string, report: RedactionReport = {}): string 
 }
 
 /** Deep copy of `value` with every string redacted. */
-export function redactValue<T>(value: T, report: RedactionReport = {}): T {
-  if (typeof value === "string") return redactText(value, report) as T;
-  if (Array.isArray(value)) return value.map((v) => redactValue(v, report)) as T;
+export function redactValue<T>(value: T, report: RedactionReport = {}, policy: RedactionPolicy = {}): T {
+  if (typeof value === "string") return redactText(value, report, policy) as T;
+  if (Array.isArray(value)) return value.map((v) => redactValue(v, report, policy)) as T;
   if (value && typeof value === "object") {
-    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, redactValue(v, report)])) as T;
+    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, redactValue(v, report, policy)])) as T;
   }
   return value;
 }

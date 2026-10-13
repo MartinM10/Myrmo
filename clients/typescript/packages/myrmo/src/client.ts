@@ -9,7 +9,7 @@ import { agentIdentity, fileColony, publishChoice } from "./config.js";
 import { detectEnvironment, parsePackage } from "./environment.js";
 import { fingerprint2, guessErrorType } from "./fingerprint.js";
 import { namesConflict } from "./names.js";
-import { possibleNames, redactText, redactValue, type RedactionReport } from "./redact.js";
+import { possibleNames, redactText, redactValue, type RedactionPolicy, type RedactionReport } from "./redact.js";
 import type { AgentInfo, DraftResult, DraftState, Environment, Hit, Outcome, PublishMode, PublishResult, SearchQuery, SearchResult, Trail, Validation } from "./types.js";
 
 /** The public colony. Override with MYRMO_URL or the `url` option. */
@@ -40,6 +40,11 @@ export interface ColonyOptions {
   retries?: number;
   /** Pause before each retry, in milliseconds, with a little jitter. Default 500, 1500, 3000. */
   retryDelaysMs?: number[];
+  /**
+   * The colony is an organisation's own (not the public one): addresses and host names of its network are kept in
+   * what is sent, and procedures and facts may be published. Ignored for the public colony.
+   */
+  private?: boolean;
 }
 
 /** What a colony that is restarting or overloaded answers with. */
@@ -61,6 +66,7 @@ export class MyrmoError extends Error {
 
 interface RawHit {
   trail_id: string;
+  kind?: Hit["kind"];
   match: Hit["match"];
   strength: number;
   outcomes: Hit["outcomes"];
@@ -70,6 +76,7 @@ interface RawHit {
 
 const toHit = (h: RawHit): Hit => ({
   trailId: h.trail_id,
+  kind: h.kind ?? h.trail?.kind ?? "fix",
   match: h.match,
   strength: h.strength,
   outcomes: h.outcomes,
@@ -93,6 +100,8 @@ export class Colony {
   private readonly retries: number;
   private readonly retryDelaysMs: number[];
   private readonly cache = new Map<string, { at: number; value: SearchResult | null }>();
+  /** An organisation's own colony: see `ColonyOptions.private`. */
+  readonly isPrivate: boolean;
 
   constructor(options: ColonyOptions = {}) {
     // An explicit URL or MYRMO_URL first, then the colony in the settings file; its key only goes to its own URL.
@@ -111,6 +120,43 @@ export class Colony {
     this.cacheTtlMs = options.cacheTtlMs ?? 60_000;
     this.retries = Math.max(0, options.retries ?? 3);
     this.retryDelaysMs = options.retryDelaysMs?.length ? options.retryDelaysMs : DEFAULT_RETRY_DELAYS_MS;
+    this.isPrivate = (options.private ?? false) && !/^https?:\/\/(www\.)?myrmo\.dev(\/|$)/i.test(this.url);
+  }
+
+  /** What this colony removes before anything is sent. */
+  private get policy(): RedactionPolicy {
+    return { keepNetwork: this.isPrivate };
+  }
+
+  /**
+   * What the organisation already knows about a task: procedures, facts and fixes whose "when it applies" is close to
+   * the request ("deploy a new tenant in dev"), in any language. Needs a colony with a task index (a private one);
+   * an empty result means nobody wrote anything down about it yet.
+   */
+  async searchTask(task: string, options: { limit?: number; model?: string } = {}): Promise<SearchResult> {
+    const query = redactText(task, {}, this.policy).slice(0, 2000);
+    const key = `task:${query}`;
+    const cached = this.cached(key);
+    if (cached) return cached;
+    let data: { results: RawHit[]; notice: string };
+    try {
+      ({ data } = await this.request<{ results: RawHit[]; notice: string }>(
+        "POST",
+        "/v1/search",
+        { query, mode: "task", limit: options.limit ?? 3 },
+        options.model ? { "x-myrmo-model": options.model } : undefined,
+        true,
+      ));
+    } catch (err) {
+      // A colony without a task index (the public one, or an older server) knows nothing by task: no answer.
+      if (err instanceof MyrmoError && (err.code === "no_task_index" || err.status === 400)) {
+        return { fingerprint: "", hits: [], notice: "This colony cannot be searched by task.", source: "search" };
+      }
+      throw err;
+    }
+    const value: SearchResult = { fingerprint: "", hits: (data.results ?? []).map(toHit), notice: data.notice, source: "search" };
+    this.remember(key, value);
+    return value;
   }
 
   /**
@@ -204,7 +250,7 @@ export class Colony {
 
   /** Find trails for an error: fingerprint first, semantic search when there is no exact match. */
   async search(query: SearchQuery): Promise<SearchResult> {
-    const error = redactText(query.error);
+    const error = redactText(query.error, {}, this.policy);
     const errorType = query.errorType ?? guessErrorType(error);
     const fp = fingerprint2(error);
 
@@ -268,7 +314,7 @@ export class Colony {
    */
   preview(trail: Trail): { trail: Trail; redactions: RedactionReport; names: string[] } {
     const redactions: RedactionReport = {};
-    const redacted = redactValue(trail, redactions);
+    const redacted = redactValue(trail, redactions, this.policy);
     return { trail: redacted, redactions, names: possibleNames(redacted) };
   }
 

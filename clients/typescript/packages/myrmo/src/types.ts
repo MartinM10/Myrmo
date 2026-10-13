@@ -49,8 +49,22 @@ export interface Verification {
   evidence?: string;
 }
 
+/** Where knowledge came from, when an agent did not find it out itself. */
+export interface Source {
+  type: "agent" | "handover" | "document" | "person";
+  ref?: string;
+  revision?: string;
+}
+
+/**
+ * A trail. Its `kind` says what it holds: a `fix` (the default; every field below is filled), a `procedure` or a
+ * `fact` (private colonies only), which carry only `problem.summary` (what it is about), `problem.task_context` (when it
+ * applies) and `solution.steps`, and whose other fields may be missing.
+ */
 export interface Trail {
   protocol_version: string;
+  kind?: "fix" | "procedure" | "fact";
+  source?: Source;
   agent_info: AgentInfo;
   environment: Environment & { os: string; runtime: { name: string; version: string }; packages: Package[] };
   problem: {
@@ -82,7 +96,9 @@ export interface RiskFlag {
 
 export interface Hit {
   trailId: string;
-  match: { via: "fingerprint" | "semantic"; score: number; environment_overlap: number | null };
+  /** What the trail holds; older colonies do not say, which means a fix. */
+  kind: "fix" | "procedure" | "fact";
+  match: { via: "fingerprint" | "semantic" | "task"; score: number; environment_overlap: number | null };
   strength: number;
   outcomes: { worked: number; partially_worked: number; failed: number; not_applicable?: number };
   risk: { level: "low" | "medium" | "high"; flags: RiskFlag[] };
