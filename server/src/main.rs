@@ -29,6 +29,7 @@ mod state;
 mod store;
 mod strength;
 mod team;
+mod versions;
 
 use anyhow::Result;
 use std::net::SocketAddr;

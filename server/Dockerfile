@@ -5,6 +5,7 @@ WORKDIR /src/server
 COPY server/Cargo.toml server/Cargo.lock ./
 RUN mkdir src && echo "fn main() {}" > src/main.rs && cargo build --release && rm -rf src
 COPY protocol/ /src/protocol/
+COPY .release-please-manifest.json /src/.release-please-manifest.json
 COPY server/src ./src
 RUN touch src/main.rs && cargo build --release
 
