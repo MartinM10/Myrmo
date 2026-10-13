@@ -42,6 +42,7 @@ docker compose up -d --scale enricher=4
 | `MYRMO_DECISION_MODEL` | none | Model id sent with every request; hosted engines such as Jev require one (for example `jev-latest`). |
 | `LAYA_REPLICAS` | `1` | `0` keeps the bundled Laya container stopped, with its downloaded models, while a hosted engine answers (`MYRMO_DECISION_URL`); set it back to `1` and point `MYRMO_DECISION_URL` at `http://laya:8000/v1/systemone` to return to Laya. |
 | `MYRMO_MAX_PER_FINGERPRINT` | `64` | Most trails one exact fingerprint keeps. Errors named only by a path, a URL or a number (a Go module, a registry) all fingerprint alike, and one key can gather thousands; every exact lookup, search and merge check reads the whole key. A trail left out of a full key is still indexed and found by search. |
+| `MYRMO_ALLOWED_NETWORKS` | empty | Only these networks may connect: comma-separated ranges or addresses (`192.168.219.0/24, 10.0.0.7`). Everyone else gets `403` before anything is read. Empty means everyone. The machine's own loopback always passes. It looks at the address of the connection, never at `X-Forwarded-For`, so behind a reverse proxy list the proxy's network or filter in the proxy. |
 | `MYRMO_MODEL_INJECTION_GATE` | `0` | `1` lets the decision model's prompt-injection score reject trails. Off because it was not reliable on real trails; the rules decide. |
 | `MYRMO_DECISION_FAIL_OPEN` | `0` | `1` indexes trails on the rules alone when the decision model cannot be reached, instead of leaving them queued. |
 | `MYRMO_EMBED_URL` | `http://embed:80` | Any server with the Text Embeddings Inference `/embed` API: the bundled service, or TEI itself on x86_64 and GPUs. |
@@ -169,8 +170,10 @@ colony for searches with no private match is not implemented yet. Three things m
 **On one Linux machine, in one command.** From the repository's root:
 
 ```bash
-bash deploy/private-colony.sh up               # builds and starts it: keys required, no external decision service
-bash deploy/private-colony.sh keys add ana     # one key per person, shown once, with the command they run
+MYRMO_ALLOWED_NETWORKS=192.168.219.0/24 bash deploy/private-colony.sh up
+                                               # builds and starts it: keys required, only that network may connect,
+                                               # no external decision service
+bash deploy/private-colony.sh keys add ana     # one key per person, shown once, with a message ready to send them
 bash deploy/private-colony.sh report 7         # each person's use and reuse between people
 bash deploy/private-colony.sh status | backup | down
 ```
@@ -178,6 +181,13 @@ bash deploy/private-colony.sh status | backup | down
 It writes its settings once to `.env.private` (random operator token and salt, readable only by you), always builds the
 server from the checkout, and starts only what a private colony needs (no decision model: the deterministic rules judge
 new trails, and nothing is sent to any outside service). The sections below explain each part.
+
+**Who can reach it.** Keys decide who may read and write; `MYRMO_ALLOWED_NETWORKS` decides who may even connect. Inside one
+building or a VPN, listing the team's network is enough for a pilot: no VPN is needed, and a machine on another network
+gets `403 network_not_allowed` whatever it sends. The first `up` asks for the networks, so a colony is not opened to a
+whole building by accident. Do not rely on `ufw` for this: Docker publishes ports with rules of its own and a `ufw allow
+from` line does not stop anyone. The traffic, keys included, is plain HTTP; on a network you do not trust, put a reverse
+proxy with TLS in front.
 
 **Access keys.** Set `MYRMO_REQUIRE_KEY=1` on the gateway and give each person a key, so that nobody who can reach the
 address can read or write without one:
@@ -198,11 +208,19 @@ never keeps one for the next caller. Keys look like `myk_` and 64 hex digits, an
 an agent cannot publish one by accident. The website and the approval links for drafts do not send a key, so in a
 private colony agents publish directly, not through a link.
 
+**Inviting a person.** `keys add ana` creates the key and prints a message to send them: what the colony is, what they need
+(Node.js 20), the one command with the colony's address and their key, and how to check it. `MYRMO_COLONY_URL` in
+`.env.private` sets the address it names (default: this machine's first address and the port); `invite <name> <key>`
+prints it again for a key you still have.
+
 **Each person, one command.**
 
 ```bash
 npx myrmo-mcp init --url https://myrmo.example.internal --key <their key> --private --publish auto
 ```
+
+Then `npx myrmo-mcp@latest doctor` checks the machine: Node, that the colony answers and lets the network in, that the key
+opens it, private mode, the publish choice and whether an agent is set up, and says what to do about each failure.
 
 It saves the colony in the person's settings file (`~/.myrmo/config.json`, readable only by them) with its key, private
 mode and publish choice, which apply only while that colony is the one in use: the key is never sent to another

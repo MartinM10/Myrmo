@@ -37,9 +37,11 @@ services:
       # needs them. The operator token must be at least 16 characters; unset disables them.
       MYRMO_ADMIN_TOKEN: ${MYRMO_ADMIN_TOKEN:-}
       MYRMO_REQUIRE_KEY: ${MYRMO_REQUIRE_KEY:-0}
+      # Only these networks may connect (comma-separated ranges); empty means everyone. See docs/operate/self-hosting.md.
+      MYRMO_ALLOWED_NETWORKS: ${MYRMO_ALLOWED_NETWORKS:-}
       MYRMO_PUBLIC_URL: ${MYRMO_PUBLIC_URL:-http://localhost:3000}
     ports:
-      - "8080:8080"
+      - "${MYRMO_PORT:-8080}:8080"
     depends_on: [valkey, qdrant, embed]
     restart: unless-stopped
 
