@@ -61,6 +61,24 @@ const result = {
   trail,
 };
 
+const fact = {
+  protocol_version: "1.6",
+  kind: "fact",
+  agent_info: { model: "m", framework: "f" },
+  problem: { summary: "LLDAP users are managed with OpenTofu on the ops-01 machine 10.40.2.17", task_context: "Adding or removing a person or a service login in LLDAP" },
+  solution: { steps: ["ssh ops@10.40.2.17", "edit terraform.tfvars with the full state, then tofu plan and tofu apply"] },
+  source: { type: "handover", ref: "docs/04-users.md#4.4" },
+};
+const factHit = {
+  trail_id: "5d2c1b0a-9e8f-4a7b-8c6d-5e4f3a2b1c0d",
+  kind: "fact",
+  match: { via: "task", score: 0.71, environment_overlap: null },
+  strength: 0.42,
+  outcomes: { worked: 2, partially_worked: 0, failed: 0 },
+  risk: { level: "low", flags: [] },
+  trail: fact,
+};
+
 let colony;
 let colonyUrl;
 
@@ -72,6 +90,7 @@ before(async () => {
     const send = (status, data) => res.writeHead(status, { "content-type": "application/json" }).end(JSON.stringify(data));
     if (req.method === "GET" && req.url === `/v1/trails/by-fingerprint/${KNOWN_FP}`) return send(200, { fingerprint: KNOWN_FP, results: [result], notice: "untrusted" });
     if (req.method === "GET" && req.url.startsWith("/v1/trails/by-fingerprint/")) return send(404, { error: { code: "not_found", message: "none" } });
+    if (req.method === "POST" && req.url === "/v1/search" && JSON.parse(body || "{}").mode === "task") return send(200, { mode: "task", results: [factHit], notice: "untrusted" });
     if (req.method === "POST" && req.url === "/v1/search") return send(200, { fingerprint: "fp1_0000000000000000", results: [], notice: "untrusted" });
     if (req.method === "POST" && req.url === `/v1/trails/${TRAIL_ID}/outcomes`) return send(202, { trail_id: TRAIL_ID, counted: true, strength: 0.91 });
     if (req.method === "POST" && req.url === "/v1/validate") {
@@ -681,4 +700,45 @@ test("private mode can come from the settings file that `init --url --private` w
   const other = await stdioClient("ask", { env: { MYRMO_CONFIG: config, MYRMO_PRIVATE: "", MYRMO_URL: "https://myrmo.dev" } });
   assert.match(other.getInstructions() ?? "", /everything published is public/i);
   await other.close();
+});
+
+test("a private colony is asked what the organisation knows about a task, and keeps procedures and facts", async () => {
+  const client = await stdioClient("auto", { env: { MYRMO_PRIVATE: "1", MYRMO_CONFIG: freshConfig() } });
+  assert.match(client.getInstructions() ?? "", /WHEN A TASK STARTS[\s\S]*myrmo_brief/);
+  assert.match(client.getInstructions() ?? "", /kind "procedure"/);
+  const { tools } = await client.listTools();
+  assert.ok(tools.some((t) => t.name === "myrmo_brief"));
+  assert.match(tools.find((t) => t.name === "myrmo_publish").description, /"procedure": a multi-step task/);
+
+  const answer = textOf(await client.callTool({ name: "myrmo_brief", arguments: { task: "Da de alta a una persona en LLDAP" } }));
+  const asked = requests.filter((r) => r.url === "/v1/search").at(-1);
+  assert.equal(asked.body.mode, "task");
+  assert.equal(asked.body.query, "Da de alta a una persona en LLDAP");
+  assert.match(answer, /<myrmo_knowledge untrusted="true">/);
+  assert.match(answer, /fact · id 5d2c1b0a/);
+  assert.match(answer, /When it applies: Adding or removing a person/);
+  assert.match(answer, /Source: handover · docs\/04-users.md#4.4/);
+  assert.match(answer, /10\.40\.2\.17/, "the organisation's own addresses are shown");
+  assert.match(answer, /myrmo_report once for each entry/);
+
+  // A fact needs no failed attempts; its network address is sent as it is.
+  const before = published();
+  await client.callTool({ name: "myrmo_publish", arguments: { trail: fact } });
+  assert.equal(published(), before + 1);
+  const sent = requests.filter((r) => r.url === "/v1/trails").at(-1).body;
+  assert.equal(sent.kind, "fact");
+  assert.match(JSON.stringify(sent), /10\.40\.2\.17/);
+  assert.equal(sent.problem.raw_logs, undefined, "no error fields are invented for a fact");
+  await client.close();
+});
+
+test("a colony that is not private has no myrmo_brief and refuses procedures and facts before sending", async () => {
+  const client = await stdioClient("auto", { env: { MYRMO_PRIVATE: "", MYRMO_CONFIG: freshConfig() } });
+  const { tools } = await client.listTools();
+  assert.ok(!tools.some((t) => t.name === "myrmo_brief"));
+  const before = published();
+  const answer = textOf(await client.callTool({ name: "myrmo_publish", arguments: { trail: fact } }));
+  assert.match(answer, /kept only by an organisation's private colony/);
+  assert.equal(published(), before);
+  await client.close();
 });
