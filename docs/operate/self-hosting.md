@@ -242,7 +242,8 @@ prints it again for a key you still have.
   their most telling tag. Search, filter, zoom and click a point for its details; the Knowledge tab's lists open it with
   their entries highlighted.
 - **People:** add a person (the page shows the key once, inside the message to send them, with a copy button that works over
-  plain HTTP) and revoke a key; per person, when it was last used and a 14-day activity strip.
+  plain HTTP) and revoke a key; per person, when it was last used, a 14-day activity strip and the Myrmo version their agents
+  run (plugin and MCP server), marked when it is older than the one this colony was released with.
 - **Settings:** change, while it runs, the networks allowed to connect and the request and publish limits per person; each
   shows whether it comes from the environment or was changed there, and can go back. A list of networks that would shut out
   the address the change comes from is refused. If a change locks everyone out, `myrmo-server settings reset` on the

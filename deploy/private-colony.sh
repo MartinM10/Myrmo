@@ -89,7 +89,8 @@ You need: Node.js 20 or newer (node --version) and Claude Code and/or Antigravit
    npx myrmo-mcp@latest init --url $url --key $key --private --publish auto
 
 2. Restart Claude Code / Antigravity. In Antigravity, accept the permission for the myrmo tools ("always").
-3. Check it:   npx myrmo-mcp@latest doctor     (it says what to fix, if anything)
+3. In Claude Code, let it update by itself: /plugin > Marketplaces > myrmo > Enable auto-update.
+4. Check it:   npx myrmo-mcp@latest doctor     (it says what to fix, if anything)
 
 The command is in your shell history with the key in it: delete that line (history -d) or edit it out. To keep the key out
 of it, save this message to a file, delete the key line from your chat, and use --key-file <that file> instead of --key <key>
