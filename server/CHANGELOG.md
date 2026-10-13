@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.15.0](https://github.com/MartinM10/Myrmo/compare/server-v0.14.0...server-v0.15.0) (2026-10-13)
+
+
+### Features
+
+* **server:** say which client versions were released with the colony, and who runs which ([c8c8826](https://github.com/MartinM10/Myrmo/commit/c8c8826301c3d994fe37eacdda2a30cba00716c1))
+
 ## [0.14.0](https://github.com/MartinM10/Myrmo/compare/server-v0.13.0...server-v0.14.0) (2026-10-13)
 
 
