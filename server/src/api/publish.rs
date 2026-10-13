@@ -315,6 +315,12 @@ pub(super) async fn get_draft(
                     .get("reasons")
                     .and_then(|r| serde_json::from_str(r).ok())
                     .unwrap_or(json!([]));
+                if let Some(detail) = meta
+                    .get("detail")
+                    .and_then(|d| serde_json::from_str::<Value>(d).ok())
+                {
+                    body["detail"] = detail;
+                }
             }
         }
         _ => {}

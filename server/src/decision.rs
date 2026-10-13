@@ -8,7 +8,7 @@ use base64::Engine as _;
 use base64::alphabet;
 use base64::engine::{DecodePaddingMode, GeneralPurpose, GeneralPurposeConfig};
 use regex::{Regex, RegexSet};
-use serde_json::{Value, json};
+use serde_json::{Map, Value, json};
 use std::sync::LazyLock;
 use std::time::Duration;
 
@@ -226,10 +226,7 @@ impl Decision {
                     "criteria": QUALITY_LEVELS
                 },
                 "injection": injection_question(),
-                "sensitive": {
-                    "type": "noul",
-                    "instructions": "Does the text still contain personal data or confidential company information, such as people's names, customer names, internal hostnames, internal URLs or credentials?"
-                }
+                "sensitive": sensitive_question()
             }
         });
         if ask_category {
@@ -247,6 +244,33 @@ impl Decision {
         Ok(ModelAnswers::parse(&reply["answers"]))
     }
 
+    /// Where the model finds sensitive content: the protocol path of each part of the trail it flags when asked about
+    /// that part alone. Called only for a trail already rejected for it, so a handful of calls at most; empty when no
+    /// model is configured or it cannot be reached.
+    pub async fn locate_sensitive(&self, trail: &Value) -> Vec<String> {
+        let Some(url) = &self.url else {
+            return Vec::new();
+        };
+        let mut found = Vec::new();
+        for (path, text) in sensitive_parts(trail) {
+            let body = json!({
+                "state": untrusted(&text),
+                "questions": { "sensitive": sensitive_question() }
+            });
+            let Ok(reply) = self.post(url, &body).await else {
+                break;
+            };
+            if ModelAnswers::parse(&reply["answers"])
+                .sensitive
+                .unwrap_or(0.0)
+                >= SENSITIVE_THRESHOLD
+            {
+                found.push(path.to_string());
+            }
+        }
+        found
+    }
+
     /// Only the injection question, over text the main question did not cover.
     async fn ask_injection(&self, url: &str, text: &str) -> anyhow::Result<f64> {
         let body = json!({
@@ -257,6 +281,99 @@ impl Decision {
         Ok(ModelAnswers::parse(&reply["answers"])
             .injection
             .unwrap_or(0.0))
+    }
+}
+
+fn sensitive_question() -> Value {
+    json!({
+        "type": "noul",
+        "instructions": "Does the text still contain personal data or confidential company information, such as people's names, customer names, internal hostnames, internal URLs or credentials?"
+    })
+}
+
+/// The parts of a trail the sensitive question is asked of one by one, to say where the model found something: the
+/// protocol path of each, and its text (one part is cut to a size the model reads whole).
+fn sensitive_parts(trail: &Value) -> Vec<(&'static str, String)> {
+    let text = |p: &str| {
+        trail
+            .pointer(p)
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+            .to_string()
+    };
+    let list = |p: &str, keys: &[&str]| -> String {
+        trail
+            .pointer(p)
+            .and_then(Value::as_array)
+            .into_iter()
+            .flatten()
+            .map(|item| match item.as_str() {
+                Some(s) => s.to_string(),
+                None => keys
+                    .iter()
+                    .map(|k| item.get(*k).and_then(Value::as_str).unwrap_or_default())
+                    .collect::<Vec<_>>()
+                    .join(" "),
+            })
+            .collect::<Vec<_>>()
+            .join("\n")
+    };
+    let verification = ["description", "command", "evidence"]
+        .iter()
+        .map(|k| text(&format!("/solution/verification_method/{k}")))
+        .collect::<Vec<_>>()
+        .join("\n");
+    vec![
+        ("problem.error_message", text("/problem/error_message")),
+        ("problem.summary", text("/problem/summary")),
+        ("problem.task_context", text("/problem/task_context")),
+        ("problem.raw_logs", text("/problem/raw_logs")),
+        (
+            "problem.failed_approaches",
+            list("/problem/failed_approaches", &["approach", "why_it_failed"]),
+        ),
+        ("solution.root_cause", text("/solution/root_cause")),
+        ("solution.steps", list("/solution/steps", &[])),
+        (
+            "solution.shell_commands_executed",
+            list("/solution/shell_commands_executed", &["command", "purpose"]),
+        ),
+        ("solution.verification_method", verification),
+        (
+            "solution.code_patches",
+            list(
+                "/solution/code_patches",
+                &["file_path", "description", "diff"],
+            ),
+        ),
+    ]
+    .into_iter()
+    .filter(|(_, t)| !t.trim().is_empty())
+    .map(|(path, t)| (path, t.chars().take(CHUNK_CHARS).collect()))
+    .collect()
+}
+
+const SENSITIVE_HINT: &str = "Replace what identifies a person, a company, a customer or an internal system (names, hostnames, internal URLs, account ids) with a generic placeholder such as <company>, <host> or <user>, and remove credentials. Keep the technical content: the error, the dead ends, the cause and the commands. Do not invent realistic-looking names, addresses or keys: a placeholder is plainly not real, while a made-up value can be taken for one and break the commands for the next agent.";
+const LOW_QUALITY_HINT: &str = "Say what the root cause was, give the exact commands that fixed it and how you checked that they did. A summary such as \"it works now\" is not enough for another agent to follow.";
+
+/// What a publisher is told about a rejection, besides its reasons, so that it can fix the trail and send it once more.
+/// Where the model found sensitive content (`sensitive_fields`, protocol paths, never the text) and what to do about it.
+/// A rejection for prompt injection gets nothing: telling a sender what tripped the check would teach it to get round it.
+pub fn rejection_detail(reasons: &[&str], sensitive_fields: &[String]) -> Value {
+    let mut detail = Map::new();
+    if reasons.contains(&"sensitive_content") {
+        detail.insert(
+            "sensitive_content".into(),
+            json!({ "fields": sensitive_fields, "hint": SENSITIVE_HINT }),
+        );
+    }
+    if reasons.contains(&"low_quality") {
+        detail.insert("low_quality".into(), json!({ "hint": LOW_QUALITY_HINT }));
+    }
+    if detail.is_empty() {
+        Value::Null
+    } else {
+        Value::Object(detail)
     }
 }
 
@@ -1144,6 +1261,116 @@ mod tests {
         let body = hosted.request_body(&ask);
         assert_eq!(body["model"], "jev-latest");
         assert_eq!(body["state"], "x");
+    }
+
+    /// A fake `/v1/systemone` that says `sensitive` 0.95 for a request whose text holds `marker`, and 0 otherwise.
+    async fn fake_model_flagging(marker: &'static str) -> String {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        tokio::spawn(async move {
+            loop {
+                let Ok((mut socket, _)) = listener.accept().await else {
+                    return;
+                };
+                let mut seen = Vec::new();
+                let mut buffer = [0u8; 8192];
+                loop {
+                    let n = socket.read(&mut buffer).await.unwrap_or(0);
+                    if n == 0 {
+                        break;
+                    }
+                    seen.extend_from_slice(&buffer[..n]);
+                    let text = String::from_utf8_lossy(&seen).to_lowercase();
+                    if let Some(end) = text.find("\r\n\r\n") {
+                        let length = text[..end]
+                            .lines()
+                            .find_map(|l| l.strip_prefix("content-length:"))
+                            .and_then(|v| v.trim().parse::<usize>().ok())
+                            .unwrap_or(0);
+                        if seen.len() >= end + 4 + length {
+                            break;
+                        }
+                    }
+                }
+                let flagged = String::from_utf8_lossy(&seen).contains(marker);
+                let body = json!({ "answers": { "sensitive": { "noul": if flagged { 0.95 } else { 0.0 } } } }).to_string();
+                let reply = format!(
+                    "HTTP/1.1 200 OK\r\ncontent-type: application/json\r\ncontent-length: {}\r\nconnection: close\r\n\r\n{body}",
+                    body.len()
+                );
+                let _ = socket.write_all(reply.as_bytes()).await;
+            }
+        });
+        format!("http://{address}/v1/systemone")
+    }
+
+    #[tokio::test]
+    async fn the_model_is_asked_part_by_part_where_it_finds_sensitive_content() {
+        let url = fake_model_flagging("Zorblax Industries").await;
+        let mut trail = example();
+        trail["problem"]["summary"] =
+            json!("The build at Zorblax Industries fails on the numpy wheel");
+        trail["solution"]["steps"][0] =
+            json!("Bump numpy to 1.26 in the Zorblax Industries build image");
+        let judge = Decision::new(reqwest::Client::new(), Some(url), None, false);
+        let fields = judge.locate_sensitive(&trail).await;
+        assert_eq!(
+            fields,
+            vec!["problem.summary", "solution.steps"],
+            "only the parts that hold it, by path"
+        );
+        // No model, no answer: the publisher still gets the general hint.
+        let none = Decision::new(reqwest::Client::new(), None, None, false);
+        assert!(none.locate_sensitive(&trail).await.is_empty());
+    }
+
+    #[test]
+    fn a_rejection_says_what_to_fix_but_never_what_tripped_the_injection_check() {
+        let fields = vec!["problem.summary".to_string()];
+        let detail = rejection_detail(&["sensitive_content", "low_quality"], &fields);
+        assert_eq!(
+            detail["sensitive_content"]["fields"],
+            json!(["problem.summary"])
+        );
+        let hint = detail["sensitive_content"]["hint"].as_str().unwrap();
+        assert!(
+            hint.contains("<company>") && hint.contains("Do not invent"),
+            "placeholders, not made-up values"
+        );
+        assert!(
+            detail["low_quality"]["hint"]
+                .as_str()
+                .unwrap()
+                .contains("root cause")
+        );
+        // Nothing for injection: it would teach a sender to get round the check.
+        assert!(rejection_detail(&["prompt_injection"], &[]).is_null());
+        assert!(rejection_detail(&["enrichment_failed"], &[]).is_null());
+        let mixed = rejection_detail(&["prompt_injection", "sensitive_content"], &fields);
+        assert!(
+            mixed.get("prompt_injection").is_none() && mixed.get("sensitive_content").is_some()
+        );
+    }
+
+    #[test]
+    fn the_parts_asked_about_are_the_ones_a_trail_has() {
+        let parts = sensitive_parts(&example());
+        let paths: Vec<&str> = parts.iter().map(|(p, _)| *p).collect();
+        for expected in [
+            "problem.error_message",
+            "problem.summary",
+            "solution.root_cause",
+            "solution.steps",
+            "solution.shell_commands_executed",
+        ] {
+            assert!(paths.contains(&expected), "{expected} in {paths:?}");
+        }
+        assert!(
+            parts
+                .iter()
+                .all(|(_, t)| !t.trim().is_empty() && t.chars().count() <= CHUNK_CHARS)
+        );
     }
 
     #[test]

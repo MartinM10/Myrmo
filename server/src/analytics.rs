@@ -453,8 +453,14 @@ pub fn public_leaderboard(rows: &[Value], limit: usize) -> Vec<Value> {
         .collect()
 }
 
-/// Why the judgement rejected a trail after it was queued. Counted per day, never with any text.
-pub const REJECTION_REASONS: [&str; 3] = ["prompt_injection", "sensitive_content", "low_quality"];
+/// Why a trail was rejected after it was queued: the judgement's verdicts, and the two failures that leave it unjudged. Counted per day, never with any text.
+pub const REJECTION_REASONS: [&str; 5] = [
+    "prompt_injection",
+    "sensitive_content",
+    "low_quality",
+    "enrichment_failed",
+    "invalid_trail",
+];
 /// Why a trail was refused before it was queued (the error code the publisher received).
 pub const REFUSAL_CODES: [&str; 3] = ["invalid_trail", "publish_limited", "busy"];
 
