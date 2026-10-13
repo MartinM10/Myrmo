@@ -474,14 +474,27 @@ export function parseInitArgs(args: string[]): InitOptions | string {
     } else if (a === "--read-only") opts.readOnly = true;
     else if (a === "--no-rules") opts.rules = false;
     else if (a === "--private") opts.private = true;
-    else if (a === "--url" || a === "--key" || a === "--publish") {
+    else if (a === "--key-file") {
+      // The key stays out of the command line, so out of the shell's history and the process list.
+      const file = args[++i];
+      if (!file || file.startsWith("--")) return "--key-file needs the path of a file that holds the key";
+      try {
+        // A colony key anywhere in the file (the invitation message works as it is), or a file holding only the key.
+        const text = readFileSync(file, "utf8");
+        const found = text.match(/myk_[0-9a-f]{64}/)?.[0] ?? (/^[\x21-\x7e]{8,256}$/.test(text.trim()) ? text.trim() : undefined);
+        if (!found) return `${file} holds no key`;
+        opts.key = found;
+      } catch {
+        return `cannot read ${file}`;
+      }
+    } else if (a === "--url" || a === "--key" || a === "--publish") {
       const value = args[++i];
       if (!value || value.startsWith("--")) return `${a} needs a value`;
       if (a === "--url") opts.url = value;
       else if (a === "--key") opts.key = value;
       else if (value === "auto" || value === "ask" || value === "off") opts.publish = value;
       else return "--publish takes auto, ask or off";
-    } else return `Unknown option ${a}. Usage: myrmo-mcp init [--client <id>]... [--agents-md [file] [--read-only]] [--url <colony> [--key <key>] [--private] [--publish auto|ask|off]] [--no-rules] [--dry-run]`;
+    } else return `Unknown option ${a}. Usage: myrmo-mcp init [--client <id>]... [--agents-md [file] [--read-only]] [--url <colony> [--key <key> | --key-file <file>] [--private] [--publish auto|ask|off]] [--no-rules] [--dry-run]`;
   }
   if ((opts.key || opts.publish) && !opts.url) return "--key and --publish go with --url: they belong to one colony";
   if (opts.url) {
