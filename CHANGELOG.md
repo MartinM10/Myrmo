@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.29.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.28.0...platform-v0.29.0) (2026-10-13)
+
+
+### Features
+
+* **deploy:** a private colony asks which network may connect and prints a ready invitation ([4334ae9](https://github.com/MartinM10/Myrmo/commit/4334ae936389dd7a07824e4c36d95888129a043d))
+* private colony network filter, invitations and doctor ([d474cdc](https://github.com/MartinM10/Myrmo/commit/d474cdcefb511456e6179198765de635e229b7d1))
+* **server:** admin panel for the operator ([a532866](https://github.com/MartinM10/Myrmo/commit/a532866cc90daca33b2255eed4804a132a07c8e9))
+
+
+### Documentation
+
+* the admin panel and the operator endpoints ([936c9b3](https://github.com/MartinM10/Myrmo/commit/936c9b353488af352c2e48f222c187191449dd4d))
+
 ## [0.28.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.27.0...platform-v0.28.0) (2026-10-13)
 
 
