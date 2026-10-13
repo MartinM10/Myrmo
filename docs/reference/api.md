@@ -335,6 +335,21 @@ the rules can be improved where it matters.
 `tokens_saved_24h` is an estimate: for each counted `worked` report, the `effort.tokens_spent` of the
 trail that was followed, as declared by its author and capped at `MYRMO_TOKENS_CREDIT_MAX` (200,000) per report.
 
+## Operator endpoints
+
+The panel at `/admin` ([self-hosting](../operate/self-hosting.md#a-private-colony)) is a page over these. All need the operator
+token and answer `Cache-Control: no-store`; `501` when the colony has none, `401` for a wrong one. They are also subject to
+`MYRMO_ALLOWED_NETWORKS`.
+
+| Request | Does |
+|---|---|
+| `GET /v1/admin/people?days=7` | Who has a key, with what each did in the period (`searches`, `published`, `reports`, `used_others`, `helped_others`), and the reuse records between people. Never a key. |
+| `POST /v1/admin/people` `{"name": "ana"}` | Creates a key for a person and returns it **once** (`201`); `409` when the person has one. |
+| `DELETE /v1/admin/people/{name}` | Revokes the key; it stops working at once. |
+| `GET /v1/admin/settings` | The settings in force, which of them were changed through the API, the environment's values, and the address the request came from. |
+| `PUT /v1/admin/settings` | Changes `allowed_networks` (a comma-separated list), `rate_limit_per_minute` and `publish_limit_per_hour` (0 to 100000, 0 is no limit) while the colony runs; `null` goes back to the environment's value. A list that would shut out the requester is refused with `400`. Applies within five seconds on every gateway. |
+| `GET /v1/admin/audit` | The last 200 changes made through the operator token: keys, settings, removed trails. |
+
 ## Analytics and demand
 
 ```http

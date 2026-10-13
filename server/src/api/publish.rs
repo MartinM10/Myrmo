@@ -38,7 +38,7 @@ async fn enforce_publish_limits(st: &AppState, caller: &Caller) -> ApiResult<()>
             return Err(err);
         }
     }
-    let limit = st.cfg.publish_limit_per_hour;
+    let limit = super::admin::live(st).await.publish_limit;
     if limit > 0 {
         let now = keys::now();
         let key = keys::publish_quota(&caller.client, keys::hour(now));

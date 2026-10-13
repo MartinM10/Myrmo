@@ -109,6 +109,20 @@ pub(super) async fn remove_trail(
             ));
         }
     }
+    if by_operator {
+        super::admin::record(
+            &st,
+            &format!(
+                "trail {id} removed{}",
+                if reason.is_empty() {
+                    String::new()
+                } else {
+                    format!(": {reason}")
+                }
+            ),
+        )
+        .await;
+    }
     let now = keys::now();
     // Read before it is deleted: the model and framework it was counted under.
     let agent_info = if status == "indexed" {

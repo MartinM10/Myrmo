@@ -213,6 +213,24 @@ private colony agents publish directly, not through a link.
 `.env.private` sets the address it names (default: this machine's first address and the port); `invite <name> <key>`
 prints it again for a key you still have.
 
+**The admin panel.** `http://<colony>/admin` is one page, served by the colony itself, behind the operator token
+(`MYRMO_ADMIN_TOKEN`; typed in the page, kept in that tab only). It does what the commands above do, in one place:
+
+- **Overview:** is it ready, trails, what is waiting to be checked, per person what they did in the last 7 days, the reuse
+  between people and why trails were rejected.
+- **People:** add a person (the page shows the key once, inside the message to send them, with a copy button) and revoke a
+  key.
+- **Trails:** review what was published and remove one with a reason.
+- **Settings:** change, while it runs, the networks allowed to connect and the request and publish limits per person; each
+  shows whether it comes from the environment or was changed there, and can go back. A list of networks that would shut out
+  the address the change comes from is refused. If a change locks everyone out, `myrmo-server settings reset` on the
+  colony's machine (it needs only Valkey) puts the environment's values back.
+- **Activity:** every key created or revoked, setting changed and trail removed through the operator token, the last 200.
+
+What stays out of a web page on purpose: the operator token, the salt, the ports and the decision engine live in
+`.env.private`. The page loads under a policy that allows no outside resource and is never cached; every `/v1/admin/*`
+call needs the token and is subject to the allowed networks too.
+
 **Each person, one command.**
 
 ```bash

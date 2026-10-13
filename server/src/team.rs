@@ -113,6 +113,51 @@ pub fn tally(days: &[Vec<(String, i64)>]) -> BTreeMap<String, BTreeMap<String, i
     people
 }
 
+/// What the panel shows: per person, the counts of the last `days` days, and the reuse records of the period (newest
+/// first, up to `limit`), each with the label of the trail it was about.
+pub async fn summary<C: ConnectionLike + Send>(
+    con: &mut C,
+    days: i64,
+    now: i64,
+    limit: usize,
+) -> Result<(BTreeMap<String, BTreeMap<String, i64>>, Vec<Value>)> {
+    let mut per_day = Vec::new();
+    for d in 0..days.clamp(1, 365) {
+        let fields: Vec<(String, i64)> = redis::cmd("HGETALL")
+            .arg(day_key(now - d * 86_400))
+            .query_async(con)
+            .await?;
+        per_day.push(fields);
+    }
+    let since = now - days.clamp(1, 365) * 86_400;
+    let entries: Vec<String> = redis::cmd("LRANGE")
+        .arg(REUSE)
+        .arg(0)
+        .arg(REUSE_KEEP)
+        .query_async(con)
+        .await?;
+    let mut reuse = Vec::new();
+    for entry in entries
+        .iter()
+        .filter_map(|e| serde_json::from_str::<Value>(e).ok())
+        .filter(|e| e["ts"].as_i64().unwrap_or(0) >= since)
+        .take(limit)
+    {
+        let trail = entry["trail"].as_str().unwrap_or_default();
+        let label: Option<String> = redis::cmd("HGET")
+            .arg(crate::keys::trail(trail))
+            .arg("label")
+            .query_async(con)
+            .await
+            .unwrap_or(None);
+        reuse.push(json!({
+            "ts": entry["ts"], "author": entry["author"], "reporter": entry["reporter"],
+            "outcome": entry["outcome"], "trail": trail, "label": label,
+        }));
+    }
+    Ok((tally(&per_day), reuse))
+}
+
 /// `myrmo-server team-report [days]`: needs only Valkey.
 pub async fn cli(redis_url: &str, args: &[String]) -> Result<()> {
     let days: i64 = args

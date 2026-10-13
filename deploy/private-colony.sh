@@ -97,6 +97,7 @@ EOF
     "$0" status
     echo
     echo "Address for your team: $(colony_url)"
+    echo "Admin panel: $(colony_url)/admin   (the operator token is MYRMO_ADMIN_TOKEN in $ENV_FILE)"
     echo "Next: one key per person:   bash deploy/private-colony.sh keys add <name>"
     ;;
   status)

@@ -14,6 +14,12 @@ pub struct Cidr {
     prefix: u8,
 }
 
+impl std::fmt::Display for Cidr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}/{}", self.network, self.prefix)
+    }
+}
+
 impl Cidr {
     pub fn parse(text: &str) -> Option<Self> {
         let (addr, prefix) = match text.trim().split_once('/') {
