@@ -86,6 +86,25 @@ pub fn allows(peer: IpAddr, allowed: &[Cidr]) -> bool {
     allowed.is_empty() || loopback || allowed.iter().any(|c| c.contains(peer))
 }
 
+/// What a refused connection is told: the address the colony sees it as (a router that translates addresses shows up
+/// here as the address to allow) and, when that is Docker's own network, the usual cause: the caller reached the
+/// published port from the colony's own machine through `localhost`.
+pub fn refusal(peer: IpAddr) -> String {
+    let own_network = match peer {
+        IpAddr::V4(v4) => {
+            let o = v4.octets();
+            o[0] == 172 && (16..=31).contains(&o[1])
+        }
+        IpAddr::V6(_) => false,
+    };
+    let hint = if own_network {
+        " If you are on the colony's own machine, use its network address in the URL, not localhost."
+    } else {
+        ""
+    };
+    format!("This colony is not open to your network: it sees you as {peer}.{hint}")
+}
+
 /// The address quotas are counted against: the first `X-Forwarded-For` entry when the peer is a trusted proxy (the
 /// proxy writes the real client there), otherwise the peer itself, whatever the header says.
 pub fn client_address(peer: IpAddr, forwarded_for: Option<&str>, trusted: &[Cidr]) -> String {
@@ -126,6 +145,23 @@ mod tests {
             assert!(!allows(ip(outside), &team), "{outside}");
         }
         assert!(allows(ip("127.0.0.1"), &team) && allows(ip("::1"), &team));
+    }
+
+    #[test]
+    fn a_refusal_says_what_the_colony_sees_and_why_localhost_fails() {
+        let from_lan = refusal(ip("192.168.220.52"));
+        assert!(
+            from_lan.contains("it sees you as 192.168.220.52") && !from_lan.contains("localhost")
+        );
+        let from_docker = refusal(ip("172.19.0.1"));
+        assert!(
+            from_docker.contains("it sees you as 172.19.0.1")
+                && from_docker.contains("not localhost")
+        );
+        assert!(
+            !refusal(ip("172.32.0.1")).contains("localhost"),
+            "172.32 is not Docker's range"
+        );
     }
 
     #[test]
