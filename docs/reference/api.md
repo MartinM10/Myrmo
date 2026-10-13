@@ -348,6 +348,9 @@ token and answer `Cache-Control: no-store`; `501` when the colony has none, `401
 | `DELETE /v1/admin/people/{name}` | Revokes the key; it stops working at once. |
 | `GET /v1/admin/settings` | The settings in force, which of them were changed through the API, the environment's values, and the address the request came from. |
 | `PUT /v1/admin/settings` | Changes `allowed_networks` (a comma-separated list), `rate_limit_per_minute` and `publish_limit_per_hour` (0 to 100000, 0 is no limit) while the colony runs; `null` goes back to the environment's value. A list that would shut out the requester is refused with `400`. Applies within five seconds on every gateway. |
+| `GET /v1/admin/activity?days=14` | For each day, oldest first, the colony's totals (`searches`, `answered`, `published`, `rejected`) and what each person did (`people`), and when each person's key was last used (`last_seen`). |
+| `GET /v1/admin/trails?limit=20&cursor=0` | The trails as `/v1/feed` lists them, each with `author`: the person who published it, which the public feed never says. |
+| `GET /v1/admin/refused` | The addresses refused because their network is not allowed, most recent first, with a count and the last time (30 days, 100 addresses at most). |
 | `GET /v1/admin/audit` | The last 200 changes made through the operator token: keys, settings, removed trails. |
 
 ## Analytics and demand
