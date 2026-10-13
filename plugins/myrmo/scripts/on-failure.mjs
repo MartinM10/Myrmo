@@ -25,6 +25,10 @@
 //      it relied on and to share what the next person's agent would need (Stop hook): what is learned in a session
 //      otherwise leaves with it.
 //
+// And on any colony:
+//   8. When a session starts, the person is told once a day if their colony was released with a newer Myrmo plugin
+//      (SessionStart; lookup.mjs `updateNotice`). MYRMO_UPDATE_CHECK=off turns it off.
+//
 // Switch it off with `npx myrmo-mcp config hook off`, or keep only the reminders after a failure with
 // `config hook failures`; MYRMO_HOOK=off|failures does the same for one session. Tunables: MYRMO_HOOK_MIN_SECONDS
 // (default 20) between two reminders, MYRMO_HOOK_MAX (default 30) per session.
@@ -32,7 +36,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { briefEnabled, briefNote, lookup, lookupEnabled, lookupNote, lookupTask, privateColony, taskOf } from "./lookup.mjs";
+import { briefEnabled, briefNote, lookup, lookupEnabled, lookupNote, lookupTask, privateColony, taskOf, updateNotice } from "./lookup.mjs";
 
 // Commands that fail or print errors as part of normal work: a probe that found nothing, a diff that differs, a log
 // being read. Their output is not a problem of the user's.
@@ -428,6 +432,14 @@ async function main() {
     state = {};
   }
   const settings = readSettings();
+  // 8. A session starts: is this plugin older than what the colony was released with? Said to the person, not the agent.
+  if (input.hook_event_name === "SessionStart") {
+    if (hookMode(process.env, settings) === "off") return;
+    const cacheFile = join(process.env.MYRMO_HOOK_STATE_DIR || join(homedir(), ".myrmo"), "update-check.json");
+    const notice = await updateNotice({ settings, cacheFile });
+    if (notice) process.stdout.write(JSON.stringify({ systemMessage: notice }));
+    return;
+  }
   // 6. The user sent a request: what does the organisation already know about this task?
   if (input.hook_event_name === "UserPromptSubmit") {
     const task = taskOf(input.prompt);
