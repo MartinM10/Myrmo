@@ -1,8 +1,8 @@
 {
-  ".": "0.29.0",
+  ".": "0.30.0",
   "protocol": "1.5.0",
-  "server": "0.12.0",
+  "server": "0.13.0",
   "clients/typescript/packages/myrmo": "0.15.0",
-  "clients/typescript/packages/myrmo-mcp": "0.21.0",
+  "clients/typescript/packages/myrmo-mcp": "0.22.0",
   "clients/python": "0.15.0"
 }
