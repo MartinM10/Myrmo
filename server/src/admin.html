@@ -154,6 +154,7 @@
     <span class="where"><i class="dot" id="live"></i><span id="where"></span></span>
     <nav class="tabs" role="tablist" id="tabs">
       <button role="tab" data-tab="colony" aria-selected="true">Colony</button>
+      <button role="tab" data-tab="knowledge" aria-selected="false">Knowledge</button>
       <button role="tab" data-tab="people" aria-selected="false">People</button>
       <button role="tab" data-tab="settings" aria-selected="false">Settings</button>
       <button role="tab" data-tab="activity" aria-selected="false">Activity log</button>
@@ -222,7 +223,7 @@ function start() {
   show("colony");
 }
 
-const tabs = { colony, people, settings, activity };
+const tabs = { colony, knowledge, people, settings, activity };
 let current = "colony";
 function show(name) {
   current = name;
@@ -252,11 +253,14 @@ function trailCard(t, onRemove) {
   const flags = new Map((t.risk?.flags || []).map((f) => [f.command_index, f]));
   const card = el("article", { className: "trail" });
   card.dataset.open = "false";
+  const kind = t.trail?.kind && t.trail.kind !== "fix" ? t.trail.kind : null;
   const top = el("button", { className: "top", type: "button", "aria-expanded": "false" },
-    el("div", { className: "err" }, p.error_message || "(no error line)"),
+    el("div", { className: "err" }, kind ? `${kind}: ${cut(p.summary, 160)}` : (p.error_message || "(no error line)")),
     el("div", { className: "sum" }, cut(p.summary, 180)),
     el("div", { className: "meta" },
-      t.category ? el("span", { className: "pill amber" }, t.category.replaceAll("_", " ")) : null,
+      kind ? el("span", { className: "pill ok" }, kind) : null,
+      t.category && !kind ? el("span", { className: "pill amber" }, t.category.replaceAll("_", " ")) : null,
+      t.trail?.source?.type ? el("span", { className: "pill" }, "from " + t.trail.source.type) : null,
       t.trail?.environment?.runtime?.name ? el("span", { className: "pill" }, t.trail.environment.runtime.name) : null,
       riskPill(t.risk),
       t.seed ? el("span", { className: "pill" }, "seed") : null,
@@ -266,8 +270,10 @@ function trailCard(t, onRemove) {
   const list = (items, tag = "ol") => el(tag, {}, (items || []).map((x) => el("li", {}, x)));
   const body = el("div", { className: "body" },
     p.summary ? el("section", {}, el("h4", {}, "Summary"), el("p", {}, p.summary)) : null,
+    p.task_context ? el("section", {}, el("h4", {}, kind ? "When it applies" : "What the agent was doing"), el("p", {}, p.task_context)) : null,
+    t.trail?.source?.ref ? el("section", {}, el("h4", {}, "Source"), el("p", {}, `${t.trail.source.type}: ${t.trail.source.ref}${t.trail.source.revision ? " @ " + t.trail.source.revision : ""}`)) : null,
     s.root_cause ? el("section", {}, el("h4", {}, "Root cause"), el("p", {}, s.root_cause)) : null,
-    (p.failed_approaches || []).length ? el("section", {}, el("h4", {}, "Dead ends"), list(p.failed_approaches.map((a) => `${a.approach} — ${a.why_it_failed}`), "ul")) : null,
+    (p.failed_approaches || []).length ? el("section", {}, el("h4", {}, kind ? "Pitfalls" : "Dead ends"), list(p.failed_approaches.map((a) => `${a.approach} — ${a.why_it_failed}`), "ul")) : null,
     (s.steps || []).length ? el("section", {}, el("h4", {}, "Steps"), list(s.steps)) : null,
     (s.shell_commands_executed || []).length ? el("section", {}, el("h4", {}, "Commands"), ...s.shell_commands_executed.map((c, i) => {
       const f = flags.get(i);
@@ -477,6 +483,41 @@ async function people(view) {
       el("p", { className: "hint" }, "Counts are the last 30 days. \"Last seen\" is the last time the person's key was used for anything, a check included."))));
 }
 
+/* ---------- Knowledge: what the colony knows, how much of it holds, and what it is missing ---------- */
+
+async function knowledge(view) {
+  const [k, gaps, s] = await Promise.all([api("/v1/admin/knowledge"), api("/v1/admin/gaps"), api("/v1/admin/settings")]);
+  const kinds = k.kinds || {};
+  const asked = k.task_searches_30d || 0, answered = k.task_answered_30d || 0;
+  const tile = (value, label, hint) => el("div", { className: "card", style: "flex:1;min-width:150px;margin:0" }, el("div", { style: "font-size:28px;font-weight:600" }, value), el("div", {}, label), hint ? el("p", { className: "hint" }, hint) : null);
+  const kindPill = (kind) => el("span", { className: "pill " + (kind === "fix" ? "" : "ok") }, kind);
+  const rows = (block) => (block.items || []).map((i) => [kindPill(i.kind), cut(i.label, 90), meter(i.strength), num(i.outcomes?.worked), num(i.outcomes?.failed),
+    i.source?.type ? el("span", { className: "hint" }, i.source.type + (i.source.ref ? ": " + cut(i.source.ref, 40) : "")) : "agent", el("code", {}, i.trail_id.slice(0, 8))]);
+  const block = (title, b, help) => el("div", { className: "card" }, el("h2", {}, `${title} (${num(b.count)})`), el("p", { className: "hint" }, help),
+    (b.items || []).length ? table(["Kind", "About", "Strength", "Worked", "Failed", "Source", "Id"], rows(b), [3, 4]) : el("p", { className: "empty" }, "None."));
+  const note = el("p", { className: "msg" });
+  const toggle = s.read_only.private ? el("button", { className: gaps.enabled ? "quiet" : "act", onclick: async () => {
+    try { await api("/v1/admin/settings", { method: "PUT", body: JSON.stringify({ record_gaps: !gaps.enabled }) }); show("knowledge"); } catch (err) { say(note, err.message, "bad"); }
+  } }, gaps.enabled ? "Stop recording them" : "Record them") : null;
+  view.replaceChildren(el("main", { className: "plain" },
+    el("div", { className: "row", style: "gap:12px;flex-wrap:wrap;margin-bottom:12px;align-items:stretch" },
+      tile(num(k.total), "entries", [[kinds.fix, "fix", "fixes"], [kinds.procedure, "procedure", "procedures"], [kinds.fact, "fact", "facts"]].map(([n, one, many]) => `${num(n)} ${Number(n) === 1 ? one : many}`).join(" · ")),
+      tile(asked ? Math.round((100 * answered) / asked) + "%" : "–", "of tasks found an answer", `${num(answered)} of ${num(asked)} task requests in 30 days`),
+      tile(num(k.stale?.count), "stale", "no success in 90 days"),
+      tile(num(k.contested?.count), "contested", "fail more than they work")),
+    el("div", { className: "card" }, el("h2", {}, "Where it came from"),
+      table(["Source", "Entries"], Object.entries(k.sources || {}).map(([src, n]) => [src, num(n)]), [1]),
+      el("p", { className: "hint" }, "agent: written by a colleague's agent after solving or doing something. handover, document, person: imported (the import-knowledge skill turns a handover or a docs folder into entries).")),
+    el("div", { className: "card" }, el("h2", {}, `Requests nobody's knowledge answered (${num((gaps.items || []).length)}, ${gaps.days} days)`),
+      el("p", { className: "hint" }, gaps.enabled ? "What people asked their agents to do that the colony knew nothing about: what to write down next. Kept redacted for 30 days." : s.read_only.private ? "Off. When on, the task requests the colony could not answer are kept (redacted, 30 days) so you can see what knowledge is missing. Tell the team before turning it on." : "Only a private colony keeps requests."),
+      el("div", { className: "row" }, toggle), note,
+      (gaps.items || []).length ? table(["When", "Who", "Request"], gaps.items.slice(0, 100).map((g) => [new Date(g.at).toLocaleString(), g.who || "–", g.text])) : null),
+    block("Contested", k.contested || {}, "More failures than successes: probably wrong or out of date. Check it, correct it (publish a new version) or remove it from the Colony tab."),
+    block("Stale", k.stale || {}, "Nobody has confirmed it for 90 days: its strength halved. Fine for rare tasks; for frequent ones it may no longer be true."),
+    block("Unconfirmed", k.unconfirmed || {}, "No agent reported on it in its first two weeks. Imported handovers start here until agents use them."),
+    block("Most used", k.most_used || {}, "What saves the team most work.")));
+}
+
 /* ---------- Settings ---------- */
 
 async function settings(view) {
@@ -506,7 +547,10 @@ async function settings(view) {
     } }, "Save")), note,
     el("p", { className: "hint" }, "If a change locks everyone out, on the colony's machine run: docker compose -p myrmo-private --env-file .env.private exec gateway myrmo-server settings reset")),
     el("div", { className: "card" }, el("h2", {}, "Set when the colony starts (read only)"),
-      table(["Setting", "Value"], [["Access keys required", s.read_only.require_key ? "yes" : "no"], ["Decision engine", s.read_only.decision_engine], ["Server version", s.read_only.version],
+      table(["Setting", "Value"], [["Access keys required", s.read_only.require_key ? "yes" : "no"],
+        ["Organisation mode", s.read_only.private ? "on: network names kept, procedures and facts accepted, nothing rejected as sensitive" : "off"],
+        ["Task index", s.read_only.task_index ? "on: agents are told what the colony knows when a task starts" : "off"],
+        ["Decision engine", s.read_only.decision_engine], ["Server version", s.read_only.version],
         ["Networks from the environment", s.from_environment.allowed_networks.join(", ") || "everyone"]]),
       el("p", { className: "hint" }, "The operator token, the salt, the ports and the engine are not changed from a web page on purpose: they live in .env.private, readable only on the colony's machine."))));
 }
