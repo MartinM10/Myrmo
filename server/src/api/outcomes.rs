@@ -274,8 +274,16 @@ pub(super) async fn report_outcome(
         && caller.declared
         && let (Some(outcome), Some(author)) = (analytics_outcome.as_deref(), author.as_deref())
         && author != caller.agent
-        && let Err(err) =
-            crate::team::record_reuse(&mut con, now, &id, author, &caller.agent, outcome).await
+        && let Err(err) = crate::team::record_reuse(
+            &mut con,
+            st.cfg.people_detail,
+            now,
+            &id,
+            author,
+            &caller.agent,
+            outcome,
+        )
+        .await
     {
         tracing::warn!(error = %err, "team reuse not recorded");
     }

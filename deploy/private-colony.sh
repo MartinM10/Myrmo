@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # An organisation's private colony on one machine (Linux with Docker), in one command, plus what you need afterwards.
 #
-#   MYRMO_ALLOWED_NETWORKS=192.168.219.0/24 bash deploy/private-colony.sh up
+#   MYRMO_ALLOWED_NETWORKS=10.20.0.0/24 bash deploy/private-colony.sh up
 #                                                    # build and start it; keys required, only that network may connect
 #   bash deploy/private-colony.sh keys add ana       # a person's access key (shown once) with a message ready to send them
 #                                                    # also: keys list, keys revoke ana, invite ana <key>
 #   bash deploy/private-colony.sh stats              # what the colony knows: fixes, procedures, facts, and how healthy
 #   bash deploy/private-colony.sh gaps               # task requests nobody's knowledge answered (when recording is on)
-#   bash deploy/private-colony.sh report [days]      # what each person did with it, and reuse between people
+#   bash deploy/private-colony.sh report [days]      # what the team did with it, and reuse between people
 #   bash deploy/private-colony.sh status             # is it up, and does it refuse a request without a key
 #   bash deploy/private-colony.sh doctor             # every check, with what to do about each failure
 #   bash deploy/private-colony.sh upgrade            # pull this checkout, rebuild and restart; data and keys stay
@@ -29,7 +29,9 @@ PROJECT="${MYRMO_PROJECT:-myrmo-private}"
 ENV_FILE="${MYRMO_ENV_FILE:-.env.private}"
 PORT="${MYRMO_PORT:-8080}"
 TASK_MODEL="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
-compose() { docker compose -p "$PROJECT" --env-file "$ENV_FILE" "$@"; }
+# The settings file is the source of truth once written: a MYRMO_ALLOWED_NETWORKS left in the shell from the first `up`
+# (or `any`) would otherwise win over it, since compose prefers the shell's variables to the env file's.
+compose() { env -u MYRMO_ALLOWED_NETWORKS docker compose -p "$PROJECT" --env-file "$ENV_FILE" "$@"; }
 
 [ -f docker-compose.yml ] || { echo "Run this from the root of the Myrmo repository." >&2; exit 1; }
 docker compose version >/dev/null 2>&1 || { echo "Docker with the compose plugin is needed (docker compose version)." >&2; exit 1; }
@@ -65,7 +67,20 @@ ensure_settings() {
   add MYRMO_TASK_EMBED_URL http://embed:80/task
   add EMBED_TASK_MODEL "$TASK_MODEL"
   add MYRMO_RECORD_GAPS 0
+  # Data protection: the team is counted as a whole unless the organisation chose to name people (and told them).
+  add MYRMO_PEOPLE_DETAIL aggregate
+  # A share of error lookups answered with nothing, to measure what the colony saves (Value tab). 0: off.
+  add MYRMO_HOLDOUT_PERCENT 0
   [ -z "$added" ] || echo "Added to $ENV_FILE:$added"
+}
+
+# What the colony counts about each person, in words for the invitation.
+people_line() {
+  if grep -q '^MYRMO_PEOPLE_DETAIL=named' "$ENV_FILE" 2>/dev/null; then
+    echo "your searches, reports and publications, counted per day by name and kept 90 days"
+  else
+    echo "your searches, reports and publications only as team totals, never by name"
+  fi
 }
 
 # The message to send a person: what the colony is, what they need, the one command, and how to check it worked.
@@ -98,6 +113,9 @@ of it, save this message to a file, delete the key line from your chat, and use 
 What is shared: credentials, people's names, e-mails and customer data are removed; internal tool, service, machine and
 network names are kept on purpose, because that is what the next agent needs. Tell the person who set this up if
 something looks wrong or gets in the way.
+What the colony keeps about you: your name and key, when it was last used and which Myrmo version you run (to manage
+access); $(people_line); and, from Claude Code, what solving a problem cost (tokens, time, model; no text), kept only as
+team totals (npx myrmo-mcp config effort off stops it). Ask the person who set this up to see or erase your data.
 ----------------------------------------------------------------------
 MSG
 }
@@ -150,7 +168,7 @@ case "${1:-}" in
     if [ ! -f "$ENV_FILE" ]; then
       if [ -z "${MYRMO_ALLOWED_NETWORKS:-}" ]; then
         echo "Say which network may connect, for example:" >&2
-        echo "  MYRMO_ALLOWED_NETWORKS=192.168.219.0/24 bash deploy/private-colony.sh up" >&2
+        echo "  MYRMO_ALLOWED_NETWORKS=10.20.0.0/24 bash deploy/private-colony.sh up" >&2
         echo "(several: separate them with commas; a single address works too; 'any' leaves it open to whoever can reach it)" >&2
         exit 2
       fi

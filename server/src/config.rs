@@ -66,6 +66,13 @@ pub struct Config {
     /// Keep the task requests the colony could not answer (redacted, 30 days), so the operator sees what knowledge is
     /// missing (`MYRMO_RECORD_GAPS=1`). Private colonies only; the panel can switch it while the colony runs.
     pub record_gaps: bool,
+    /// What a private colony keeps about each person's activity (`MYRMO_PEOPLE_DETAIL`). `aggregate`, the default, counts
+    /// the team as a whole; `named` also counts per person, which in most jurisdictions means telling the people and,
+    /// where the law requires it, their representatives first (docs/security/employees.md).
+    pub people_detail: PeopleDetail,
+    /// Share of error lookups, in percent, answered with nothing so the colony can measure what solving an error costs
+    /// without its help (`MYRMO_HOLDOUT_PERCENT`, 0 to 20; organisation colonies only). The panel can change it.
+    pub holdout_percent: u64,
     /// Public address of the website, used to build approval links for drafts.
     pub public_url: String,
     /// Minimum cosine similarity for a semantic match.
@@ -80,6 +87,31 @@ pub struct Config {
     pub consumer_name: String,
 }
 
+/// See `Config::people_detail`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PeopleDetail {
+    Aggregate,
+    Named,
+}
+
+impl PeopleDetail {
+    pub fn parse(value: Option<&str>) -> Self {
+        match value.map(str::to_ascii_lowercase).as_deref() {
+            Some("named") => Self::Named,
+            _ => Self::Aggregate,
+        }
+    }
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Aggregate => "aggregate",
+            Self::Named => "named",
+        }
+    }
+}
+
+/// The largest share of lookups a colony may hold out: beyond it, the people it serves lose too much help.
+pub const HOLDOUT_MAX: u64 = 20;
+
 fn var(key: &str) -> Option<String> {
     env::var(key)
         .ok()
@@ -91,6 +123,7 @@ impl Config {
     pub fn from_env() -> Self {
         let get = |key: &str, default: &str| var(key).unwrap_or_else(|| default.to_string());
         let require_key = get("MYRMO_REQUIRE_KEY", "0") == "1";
+        let private = var("MYRMO_PRIVATE").map_or(require_key, |v| v == "1");
         let collection = get("MYRMO_COLLECTION", "trails");
         Self {
             bind: get("MYRMO_BIND", "0.0.0.0:8080"),
@@ -106,7 +139,16 @@ impl Config {
                 .parse()
                 .unwrap_or(0.55),
             record_gaps: var("MYRMO_RECORD_GAPS").is_some_and(|v| v == "1"),
-            private: var("MYRMO_PRIVATE").map_or(require_key, |v| v == "1"),
+            private,
+            people_detail: PeopleDetail::parse(var("MYRMO_PEOPLE_DETAIL").as_deref()),
+            holdout_percent: if private {
+                get("MYRMO_HOLDOUT_PERCENT", "0")
+                    .parse::<u64>()
+                    .unwrap_or(0)
+                    .min(HOLDOUT_MAX)
+            } else {
+                0
+            },
             embed_url: get("MYRMO_EMBED_URL", "http://127.0.0.1:8081")
                 .trim_end_matches('/')
                 .to_string(),
@@ -143,8 +185,37 @@ impl Config {
         }
     }
 
+    /// `organisation` for an organisation's own colony, `public` otherwise: what the colony declares to clients
+    /// (`GET /v1/version`), so they know whether to keep internal names without being told by each person.
+    pub fn profile(&self) -> &'static str {
+        if self.private {
+            "organisation"
+        } else {
+            "public"
+        }
+    }
+
     /// What this colony removes from trails, searches and reports.
     pub fn redaction(&self) -> crate::redact::Policy {
         crate::redact::Policy::for_colony(self.private)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn people_are_counted_as_a_team_unless_named_is_asked_for() {
+        assert_eq!(PeopleDetail::parse(None), PeopleDetail::Aggregate);
+        assert_eq!(
+            PeopleDetail::parse(Some("aggregate")),
+            PeopleDetail::Aggregate
+        );
+        assert_eq!(PeopleDetail::parse(Some("NAMED")), PeopleDetail::Named);
+        assert_eq!(
+            PeopleDetail::parse(Some("everyone")),
+            PeopleDetail::Aggregate
+        );
     }
 }

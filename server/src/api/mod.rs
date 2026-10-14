@@ -4,6 +4,7 @@
 //! trails; the handlers live in the submodules, one per part of the API.
 
 pub mod admin;
+mod effort;
 mod feed;
 mod outcomes;
 mod publish;
@@ -13,8 +14,9 @@ mod trails;
 use admin::{
     activity as admin_activity, add_person, audit_list, gaps as admin_gaps, get_settings,
     knowledge as admin_knowledge, map as admin_map, page as admin_page, people, put_settings,
-    refused, revoke_person, trails as admin_trails,
+    refused, revoke_person, trails as admin_trails, value as admin_value,
 };
+use effort::report_effort;
 use feed::{activity, analytics, demand, feed, stats};
 use outcomes::report_outcome;
 use publish::{create_draft, discard_draft, get_draft, publish, publish_draft, validate};
@@ -68,10 +70,8 @@ pub fn router(state: AppState) -> Router {
         .route("/v1/feed", get(feed))
         .route("/v1/activity", get(activity))
         .route("/v1/stats", get(stats))
-        .route(
-            "/v1/version",
-            get(|| async { Json(crate::versions::describe()) }),
-        )
+        .route("/v1/version", get(version))
+        .route("/v1/effort", post(report_effort))
         .route("/v1/analytics", get(analytics))
         .route("/v1/demand", get(demand))
         .route("/v1/admin/people", get(people).post(add_person))
@@ -87,6 +87,7 @@ pub fn router(state: AppState) -> Router {
         .route("/v1/admin/knowledge", get(admin_knowledge))
         .route("/v1/admin/map", get(admin_map))
         .route("/v1/admin/refused", get(refused))
+        .route("/v1/admin/value", get(admin_value))
         .layer(middleware::from_fn_with_state(state.clone(), rate_limit))
         .route("/admin", get(admin_page))
         .route("/healthz", get(|| async { "ok" }))
@@ -100,6 +101,18 @@ pub fn router(state: AppState) -> Router {
             network_filter,
         ))
         .with_state(state)
+}
+
+/// `GET /v1/version`: the versions released together, and what this colony is (`colony`), so clients set themselves up
+/// from the colony instead of from each person's flags.
+async fn version(State(st): State<AppState>) -> Json<Value> {
+    let mut body = crate::versions::describe();
+    body["colony"] = crate::versions::colony(
+        &st.cfg,
+        admin::live(&st).await.holdout_percent,
+        st.tasks.is_some(),
+    );
+    Json(body)
 }
 
 // ---------------------------------------------------------------------------
@@ -318,12 +331,13 @@ async fn rate_limit(
     let minute = now / 60;
     let mut con = st.redis();
     let mut pipe = redis::pipe();
-    // A private colony counts what each person does with it (`myrmo-server team-report`).
+    // A private colony counts what its team does with it (`myrmo-server team-report`): as a whole, or per person when the
+    // organisation chose to name people (MYRMO_PEOPLE_DETAIL=named).
     if st.cfg.require_key
         && declared
         && let Some(kind) = crate::team::activity(req.method().as_str(), req.uri().path())
     {
-        crate::team::count(&mut pipe, &agent, kind, now);
+        crate::team::count(&mut pipe, st.cfg.people_detail, &agent, kind, now);
     }
     if st.cfg.require_key && declared {
         crate::team::seen(&mut pipe, &agent, now);

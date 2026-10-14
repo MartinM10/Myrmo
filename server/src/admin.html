@@ -830,6 +830,10 @@
         <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"/><path d="M6 6h10M6 10h10"/></svg>
         Knowledge
       </button>
+      <button role="tab" data-tab="value" aria-selected="false">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="m7 15 4-4 3 3 5-6"/></svg>
+        Value
+      </button>
       <button role="tab" data-tab="map" aria-selected="false">
         <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
         Map
@@ -977,7 +981,7 @@ $("toggle-pwd-btn").onclick = () => {
 };
 
 // Navigation
-const tabs = { colony, knowledge, map, people, settings, activity };
+const tabs = { colony, knowledge, value, map, people, settings, activity };
 let current = "colony";
 let mapStop = null;
 let mapFocus = null;
@@ -1178,7 +1182,7 @@ async function colony(view) {
   if (recentRefused.length) {
     alerts.push(["warn", `${recentRefused.length} address(es) were rejected in the last 24h because their subnet is unlisted. Allow them from the rail.`]);
   }
-  const waiting = people.filter((p) => !seen[p.name] && p.name !== "claude-vm");
+  const waiting = people.filter((p) => !seen[p.name]);
   if (waiting.length) {
     alerts.push(["info", "New team keys not yet connected: " + waiting.map((p) => p.name).join(", ") + "."]);
   }
@@ -1280,8 +1284,8 @@ async function colony(view) {
       el("div", { className: "sec-title" }, "Cross-Agent Reuse"),
       (team.reuse || []).length ? el("ul", { className: "activity-list" }, team.reuse.slice(0, 6).map((e) => el("li", { className: "activity-item" },
         el("div", {},
-          el("span", { style: "font-weight:600" }, e.reporter),
-          el("span", { style: "color:var(--dust)" }, " used @" + e.author + "'s trail: "),
+          el("span", { style: "font-weight:600" }, e.reporter || "A colleague"),
+          el("span", { style: "color:var(--dust)" }, e.author ? " used @" + e.author + "'s trail: " : " used a colleague's trail: "),
           el("span", { style: "color:var(--chalk)" }, cut(e.label || e.trail, 34))),
         el("span", { className: "pill " + (e.outcome === "worked" ? "ok" : "warn"), style: "margin-left:auto" }, e.outcome)))) : el("p", { className: "hint" }, "No reuse recorded yet.")),
     el("div", { className: "rail-card" },
@@ -2294,14 +2298,80 @@ async function knowledge(view) {
 }
 
 /* ========================================================================= */
+/* TAB: VALUE                                                                */
+/* ========================================================================= */
+
+async function value(view) {
+  const v = await api("/v1/admin/value?days=30");
+  const hours = (s) => (Number(s || 0) / 3600).toFixed(1);
+  const money = (d) => d == null ? "–" : "$" + Number(d).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const kpi = (val, label, sub = "") => el("div", { className: "stat-card" }, el("div", { className: "val" }, val), el("div", { className: "lbl" }, label), sub ? el("div", { className: "sub" }, sub) : null);
+
+  const estimateCard = (title, e, explain) => el("div", { className: "stat-card", style: "margin-bottom:20px" },
+    el("h2", { style: "margin:0 0 4px;font:600 1.05rem var(--f-display)" }, title),
+    el("p", { className: "hint", style: "margin:0 0 14px" }, explain),
+    e.errors ? [
+      el("div", { style: "display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:14px" },
+        kpi(num(e.aided_records), "Problems solved with help", `${num(e.errors)} error(s) with both sides measured`),
+        kpi(num(e.saved.tokens), "Tokens saved"),
+        kpi(hours(e.saved.seconds) + " h", "Agent time saved"),
+        kpi(money(e.saved.dollars), "Saved", e.saved.dollars == null ? "set prices in Settings" : "at your prices")),
+      table(["Per problem", "Records", "Tokens", "Minutes", "Turns", "Cost"], ["without", "with"].map((k) => {
+        const m = e.per_problem[k];
+        return [k === "without" ? "Without the colony" : "With the colony", num(m.records), num(m.tokens), (m.seconds / 60).toFixed(1), num(m.turns), money(m.dollars)];
+      }), [1, 2, 3, 4]),
+      e.aided_without_baseline ? el("p", { className: "hint", style: "margin:10px 0 0" }, `${num(e.aided_without_baseline)} problem(s) solved with help are left out: nobody was measured solving those errors without it.`) : null,
+    ] : el("p", { className: "hint", style: "margin:0" }, "Not enough records yet: this needs at least one error measured both without and with the colony's help."));
+
+  const maxDay = Math.max(1, ...(v.days || []).map((d) => d.aided + d.unaided + d.holdout));
+  const bars = el("div", { style: "display:flex;align-items:flex-end;gap:3px;height:70px;margin-top:8px" },
+    (v.days || []).map((d) => el("div", { title: `${d.date}: ${d.aided} with help, ${d.unaided} without, ${d.holdout} held out`, style: "flex:1;display:flex;flex-direction:column-reverse;height:100%" },
+      el("i", { style: `height:${(d.unaided / maxDay) * 100}%;background:var(--wall)` }),
+      el("i", { style: `height:${(d.holdout / maxDay) * 100}%;background:var(--amber)` }),
+      el("i", { style: `height:${(d.aided / maxDay) * 100}%;background:var(--moss)` }))));
+
+  setChildren(view, el("div", { className: "view-container" },
+    el("div", { className: "page-header" },
+      el("div", { className: "page-title" },
+        el("h1", {}, "Value"),
+        el("p", {}, "What solving problems costs your agents with and without the colony: tokens, time and money, measured by their clients."))),
+    !v.collecting ? el("div", { className: "alert-banner info", style: "margin-bottom:20px" }, el("span", { className: "alert-text" }, "Only an organisation's private colony collects measured effort.")) : null,
+    (v.prices_missing || []).length ? el("div", { className: "alert-banner warn", style: "margin-bottom:20px" },
+      el("span", { className: "alert-text" }, "No price for " + v.prices_missing.join(", ") + ": dollars are left out where they are used. Add them in Settings.")) : null,
+    estimateCard("Before and after", v.before_after, "Every error measured both without help and with it. An estimate: errors people solved alone may differ from the ones the colony knew."),
+    estimateCard("Hold-out (randomised)", v.holdout, v.holdout_percent
+      ? `${v.holdout_percent}% of error lookups are answered with nothing at random; those problems are the control group, so this difference is caused by the colony.`
+      : "Off. Set a hold-out of a few percent in Settings to measure the colony against a randomised control group."),
+    el("div", { className: "stat-card", style: "margin-bottom:20px" },
+      el("h2", { style: "margin:0 0 12px;font:600 1.05rem var(--f-display)" }, "Models"),
+      el("p", { className: "hint", style: "margin:0 0 12px" }, "Which models solved problems with the colony's help and without it: a cheaper model that solves with help what a stronger one solved alone is a saving in price per token."),
+      (v.models || []).length ? table(["Model", "Without help", "Tokens / problem", "With help", "Tokens / problem", "Priced"],
+        v.models.map((m) => [m.model, num(m.without_records), num(m.without_tokens_per_problem), num(m.with_records), num(m.with_tokens_per_problem), m.priced ? "yes" : el("span", { className: "pill warn" }, "no")]), [1, 2, 3, 4])
+        : el("p", { className: "hint" }, "No records yet.")),
+    el("div", { className: "stat-card", style: "margin-bottom:20px" },
+      el("h2", { style: "margin:0 0 4px;font:600 1.05rem var(--f-display)" }, "Records, last 30 days"),
+      el("p", { className: "hint", style: "margin:0" }, "Green: solved with help. Amber: held out. Grey: solved without help."),
+      bars),
+    el("div", { className: "stat-card" },
+      el("h2", { style: "margin:0 0 6px;font:600 1.05rem var(--f-display)" }, "How it is worked out"),
+      el("p", { className: "hint", style: "margin:0" }, v.method),
+      el("p", { className: "hint", style: "margin:8px 0 0" }, "Records hold numbers only (tokens, seconds, turns, model) and are kept as totals per error and per day, never per person."))));
+}
+
+/* ========================================================================= */
 /* TAB: PEOPLE                                                               */
 /* ========================================================================= */
 
-function invitation(name, key) {
+function invitation(name, key, detail) {
+  const people = detail === "named"
+    ? "your searches, reports and publications, counted per day by name and kept 90 days"
+    : "your searches, reports and publications only as team totals, never by name";
   return `Hi ${name},
 
-We now have a shared memory for our coding agents: when your agent solves an error, the next agent that hits it
-gets the solution automatically. It runs on our own machine; nothing goes to the internet. You need the team network.
+We now have a shared memory for our coding agents. When you start a task, your agent is told what the team already
+knows about it (procedures, which machine does what, errors that usually come up); when a command fails, it gets the
+fix someone's agent already found; and what it learns is shared with the team. It runs on our own machine; nothing
+goes to the internet. You need the team network.
 
 You need: Node.js 20 or newer (node --version) and Claude Code and/or Antigravity.
 
@@ -2309,11 +2379,16 @@ You need: Node.js 20 or newer (node --version) and Claude Code and/or Antigravit
 
    npx myrmo-mcp@latest init --url ${location.origin} --key ${key} --private --publish auto
 
-2. If you use Claude Code, also update its plugin:  claude plugin marketplace update myrmo && claude plugin update myrmo@myrmo
-3. Restart Claude Code / Antigravity. In Antigravity, accept the permission for the myrmo tools ("always").
+2. Restart Claude Code / Antigravity. In Antigravity, accept the permission for the myrmo tools ("always").
+3. In Claude Code, let it update by itself: /plugin > Marketplaces > myrmo > Enable auto-update.
 4. Check it:   npx myrmo-mcp@latest doctor     (it says what to fix, if anything)
 
 The command is in your shell history with the key in it: delete that line (history -d) or edit it out.
+What is shared: credentials, people's names, e-mails and customer data are removed; internal tool, service, machine and
+network names are kept on purpose, because that is what the next agent needs.
+What the colony keeps about you: your name and key, when it was last used and which Myrmo version you run (to manage
+access); ${people}; and, from Claude Code, what solving a problem cost (tokens, time, model; no text), kept only as team
+totals (npx myrmo-mcp config effort off stops it). Ask the person who set this up to see or erase your data.
 `;
 }
 
@@ -2343,7 +2418,7 @@ async function people(view) {
     try {
       const made = await api("/v1/admin/people", { method: "POST", body: JSON.stringify({ name: who }) });
       nameInput.value = ""; say(note, "");
-      const inviteMsg = invitation(made.name, made.key);
+      const inviteMsg = invitation(made.name, made.key, data.people_detail);
       const text = el("textarea", { readOnly: true, value: inviteMsg, style: "min-height:220px;font-family:var(--f-display);font-size:.82rem" });
       const copyBtn = el("button", { className: "btn btn-act", onclick: () => copyToClipboard(inviteMsg, copyBtn) }, "Copy Invitation");
 
@@ -2380,6 +2455,27 @@ async function people(view) {
     const p = d.people?.[n] || {};
     return (p.searches || 0) + (p.published || 0) + (p.reports || 0);
   });
+  const named = data.people_detail === "named";
+  const t = data.team || {};
+
+  const revoke = async (p, erase) => {
+    const ask = erase
+      ? "Revoke @" + p.name + "'s key and erase everything kept about their activity (counts, last use, client versions, their name in reuse records and as author)? This cannot be undone."
+      : "Revoke the key of @" + p.name + "? It stops working at once.";
+    if (!confirm(ask)) return;
+    try {
+      const r = await api("/v1/admin/people/" + encodeURIComponent(p.name) + (erase ? "?erase=true" : ""), { method: "DELETE" });
+      showToast(erase ? `Key revoked and ${num(r.erased)} item(s) erased for ${p.name}` : "Key revoked for " + p.name);
+      show("people");
+    } catch (err) { alert(err.message); }
+  };
+  const actions = (p) => el("div", { style: "display:flex;gap:6px" },
+    el("button", { className: "btn btn-danger btn-sm", onclick: () => revoke(p, false) }, "Revoke"),
+    el("button", { className: "btn btn-quiet btn-sm", title: "Revoke and erase this person's data (right to erasure)", onclick: () => revoke(p, true) }, "Erase"));
+  const member = (p) => el("div", { style: "display:flex;align-items:center;gap:8px" },
+    el("div", { className: "user-avatar-circle" }, p.name.slice(0, 2).toUpperCase()),
+    el("span", { style: "font-weight:600" }, p.name));
+  const lastSeen = (p) => seen[p.name] ? ago(seen[p.name]) : el("span", { className: "pill warn" }, "not connected");
 
   setChildren(view, el("div", { className: "view-container" },
     el("div", { className: "page-header" },
@@ -2392,36 +2488,22 @@ async function people(view) {
       el("div", { style: "display:flex;gap:8px;max-width:440px" }, nameInput, addBtn),
       note,
       secret),
+    el("div", { className: "stat-card", style: "margin-bottom:20px" },
+      el("h2", { style: "margin:0 0 6px;font:600 1.05rem var(--f-display)" }, `The team, last ${data.days} days`),
+      el("p", { className: "hint", style: "margin:0 0 12px" }, named
+        ? "People are counted by name (MYRMO_PEOPLE_DETAIL=named), and those counts are kept for 90 days. Your organisation should have told them, and their representatives where the law asks for it."
+        : "The team is counted as a whole (MYRMO_PEOPLE_DETAIL=aggregate): the colony keeps no activity per person. Keys, last use and client versions are kept to manage access."),
+      table(["Searches", "Published", "Reports", "Reused a colleague's trail", "…and it worked"],
+        [[num(t.searches), num(t.published), num(t.reports), num(t.used_others), num(t.used_others_worked)]], [0, 1, 2, 3, 4])),
     el("div", { className: "stat-card" },
       el("h2", { style: "margin:0 0 12px;font:600 1.05rem var(--f-display)" }, `Active Team Members (${data.people.length})`),
-      data.people.length ? table(
-        ["Member", "Joined", "Last Seen", "Client Version", "14d Activity", "Searches", "Published", "Reports", "Used Others", "Helped Team", ""],
-        data.people.map((p) => [
-          el("div", { style: "display:flex;align-items:center;gap:8px" },
-            el("div", { className: "user-avatar-circle" }, p.name.slice(0, 2).toUpperCase()),
-            el("span", { style: "font-weight:600" }, p.name)),
-          day(p.created),
-          seen[p.name] ? ago(seen[p.name]) : el("span", { className: "pill warn" }, "not connected"),
-          versions(p),
-          spark(perDay(p.name)),
-          num(p.searches),
-          num(p.published),
-          num(p.reports),
-          num(p.used_others),
-          num(p.helped_others),
-          el("button", {
-            className: "btn btn-danger btn-sm",
-            onclick: async () => {
-              if (!confirm("Revoke key for @" + p.name + "? Immediate effect.")) return;
-              try {
-                await api("/v1/admin/people/" + encodeURIComponent(p.name), { method: "DELETE" });
-                showToast("Key revoked for " + p.name);
-                show("people");
-              } catch (err) { alert(err.message); }
-            }
-          }, "Revoke")
-        ]), [5, 6, 7, 8, 9])
-        : el("p", { className: "hint" }, "No team members created yet."))));
+      !data.people.length ? el("p", { className: "hint" }, "No team members created yet.")
+        : named ? table(
+          ["Member", "Joined", "Last Seen", "Client Version", "14d Activity", "Searches", "Published", "Reports", "Used Others", "Helped Team", ""],
+          data.people.map((p) => [member(p), day(p.created), lastSeen(p), versions(p), spark(perDay(p.name)),
+            num(p.searches), num(p.published), num(p.reports), num(p.used_others), num(p.helped_others), actions(p)]), [5, 6, 7, 8, 9])
+        : table(["Member", "Joined", "Last Seen", "Client Version", ""],
+          data.people.map((p) => [member(p), day(p.created), lastSeen(p), versions(p), actions(p)])))));
 }
 
 /* ========================================================================= */
@@ -2435,6 +2517,18 @@ async function settings(view) {
   const nets = el("input", { type: "text", value: s.allowed_networks.join(", "), placeholder: "e.g. 192.168.1.0/24 (empty: all allowed)", spellcheck: false });
   const rate = el("input", { type: "text", value: String(s.rate_limit_per_minute), inputMode: "numeric" });
   const pub = el("input", { type: "text", value: String(s.publish_limit_per_hour), inputMode: "numeric" });
+  const hold = el("input", { type: "text", value: String(s.holdout_percent ?? 0), inputMode: "numeric", disabled: !s.read_only.private });
+  const prices = el("textarea", { value: Object.keys(s.prices || {}).length ? JSON.stringify(s.prices, null, 2) : "", spellcheck: false,
+    placeholder: '{ "claude-opus-5-5": { "input": 4, "output": 20, "cache_read": 0.2, "cache_write": 5 } }',
+    style: "min-height:150px;font-family:var(--f-display);font-size:.8rem" });
+  // Anthropic's public list prices per million tokens on 2026-10-06, where they were published. Cache writes and the
+  // cache reads not listed are left for the operator: they depend on the cache duration and on the contract.
+  const LIST_PRICES = {
+    "claude-fable-5-1": { input: 10, output: 50, cache_read: 0.25, cache_write: null },
+    "claude-opus-5-5": { input: 4, output: 20, cache_read: 0.2, cache_write: null },
+    "claude-sonnet-5-5": { input: 2, output: 10, cache_read: 0.2, cache_write: null },
+    "claude-haiku-5-5": { input: 0.1, output: 0.5, cache_read: null, cache_write: null },
+  };
 
   const originPill = (k) => el("span", { className: "pill " + (s.overridden.includes(k) ? "amber" : "") },
     s.overridden.includes(k) ? "changed here" : "from environment");
@@ -2465,12 +2559,28 @@ async function settings(view) {
       field("Allowed Networks (CIDR)", "allowed_networks", nets, "Comma-separated subnets allowed to query colony. Your IP: " + s.your_address),
       field("Requests per minute / user", "rate_limit_per_minute", rate, "0 = unlimited queries."),
       field("Publishes per hour / user", "publish_limit_per_hour", pub, "0 = unlimited publishes."),
+      field("Hold-out (% of error lookups)", "holdout_percent", hold, s.read_only.private
+        ? "0 to 20. That share of error lookups is answered with nothing, at random, so the Value tab can compare problems solved with and without the colony. It costs those people the colony's help: tell them, and keep it small (5 is enough)."
+        : "Only an organisation's private colony measures itself."),
+      field("Prices per million tokens (USD)", "prices", prices, "What your organisation pays for each model (input, output, cache_read, cache_write). The Value tab only gives dollars for models priced here."),
+      el("button", { className: "btn btn-quiet btn-sm", style: "margin:-8px 0 16px", onclick: () => {
+        prices.value = JSON.stringify(LIST_PRICES, null, 2);
+        say(note, "Filled with Anthropic's public list prices of 2026-10-06. Fill the empty ones (null) from your contract or provider before saving.");
+      } }, "Fill Claude list prices (2026-10-06)"),
       el("div", { style: "margin-top:16px" },
         el("button", { className: "btn btn-act", onclick: () => {
           const patch = {};
           if (nets.value.trim() !== s.allowed_networks.join(", ")) patch.allowed_networks = nets.value.trim();
           if (rate.value.trim() !== String(s.rate_limit_per_minute)) patch.rate_limit_per_minute = Number(rate.value);
           if (pub.value.trim() !== String(s.publish_limit_per_hour)) patch.publish_limit_per_hour = Number(pub.value);
+          if (s.read_only.private && hold.value.trim() !== String(s.holdout_percent ?? 0)) patch.holdout_percent = Number(hold.value);
+          const before = Object.keys(s.prices || {}).length ? JSON.stringify(s.prices, null, 2) : "";
+          if (prices.value.trim() !== before.trim()) {
+            if (!prices.value.trim()) patch.prices = null;
+            else {
+              try { patch.prices = JSON.parse(prices.value); } catch { return say(note, "The prices are not valid JSON.", "bad"); }
+            }
+          }
           if (!Object.keys(patch).length) return showToast("No changes detected");
           send(patch, "Settings saved and propagated across gateways.");
         } }, "Save Changes")),
@@ -2479,6 +2589,8 @@ async function settings(view) {
       el("h2", { style: "margin:0 0 12px;font:600 1.05rem var(--f-display)" }, "Startup Environment Parameters (Read-Only)"),
       table(["Parameter", "Configured Value"], [
         ["Access Keys Enforced", s.read_only.require_key ? "yes" : "no"],
+        ["Profile Declared to Clients", s.read_only.profile],
+        ["Activity Kept per Person", s.read_only.people_detail === "named" ? "named (MYRMO_PEOPLE_DETAIL=named, 90 days)" : "no: team totals only"],
         ["Organization Private Mode", s.read_only.private ? "enabled" : "disabled"],
         ["Task Semantic Index", s.read_only.task_index ? "enabled" : "disabled"],
         ["Embedding / Decision Engine", s.read_only.decision_engine],

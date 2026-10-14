@@ -12,6 +12,7 @@ mod analytics;
 mod api;
 mod config;
 mod decision;
+mod effort;
 mod embed;
 mod enricher;
 mod fingerprint;

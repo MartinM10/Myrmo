@@ -52,8 +52,37 @@ fn answered_lookup(fp: &str, model: Option<String>) -> crate::analytics::Lookup<
     }
 }
 
+/// Whether the colony answers this lookup with nothing on purpose (`crate::effort::held_out`, organisation colonies
+/// with `holdout_percent` above 0). It is noted for a day or two, so that the effort the person's agent reports for this
+/// error counts in the control group, and counted per day; the person is not told, or the group would not be one.
+async fn hold_out(st: &AppState, caller: &Caller, fp: &str, now: i64) -> bool {
+    if !st.cfg.private || !caller.declared {
+        return false;
+    }
+    let percent = super::admin::live(st).await.holdout_percent;
+    if !crate::effort::held_out(&caller.agent, fp, now / 86_400, percent) {
+        return false;
+    }
+    let mut con = st.redis();
+    let noted: redis::RedisResult<()> = redis::cmd("SET")
+        .arg(crate::effort::holdout_key(&caller.agent, fp))
+        .arg(1)
+        .arg("EX")
+        .arg(2 * 86_400)
+        .query_async(&mut con)
+        .await;
+    if let Err(err) = noted {
+        // Without the note the record would count as an ordinary unaided one: answer as usual instead.
+        tracing::warn!(error = %err, "hold-out not noted");
+        return false;
+    }
+    crate::analytics::record(&mut con, now, &[("holdout", None, 1)]).await;
+    true
+}
+
 pub(super) async fn by_fingerprint(
     State(st): State<AppState>,
+    Extension(caller): Extension<Caller>,
     headers: HeaderMap,
     Path(fp): Path<String>,
 ) -> ApiResult<Response> {
@@ -66,6 +95,10 @@ pub(super) async fn by_fingerprint(
     if fp.starts_with(fingerprint::PREFIX_V1) {
         let err = json!({ "error": { "code": "not_found", "message": "fp1 fingerprints are no longer indexed: compute an fp2 (the message alone) or update your client." } });
         return Ok(cacheable(err, StatusCode::NOT_FOUND, 3600));
+    }
+    if hold_out(&st, &caller, &fp, keys::now()).await {
+        let err = json!({ "error": { "code": "not_found", "message": "No trail for this fingerprint yet." } });
+        return Ok(cacheable(err, StatusCode::NOT_FOUND, 60));
     }
     let mut con = st.redis();
     let cached: Option<String> = con.get(keys::fingerprint_cache(&fp)).await?;
@@ -181,6 +214,11 @@ pub(super) async fn search(
         .unwrap_or_default();
     let fp = fingerprint::fingerprint2(&query);
     let now = keys::now();
+    if hold_out(&st, &caller, &fp, now).await {
+        return Ok(Json(
+            json!({ "fingerprint": fp, "results": [], "notice": NOTICE }),
+        ));
+    }
 
     let mut con = st.redis();
     let fp_ids: Vec<String> = con.smembers(keys::fingerprint(&fp)).await?;
