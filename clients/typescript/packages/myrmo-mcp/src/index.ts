@@ -50,6 +50,26 @@ const USAGE = `myrmo-mcp ${VERSION}: the Myrmo MCP server and its commands.
 
 Docs: https://myrmo.dev/docs/reference/mcp`;
 const COMMANDS = ["init", "doctor", "config", "export"];
+const INIT_USAGE = `myrmo-mcp init [options]: set up the agents on this machine to use Myrmo.
+
+  (no options)                 every agent client found: Claude Code (plugin), Cursor, Windsurf, Gemini CLI,
+                               Antigravity, Claude Desktop, VS Code (Copilot), OpenCode, Codex; the public colony
+  --client <id>[,<id>]         only these: claude-code, cursor, windsurf, gemini, antigravity, claude-desktop,
+                               vscode, opencode, codex
+  --url <colony>               your organisation's colony instead of the public one
+  --key <key> | --key-file <f> its access key (the file may be the invitation message)
+  --publish auto|ask|off       how agents publish to that colony (otherwise you are asked the first time)
+  --private                    only for a colony older than protocol 1.7 (newer ones say what they are)
+  --agents-md [file]           also write the usage rules into this repository's AGENTS.md
+  --read-only                  with --agents-md: agents in this repository search and report, never publish
+  --no-rules                   do not write usage rules into Gemini CLI's or Windsurf's global instructions
+  --dry-run                    show what would change, change nothing
+
+Afterwards: npx myrmo-mcp doctor (checks everything), npx myrmo-mcp config (shows and changes settings).`;
+if (args[0] === "init" && (flag("--help") || flag("-h"))) {
+  console.log(INIT_USAGE);
+  process.exit(0);
+}
 if (flag("--help") || flag("-h") || args[0] === "help") {
   console.log(USAGE);
   process.exit(0);
@@ -71,6 +91,13 @@ if (args[0] === "config") {
       console.log(`  ${row.key.padEnd(20)} ${row.value.padEnd(7)} (${row.source}) ${row.about}  [${row.values}]`);
     }
     console.log(`  ${"agent id".padEnd(20)} ${readConfig().agent_id ?? "(created on first use)"}   a random pseudonym; delete it from the file for a new one`);
+    // Which colony this machine uses: the one thing a person most needs to know before an agent publishes anything.
+    const saved = readConfig().colony;
+    const inUse = process.env.MYRMO_URL?.trim() || saved?.url || "https://myrmo.dev";
+    const where = process.env.MYRMO_URL?.trim() ? "MYRMO_URL" : saved?.url ? "file" : "default";
+    const kind = /^https?:\/\/(www\.)?myrmo\.dev\/?$/i.test(inUse) ? "the PUBLIC colony: what is published there is public" : "your own colony";
+    console.log(`  ${"colony".padEnd(20)} ${inUse}   (${where}) ${kind}${saved?.api_key && saved.url === inUse ? ", with an access key" : ""}`);
+    console.log("  To change it: npx myrmo-mcp init --url <colony> --key-file <file>; back to the public colony: npx myrmo-mcp init --url https://myrmo.dev");
     console.log("\nChange one with: npx myrmo-mcp config <setting> <value>      (<value> = reset restores the default)");
   } else if (value === undefined) {
     console.error("Usage: myrmo-mcp config [<setting> <value>]");

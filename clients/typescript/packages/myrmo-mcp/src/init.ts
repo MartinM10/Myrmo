@@ -542,5 +542,9 @@ export function parseInitArgs(args: string[]): InitOptions | string {
   }
   if (opts.readOnly && !opts.agentsMd) return "--read-only goes with --agents-md";
   if (opts.readOnly && opts.private) return "--read-only and --private cannot go together";
+  // A key for a colony of one's own is an organisation's colony: since protocol 1.7 the invitation needs no --private,
+  // and without this the Antigravity hook and the organisation's rules would not be installed. If the colony says it is
+  // public, its declaration still wins when the server starts.
+  if (opts.url && opts.key && !opts.readOnly) opts.private = true;
   return opts;
 }
