@@ -1,177 +1,882 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex">
 <title>Myrmo colony admin</title>
 <style>
-  /* The same palette as the website: dark loam by default, limestone when the system asks for light. No outside resource. */
+  /* Modern Developer Console Design System - 100% Self-Contained, Zero External Resources */
   :root {
-    --soil: #13100c; --tunnel: #1c1813; --wall: #2d261d; --chalk: #ede4d3; --dust: #9d9282;
-    --amber: #ffb23e; --amber-ink: #ffb23e; --moss: #93d17f; --ember: #ef7a62; --ochre: #e0c35a; --code-bg: #0e0c09;
-    --f-display: ui-monospace, "SF Mono", "Martian Mono", Menlo, Consolas, monospace;
-    --f-body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-    --radius: 6px; color-scheme: dark;
+    --soil: #0e0c0a;
+    --soil-subtle: #14110e;
+    --tunnel: #191511;
+    --card: #201a14;
+    --card-hover: #28211a;
+    --wall: #322920;
+    --wall-light: #483b2f;
+    --chalk: #f5eee3;
+    --dust: #a39685;
+    --subtle: #706555;
+
+    --amber: #f59e0b;
+    --amber-hover: #d97706;
+    --amber-ink: #fbbf24;
+    --amber-glow: rgba(245, 158, 11, 0.22);
+    --moss: #10b981;
+    --moss-glow: rgba(16, 185, 129, 0.22);
+    --ember: #ef4444;
+    --ember-glow: rgba(239, 68, 68, 0.22);
+    --ochre: #eab308;
+    --sapphire: #3b82f6;
+    --sapphire-glow: rgba(59, 130, 246, 0.22);
+    --amethyst: #a855f7;
+    --cyan: #06b6d4;
+
+    --code-bg: #090806;
+    --canvas-bg: #0d0b09;
+    --f-display: ui-monospace, "SF Mono", "Cascadia Code", "Martian Mono", Menlo, Consolas, monospace;
+    --f-body: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    
+    --radius-sm: 6px;
+    --radius: 10px;
+    --radius-lg: 14px;
+    --radius-full: 9999px;
+    
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+    --shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+    --shadow-lg: 0 12px 30px rgba(0, 0, 0, 0.6);
+    --shadow-glow: 0 0 24px var(--amber-glow);
+    
+    color-scheme: dark;
   }
-  @media (prefers-color-scheme: light) {
-    :root {
-      --soil: #ebe8e1; --tunnel: #f7f5f0; --wall: #d6d0c4; --chalk: #1c1813; --dust: #645c50;
-      --amber: #e8901c; --amber-ink: #a35a00; --moss: #2f7d32; --ember: #b8402a; --ochre: #8a6d00; --code-bg: #1c1813;
-      color-scheme: light;
-    }
+
+  [data-theme="light"] {
+    --soil: #f8f6f0;
+    --soil-subtle: #ede9df;
+    --tunnel: #ffffff;
+    --card: #ffffff;
+    --card-hover: #f3efe4;
+    --wall: #d8d0c0;
+    --wall-light: #beb4a2;
+    --chalk: #1c1813;
+    --dust: #6e6456;
+    --subtle: #968c7e;
+
+    --amber: #d97706;
+    --amber-hover: #b45309;
+    --amber-ink: #92400e;
+    --amber-glow: rgba(217, 119, 6, 0.15);
+    --moss: #059669;
+    --moss-glow: rgba(5, 150, 105, 0.15);
+    --ember: #dc2626;
+    --ember-glow: rgba(220, 38, 38, 0.15);
+    --ochre: #ca8a04;
+    --sapphire: #2563eb;
+    --sapphire-glow: rgba(37, 99, 235, 0.15);
+    --amethyst: #9333ea;
+    --cyan: #0891b2;
+
+    --code-bg: #1c1813;
+    --canvas-bg: #f5f2e9;
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+    --shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+    --shadow-lg: 0 12px 28px rgba(0, 0, 0, 0.12);
+    --shadow-glow: 0 0 20px rgba(217, 119, 6, 0.12);
+
+    color-scheme: light;
   }
+
   * { box-sizing: border-box; }
-  html { -webkit-text-size-adjust: 100%; }
-  body { margin: 0; background: var(--soil); color: var(--chalk); font: 15px/1.55 var(--f-body); }
-  a { color: var(--amber-ink); }
-  code, .mono { font-family: var(--f-display); font-size: .86em; }
+  html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--soil);
+    color: var(--chalk);
+    font: 14.5px/1.6 var(--f-body);
+    min-height: 100vh;
+    letter-spacing: -0.01em;
+  }
+  a { color: var(--amber-ink); text-decoration: none; transition: color .15s; }
+  a:hover { text-decoration: underline; }
+  code, .mono { font-family: var(--f-display); font-size: .88em; }
   [hidden] { display: none !important; }
 
-  /* Top bar */
-  .nav { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 18px; flex-wrap: wrap; padding: 12px 28px; background: color-mix(in srgb, var(--soil) 92%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--wall); }
-  .wordmark { display: flex; align-items: baseline; gap: 10px; font-family: var(--f-display); font-weight: 600; letter-spacing: .02em; }
-  .wordmark b { color: var(--amber-ink); font-size: 1.05rem; }
-  .wordmark span { color: var(--dust); font-size: .8rem; font-weight: 400; }
-  .where { color: var(--dust); font-family: var(--f-display); font-size: .75rem; display: inline-flex; gap: 8px; align-items: center; }
-  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--dust); display: inline-block; }
-  .dot.ok { background: var(--moss); } .dot.bad { background: var(--ember); } .dot.warn { background: var(--ochre); }
-  .tabs { display: flex; gap: 2px; margin-left: auto; flex-wrap: wrap; }
-  .tabs button { background: none; border: 0; border-bottom: 2px solid transparent; color: var(--dust); padding: 8px 12px; cursor: pointer; font: 500 .9rem var(--f-body); }
-  .tabs button[aria-selected="true"] { color: var(--chalk); border-bottom-color: var(--amber); }
-  .tabs button:hover { color: var(--chalk); }
+  /* Top Navigation Bar */
+  .nav {
+    position: sticky; top: 0; z-index: 100;
+    display: flex; align-items: center; gap: 16px;
+    padding: 10px 24px;
+    background: color-mix(in srgb, var(--soil) 88%, transparent);
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    border-bottom: 1px solid var(--wall);
+  }
+  .brand-group { display: flex; align-items: center; gap: 14px; }
+  .logo-badge {
+    display: flex; align-items: center; gap: 10px;
+    font-family: var(--f-display); font-weight: 700; font-size: 1.05rem;
+    color: var(--chalk);
+    letter-spacing: -0.02em;
+  }
+  .logo-ant {
+    width: 26px; height: 26px;
+    background: linear-gradient(135deg, var(--amber), #f97316);
+    border-radius: 7px;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 0 12px var(--amber-glow);
+    color: #120e0a;
+  }
+  .logo-ant svg { width: 18px; height: 18px; fill: currentColor; }
+  .logo-tag {
+    font-size: .68rem; font-family: var(--f-display);
+    padding: 2px 7px; border-radius: var(--radius-full);
+    background: var(--card); border: 1px solid var(--wall);
+    color: var(--dust); text-transform: uppercase; letter-spacing: .08em;
+  }
 
-  /* Heading and stats */
-  .head { padding: 28px 28px 0; max-width: 1480px; margin: 0 auto; }
-  .head h1 { font: 600 1.6rem var(--f-display); margin: 0 0 4px; font-stretch: 87.5%; }
-  .head p { color: var(--dust); margin: 0; max-width: 64ch; }
-  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-top: 20px; }
-  .stat { background: var(--tunnel); border: 1px solid var(--wall); border-radius: var(--radius); padding: 12px 14px; }
-  .stat b { display: block; font: 600 1.45rem var(--f-display); }
-  .stat span { color: var(--dust); font-size: .8rem; }
-  .stat b.ok { color: var(--moss); } .stat b.bad { color: var(--ember); } .stat b.warn { color: var(--ochre); }
+  .beacon-status {
+    position: relative;
+    display: inline-flex; align-items: center; gap: 8px;
+    font-family: var(--f-display); font-size: .76rem; color: var(--dust);
+    background: var(--tunnel); border: 1px solid var(--wall);
+    padding: 3px 10px; border-radius: var(--radius-full);
+    cursor: pointer; user-select: none; transition: border-color .15s;
+  }
+  .beacon-status:hover { border-color: var(--wall-light); color: var(--chalk); }
+  .pulse-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--moss); box-shadow: 0 0 8px var(--moss-glow);
+    display: inline-block; position: relative;
+  }
+  .pulse-dot.bad { background: var(--ember); box-shadow: 0 0 8px var(--ember-glow); }
+  .pulse-dot.warn { background: var(--ochre); }
+  .pulse-dot::after {
+    content: ''; position: absolute; inset: -3px; border-radius: 50%;
+    border: 1.5px solid currentColor; opacity: .4; animation: beaconPulse 2s infinite ease-out;
+  }
+  @keyframes beaconPulse { 0% { transform: scale(.8); opacity: .8; } 100% { transform: scale(2.2); opacity: 0; } }
 
-  /* Alerts */
-  .alerts { display: grid; gap: 8px; margin-top: 16px; }
-  .alert { display: flex; gap: 10px; align-items: flex-start; border: 1px solid var(--wall); border-left-width: 3px; border-radius: var(--radius); padding: 9px 12px; background: var(--tunnel); font-size: .9rem; }
-  .alert.bad { border-left-color: var(--ember); } .alert.warn { border-left-color: var(--ochre); } .alert.info { border-left-color: var(--amber); }
-  .alert button { margin-left: auto; }
+  .nav-tabs {
+    display: flex; gap: 4px; margin-left: auto;
+    background: var(--soil-subtle); padding: 4px;
+    border-radius: var(--radius); border: 1px solid var(--wall);
+  }
+  .nav-tabs button {
+    background: transparent; border: 0;
+    color: var(--dust); padding: 6px 14px;
+    border-radius: var(--radius-sm); cursor: pointer;
+    font: 500 .86rem var(--f-body);
+    display: inline-flex; align-items: center; gap: 6px;
+    transition: all .15s ease;
+  }
+  .nav-tabs button:hover { color: var(--chalk); background: color-mix(in srgb, var(--tunnel) 60%, transparent); }
+  .nav-tabs button[aria-selected="true"] {
+    color: #ffffff;
+    background: var(--card);
+    border: 1px solid var(--wall-light);
+    box-shadow: var(--shadow-sm);
+    font-weight: 600;
+  }
+  [data-theme="light"] .nav-tabs button[aria-selected="true"] { color: var(--chalk); }
+  .nav-tabs button .badge {
+    background: var(--wall); color: var(--dust);
+    font: 600 .68rem var(--f-display); padding: 1px 6px;
+    border-radius: var(--radius-full);
+  }
+  .nav-tabs button[aria-selected="true"] .badge {
+    background: var(--amber); color: #120e0a;
+  }
 
-  /* Shell: filters | feed | rail */
-  .shell { display: grid; grid-template-columns: 200px minmax(0, 1fr) 320px; gap: 26px; padding: 22px 28px 70px; max-width: 1480px; margin: 0 auto; align-items: start; }
-  @media (max-width: 1180px) { .shell { grid-template-columns: 180px minmax(0, 1fr); } .rail { grid-column: 1 / -1; } }
-  @media (max-width: 820px) { .shell { grid-template-columns: minmax(0, 1fr); padding: 16px; } .nav, .head { padding-left: 16px; padding-right: 16px; } }
-  .eyebrow { font: 500 .7rem var(--f-display); text-transform: uppercase; letter-spacing: .1em; color: var(--dust); margin: 0 0 8px; }
-  .filters fieldset { border: 0; padding: 0; margin: 0 0 18px; }
-  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
-  .chip { background: var(--tunnel); border: 1px solid var(--wall); color: var(--dust); border-radius: 999px; padding: 3px 10px; cursor: pointer; font: .8rem var(--f-body); }
-  .chip[aria-pressed="true"] { color: var(--soil); background: var(--amber); border-color: var(--amber); font-weight: 600; }
-  .chip small { opacity: .7; margin-left: 4px; }
-  .toolbar { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
-  .toolbar input[type="search"] { flex: 1 1 260px; }
+  .nav-actions { display: flex; align-items: center; gap: 8px; margin-left: 8px; }
+  .icon-btn {
+    width: 32px; height: 32px; border-radius: var(--radius-sm);
+    background: var(--tunnel); border: 1px solid var(--wall);
+    color: var(--dust); display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: all .15s; padding: 0;
+  }
+  .icon-btn:hover { color: var(--chalk); border-color: var(--wall-light); background: var(--card); }
+  .icon-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 
-  /* Trail cards */
-  .feed { display: grid; gap: 10px; }
-  .trail { background: var(--tunnel); border: 1px solid var(--wall); border-radius: var(--radius); }
-  .trail > button.top { all: unset; display: block; width: 100%; box-sizing: border-box; padding: 12px 14px; cursor: pointer; }
-  .trail > button.top:focus-visible { outline: 2px solid var(--amber); outline-offset: -2px; }
-  .trail .err { font: 600 .9rem/1.4 var(--f-display); overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-  .trail[data-open="true"] .err { -webkit-line-clamp: unset; }
-  .trail .sum { color: var(--dust); font-size: .88rem; margin-top: 4px; overflow-wrap: anywhere; }
-  .trail .meta { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-top: 8px; }
-  .pill { display: inline-block; border: 1px solid var(--wall); border-radius: 999px; padding: 0 8px; font: .72rem var(--f-display); color: var(--dust); }
-  .pill.ok { color: var(--moss); border-color: color-mix(in srgb, var(--moss) 45%, transparent); }
-  .pill.warn { color: var(--ochre); border-color: color-mix(in srgb, var(--ochre) 45%, transparent); }
-  .pill.bad { color: var(--ember); border-color: color-mix(in srgb, var(--ember) 50%, transparent); }
-  .pill.amber { color: var(--amber-ink); border-color: color-mix(in srgb, var(--amber) 50%, transparent); }
-  .meter { display: inline-flex; gap: 6px; align-items: center; margin-left: auto; font: .72rem var(--f-display); color: var(--dust); }
-  .meter .cells { display: inline-flex; gap: 2px; }
-  .meter i { width: 5px; height: 11px; border-radius: 1px; background: var(--wall); }
-  .meter i.on { background: var(--amber); }
-  .body { display: none; border-top: 1px solid var(--wall); padding: 12px 14px 14px; }
-  .trail[data-open="true"] .body { display: grid; gap: 14px; }
-  .body h4 { font: 500 .7rem var(--f-display); text-transform: uppercase; letter-spacing: .1em; color: var(--dust); margin: 0 0 4px; }
-  .body p, .body ol, .body ul { margin: 0; padding-left: 0; overflow-wrap: anywhere; }
-  .body ol, .body ul { padding-left: 1.3em; }
-  .cmd { background: var(--code-bg); border: 1px solid var(--wall); border-radius: var(--radius); padding: 8px 10px; margin-top: 6px; color: #ede4d3; }
-  .cmd.risky { border-color: var(--ember); }
-  .cmd pre { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font: .8rem/1.5 var(--f-display); }
-  .cmd .why { color: #9d9282; font-size: .78rem; margin-bottom: 4px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-  .outcomes { display: flex; gap: 14px; font: .8rem var(--f-display); color: var(--dust); flex-wrap: wrap; }
-  .outcomes b { color: var(--chalk); }
+  /* Page Containers */
+  .view-container { max-width: 1560px; margin: 0 auto; padding: 24px 28px 80px; }
+  @media (max-width: 900px) { .view-container { padding: 16px 16px 60px; } }
 
-  /* Rail */
-  .rail { display: grid; gap: 20px; }
-  .block { background: var(--tunnel); border: 1px solid var(--wall); border-radius: var(--radius); padding: 14px; }
-  .list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; font-size: .86rem; }
-  .list li { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
-  .list .when { margin-left: auto; color: var(--dust); font: .72rem var(--f-display); }
-  .empty { color: var(--dust); font-size: .86rem; margin: 0; }
-  .legend { display: flex; gap: 12px; flex-wrap: wrap; font: .72rem var(--f-display); color: var(--dust); margin-top: 8px; }
-  .legend i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
-  svg text { font: 10px var(--f-display); fill: var(--dust); }
+  .page-header {
+    display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between;
+    gap: 16px; margin-bottom: 24px;
+  }
+  .page-title h1 {
+    font: 700 1.7rem/1.2 var(--f-display);
+    margin: 0 0 6px; letter-spacing: -0.03em;
+  }
+  .page-title p { color: var(--dust); margin: 0; max-width: 68ch; font-size: .92rem; }
 
-  /* Forms, tables, buttons */
-  main.plain { max-width: 1040px; margin: 0 auto; padding: 24px 28px 70px; }
-  @media (max-width: 820px) { main.plain { padding: 16px; } }
-  input, textarea, select { font: inherit; color: var(--chalk); background: var(--soil); border: 1px solid var(--wall); border-radius: var(--radius); padding: 8px 10px; }
-  input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 2px solid var(--amber); outline-offset: 1px; }
-  input[type="text"], input[type="password"], textarea { width: 100%; }
-  textarea { font-family: var(--f-display); font-size: .8rem; min-height: 280px; }
-  label { display: block; font-weight: 600; font-size: .82rem; margin: 14px 0 4px; }
-  .hint { color: var(--dust); font-size: .84rem; margin: 4px 0 0; }
-  button.act { background: var(--amber); color: #1c1813; border: 0; border-radius: var(--radius); padding: 8px 14px; cursor: pointer; font: 600 .88rem var(--f-body); }
-  button.quiet { background: none; border: 1px solid var(--wall); color: var(--chalk); border-radius: var(--radius); padding: 5px 10px; cursor: pointer; font: .84rem var(--f-body); }
-  button.danger { background: none; border: 1px solid var(--ember); color: var(--ember); border-radius: var(--radius); padding: 4px 10px; cursor: pointer; font: .84rem var(--f-body); }
-  button:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
-  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-  .card { background: var(--tunnel); border: 1px solid var(--wall); border-radius: var(--radius); padding: 16px 18px; margin-bottom: 16px; }
-  .card h2 { font: 600 .95rem var(--f-display); margin: 0 0 10px; }
-  table { width: 100%; border-collapse: collapse; font-size: .88rem; }
-  th, td { text-align: left; padding: 8px; border-bottom: 1px solid var(--wall); vertical-align: middle; }
-  th { color: var(--dust); font: 500 .7rem var(--f-display); text-transform: uppercase; letter-spacing: .08em; }
+  /* Stats Grid */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 12px; margin-bottom: 24px;
+  }
+  .stat-card {
+    background: var(--tunnel);
+    border: 1px solid var(--wall);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    position: relative; overflow: hidden;
+    transition: transform .15s, border-color .15s;
+    box-shadow: var(--shadow-sm);
+  }
+  .stat-card:hover { border-color: var(--wall-light); transform: translateY(-1px); }
+  .stat-card .val {
+    font: 700 1.6rem/1.1 var(--f-display);
+    color: var(--chalk); letter-spacing: -0.03em;
+  }
+  .stat-card .lbl {
+    color: var(--dust); font-size: .78rem; font-weight: 500;
+    margin-top: 6px; text-transform: uppercase; letter-spacing: .06em;
+  }
+  .stat-card .sub { color: var(--subtle); font-size: .76rem; margin-top: 4px; font-family: var(--f-display); }
+  .stat-card.ok .val { color: var(--moss); }
+  .stat-card.warn .val { color: var(--ochre); }
+  .stat-card.bad .val { color: var(--ember); }
+  .stat-card.amber .val { color: var(--amber-ink); }
+
+  /* Banner Alerts */
+  .alerts-list { display: grid; gap: 10px; margin-bottom: 24px; }
+  .alert-banner {
+    display: flex; align-items: center; gap: 14px;
+    padding: 12px 18px; border-radius: var(--radius);
+    background: var(--tunnel); border: 1px solid var(--wall);
+    border-left: 4px solid var(--amber);
+    font-size: .88rem; box-shadow: var(--shadow-sm);
+  }
+  .alert-banner.bad { border-left-color: var(--ember); background: color-mix(in srgb, var(--ember) 6%, var(--tunnel)); }
+  .alert-banner.warn { border-left-color: var(--ochre); background: color-mix(in srgb, var(--ochre) 6%, var(--tunnel)); }
+  .alert-banner.info { border-left-color: var(--sapphire); background: color-mix(in srgb, var(--sapphire) 6%, var(--tunnel)); }
+  .alert-banner .alert-icon { font-size: 1.1rem; flex-shrink: 0; }
+  .alert-banner .alert-text { flex: 1; color: var(--chalk); }
+
+  /* Three Column Colony Shell */
+  .colony-shell {
+    display: grid;
+    grid-template-columns: 220px minmax(0, 1fr) 330px;
+    gap: 24px; align-items: start;
+  }
+  @media (max-width: 1240px) { .colony-shell { grid-template-columns: 200px minmax(0, 1fr); } .colony-rail { grid-column: 1 / -1; } }
+  @media (max-width: 860px) { .colony-shell { grid-template-columns: minmax(0, 1fr); } }
+
+  /* Filters Sidebar */
+  .filter-panel {
+    background: var(--tunnel); border: 1px solid var(--wall);
+    border-radius: var(--radius); padding: 18px;
+    position: sticky; top: 70px;
+  }
+  .filter-sec { margin-bottom: 20px; }
+  .filter-sec:last-child { margin-bottom: 0; }
+  .sec-title {
+    font: 600 .72rem var(--f-display); text-transform: uppercase;
+    letter-spacing: .08em; color: var(--dust); margin: 0 0 10px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .chips-cloud { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip-btn {
+    background: var(--card); border: 1px solid var(--wall);
+    color: var(--dust); border-radius: var(--radius-full);
+    padding: 3px 10px; cursor: pointer; font: 500 .78rem var(--f-body);
+    transition: all .15s; display: inline-flex; align-items: center; gap: 6px;
+  }
+  .chip-btn:hover { border-color: var(--wall-light); color: var(--chalk); background: var(--card-hover); }
+  .chip-btn[aria-pressed="true"] {
+    background: var(--amber); border-color: var(--amber);
+    color: #120e0a; font-weight: 600;
+  }
+  .chip-btn .chip-count {
+    font-family: var(--f-display); font-size: .72rem; opacity: .75;
+  }
+
+  /* Toolbar */
+  .feed-toolbar {
+    display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px;
+    align-items: center;
+  }
+  .search-input-wrap {
+    flex: 1 1 280px; position: relative;
+    display: flex; align-items: center;
+  }
+  .search-input-wrap svg {
+    position: absolute; left: 12px; width: 16px; height: 16px;
+    color: var(--dust); pointer-events: none;
+  }
+  .search-input-wrap input {
+    width: 100%; padding-left: 36px; padding-right: 32px;
+  }
+  .clear-btn {
+    position: absolute; right: 8px; width: 20px; height: 20px;
+    border-radius: 50%; border: 0; background: var(--wall);
+    color: var(--dust); cursor: pointer; display: flex; align-items: center; justify-content: center;
+    font-size: 11px; padding: 0;
+  }
+  .clear-btn:hover { color: var(--chalk); background: var(--wall-light); }
+
+  /* Trail Cards */
+  .feed-list { display: grid; gap: 12px; }
+  .trail-card {
+    background: var(--tunnel);
+    border: 1px solid var(--wall);
+    border-radius: var(--radius);
+    transition: border-color .15s, box-shadow .15s;
+    overflow: hidden;
+  }
+  .trail-card:hover { border-color: var(--wall-light); box-shadow: var(--shadow-sm); }
+  .trail-summary-btn {
+    all: unset; display: block; width: 100%; box-sizing: border-box;
+    padding: 14px 18px; cursor: pointer;
+  }
+  .trail-summary-btn:focus-visible { outline: 2px solid var(--amber); outline-offset: -2px; }
+  .trail-header-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+  .trail-err-title {
+    font: 600 .94rem/1.4 var(--f-display);
+    color: var(--chalk); overflow-wrap: anywhere;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .trail-card[data-open="true"] .trail-err-title { -webkit-line-clamp: unset; }
+  .trail-desc {
+    color: var(--dust); font-size: .88rem; margin-top: 5px;
+    overflow-wrap: anywhere;
+  }
+  .trail-meta-pills {
+    display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-top: 10px;
+  }
+
+  .pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    border: 1px solid var(--wall); border-radius: var(--radius-full);
+    padding: 2px 9px; font: 500 .72rem var(--f-display); color: var(--dust);
+    background: var(--card); white-space: nowrap;
+  }
+  .pill.ok { color: var(--moss); border-color: color-mix(in srgb, var(--moss) 35%, transparent); background: color-mix(in srgb, var(--moss) 8%, var(--card)); }
+  .pill.warn { color: var(--ochre); border-color: color-mix(in srgb, var(--ochre) 35%, transparent); background: color-mix(in srgb, var(--ochre) 8%, var(--card)); }
+  .pill.bad { color: var(--ember); border-color: color-mix(in srgb, var(--ember) 40%, transparent); background: color-mix(in srgb, var(--ember) 8%, var(--card)); }
+  .pill.amber { color: var(--amber-ink); border-color: color-mix(in srgb, var(--amber) 40%, transparent); background: color-mix(in srgb, var(--amber) 8%, var(--card)); }
+  .pill.sapphire { color: var(--sapphire); border-color: color-mix(in srgb, var(--sapphire) 40%, transparent); background: color-mix(in srgb, var(--sapphire) 8%, var(--card)); }
+
+  /* Strength Meter Bar */
+  .strength-badge {
+    margin-left: auto; display: inline-flex; align-items: center; gap: 7px;
+    font: 600 .74rem var(--f-display); color: var(--chalk);
+    background: var(--card); border: 1px solid var(--wall);
+    padding: 2px 8px; border-radius: var(--radius-sm);
+  }
+  .strength-cells { display: inline-flex; gap: 2.5px; }
+  .strength-cells i {
+    width: 4px; height: 11px; border-radius: 1px;
+    background: var(--wall);
+  }
+  .strength-cells i.on { background: var(--amber); box-shadow: 0 0 4px var(--amber-glow); }
+
+  /* Trail Card Expandable Body */
+  .trail-body {
+    display: none; border-top: 1px solid var(--wall);
+    padding: 16px 18px 18px; background: color-mix(in srgb, var(--soil) 40%, var(--tunnel));
+    gap: 16px;
+  }
+  .trail-card[data-open="true"] .trail-body { display: grid; }
+  .trail-sec-title {
+    font: 600 .72rem var(--f-display); text-transform: uppercase;
+    letter-spacing: .08em; color: var(--dust); margin: 0 0 6px;
+  }
+  .pitfalls-box {
+    background: color-mix(in srgb, var(--ember) 8%, var(--tunnel));
+    border: 1px solid color-mix(in srgb, var(--ember) 35%, transparent);
+    border-radius: var(--radius-sm); padding: 10px 14px;
+    color: var(--chalk); font-size: .88rem;
+  }
+  .pitfalls-box ul { margin: 0; padding-left: 1.2rem; }
+  .pitfalls-box li { margin-bottom: 4px; }
+  .pitfalls-box li:last-child { margin-bottom: 0; }
+
+  .cmd-block {
+    background: var(--code-bg);
+    border: 1px solid var(--wall);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px; margin-top: 6px;
+    position: relative;
+  }
+  .cmd-block.risky { border-color: var(--ember); }
+  .cmd-block pre {
+    margin: 0; white-space: pre-wrap; overflow-wrap: anywhere;
+    font: .82rem/1.5 var(--f-display); color: var(--chalk);
+  }
+  .cmd-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 6px; font-size: .78rem; color: var(--dust);
+  }
+  .copy-code-btn {
+    background: var(--card); border: 1px solid var(--wall);
+    color: var(--dust); border-radius: var(--radius-sm);
+    padding: 2px 7px; font-size: .72rem; cursor: pointer; transition: all .15s;
+  }
+  .copy-code-btn:hover { color: var(--chalk); border-color: var(--wall-light); }
+
+  /* Outcomes Bar */
+  .outcomes-strip {
+    display: flex; gap: 12px; flex-wrap: wrap; align-items: center;
+    background: var(--card); border: 1px solid var(--wall);
+    padding: 8px 12px; border-radius: var(--radius-sm);
+    font: .8rem var(--f-display); color: var(--dust);
+  }
+  .outcomes-strip b { color: var(--chalk); font-weight: 600; }
+
+  /* Pulse Rail */
+  .colony-rail { display: grid; gap: 16px; }
+  .rail-card {
+    background: var(--tunnel); border: 1px solid var(--wall);
+    border-radius: var(--radius); padding: 16px;
+    box-shadow: var(--shadow-sm);
+  }
+  .activity-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; font-size: .86rem; }
+  .activity-item { display: flex; gap: 10px; align-items: center; }
+  .user-avatar-circle {
+    width: 26px; height: 26px; border-radius: 50%;
+    background: var(--card); border: 1px solid var(--wall);
+    display: flex; align-items: center; justify-content: center;
+    font: 600 .7rem var(--f-display); color: var(--amber-ink);
+    flex-shrink: 0;
+  }
+  .activity-item .time-ago { margin-left: auto; color: var(--dust); font: .72rem var(--f-display); }
+
+  /* Base Form Elements */
+  input, textarea, select {
+    font: inherit; color: var(--chalk);
+    background: var(--tunnel);
+    border: 1px solid var(--wall);
+    border-radius: var(--radius-sm);
+    padding: 8px 12px;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  input:focus-visible, textarea:focus-visible, select:focus-visible {
+    outline: none; border-color: var(--amber);
+    box-shadow: 0 0 0 3px var(--amber-glow);
+  }
+  input[type="text"], input[type="password"], input[type="search"], textarea { width: 100%; }
+
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    padding: 8px 14px; border-radius: var(--radius-sm); cursor: pointer;
+    font: 600 .86rem var(--f-body); border: 0; transition: all .15s;
+    user-select: none; white-space: nowrap;
+  }
+  .btn-act {
+    background: var(--amber); color: #120e0a;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  }
+  .btn-act:hover { background: var(--amber-hover); transform: translateY(-1px); }
+  .btn-quiet {
+    background: var(--card); border: 1px solid var(--wall); color: var(--chalk);
+  }
+  .btn-quiet:hover { background: var(--card-hover); border-color: var(--wall-light); }
+  .btn-danger {
+    background: color-mix(in srgb, var(--ember) 10%, transparent);
+    border: 1px solid var(--ember); color: var(--ember);
+  }
+  .btn-danger:hover { background: var(--ember); color: #ffffff; }
+  .btn-sm { padding: 4px 10px; font-size: .8rem; }
+
+  /* Tables */
+  .table-wrap {
+    overflow-x: auto; background: var(--tunnel);
+    border: 1px solid var(--wall); border-radius: var(--radius);
+  }
+  table { width: 100%; border-collapse: collapse; font-size: .88rem; text-align: left; }
+  th, td { padding: 10px 14px; border-bottom: 1px solid var(--wall); vertical-align: middle; }
+  tr:last-child td { border-bottom: 0; }
+  tr:hover td { background: color-mix(in srgb, var(--card) 40%, transparent); }
+  th {
+    background: var(--soil-subtle); color: var(--dust);
+    font: 600 .72rem var(--f-display); text-transform: uppercase;
+    letter-spacing: .08em;
+  }
   td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
-  .scroll { overflow-x: auto; }
-  .msg { margin: 10px 0 0; font-size: .88rem; } .msg.ok { color: var(--moss); } .msg.bad { color: var(--ember); }
-  .secret { border: 1px solid var(--ochre); background: color-mix(in srgb, var(--ochre) 8%, var(--tunnel)); border-radius: var(--radius); padding: 12px 14px; margin-top: 12px; }
-  #login { max-width: 440px; margin: 14vh auto; }
+
+  /* ========================================================================= */
+  /* REDESIGNED MAP TAB - CLEAN, UNCLUTTERED, WORLD-CLASS                      */
+  /* ========================================================================= */
+  .map-wrapper {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 340px;
+    gap: 16px; align-items: stretch;
+    height: calc(100vh - 120px); min-height: 640px;
+  }
+  @media (max-width: 1100px) {
+    .map-wrapper { grid-template-columns: minmax(0, 1fr); height: auto; }
+  }
+
+  .map-canvas-container {
+    position: relative;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--wall);
+    background: var(--canvas-bg);
+    overflow: hidden;
+    display: flex; flex-direction: column;
+    box-shadow: var(--shadow);
+  }
+
+  /* Glassmorphic Top Floating HUD */
+  .map-hud-top {
+    position: absolute; top: 14px; left: 14px; right: 14px; z-index: 10;
+    display: flex; flex-direction: column; gap: 8px;
+    pointer-events: none;
+  }
+  .map-hud-row {
+    display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+    pointer-events: auto;
+  }
+
+  .hud-pill-group {
+    background: color-mix(in srgb, var(--tunnel) 85%, transparent);
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    border: 1px solid var(--wall); border-radius: var(--radius-full);
+    padding: 3px 6px; display: inline-flex; align-items: center; gap: 4px;
+    box-shadow: var(--shadow-sm);
+  }
+  .hud-toggle-pill {
+    background: transparent; border: 0; border-radius: var(--radius-full);
+    color: var(--dust); padding: 4px 10px; cursor: pointer;
+    font: 600 .78rem var(--f-display); display: inline-flex; align-items: center; gap: 6px;
+    transition: all .15s;
+  }
+  .hud-toggle-pill:hover { color: var(--chalk); background: var(--card); }
+  .hud-toggle-pill[aria-pressed="true"] {
+    background: var(--card); color: var(--chalk);
+    border: 1px solid var(--wall-light); box-shadow: var(--shadow-sm);
+  }
+  .hud-toggle-pill .shape-icon { display: inline-block; width: 8px; height: 8px; }
+
+  .map-search-box {
+    position: relative; width: 220px;
+  }
+  .map-search-box input {
+    background: color-mix(in srgb, var(--tunnel) 85%, transparent);
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    border-radius: var(--radius-full); padding: 5px 12px 5px 32px;
+    font-size: .8rem; height: 32px; border: 1px solid var(--wall);
+  }
+  .map-search-box svg {
+    position: absolute; left: 10px; top: 9px; width: 14px; height: 14px;
+    color: var(--dust); pointer-events: none;
+  }
+
+  .map-select-styled {
+    background: color-mix(in srgb, var(--tunnel) 85%, transparent);
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    border: 1px solid var(--wall); border-radius: var(--radius-full);
+    padding: 4px 10px; font-size: .78rem; height: 32px; cursor: pointer;
+    color: var(--chalk);
+  }
+
+  /* Filter Presets Row */
+  .presets-row {
+    display: flex; gap: 5px; flex-wrap: wrap; align-items: center;
+  }
+  .preset-chip {
+    background: color-mix(in srgb, var(--tunnel) 85%, transparent);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--wall); border-radius: var(--radius-full);
+    padding: 2px 9px; font: 500 .72rem var(--f-display); color: var(--dust);
+    cursor: pointer; transition: all .15s; user-select: none;
+  }
+  .preset-chip:hover { border-color: var(--wall-light); color: var(--chalk); }
+  .preset-chip.active {
+    background: var(--card); border-color: var(--amber); color: var(--chalk);
+    box-shadow: 0 0 8px var(--amber-glow);
+  }
+
+  /* Floating Bottom Controls Dock */
+  .map-dock {
+    position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%); z-index: 10;
+    display: flex; gap: 5px; align-items: center;
+    background: color-mix(in srgb, var(--tunnel) 90%, transparent);
+    backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--wall); border-radius: var(--radius-full);
+    padding: 4px 8px; box-shadow: var(--shadow-lg);
+  }
+  .dock-btn {
+    height: 30px; padding: 0 10px; border-radius: var(--radius-full);
+    border: 0; background: transparent; color: var(--dust);
+    cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 5px;
+    font: 600 .76rem var(--f-display); transition: all .15s;
+  }
+  .dock-btn:hover { background: var(--card); color: var(--chalk); }
+  .dock-btn.active { color: var(--amber); background: var(--card); }
+  .dock-divider { width: 1px; height: 16px; background: var(--wall); margin: 0 2px; }
+
+  /* Perfectly Centered Radar Minimap */
+  .map-radar-card {
+    position: absolute; bottom: 16px; right: 16px; z-index: 10;
+    width: 156px; height: 108px; border-radius: var(--radius);
+    background: color-mix(in srgb, var(--tunnel) 94%, transparent);
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    border: 1px solid var(--wall); box-shadow: var(--shadow-lg);
+    overflow: hidden; display: flex; flex-direction: column;
+    transition: opacity .2s, transform .2s;
+  }
+  .map-radar-card.collapsed {
+    display: none;
+  }
+  .radar-header {
+    height: 20px; padding: 2px 8px; background: var(--soil-subtle);
+    display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid var(--wall);
+  }
+  .radar-title {
+    font: 700 .62rem var(--f-display); color: var(--dust);
+    text-transform: uppercase; letter-spacing: .08em;
+  }
+  .radar-close-btn {
+    border: 0; background: none; color: var(--dust); cursor: pointer;
+    font-size: 11px; padding: 0; line-height: 1;
+  }
+  .radar-close-btn:hover { color: var(--chalk); }
+  .radar-canvas-area {
+    flex: 1; position: relative; cursor: crosshair;
+  }
+  .radar-canvas-area canvas { width: 100%; height: 100%; display: block; }
+
+  /* Main Canvas */
+  #graph-canvas {
+    width: 100%; height: 100%; display: block;
+    cursor: grab; touch-action: none; flex: 1;
+  }
+  #graph-canvas:active { cursor: grabbing; }
+
+  /* Map Inspector / Detail Sidebar */
+  .map-inspector {
+    background: var(--tunnel);
+    border: 1px solid var(--wall);
+    border-radius: var(--radius-lg);
+    display: flex; flex-direction: column;
+    overflow: hidden; box-shadow: var(--shadow);
+    height: 100%;
+  }
+  .inspector-header {
+    padding: 14px 18px; border-bottom: 1px solid var(--wall);
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--soil-subtle);
+  }
+  .inspector-header h3 {
+    margin: 0; font: 600 .88rem var(--f-display); color: var(--chalk);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .inspector-content {
+    padding: 18px; overflow-y: auto; flex: 1; display: grid; gap: 16px;
+  }
+
+  .detail-strength-box {
+    background: var(--card); border: 1px solid var(--wall);
+    border-radius: var(--radius-sm); padding: 12px 14px;
+  }
+  .strength-num-row {
+    display: flex; justify-content: space-between; align-items: baseline;
+    margin-bottom: 8px;
+  }
+  .strength-score { font: 700 1.35rem var(--f-display); color: var(--amber-ink); }
+  .strength-bar-bg {
+    width: 100%; height: 6px; background: var(--wall); border-radius: 999px; overflow: hidden;
+  }
+  .strength-bar-fill {
+    height: 100%; background: linear-gradient(90deg, var(--moss), var(--amber));
+    border-radius: 999px; transition: width .3s ease;
+  }
+
+  .topic-stat-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 6px 8px; border-radius: var(--radius-sm); cursor: pointer;
+    font-size: .8rem; transition: background .15s;
+  }
+  .topic-stat-row:hover { background: var(--card-hover); }
+  .topic-stat-pill {
+    display: inline-flex; align-items: center; gap: 6px; font-weight: 500;
+  }
+  .topic-stat-pill i { width: 8px; height: 8px; border-radius: 50%; }
+
+  .neighbor-card {
+    background: var(--card); border: 1px solid var(--wall);
+    border-radius: var(--radius-sm); padding: 8px 10px;
+    display: flex; align-items: center; justify-content: space-between;
+    cursor: pointer; transition: all .15s; font-size: .82rem;
+  }
+  .neighbor-card:hover {
+    border-color: var(--amber); background: var(--card-hover); transform: translateX(2px);
+  }
+  .similarity-tag {
+    font: 600 .72rem var(--f-display); color: var(--amber);
+    background: var(--tunnel); padding: 2px 6px; border-radius: var(--radius-full);
+  }
+
+  /* Tooltip for map hover */
+  .map-tooltip {
+    position: fixed; z-index: 1000; pointer-events: none;
+    background: color-mix(in srgb, var(--soil) 94%, transparent);
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    border: 1px solid var(--wall-light); border-radius: var(--radius);
+    padding: 10px 14px; box-shadow: var(--shadow-lg);
+    font-size: .82rem; color: var(--chalk);
+    max-width: 320px; transform: translate(-50%, -130%);
+    transition: opacity .12s ease;
+    opacity: 0;
+  }
+  .map-tooltip.visible { opacity: 1; }
+  .map-tooltip .tt-title { font-weight: 600; font-family: var(--f-display); margin-bottom: 5px; overflow-wrap: anywhere; line-height: 1.35; }
+  .map-tooltip .tt-meta { display: flex; gap: 8px; color: var(--dust); font-size: .74rem; font-family: var(--f-display); align-items: center; }
+
+  /* Knowledge Page Upgrades */
+  .knowledge-hero {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 14px; margin-bottom: 24px;
+  }
+  .segmented-bar {
+    display: flex; height: 8px; width: 100%; border-radius: 999px; overflow: hidden;
+    margin-top: 10px; background: var(--wall);
+  }
+  .segmented-bar span { height: 100%; }
+
+  /* Toast notification */
+  #toast {
+    position: fixed; bottom: 24px; right: 24px; z-index: 9999;
+    padding: 10px 16px; border-radius: var(--radius);
+    background: var(--tunnel); border: 1px solid var(--wall);
+    box-shadow: var(--shadow-lg); font-size: .88rem;
+    display: flex; align-items: center; gap: 10px;
+    transform: translateY(100px); opacity: 0; transition: all .25s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  #toast.show { transform: translateY(0); opacity: 1; }
+  #toast.ok { border-color: var(--moss); color: var(--moss); }
+  #toast.bad { border-color: var(--ember); color: var(--ember); }
+
+  /* Login Card */
+  #login {
+    max-width: 440px; margin: 12vh auto;
+    background: var(--tunnel); border: 1px solid var(--wall);
+    border-radius: var(--radius-lg); padding: 32px 36px;
+    box-shadow: var(--shadow-lg);
+  }
+  .login-brand { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+  .login-title h2 { margin: 0; font: 700 1.4rem var(--f-display); letter-spacing: -0.02em; }
+  .login-title p { color: var(--dust); margin: 4px 0 0; font-size: .86rem; }
+  .password-wrap { position: relative; display: flex; align-items: center; }
+  .password-wrap input { padding-right: 38px; }
+  .toggle-pwd {
+    position: absolute; right: 10px; background: none; border: 0;
+    color: var(--dust); cursor: pointer; padding: 0; display: flex; align-items: center;
+  }
+  .toggle-pwd:hover { color: var(--chalk); }
 </style>
 </head>
 <body>
 
-<section id="login" class="card" hidden>
-  <h2>Myrmo colony admin</h2>
-  <p class="hint">Enter this colony's operator token (<code>MYRMO_ADMIN_TOKEN</code> in <code>.env.private</code>). It stays in this tab only and goes to this colony only.</p>
-  <label for="token">Operator token</label>
-  <input id="token" type="password" autocomplete="off" spellcheck="false">
-  <div class="row" style="margin-top:12px"><button class="act" id="enter">Enter</button></div>
-  <p id="login-msg" class="msg bad"></p>
+<div id="toast" role="status" aria-live="polite"></div>
+<div id="map-tooltip" class="map-tooltip"></div>
+
+<!-- Login Modal -->
+<section id="login" hidden>
+  <div class="login-brand">
+    <div class="logo-ant">
+      <svg viewBox="0 0 24 24"><path d="M12 2a4 4 0 0 1 4 4c0 1.1-.4 2.1-1.1 2.8L17 11h3a1 1 0 1 1 0 2h-2.5l-1.8 3.6 2.8 1.4a1 1 0 1 1-.9 1.8L14 20.2l-1.2-2.4a6.5 6.5 0 0 1-1.6 0L10 20.2l-3.6 1.6a1 1 0 0 1-.9-1.8l2.8-1.4L6.5 15H4a1 1 0 1 1 0-2h3l2.1-2.2A3.9 3.9 0 0 1 8 6a4 4 0 0 1 4-4zm0 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm0 6a4.5 4.5 0 0 0-3 1.2l-1.5 1.5h9l-1.5-1.5A4.5 4.5 0 0 0 12 10z"/></svg>
+    </div>
+    <div class="login-title">
+      <h2>Myrmo colony admin</h2>
+      <p>Autonomous AI Agent Collective Memory</p>
+    </div>
+  </div>
+  <p class="hint" style="color:var(--dust);font-size:.86rem;margin-bottom:18px">
+    Enter this colony's operator token (<code>MYRMO_ADMIN_TOKEN</code> in <code>.env.private</code>). Kept exclusively in this browser session.
+  </p>
+  <label for="token" style="font-weight:600;font-size:.82rem;display:block;margin-bottom:6px">Operator token</label>
+  <div class="password-wrap">
+    <input id="token" type="password" autocomplete="off" spellcheck="false" placeholder="Enter secret token...">
+    <button type="button" class="toggle-pwd" id="toggle-pwd-btn" title="Toggle password visibility">
+      <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+    </button>
+  </div>
+  <div style="margin-top:16px;display:flex;align-items:center;justify-content:space-between">
+    <button class="btn btn-act" id="enter">Authenticate & Enter</button>
+  </div>
+  <p id="login-msg" style="margin-top:12px;font-size:.86rem;color:var(--ember)"></p>
 </section>
 
+<!-- App Shell -->
 <div id="app" hidden>
   <header class="nav">
-    <div class="wordmark"><b>myrmo</b><span>colony admin</span></div>
-    <span class="where"><i class="dot" id="live"></i><span id="where"></span></span>
-    <nav class="tabs" role="tablist" id="tabs">
-      <button role="tab" data-tab="colony" aria-selected="true">Colony</button>
-      <button role="tab" data-tab="knowledge" aria-selected="false">Knowledge</button>
-      <button role="tab" data-tab="map" aria-selected="false">Map</button>
-      <button role="tab" data-tab="people" aria-selected="false">People</button>
-      <button role="tab" data-tab="settings" aria-selected="false">Settings</button>
-      <button role="tab" data-tab="activity" aria-selected="false">Activity log</button>
-      <button class="quiet" id="leave">Sign out</button>
+    <div class="brand-group">
+      <div class="logo-badge">
+        <div class="logo-ant">
+          <svg viewBox="0 0 24 24"><path d="M12 2a4 4 0 0 1 4 4c0 1.1-.4 2.1-1.1 2.8L17 11h3a1 1 0 1 1 0 2h-2.5l-1.8 3.6 2.8 1.4a1 1 0 1 1-.9 1.8L14 20.2l-1.2-2.4a6.5 6.5 0 0 1-1.6 0L10 20.2l-3.6 1.6a1 1 0 0 1-.9-1.8l2.8-1.4L6.5 15H4a1 1 0 1 1 0-2h3l2.1-2.2A3.9 3.9 0 0 1 8 6a4 4 0 0 1 4-4zm0 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm0 6a4.5 4.5 0 0 0-3 1.2l-1.5 1.5h9l-1.5-1.5A4.5 4.5 0 0 0 12 10z"/></svg>
+        </div>
+        <span>myrmo</span>
+        <span class="logo-tag">Admin</span>
+      </div>
+      <div class="beacon-status" id="beacon-btn" title="System readiness status">
+        <i class="pulse-dot" id="live-dot"></i>
+        <span id="where-host">localhost</span>
+      </div>
+    </div>
+
+    <nav class="nav-tabs" role="tablist" id="tabs">
+      <button role="tab" data-tab="colony" aria-selected="true">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 4.24 4.24M14.83 9.17l4.24-4.24M14.83 14.83l4.24 4.24M9.17 14.83l-4.24 4.24"/></svg>
+        Colony
+      </button>
+      <button role="tab" data-tab="knowledge" aria-selected="false">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"/><path d="M6 6h10M6 10h10"/></svg>
+        Knowledge
+      </button>
+      <button role="tab" data-tab="map" aria-selected="false">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+        Map
+      </button>
+      <button role="tab" data-tab="people" aria-selected="false">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        People
+      </button>
+      <button role="tab" data-tab="settings" aria-selected="false">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+        Settings
+      </button>
+      <button role="tab" data-tab="activity" aria-selected="false">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        Activity
+      </button>
     </nav>
+
+    <div class="nav-actions">
+      <button class="icon-btn" id="theme-btn" title="Toggle color theme">
+        <svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.389 5.389 0 0 1-4.4 2.26 5.403 5.403 0 0 1-3.14-9.8c-.44-.06-.9-.1-1.36-.1z"/></svg>
+      </button>
+      <button class="icon-btn" id="leave" title="Sign out from colony">
+        <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+      </button>
+    </div>
   </header>
+
   <div id="view"></div>
 </div>
 
 <script>
 "use strict";
+
 const $ = (id) => document.getElementById(id);
 const el = (tag, props = {}, ...kids) => {
   const node = Object.assign(document.createElement(tag), props);
-  for (const kid of kids.flat(Infinity)) if (kid != null && kid !== false) node.append(kid.nodeType ? kid : document.createTextNode(String(kid)));
+  for (const kid of kids.flat(Infinity)) {
+    if (kid != null && kid !== false) {
+      node.append(kid.nodeType ? kid : document.createTextNode(String(kid)));
+    }
+  }
   return node;
+};
+const setChildren = (node, ...kids) => {
+  const clean = kids.flat(Infinity).filter((k) => k != null && k !== false);
+  node.replaceChildren(...clean);
 };
 const svg = (tag, attrs = {}, ...kids) => {
   const node = document.createElementNS("http://www.w3.org/2000/svg", tag);
@@ -179,30 +884,65 @@ const svg = (tag, attrs = {}, ...kids) => {
   for (const kid of kids.flat(Infinity)) if (kid != null) node.append(kid.nodeType ? kid : document.createTextNode(String(kid)));
   return node;
 };
-const store = { get: () => { try { return sessionStorage.getItem("myrmo-admin-token") || ""; } catch { return ""; } },
-                set: (v) => { try { v ? sessionStorage.setItem("myrmo-admin-token", v) : sessionStorage.removeItem("myrmo-admin-token"); } catch {} } };
+
+// Local storage session token
+const store = {
+  get: () => { try { return sessionStorage.getItem("myrmo-admin-token") || ""; } catch { return ""; } },
+  set: (v) => { try { v ? sessionStorage.setItem("myrmo-admin-token", v) : sessionStorage.removeItem("myrmo-admin-token"); } catch {} }
+};
 let token = store.get();
 
+// Toast helper
+function showToast(msg, kind = "ok") {
+  const t = $("toast");
+  t.className = kind + " show";
+  t.textContent = msg;
+  setTimeout(() => { t.className = ""; }, 3200);
+}
+
+// Color theme toggle
+let currentTheme = localStorage.getItem("myrmo-theme") || (window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
+document.documentElement.setAttribute("data-theme", currentTheme);
+$("theme-btn").onclick = () => {
+  currentTheme = currentTheme === "dark" ? "light" : "dark";
+  document.documentElement.setAttribute("data-theme", currentTheme);
+  localStorage.setItem("myrmo-theme", currentTheme);
+  if (current === "map") show("map");
+};
+
+// API Client
 async function api(path, options = {}) {
-  const res = await fetch(path, { ...options, headers: { accept: "application/json", "content-type": "application/json", authorization: "Bearer " + token, ...(options.headers || {}) } });
+  const res = await fetch(path, {
+    ...options,
+    headers: {
+      accept: "application/json",
+      "content-type": "application/json",
+      authorization: "Bearer " + token,
+      ...(options.headers || {})
+    }
+  });
   let body = null;
   try { body = await res.json(); } catch {}
-  if (res.status === 401 && path.startsWith("/v1/admin")) { signOut("That token was not accepted."); throw new Error("unauthorized"); }
+  if (res.status === 401 && path.startsWith("/v1/admin")) {
+    signOut("Session expired or token was not accepted.");
+    throw new Error("unauthorized");
+  }
   if (!res.ok) throw new Error(body?.error?.message || ("HTTP " + res.status));
   return body;
 }
+
 const num = (n) => Number(n ?? 0).toLocaleString();
 const cut = (s, n) => (s || "").length > n ? s.slice(0, n - 1) + "…" : (s || "");
-const say = (node, text, kind = "") => { node.className = "msg " + kind; node.textContent = text; };
+const say = (node, text, kind = "") => { node.style.color = kind === "bad" ? "var(--ember)" : "var(--moss)"; node.textContent = text; };
 const day = (ts) => ts ? new Date(ts * 1000).toLocaleDateString() : "";
 const when = (ts) => ts ? new Date(ts * 1000).toLocaleString() : "";
 function ago(ts) {
   if (!ts) return "never";
   const s = Math.max(0, Math.floor(Date.now() / 1000 - ts));
   if (s < 60) return "just now";
-  if (s < 3600) return Math.floor(s / 60) + " min ago";
-  if (s < 86400) return Math.floor(s / 3600) + " h ago";
-  return Math.floor(s / 86400) + " d ago";
+  if (s < 3600) return Math.floor(s / 60) + "m ago";
+  if (s < 86400) return Math.floor(s / 3600) + "h ago";
+  return Math.floor(s / 86400) + "d ago";
 }
 
 function signOut(message) {
@@ -210,205 +950,1352 @@ function signOut(message) {
   $("app").hidden = true; $("login").hidden = false;
   say($("login-msg"), message || "", "bad");
 }
+
 async function enter() {
   token = $("token").value.trim();
   if (!token) return;
-  try { await api("/v1/admin/people?days=1"); }
-  catch (err) { if (err.message !== "unauthorized") say($("login-msg"), err.message, "bad"); return; }
-  store.set(token); $("token").value = "";
+  try {
+    await api("/v1/admin/people?days=1");
+  } catch (err) {
+    if (err.message !== "unauthorized") say($("login-msg"), err.message, "bad");
+    return;
+  }
+  store.set(token);
+  $("token").value = "";
   start();
 }
+
 function start() {
   $("login").hidden = true; $("app").hidden = false;
-  $("where").textContent = location.host;
+  $("where-host").textContent = location.host || "colony";
   show("colony");
 }
 
+$("toggle-pwd-btn").onclick = () => {
+  const inp = $("token");
+  inp.type = inp.type === "password" ? "text" : "password";
+};
+
+// Navigation
 const tabs = { colony, knowledge, map, people, settings, activity };
 let current = "colony";
+let mapStop = null;
+let mapFocus = null;
+
 function show(name) {
-  if (mapStop && name !== "map") mapStop();
+  if (mapStop && name !== "map") {
+    mapStop();
+    mapStop = null;
+  }
   current = name;
-  for (const b of document.querySelectorAll("#tabs [data-tab]")) b.setAttribute("aria-selected", String(b.dataset.tab === name));
+  for (const b of document.querySelectorAll("#tabs [data-tab]")) {
+    b.setAttribute("aria-selected", String(b.dataset.tab === name));
+  }
   const view = $("view");
-  view.replaceChildren(el("main", { className: "plain" }, el("p", { className: "hint" }, "Loading…")));
-  tabs[name](view).catch((err) => { if (err.message !== "unauthorized") view.replaceChildren(el("main", { className: "plain" }, el("p", { className: "msg bad" }, err.message))); });
+  setChildren(view, el("div", { className: "view-container" },
+    el("div", { style: "display:flex;align-items:center;gap:10px;color:var(--dust);padding:40px 0" },
+      svg("svg", { width: "20", height: "20", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", "stroke-width": "2" },
+        svg("path", { d: "M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" })),
+      el("span", {}, "Loading colony view…"))));
+  
+  tabs[name](view).catch((err) => {
+    if (err.message !== "unauthorized") {
+      setChildren(view, el("div", { className: "view-container" },
+        el("div", { className: "alert-banner bad" },
+          el("span", { className: "alert-icon" }, "⚠️"),
+          el("span", { className: "alert-text" }, "Failed to load " + name + ": " + err.message))));
+    }
+  });
 }
 
 function table(headers, rows, numeric = []) {
-  return el("div", { className: "scroll" }, el("table", {},
+  return el("div", { className: "table-wrap" }, el("table", {},
     el("thead", {}, el("tr", {}, headers.map((h, i) => el("th", { className: numeric.includes(i) ? "n" : "" }, h)))),
     el("tbody", {}, rows.map((r) => el("tr", {}, r.map((c, i) => el("td", { className: numeric.includes(i) ? "n" : "" }, c)))))));
 }
 
-/* ---------- Colony: the trails, with the colony's pulse beside them ---------- */
-
 function meter(strength) {
   const on = Math.max(0, Math.min(10, Math.round(Number(strength || 0) * 10)));
-  return el("span", { className: "meter", title: "Trail strength " + Number(strength || 0).toFixed(2) }, Number(strength || 0).toFixed(2),
-    el("span", { className: "cells" }, Array.from({ length: 10 }, (_, k) => el("i", { className: k < on ? "on" : "" }))));
+  return el("span", { className: "strength-badge", title: "Trail strength " + Number(strength || 0).toFixed(2) },
+    Number(strength || 0).toFixed(2),
+    el("span", { className: "strength-cells" }, Array.from({ length: 10 }, (_, k) => el("i", { className: k < on ? "on" : "" }))));
 }
-const riskPill = (risk) => !risk || risk.level === "low" ? el("span", { className: "pill ok" }, "risk low") : el("span", { className: "pill " + (risk.level === "high" ? "bad" : "warn") }, "risk " + risk.level);
+
+const riskPill = (risk) => {
+  if (!risk || risk.level === "low") return el("span", { className: "pill ok" }, "● low risk");
+  return el("span", { className: "pill " + (risk.level === "high" ? "bad" : "warn") }, (risk.level === "high" ? "▲ " : "◆ ") + risk.level + " risk");
+};
+
+// Clipboard copy helper
+async function copyToClipboard(text, btn) {
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text);
+      if (btn) { const orig = btn.textContent; btn.textContent = "Copied!"; setTimeout(() => btn.textContent = orig, 1800); }
+      showToast("Copied to clipboard!");
+      return true;
+    }
+  } catch {}
+  const ta = document.createElement("textarea");
+  ta.value = text; document.body.appendChild(ta); ta.select();
+  try {
+    document.execCommand("copy");
+    document.body.removeChild(ta);
+    if (btn) { const orig = btn.textContent; btn.textContent = "Copied!"; setTimeout(() => btn.textContent = orig, 1800); }
+    showToast("Copied to clipboard!");
+    return true;
+  } catch {
+    document.body.removeChild(ta);
+    showToast("Failed to copy", "bad");
+    return false;
+  }
+}
+
+/* ========================================================================= */
+/* TAB: COLONY                                                               */
+/* ========================================================================= */
+
+function chart(days) {
+  const W = 310, H = 120, pad = 14, bw = (W - pad * 2) / Math.max(1, days.length);
+  const max = Math.max(4, ...days.map((d) => d.searches));
+  const bars = days.map((d, i) => {
+    const x = pad + i * bw, h = (d.searches / max) * (H - 36), a = (Math.min(d.answered, d.searches) / max) * (H - 36);
+    return [
+      svg("rect", { x: x + 1.5, y: H - 20 - h, width: bw - 3, height: Math.max(h, d.searches ? 2 : 0), rx: 2, fill: "var(--wall)" },
+        svg("title", {}, `${d.date}: ${d.searches} searches, ${d.answered} answered, ${d.published} published`)),
+      svg("rect", { x: x + 1.5, y: H - 20 - a, width: bw - 3, height: Math.max(a, d.answered ? 2 : 0), rx: 2, fill: "var(--moss)" }),
+      d.published ? svg("circle", { cx: x + bw / 2, cy: H - 20 - h - 6, r: 3.5, fill: "var(--amber)" }) : null,
+      d.rejected ? svg("circle", { cx: x + bw / 2, cy: H - 20 - h - (d.published ? 15 : 6), r: 3.5, fill: "var(--ember)" }) : null,
+    ];
+  });
+  const label = (i) => svg("text", { x: pad + i * bw + bw / 2, y: H - 4, "text-anchor": "middle", fill: "var(--dust)", font: "9px var(--f-display)" }, days[i].date.slice(8));
+  return svg("svg", { viewBox: `0 0 ${W} ${H}`, width: "100%", role: "img", "aria-label": "Activity per day" },
+    svg("line", { x1: pad, x2: W - pad, y1: H - 20, y2: H - 20, stroke: "var(--wall)" }), bars, label(0), label(days.length - 1));
+}
 
 function trailCard(t, onRemove) {
   const p = t.trail?.problem || {}, s = t.trail?.solution || {};
   const flags = new Map((t.risk?.flags || []).map((f) => [f.command_index, f]));
-  const card = el("article", { className: "trail" });
+  const card = el("article", { className: "trail-card" });
   card.dataset.open = "false";
   const kind = t.trail?.kind && t.trail.kind !== "fix" ? t.trail.kind : null;
-  const top = el("button", { className: "top", type: "button", "aria-expanded": "false" },
-    el("div", { className: "err" }, kind ? `${kind}: ${cut(p.summary, 160)}` : (p.error_message || "(no error line)")),
-    el("div", { className: "sum" }, cut(p.summary, 180)),
-    el("div", { className: "meta" },
+
+  const summaryBtn = el("button", { className: "trail-summary-btn", type: "button", "aria-expanded": "false" },
+    el("div", { className: "trail-header-row" },
+      el("div", { style: "flex:1" },
+        el("div", { className: "trail-err-title" }, kind ? `${kind.toUpperCase()}: ${cut(p.summary, 160)}` : (p.error_message || "(no error line)")),
+        el("div", { className: "trail-desc" }, cut(p.summary, 190))),
+      meter(t.strength)),
+    el("div", { className: "trail-meta-pills" },
       kind ? el("span", { className: "pill ok" }, kind) : null,
       t.category && !kind ? el("span", { className: "pill amber" }, t.category.replaceAll("_", " ")) : null,
       t.trail?.source?.type ? el("span", { className: "pill" }, "from " + t.trail.source.type) : null,
-      t.trail?.environment?.runtime?.name ? el("span", { className: "pill" }, t.trail.environment.runtime.name) : null,
+      t.trail?.environment?.runtime?.name ? el("span", { className: "pill sapphire" }, t.trail.environment.runtime.name) : null,
       riskPill(t.risk),
       t.seed ? el("span", { className: "pill" }, "seed") : null,
-      el("span", { className: "pill" }, t.author ? "by " + t.author : "author unknown"),
+      el("span", { className: "pill" }, t.author ? "@" + t.author : "author unknown"),
       el("span", { className: "pill" }, day(Date.parse(t.created_at) / 1000)),
-      meter(t.strength)));
-  const list = (items, tag = "ol") => el(tag, {}, (items || []).map((x) => el("li", {}, x)));
-  const body = el("div", { className: "body" },
-    p.summary ? el("section", {}, el("h4", {}, "Summary"), el("p", {}, p.summary)) : null,
-    p.task_context ? el("section", {}, el("h4", {}, kind ? "When it applies" : "What the agent was doing"), el("p", {}, p.task_context)) : null,
-    t.trail?.source?.ref ? el("section", {}, el("h4", {}, "Source"), el("p", {}, `${t.trail.source.type}: ${t.trail.source.ref}${t.trail.source.revision ? " @ " + t.trail.source.revision : ""}`)) : null,
-    s.root_cause ? el("section", {}, el("h4", {}, "Root cause"), el("p", {}, s.root_cause)) : null,
-    (p.failed_approaches || []).length ? el("section", {}, el("h4", {}, kind ? "Pitfalls" : "Dead ends"), list(p.failed_approaches.map((a) => `${a.approach} — ${a.why_it_failed}`), "ul")) : null,
-    (s.steps || []).length ? el("section", {}, el("h4", {}, "Steps"), list(s.steps)) : null,
-    (s.shell_commands_executed || []).length ? el("section", {}, el("h4", {}, "Commands"), ...s.shell_commands_executed.map((c, i) => {
-      const f = flags.get(i);
-      return el("div", { className: "cmd" + (f ? " risky" : "") },
-        el("div", { className: "why" }, f ? el("span", { className: "pill " + (f.level === "high" ? "bad" : "warn") }, f.flag.replaceAll("_", " ") + " · " + f.level) : null, c.purpose),
-        el("pre", {}, "$ " + c.command));
-    })) : null,
-    s.verification_method ? el("section", {}, el("h4", {}, "How it was checked"), el("p", {}, `${s.verification_method.type}: ${s.verification_method.description || ""}`), s.verification_method.evidence ? el("p", { className: "hint" }, "Evidence: " + s.verification_method.evidence) : null) : null,
-    el("section", {}, el("h4", {}, "Outcomes"), el("div", { className: "outcomes" },
-      ["worked", "partially_worked", "failed", "not_applicable"].map((k) => el("span", {}, k.replaceAll("_", " ") + " ", el("b", {}, num(t.outcomes?.[k]))))),
-      el("p", { className: "hint" }, `${num(t.environments_confirmed)} environment(s) confirmed. Trail ${t.trail_id}.`)),
-    el("div", { className: "row" }, el("button", { className: "danger", type: "button", onclick: () => onRemove(t) }, "Remove this trail")));
-  top.onclick = () => { const open = card.dataset.open !== "true"; card.dataset.open = String(open); top.setAttribute("aria-expanded", String(open)); };
-  card.append(top, body);
-  return card;
-}
+      el("button", {
+        className: "btn btn-quiet btn-sm",
+        style: "margin-left:auto;padding:2px 8px;font-size:.72rem",
+        onclick: (e) => {
+          e.stopPropagation();
+          mapFocus = t.health || "used";
+          show("map");
+        }
+      }, "Show on Map ↗")));
 
-function chart(days) {
-  const W = 300, H = 110, pad = 14, bw = (W - pad * 2) / Math.max(1, days.length);
-  const max = Math.max(4, ...days.map((d) => d.searches));
-  const bars = days.map((d, i) => {
-    const x = pad + i * bw, h = (d.searches / max) * (H - 34), a = (Math.min(d.answered, d.searches) / max) * (H - 34);
-    return [
-      svg("rect", { x: x + 1.5, y: H - 18 - h, width: bw - 3, height: Math.max(h, d.searches ? 2 : 0), rx: 1.5, fill: "var(--wall)" }, svg("title", {}, `${d.date}: ${d.searches} searches, ${d.answered} answered, ${d.published} published`)),
-      svg("rect", { x: x + 1.5, y: H - 18 - a, width: bw - 3, height: Math.max(a, d.answered ? 2 : 0), rx: 1.5, fill: "var(--moss)" }),
-      d.published ? svg("circle", { cx: x + bw / 2, cy: H - 18 - h - 6, r: 3, fill: "var(--amber)" }) : null,
-      d.rejected ? svg("circle", { cx: x + bw / 2, cy: H - 18 - h - (d.published ? 14 : 6), r: 3, fill: "var(--ember)" }) : null,
-    ];
-  });
-  const label = (i) => svg("text", { x: pad + i * bw + bw / 2, y: H - 4, "text-anchor": "middle" }, days[i].date.slice(8));
-  return svg("svg", { viewBox: `0 0 ${W} ${H}`, width: "100%", role: "img", "aria-label": "Searches per day" },
-    svg("line", { x1: pad, x2: W - pad, y1: H - 18, y2: H - 18, stroke: "var(--wall)" }), bars, label(0), label(days.length - 1));
+  summaryBtn.onclick = () => {
+    const open = card.dataset.open !== "true";
+    card.dataset.open = String(open);
+    summaryBtn.setAttribute("aria-expanded", String(open));
+  };
+
+  const list = (items, tag = "ol") => el(tag, {}, (items || []).map((x) => el("li", {}, x)));
+  const body = el("div", { className: "trail-body" },
+    p.summary ? el("section", {}, el("h4", { className: "trail-sec-title" }, "Summary"), el("p", { style: "margin:0" }, p.summary)) : null,
+    p.task_context ? el("section", {}, el("h4", { className: "trail-sec-title" }, kind ? "When it applies" : "Task context"), el("p", { style: "margin:0" }, p.task_context)) : null,
+    s.root_cause ? el("section", {}, el("h4", { className: "trail-sec-title" }, "Root cause"), el("p", { style: "margin:0" }, s.root_cause)) : null,
+    (p.failed_approaches || []).length ? el("section", {},
+      el("h4", { className: "trail-sec-title", style: "color:var(--ember)" }, "Avoided Pitfalls & Dead Ends"),
+      el("div", { className: "pitfalls-box" }, list(p.failed_approaches.map((a) => `${a.approach} — ${a.why_it_failed}`), "ul"))) : null,
+    (s.steps || []).length ? el("section", {}, el("h4", { className: "trail-sec-title" }, "Solution Steps"), list(s.steps)) : null,
+    (s.shell_commands_executed || []).length ? el("section", {},
+      el("h4", { className: "trail-sec-title" }, "Shell Commands Executed"),
+      ...s.shell_commands_executed.map((c, i) => {
+        const f = flags.get(i);
+        const copyBtn = el("button", { className: "copy-code-btn", type: "button", onclick: () => copyToClipboard(c.command, copyBtn) }, "Copy");
+        return el("div", { className: "cmd-block" + (f ? " risky" : "") },
+          el("div", { className: "cmd-header" },
+            el("div", { style: "display:flex;align-items:center;gap:6px" },
+              f ? el("span", { className: "pill " + (f.level === "high" ? "bad" : "warn") }, f.flag.replaceAll("_", " ") + " · " + f.level) : null,
+              el("span", {}, c.purpose)),
+            copyBtn),
+          el("pre", {}, "$ " + c.command));
+      })) : null,
+    s.verification_method ? el("section", {},
+      el("h4", { className: "trail-sec-title" }, "Verification"),
+      el("p", { style: "margin:0" }, `${s.verification_method.type}: ${s.verification_method.description || ""}`),
+      s.verification_method.evidence ? el("p", { className: "hint", style: "margin:4px 0 0" }, "Evidence: " + s.verification_method.evidence) : null) : null,
+    el("div", { className: "outcomes-strip" },
+      el("span", {}, "Worked: ", el("b", { style: "color:var(--moss)" }, num(t.outcomes?.worked))),
+      el("span", {}, "Partially: ", el("b", { style: "color:var(--ochre)" }, num(t.outcomes?.partially_worked))),
+      el("span", {}, "Failed: ", el("b", { style: "color:var(--ember)" }, num(t.outcomes?.failed))),
+      el("span", {}, "Not applicable: ", el("b", {}, num(t.outcomes?.not_applicable))),
+      el("span", { style: "margin-left:auto;color:var(--dust)" }, `${num(t.environments_confirmed)} env(s) confirmed · ID ${t.trail_id.slice(0, 8)}`)),
+    el("div", { style: "display:flex;justify-content:flex-end;margin-top:4px" },
+      el("button", { className: "btn btn-danger btn-sm", type: "button", onclick: () => onRemove(t) }, "Revoke & Remove Trail")));
+
+  card.append(summaryBtn, body);
+  return card;
 }
 
 async function colony(view) {
   const [ready, stats, team, act, refused, first] = await Promise.all([
     fetch("/readyz").then((r) => r.json()).catch(() => ({})),
-    api("/v1/stats"), api("/v1/admin/people?days=7"), api("/v1/admin/activity?days=14"), api("/v1/admin/refused"),
+    api("/v1/stats"),
+    api("/v1/admin/people?days=7"),
+    api("/v1/admin/activity?days=14"),
+    api("/v1/admin/refused"),
     api("/v1/admin/trails?limit=30"),
   ]);
-  $("live").className = "dot " + (ready.ready ? "ok" : "bad");
+
+  $("live-dot").className = "pulse-dot " + (ready.ready ? "ok" : "bad");
   const rej = stats.rejections_30d || {}, people = team.people || [], seen = act.last_seen || {};
-  const items = first.items || []; let cursor = first.next_cursor;
+  const items = first.items || [];
+  let cursor = first.next_cursor;
   const state = { q: "", category: "", author: "", sort: "new" };
 
-  // What needs a look.
   const alerts = [];
-  if (!ready.ready) alerts.push(["bad", "The colony is not ready: " + (["redis", "qdrant", "embedding"].filter((k) => ready[k] === false).join(", ") || "see the logs") + "."]);
-  if (ready.queue_max && ready.queue_depth >= 0.8 * ready.queue_max) alerts.push(["warn", `The queue is ${num(ready.queue_depth)} of ${num(ready.queue_max)}: new trails wait to be checked.`]);
+  if (!ready.ready) {
+    alerts.push(["bad", "Colony cluster degraded: " + (["redis", "qdrant", "embedding"].filter((k) => ready[k] === false).join(", ") || "check server logs") + "."]);
+  }
+  if (ready.queue_max && ready.queue_depth >= 0.8 * ready.queue_max) {
+    alerts.push(["warn", `Ingestion queue buildup: ${num(ready.queue_depth)} / ${num(ready.queue_max)} trails awaiting verification.`]);
+  }
   const day1 = Date.now() / 1000 - 86400;
   const recentRefused = (refused.items || []).filter((r) => r.last >= day1);
-  if (recentRefused.length) alerts.push(["warn", `${recentRefused.length} address(es) were refused in the last day because their network is not allowed. See "Refused connections" on the right: if one is a colleague, allow it from there.`]);
+  if (recentRefused.length) {
+    alerts.push(["warn", `${recentRefused.length} address(es) were rejected in the last 24h because their subnet is unlisted. Allow them from the rail.`]);
+  }
   const waiting = people.filter((p) => !seen[p.name] && p.name !== "claude-vm");
-  if (waiting.length) alerts.push(["info", "Has a key but has not connected yet: " + waiting.map((p) => p.name).join(", ") + "."]);
-  const rejectedWeek = (act.days || []).slice(-7).reduce((n, d) => n + d.rejected, 0);
-  if (rejectedWeek) alerts.push(["info", `${rejectedWeek} trail(s) were rejected in the last 7 days (${Object.entries(rej.by_reason || {}).filter(([, n]) => n).map(([k, n]) => `${k.replaceAll("_", " ")} ${n}`).join(", ") || "see Activity log"}).`]);
+  if (waiting.length) {
+    alerts.push(["info", "New team keys not yet connected: " + waiting.map((p) => p.name).join(", ") + "."]);
+  }
 
-  const stat = (value, label, kind = "") => el("div", { className: "stat" }, el("b", { className: kind }, value), el("span", {}, label));
-  const feed = el("div", { className: "feed" });
-  const more = el("button", { className: "quiet", type: "button", hidden: !cursor }, "Load more trails");
-  const filtersBox = el("aside", { className: "filters", "aria-label": "Filters" });
+  const statCard = (value, label, sub = "", kind = "") => el("div", { className: "stat-card " + kind },
+    el("div", { className: "val" }, value),
+    el("div", { className: "lbl" }, label),
+    sub ? el("div", { className: "sub" }, sub) : null);
+
+  const feed = el("div", { className: "feed-list" });
+  const more = el("button", { className: "btn btn-quiet", type: "button", hidden: !cursor, style: "margin:16px auto;display:block" }, "Load More Trails");
+  const filtersBox = el("aside", { className: "filter-panel", "aria-label": "Filters" });
 
   const remove = async (t) => {
-    const reason = prompt("Why is this trail removed? (kept in the activity log)", "");
+    const reason = prompt("Enter reason for removing trail " + t.trail_id.slice(0, 8) + ":", "");
     if (reason === null) return;
-    try { await api("/v1/trails/" + t.trail_id, { method: "DELETE", body: JSON.stringify({ reason }) }); items.splice(items.indexOf(t), 1); draw(); }
-    catch (err) { alert(err.message); }
+    try {
+      await api("/v1/trails/" + t.trail_id, { method: "DELETE", body: JSON.stringify({ reason }) });
+      items.splice(items.indexOf(t), 1);
+      draw();
+      showToast("Trail removed");
+    } catch (err) { alert(err.message); }
   };
-  const chips = (key, values) => el("div", { className: "chips" }, values.map(([v, n]) => {
-    const b = el("button", { className: "chip", type: "button", "aria-pressed": String(state[key] === v) }, v.replaceAll("_", " "), el("small", {}, String(n)));
+
+  const chips = (key, values) => el("div", { className: "chips-cloud" }, values.map(([v, n]) => {
+    const b = el("button", { className: "chip-btn", type: "button", "aria-pressed": String(state[key] === v) },
+      v.replaceAll("_", " "), el("span", { className: "chip-count" }, String(n)));
     b.onclick = () => { state[key] = state[key] === v ? "" : v; draw(); };
     return b;
   }));
-  const count = (f) => { const m = new Map(); for (const t of items) { const k = f(t); if (k) m.set(k, (m.get(k) || 0) + 1); } return [...m.entries()].sort((a, b) => b[1] - a[1]); };
-  function draw() {
-    const q = state.q.toLowerCase();
-    let shown = items.filter((t) => (!state.category || t.category === state.category) && (!state.author || t.author === state.author)
-      && (!q || JSON.stringify([t.trail?.problem, t.trail?.solution?.root_cause, t.category, t.author]).toLowerCase().includes(q)));
-    if (state.sort === "strength") shown = [...shown].sort((a, b) => b.strength - a.strength);
-    if (state.sort === "reports") shown = [...shown].sort((a, b) => ((b.outcomes?.worked || 0) + (b.outcomes?.failed || 0)) - ((a.outcomes?.worked || 0) + (a.outcomes?.failed || 0)));
-    feed.replaceChildren(...(shown.length ? shown.map((t) => trailCard(t, remove)) : [el("p", { className: "empty" }, items.length ? "No trail matches these filters." : "No trails yet. They appear here as soon as an agent publishes one.")]));
-    filtersBox.replaceChildren(
-      el("fieldset", {}, el("legend", { className: "eyebrow" }, "Category"), chips("category", count((t) => t.category))),
-      el("fieldset", {}, el("legend", { className: "eyebrow" }, "Published by"), chips("author", count((t) => t.author))),
-      el("p", { className: "hint" }, `${shown.length} of ${items.length} loaded.`));
-  }
-  more.onclick = async () => {
-    try { const page = await api("/v1/admin/trails?limit=30&cursor=" + encodeURIComponent(cursor)); items.push(...page.items); cursor = page.next_cursor; more.hidden = !cursor; draw(); }
-    catch (err) { alert(err.message); }
+
+  const count = (f) => {
+    const m = new Map();
+    for (const t of items) { const k = f(t); if (k) m.set(k, (m.get(k) || 0) + 1); }
+    return [...m.entries()].sort((a, b) => b[1] - a[1]);
   };
 
-  // The rail.
+  function draw() {
+    const q = state.q.toLowerCase();
+    let shown = items.filter((t) => (!state.category || t.category === state.category) &&
+      (!state.author || t.author === state.author) &&
+      (!q || JSON.stringify([t.trail?.problem, t.trail?.solution?.root_cause, t.category, t.author]).toLowerCase().includes(q)));
+    
+    if (state.sort === "strength") shown = [...shown].sort((a, b) => b.strength - a.strength);
+    if (state.sort === "reports") shown = [...shown].sort((a, b) => ((b.outcomes?.worked || 0) + (b.outcomes?.failed || 0)) - ((a.outcomes?.worked || 0) + (a.outcomes?.failed || 0)));
+
+    setChildren(feed, ...(shown.length ? shown.map((t) => trailCard(t, remove)) : [
+      el("div", { className: "stat-card", style: "text-align:center;padding:36px;color:var(--dust)" },
+        items.length ? "No trails match these filters." : "No trails published yet. They appear as agents solve errors.")
+    ]));
+
+    setChildren(filtersBox, 
+      el("div", { className: "filter-sec" },
+        el("div", { className: "sec-title" }, "Category", state.category ? el("a", { href: "#", onclick: (e) => { e.preventDefault(); state.category = ""; draw(); } }, "clear") : null),
+        chips("category", count((t) => t.category))),
+      el("div", { className: "filter-sec" },
+        el("div", { className: "sec-title" }, "Author", state.author ? el("a", { href: "#", onclick: (e) => { e.preventDefault(); state.author = ""; draw(); } }, "clear") : null),
+        chips("author", count((t) => t.author))),
+      el("p", { className: "hint", style: "font-family:var(--f-display);font-size:.76rem;margin-top:16px" },
+        `${shown.length} of ${items.length} trails shown.`));
+  }
+
+  more.onclick = async () => {
+    try {
+      const page = await api("/v1/admin/trails?limit=30&cursor=" + encodeURIComponent(cursor));
+      items.push(...page.items);
+      cursor = page.next_cursor;
+      more.hidden = !cursor;
+      draw();
+    } catch (err) { alert(err.message); }
+  };
+
   const allow = async (address) => {
     try {
       const s = await api("/v1/admin/settings");
       const list = [...s.allowed_networks.filter((n) => !n.startsWith(address + "/")), address];
       await api("/v1/admin/settings", { method: "PUT", body: JSON.stringify({ allowed_networks: list.join(", ") }) });
+      showToast("Network " + address + " allowed!");
       show("colony");
     } catch (err) { alert(err.message); }
   };
+
   const days = act.days || [];
-  const rail = el("aside", { className: "rail", "aria-label": "Activity" },
-    el("div", { className: "block" }, el("p", { className: "eyebrow" }, "Searches, last 14 days"), days.length ? chart(days) : null,
-      el("div", { className: "legend" }, el("span", {}, el("i", { style: "background:var(--wall)" }), "searches"), el("span", {}, el("i", { style: "background:var(--moss)" }), "answered"),
-        el("span", {}, el("i", { style: "background:var(--amber)" }), "published"), el("span", {}, el("i", { style: "background:var(--ember)" }), "rejected"))),
-    el("div", { className: "block" }, el("p", { className: "eyebrow" }, "People"),
-      people.length ? el("ul", { className: "list" }, people.map((p) => el("li", {}, el("span", {}, p.name), el("span", { className: "when" }, seen[p.name] ? "seen " + ago(seen[p.name]) : "not connected yet")))) : el("p", { className: "empty" }, "Nobody has a key yet.")),
-    el("div", { className: "block" }, el("p", { className: "eyebrow" }, "Reuse between people"),
-      (team.reuse || []).length ? el("ul", { className: "list" }, team.reuse.slice(0, 6).map((e) => el("li", {}, el("span", {}, `${e.reporter} used ${e.author}'s: ${cut(e.label || e.trail, 40)}`), el("span", { className: "pill " + (e.outcome === "worked" ? "ok" : "warn") }, e.outcome)))) : el("p", { className: "empty" }, "None yet: it shows the first time one person's agent uses what another published.")),
-    el("div", { className: "block" }, el("p", { className: "eyebrow" }, "Refused connections"),
-      (refused.items || []).length ? el("ul", { className: "list" }, refused.items.slice(0, 8).map((r) => el("li", {}, el("code", {}, r.address), el("span", { className: "when" }, `${num(r.count)}× · ${ago(r.last)}`),
-        el("button", { className: "quiet", type: "button", onclick: () => confirm(`Allow ${r.address} to connect to this colony?`) && allow(r.address) }, "Allow"))))
-        : el("p", { className: "empty" }, "None. An address that is not in the allowed networks shows up here, so you can tell who is being turned away.")));
+  const rail = el("aside", { className: "colony-rail" },
+    el("div", { className: "rail-card" },
+      el("div", { className: "sec-title" }, "Search Activity (14 Days)"),
+      days.length ? chart(days) : null,
+      el("div", { style: "display:flex;gap:12px;margin-top:12px;font-size:.74rem;font-family:var(--f-display);color:var(--dust)" },
+        el("span", {}, el("i", { style: "display:inline-block;width:8px;height:8px;background:var(--wall);border-radius:2px;margin-right:4px" }), "searches"),
+        el("span", {}, el("i", { style: "display:inline-block;width:8px;height:8px;background:var(--moss);border-radius:2px;margin-right:4px" }), "answered"),
+        el("span", {}, el("i", { style: "display:inline-block;width:8px;height:8px;background:var(--amber);border-radius:2px;margin-right:4px" }), "published"))),
+    el("div", { className: "rail-card" },
+      el("div", { className: "sec-title" }, "Team Members"),
+      people.length ? el("ul", { className: "activity-list" }, people.map((p) => el("li", { className: "activity-item" },
+        el("div", { className: "user-avatar-circle" }, p.name.slice(0, 2).toUpperCase()),
+        el("span", { style: "font-weight:500" }, p.name),
+        el("span", { className: "time-ago" }, seen[p.name] ? ago(seen[p.name]) : "not seen")))) : el("p", { className: "hint" }, "No keys registered.")),
+    el("div", { className: "rail-card" },
+      el("div", { className: "sec-title" }, "Cross-Agent Reuse"),
+      (team.reuse || []).length ? el("ul", { className: "activity-list" }, team.reuse.slice(0, 6).map((e) => el("li", { className: "activity-item" },
+        el("div", {},
+          el("span", { style: "font-weight:600" }, e.reporter),
+          el("span", { style: "color:var(--dust)" }, " used @" + e.author + "'s trail: "),
+          el("span", { style: "color:var(--chalk)" }, cut(e.label || e.trail, 34))),
+        el("span", { className: "pill " + (e.outcome === "worked" ? "ok" : "warn"), style: "margin-left:auto" }, e.outcome)))) : el("p", { className: "hint" }, "No reuse recorded yet.")),
+    el("div", { className: "rail-card" },
+      el("div", { className: "sec-title" }, "Refused Connections"),
+      (refused.items || []).length ? el("ul", { className: "activity-list" }, refused.items.slice(0, 8).map((r) => el("li", { className: "activity-item" },
+        el("code", { style: "font-size:.78rem" }, r.address),
+        el("span", { className: "time-ago" }, `${num(r.count)}× · ${ago(r.last)}`),
+        el("button", { className: "btn btn-quiet btn-sm", onclick: () => confirm("Allow " + r.address + "?") && allow(r.address) }, "Allow"))))
+        : el("p", { className: "hint" }, "No blocked addresses.")));
 
-  const search = el("input", { type: "search", placeholder: "Search the trails: an error, a tool, a person…", spellcheck: false, "aria-label": "Search the trails" });
-  search.oninput = () => { state.q = search.value; draw(); };
-  const sort = el("select", { "aria-label": "Sort" }, [["new", "Newest first"], ["strength", "Strongest first"], ["reports", "Most reported"]].map(([v, l]) => el("option", { value: v }, l)));
-  sort.onchange = () => { state.sort = sort.value; draw(); };
+  const searchInput = el("input", { type: "search", placeholder: "Filter trails: query, tool, author, error line…", spellcheck: false });
+  searchInput.oninput = () => { state.q = searchInput.value; draw(); };
+  const sortSelect = el("select", { style: "width:auto" },
+    el("option", { value: "new" }, "Newest first"),
+    el("option", { value: "strength" }, "Strongest first"),
+    el("option", { value: "reports" }, "Most reported"));
+  sortSelect.onchange = () => { state.sort = sortSelect.value; draw(); };
 
-  view.replaceChildren(
-    el("div", { className: "head" }, el("h1", {}, "Colony"), el("p", {}, "What the team's agents have published, who published it, and how the colony is doing."),
-      el("div", { className: "stats" },
-        stat(ready.ready ? "Ready" : "Not ready", "all parts answer", ready.ready ? "ok" : "bad"), stat(num(stats.trails), "trails"),
-        stat(num(ready.queue_depth) + (ready.queue_max ? " / " + num(ready.queue_max) : ""), "waiting to be checked"),
-        stat(num(people.length), "people with a key"), stat(num(stats.searches_30d), "searches, 30 days"),
-        stat(num(rej.rejected) + " of " + num(rej.judged), "trails rejected, 30 days", rej.rejected ? "warn" : ""),
-        stat(num(stats.answered_30d), "searches answered, 30 days")),
-      alerts.length ? el("div", { className: "alerts" }, alerts.map(([kind, text]) => el("div", { className: "alert " + kind }, text))) : null),
-    el("div", { className: "shell" }, filtersBox, el("main", {}, el("div", { className: "toolbar" }, search, sort), feed, el("div", { className: "row", style: "margin-top:12px" }, more)), rail));
+  setChildren(view, el("div", { className: "view-container" },
+    el("div", { className: "page-header" },
+      el("div", { className: "page-title" },
+        el("h1", {}, "Colony Trails"),
+        el("p", {}, "Live intelligence feed of verified fixes, procedures and facts shared across your coding agents.")),
+      el("div", { style: "display:flex;gap:8px" },
+        el("button", { className: "btn btn-quiet", onclick: () => { mapFocus = null; show("map"); } },
+          svg("svg", { width: "16", height: "16", fill: "none", stroke: "currentColor", "stroke-width": "2", viewBox: "0 0 24 24" },
+            svg("circle", { cx: "18", cy: "5", r: "3" }), svg("circle", { cx: "6", cy: "12", r: "3" }), svg("circle", { cx: "18", cy: "19", r: "3" }),
+            svg("line", { x1: "8.59", y1: "13.51", x2: "15.42", y2: "17.49" }), svg("line", { x1: "15.41", y1: "6.51", x2: "8.59", y2: "10.49" })),
+          "Explore in Map ↗"))),
+    el("div", { className: "stats-grid" },
+      statCard(ready.ready ? "Cluster Ready" : "Degraded", "Status", ["redis", "qdrant", "embed"].map((k) => ready[k] ? k : "!" + k).join(" · "), ready.ready ? "ok" : "bad"),
+      statCard(num(stats.trails), "Total Trails", "verified knowledge items", "amber"),
+      statCard(num(ready.queue_depth) + (ready.queue_max ? " / " + num(ready.queue_max) : ""), "Ingestion Queue", "verifying in background", ready.queue_depth > 0 ? "warn" : ""),
+      statCard(num(people.length), "Team Keys", Object.keys(seen).length + " active", ""),
+      statCard(num(stats.searches_30d), "Searches (30d)", num(stats.answered_30d) + " answered", "ok"),
+      statCard(num(rej.rejected), "Rejections (30d)", num(rej.judged) + " analyzed", rej.rejected ? "warn" : "")),
+    alerts.length ? el("div", { className: "alerts-list" }, alerts.map(([kind, text]) => el("div", { className: "alert-banner " + kind },
+      el("span", { className: "alert-icon" }, kind === "bad" ? "🚨" : kind === "warn" ? "⚠️" : "ℹ️"),
+      el("span", { className: "alert-text" }, text)))) : null,
+    el("div", { className: "colony-shell" },
+      filtersBox,
+      el("main", {},
+        el("div", { className: "feed-toolbar" },
+          el("div", { className: "search-input-wrap" },
+            svg("svg", { viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", "stroke-width": "2" },
+              svg("circle", { cx: "11", cy: "11", r: "8" }), svg("line", { x1: "21", y1: "21", x2: "16.65", y2: "16.65" })),
+            searchInput),
+          sortSelect),
+        feed,
+        more),
+      rail)));
   draw();
 }
 
-/* ---------- People ---------- */
+/* ========================================================================= */
+/* TAB: MAP - THE REFINED FLAGSHIP KNOWLEDGE GRAPH                           */
+/* ========================================================================= */
+
+async function map(view) {
+  if (mapStop) { mapStop(); mapStop = null; }
+  const g = await api("/v1/admin/map");
+
+  const css = getComputedStyle(document.documentElement);
+  const color = (v) => css.getPropertyValue(v).trim();
+  const isLight = document.documentElement.getAttribute("data-theme") === "light";
+
+  const KIND_COLORS = {
+    fix: color("--amber") || "#f59e0b",
+    procedure: color("--moss") || "#10b981",
+    fact: color("--sapphire") || "#3b82f6"
+  };
+  const HEALTH_COLORS = {
+    ok: color("--moss") || "#10b981",
+    contested: color("--ember") || "#ef4444",
+    stale: color("--ochre") || "#eab308",
+    unconfirmed: color("--cyan") || "#06b6d4"
+  };
+
+  const PALETTE = ["#f59e0b", "#10b981", "#3b82f6", "#a855f7", "#ec4899", "#06b6d4", "#f97316", "#84cc16", "#6366f1", "#14b8a6", "#e11d48", "#64748b"];
+  const topicOf = (n) => (n.kind === "fix" ? n.category || "other" : n.kind);
+  const topics = [...g.nodes.reduce((m, n) => m.set(topicOf(n), (m.get(topicOf(n)) || 0) + 1), new Map())].sort((a, b) => b[1] - a[1]).map(([t]) => t);
+  const TOPIC_COLORS = new Map(topics.map((t, i) => [t, PALETTE[i % PALETTE.length]]));
+
+  let colorMode = "topic"; // "topic" | "kind" | "health" | "strength"
+  let labelMode = "hover"; // "hover" (default clean!) | "all" | "off"
+  let showClusterHalos = true;
+  let showRadar = true;
+  let simulationActive = true;
+
+  // Node initialization with wider spacing
+  const nodes = g.nodes.map((n, i) => {
+    const angle = i * 2.39996, dist = 16 * Math.sqrt(i);
+    return {
+      ...n,
+      x: Math.cos(angle) * dist,
+      y: Math.sin(angle) * dist,
+      vx: 0,
+      vy: 0,
+      r: 6 + 9 * Math.min(1, n.strength || 0),
+      links: [],
+      neighbors: new Set(),
+      pinned: false
+    };
+  });
+
+  const byId = new Map(nodes.map((n) => [n.id, n]));
+  const edges = (g.edges || []).map((e) => ({ a: byId.get(e.a), b: byId.get(e.b), s: e.s })).filter((e) => e.a && e.b);
+  for (const e of edges) {
+    e.a.links.push(e); e.b.links.push(e);
+    e.a.neighbors.add(e.b); e.b.neighbors.add(e.a);
+  }
+
+  // Island / Cluster Detection
+  const root = new Map(nodes.map((n) => [n, n]));
+  const find = (n) => { while (root.get(n) !== n) { root.set(n, root.get(root.get(n))); n = root.get(n); } return n; };
+  for (const e of edges) root.set(find(e.a), find(e.b));
+  const groups = new Map();
+  for (const n of nodes) { const r = find(n); (groups.get(r) || groups.set(r, []).get(r)).push(n); }
+
+  const tagUse = new Map();
+  for (const n of nodes) for (const t of n.tags || []) tagUse.set(t, (tagUse.get(t) || 0) + 1);
+  const telling = (t) => (tagUse.get(t) || 0) <= Math.max(3, nodes.length / 5);
+
+  const islands = [...groups.values()].filter((m) => m.length >= 3).map((members) => {
+    const count = new Map();
+    for (const n of members) {
+      const tags = (n.tags || []).filter(telling);
+      for (const t of tags.length ? tags : [topicOf(n)]) count.set(t, (count.get(t) || 0) + 1);
+    }
+    const [name] = [...count].sort((a, b) => b[1] - a[1])[0] || ["topic"];
+    return { members, name: String(name).replaceAll("_", " ") };
+  });
+
+  // Filtering state
+  const kinds = { fix: true, procedure: true, fact: true };
+  let activeTopic = null;
+  let focusHealth = mapFocus;
+  mapFocus = null;
+  let query = "";
+  let selected = null;
+  let hover = null;
+  let draggedNode = null;
+
+  const matches = (n) => {
+    if (!kinds[n.kind]) return false;
+    if (activeTopic && topicOf(n) !== activeTopic) return false;
+    if (focusHealth) {
+      if (focusHealth === "used" && !(n.worked > 0)) return false;
+      if (focusHealth !== "used" && n.health !== focusHealth) return false;
+    }
+    if (!query) return true;
+    const text = (n.label + " " + (n.summary || "") + " " + (n.tags || []).join(" ")).toLowerCase();
+    return query.split(/\s+/).every((w) => text.includes(w));
+  };
+
+  const getNodeColor = (n) => {
+    if (colorMode === "kind") return KIND_COLORS[n.kind] || color("--dust");
+    if (colorMode === "health") return HEALTH_COLORS[n.health] || color("--moss");
+    if (colorMode === "strength") {
+      const s = Math.min(1, Math.max(0, n.strength || 0));
+      return s > 0.7 ? "#10b981" : s > 0.4 ? "#f59e0b" : "#ef4444";
+    }
+    return TOPIC_COLORS.get(topicOf(n)) || color("--dust");
+  };
+
+  // Canvas and Elements
+  const canvas = el("canvas", { id: "graph-canvas" });
+  const radarCard = el("div", { className: "map-radar-card" });
+  const radarCanvas = el("canvas", { width: 156, height: 88 });
+  const radarCtx = radarCanvas.getContext("2d");
+  const inspectorBody = el("div", { className: "inspector-content" });
+
+  const countBadge = el("span", { className: "logo-tag", style: "margin-left:auto" });
+
+  // Type Toggle Pills
+  const toggleBtn = (k, name, shape) => {
+    const btn = el("button", { className: "hud-toggle-pill", "aria-pressed": "true" },
+      el("span", { className: "shape-icon", style: `background:currentColor;${shape}` }),
+      `${name} (${nodes.filter(n => n.kind === k).length})`);
+    btn.onclick = () => {
+      kinds[k] = !kinds[k];
+      btn.setAttribute("aria-pressed", String(kinds[k]));
+      refresh();
+    };
+    return btn;
+  };
+
+  const pillFix = toggleBtn("fix", "Fixes", "border-radius:50%");
+  const pillProc = toggleBtn("procedure", "Procedures", "border-radius:2px");
+  const pillFact = toggleBtn("fact", "Facts", "transform:rotate(45deg) scale(.8)");
+
+  const searchInput = el("input", { type: "search", placeholder: "Search nodes (/ to focus)…", value: query });
+  searchInput.oninput = (e) => { query = e.target.value.trim().toLowerCase(); refresh(); };
+
+  const colorSelect = el("select", { className: "map-select-styled" },
+    el("option", { value: "topic" }, "🎨 Color: Topic"),
+    el("option", { value: "kind" }, "🏷️ Color: Kind"),
+    el("option", { value: "health" }, "❤️ Color: Health"),
+    el("option", { value: "strength" }, "⚡ Color: Strength"));
+  colorSelect.onchange = (e) => { colorMode = e.target.value; refresh(); };
+
+  // Label Mode Selector Button
+  const labelBtn = el("button", { className: "hud-toggle-pill", title: "Toggle text labels display" },
+    "🏷️ Labels: Hover Only");
+  labelBtn.onclick = () => {
+    labelMode = labelMode === "hover" ? "all" : (labelMode === "all" ? "off" : "hover");
+    labelBtn.textContent = labelMode === "hover" ? "🏷️ Labels: Hover Only" : (labelMode === "all" ? "🏷️ Labels: All" : "🏷️ Labels: Off");
+    refresh();
+  };
+
+  // Preset Chips
+  const presetPillsContainer = el("div", { className: "presets-row" });
+  function buildPresets() {
+    const contestedCount = nodes.filter(x => x.health === "contested").length;
+    const staleCount = nodes.filter(x => x.health === "stale").length;
+    const unconfirmedCount = nodes.filter(x => x.health === "unconfirmed").length;
+
+    const mkPill = (label, val, active) => {
+      const p = el("div", { className: "preset-chip" + (active ? " active" : "") }, label);
+      p.onclick = () => { focusHealth = focusHealth === val ? null : val; refresh(); };
+      return p;
+    };
+
+    const pills = [
+      mkPill("All", null, !focusHealth && !activeTopic),
+      contestedCount ? mkPill(`⚠️ Contested (${contestedCount})`, "contested", focusHealth === "contested") : null,
+      staleCount ? mkPill(`⏳ Stale (${staleCount})`, "stale", focusHealth === "stale") : null,
+      unconfirmedCount ? mkPill(`🆕 Unconfirmed (${unconfirmedCount})`, "unconfirmed", focusHealth === "unconfirmed") : null,
+      mkPill("⭐ Most Used", "used", focusHealth === "used"),
+      activeTopic ? el("div", { className: "preset-chip active", onclick: () => { activeTopic = null; refresh(); } }, `Topic: ${activeTopic.replaceAll("_", " ")} ✕`) : null
+    ];
+    setChildren(presetPillsContainer, ...pills);
+  }
+
+  // Floating Dock Controls
+  const btnZoomIn = el("button", { className: "dock-btn", title: "Zoom In" }, "＋");
+  const btnZoomOut = el("button", { className: "dock-btn", title: "Zoom Out" }, "－");
+  const btnFit = el("button", { className: "dock-btn", title: "Fit to Viewport" }, "⛶ Fit");
+  const btnSim = el("button", { className: "dock-btn", title: "Pause/Play Physics" }, "⏸ Physics");
+  const btnReheat = el("button", { className: "dock-btn", title: "Reheat Physics" }, "↺ Reheat");
+  const btnRadarToggle = el("button", { className: "dock-btn active", title: "Toggle Radar Minimap" }, "◰ Radar");
+
+  const mapDock = el("div", { className: "map-dock" },
+    btnZoomIn, btnZoomOut, el("div", { className: "dock-divider" }),
+    btnFit, btnSim, btnReheat, el("div", { className: "dock-divider" }),
+    btnRadarToggle);
+
+  function refresh() {
+    const shown = nodes.filter(matches).length;
+    countBadge.textContent = `${shown} / ${nodes.length} nodes · ${edges.length} links`;
+    buildPresets();
+    draw();
+  }
+
+  // Camera & Canvas Coordinates
+  let scale = 1, tx = 0, ty = 0, W = 0, H = 0;
+  let targetScale = 1, targetTx = 0, targetTy = 0;
+  const ctx = canvas.getContext("2d");
+
+  function resize() {
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    W = rect.width; H = rect.height;
+    canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    draw();
+  }
+
+  // Optimized Physics Simulation with Higher Repulsion & Spacing
+  let alpha = 1;
+  function tickSimulation() {
+    if (!simulationActive && alpha <= 0.005) return;
+    const cell = 120, grid = new Map();
+    for (const n of nodes) {
+      if (n.pinned) continue;
+      const k = Math.floor(n.x / cell) + "," + Math.floor(n.y / cell);
+      (grid.get(k) || grid.set(k, []).get(k)).push(n);
+    }
+
+    for (const n of nodes) {
+      if (n.pinned) continue;
+      const cx = Math.floor(n.x / cell), cy = Math.floor(n.y / cell);
+      for (let dx = -1; dx <= 1; dx++) {
+        for (let dy = -1; dy <= 1; dy++) {
+          for (const m of grid.get((cx + dx) + "," + (cy + dy)) || []) {
+            if (m === n) continue;
+            let x = n.x - m.x, y = n.y - m.y, d2 = x * x + y * y;
+            if (d2 < 0.01) { x = Math.random() - 0.5; y = Math.random() - 0.5; d2 = 0.5; }
+            if (d2 > cell * cell) continue;
+            const f = (520 * alpha) / d2;
+            n.vx += x * f; n.vy += y * f;
+          }
+        }
+      }
+      // Gentle center gravitation
+      n.vx -= n.x * 0.0016 * alpha;
+      n.vy -= n.y * 0.0016 * alpha;
+    }
+
+    for (const e of edges) {
+      if (e.a.pinned && e.b.pinned) continue;
+      const x = e.b.x - e.a.x, y = e.b.y - e.a.y;
+      const d = Math.hypot(x, y) || 1;
+      const target = 32 + 70 * (1 - e.s);
+      const f = ((d - target) / d) * 0.42 * alpha;
+      if (!e.a.pinned) { e.a.vx += x * f; e.a.vy += y * f; }
+      if (!e.b.pinned) { e.b.vx -= x * f; e.b.vy -= y * f; }
+    }
+
+    for (const n of nodes) {
+      if (n.pinned) continue;
+      n.vx *= 0.65; n.vy *= 0.65;
+      n.x += Math.max(-25, Math.min(25, n.vx));
+      n.y += Math.max(-25, Math.min(25, n.vy));
+    }
+
+    alpha = Math.max(0.004, alpha * 0.993);
+  }
+
+  // Camera interpolation
+  function updateCamera() {
+    tx += (targetTx - tx) * 0.16;
+    ty += (targetTy - ty) * 0.16;
+    scale += (targetScale - scale) * 0.16;
+  }
+
+  function fit(animate = true) {
+    const xs = nodes.map((n) => n.x), ys = nodes.map((n) => n.y);
+    if (!xs.length) return;
+    const minX = Math.min(...xs), maxX = Math.max(...xs);
+    const minY = Math.min(...ys), maxY = Math.max(...ys);
+    const w = maxX - minX + 160, h = maxY - minY + 160;
+    const s = Math.min(2.5, Math.max(0.2, Math.min((W - 100) / w, (H - 100) / h)));
+    targetScale = s;
+    targetTx = -((maxX + minX) / 2) * s;
+    targetTy = -((maxY + minY) / 2) * s;
+    if (!animate) { scale = targetScale; tx = targetTx; ty = targetTy; }
+  }
+
+  // Main Canvas Rendering
+  function draw() {
+    if (!W || !H) return;
+    ctx.clearRect(0, 0, W, H);
+
+    ctx.save();
+    ctx.translate(W / 2 + tx, H / 2 + ty);
+    ctx.scale(scale, scale);
+
+    // 1. Cluster Islands Background Clouds & Badges
+    if (showClusterHalos && !query && !focusHealth && !activeTopic) {
+      for (const isl of islands) {
+        if (!isl.members.length) continue;
+        const xs = isl.members.map((n) => n.x), ys = isl.members.map((n) => n.y);
+        const cx = xs.reduce((a, b) => a + b, 0) / xs.length;
+        const cy = ys.reduce((a, b) => a + b, 0) / ys.length;
+        const maxD = Math.max(45, ...isl.members.map((n) => Math.hypot(n.x - cx, n.y - cy)));
+
+        // Soft Radial Nebula
+        const radGrad = ctx.createRadialGradient(cx, cy, 10, cx, cy, maxD + 35);
+        radGrad.addColorStop(0, isLight ? "rgba(217, 119, 6, 0.07)" : "rgba(245, 158, 11, 0.05)");
+        radGrad.addColorStop(1, "rgba(245, 158, 11, 0)");
+        ctx.fillStyle = radGrad;
+        ctx.beginPath();
+        ctx.arc(cx, cy, maxD + 35, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Elegant Topic Badge
+        ctx.font = `600 ${10.5 / scale}px ${color("--f-display")}`;
+        ctx.textAlign = "center";
+        const topY = Math.min(...ys);
+        const text = `${isl.name.toUpperCase()} · ${isl.members.length}`;
+        const tw = ctx.measureText(text).width;
+
+        ctx.fillStyle = isLight ? "rgba(255, 255, 255, 0.85)" : "rgba(14, 12, 10, 0.85)";
+        ctx.beginPath();
+        ctx.roundRect(cx - tw / 2 - 8 / scale, topY - 26 / scale, tw + 16 / scale, 17 / scale, 5 / scale);
+        ctx.fill();
+
+        ctx.strokeStyle = color("--wall");
+        ctx.lineWidth = 1 / scale;
+        ctx.stroke();
+
+        ctx.fillStyle = isLight ? "#92400e" : color("--amber-ink");
+        ctx.fillText(text, cx, topY - 14 / scale);
+      }
+      ctx.textAlign = "start";
+    }
+
+    // 2. Edges / Links
+    const lit = new Set();
+    if (selected) {
+      lit.add(selected);
+      for (const e of selected.links) { lit.add(e.a); lit.add(e.b); }
+    } else if (hover) {
+      lit.add(hover);
+      for (const e of hover.links) { lit.add(e.a); lit.add(e.b); }
+    }
+
+    for (const e of edges) {
+      const matchA = matches(e.a), matchB = matches(e.b);
+      const isLit = (selected && (e.a === selected || e.b === selected)) ||
+                    (!selected && hover && (e.a === hover || e.b === hover));
+
+      if (isLit) {
+        ctx.lineWidth = 2.4 / scale;
+        ctx.strokeStyle = color("--amber");
+        ctx.globalAlpha = 1;
+      } else {
+        ctx.lineWidth = (0.7 + 1.3 * e.s) / scale;
+        ctx.strokeStyle = matchA && matchB ? color("--wall-light") : color("--wall");
+        ctx.globalAlpha = (matchA && matchB) ? (selected ? 0.04 : 0.12 + 0.38 * e.s) : 0.02;
+      }
+
+      ctx.beginPath();
+      ctx.moveTo(e.a.x, e.a.y);
+      ctx.lineTo(e.b.x, e.b.y);
+      ctx.stroke();
+    }
+
+    // 3. Nodes (Polished Gemstones / Tech Icons)
+    for (const n of nodes) {
+      const isMatch = matches(n);
+      const isSelected = n === selected;
+      const isHovered = n === hover;
+      const isNeighbor = lit.has(n);
+
+      let alphaVal = 1;
+      if (!isMatch) alphaVal = 0.08;
+      else if (selected && !isSelected && !isNeighbor) alphaVal = 0.22;
+      else if (n.health === "stale") alphaVal = 0.55;
+
+      ctx.globalAlpha = alphaVal;
+      const nodeCol = getNodeColor(n);
+
+      // Node Shadow / Glow
+      if (isMatch) {
+        ctx.save();
+        if (isSelected || isHovered) {
+          ctx.shadowColor = color("--amber");
+          ctx.shadowBlur = (isSelected ? 18 : 10) / scale;
+        } else if (isLight) {
+          ctx.shadowColor = "rgba(0, 0, 0, 0.14)";
+          ctx.shadowBlur = 4 / scale;
+          ctx.shadowOffsetY = 1.5 / scale;
+        }
+        ctx.fillStyle = nodeCol;
+        drawNodeShape(ctx, n);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      // Main Node Fill
+      ctx.fillStyle = nodeCol;
+      drawNodeShape(ctx, n);
+      ctx.fill();
+
+      // Outer Ring for Definition
+      ctx.lineWidth = (isLight ? 1.5 : 1) / scale;
+      ctx.strokeStyle = isLight ? "rgba(0, 0, 0, 0.15)" : "rgba(255, 255, 255, 0.25)";
+      drawNodeShape(ctx, n);
+      ctx.stroke();
+
+      // Internal Pupil / Core
+      if (isMatch) {
+        ctx.fillStyle = isLight ? "rgba(255, 255, 255, 0.75)" : "rgba(0, 0, 0, 0.45)";
+        ctx.beginPath();
+        ctx.arc(n.x, n.y, n.r * 0.38, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Health Indicators (Contested hazard / Unconfirmed dash)
+      if (isMatch) {
+        if (n.health === "contested") {
+          ctx.lineWidth = 2.4 / scale;
+          ctx.strokeStyle = color("--ember");
+          ctx.beginPath();
+          ctx.arc(n.x, n.y, n.r + 3.8 / scale, 0, Math.PI * 2);
+          ctx.stroke();
+        } else if (n.health === "unconfirmed") {
+          ctx.lineWidth = 1.6 / scale;
+          ctx.strokeStyle = color("--cyan");
+          ctx.setLineDash([3 / scale, 3 / scale]);
+          ctx.beginPath();
+          ctx.arc(n.x, n.y, n.r + 3.2 / scale, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+
+        // Selection Target Ring
+        if (isSelected || isHovered) {
+          ctx.lineWidth = (isSelected ? 2.8 : 2) / scale;
+          ctx.strokeStyle = isSelected ? color("--amber-ink") : color("--chalk");
+          ctx.beginPath();
+          ctx.arc(n.x, n.y, n.r + 4.8 / scale, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+      }
+
+      // Text Labels: Clean & uncluttered!
+      // ONLY shown on hover, selected, neighbor, or when explicitly set to "all"
+      const shouldShowText = isMatch && (
+        (labelMode === "all") ||
+        (labelMode !== "off" && (isSelected || isHovered || isNeighbor))
+      );
+
+      if (shouldShowText) {
+        ctx.font = `600 ${10.5 / scale}px ${color("--f-display")}`;
+        const text = cut(n.label, isSelected || isHovered ? 55 : 24);
+        const tw = ctx.measureText(text).width;
+        const txPos = n.x, tyPos = n.y + n.r + 11 / scale;
+
+        ctx.fillStyle = isLight ? "rgba(255, 255, 255, 0.92)" : "rgba(14, 12, 10, 0.9)";
+        ctx.beginPath();
+        ctx.roundRect(txPos - tw / 2 - 4 / scale, tyPos - 8.5 / scale, tw + 8 / scale, 13 / scale, 3 / scale);
+        ctx.fill();
+
+        ctx.strokeStyle = isSelected ? color("--amber") : color("--wall");
+        ctx.lineWidth = 1 / scale;
+        ctx.stroke();
+
+        ctx.fillStyle = isSelected ? color("--amber-ink") : color("--chalk");
+        ctx.textAlign = "center";
+        ctx.fillText(text, txPos, tyPos + 1.5 / scale);
+        ctx.textAlign = "start";
+      }
+    }
+
+    ctx.restore();
+
+    // 4. Render Perfectly Centered Radar
+    if (showRadar) drawMinimap();
+  }
+
+  function drawNodeShape(c, n) {
+    c.beginPath();
+    if (n.kind === "procedure") {
+      c.roundRect(n.x - n.r * 0.85, n.y - n.r * 0.85, n.r * 1.7, n.r * 1.7, 3);
+    } else if (n.kind === "fact") {
+      c.moveTo(n.x, n.y - n.r * 1.15);
+      c.lineTo(n.x + n.r * 1.15, n.y);
+      c.lineTo(n.x, n.y + n.r * 1.15);
+      c.lineTo(n.x - n.r * 1.15, n.y);
+      c.closePath();
+    } else {
+      c.arc(n.x, n.y, n.r, 0, Math.PI * 2);
+    }
+  }
+
+  // Mathematically Accurate Centered Minimap
+  function drawMinimap() {
+    const mw = 156, mh = 88;
+    radarCtx.clearRect(0, 0, mw, mh);
+
+    const xs = nodes.map((n) => n.x), ys = nodes.map((n) => n.y);
+    if (!xs.length) return;
+    const minX = Math.min(...xs), maxX = Math.max(...xs);
+    const minY = Math.min(...ys), maxY = Math.max(...ys);
+    const gw = Math.max(120, maxX - minX + 80);
+    const gh = Math.max(100, maxY - minY + 80);
+    const cx = (minX + maxX) / 2;
+    const cy = (minY + maxY) / 2;
+
+    const ms = Math.min((mw - 24) / gw, (mh - 24) / gh);
+    const mcx = mw / 2, mcy = mh / 2;
+
+    // Node dots in radar
+    for (const n of nodes) {
+      if (!matches(n)) continue;
+      const rx = mcx + (n.x - cx) * ms;
+      const ry = mcy + (n.y - cy) * ms;
+      radarCtx.fillStyle = n === selected ? "#f59e0b" : (isLight ? "#968c7e" : "#554b3e");
+      radarCtx.beginPath();
+      radarCtx.arc(rx, ry, n === selected ? 2.8 : 1.4, 0, Math.PI * 2);
+      radarCtx.fill();
+    }
+
+    // Viewport camera rectangle
+    const vLeft = (-W / 2 - tx) / scale;
+    const vTop = (-H / 2 - ty) / scale;
+    const vRight = (W / 2 - tx) / scale;
+    const vBottom = (H / 2 - ty) / scale;
+
+    const vrX = mcx + (vLeft - cx) * ms;
+    const vrY = mcy + (vTop - cy) * ms;
+    const vrW = (vRight - vLeft) * ms;
+    const vrH = (vBottom - vTop) * ms;
+
+    radarCtx.fillStyle = "rgba(245, 158, 11, 0.08)";
+    radarCtx.fillRect(vrX, vrY, vrW, vrH);
+
+    radarCtx.strokeStyle = "rgba(245, 158, 11, 0.85)";
+    radarCtx.lineWidth = 1.2;
+    radarCtx.strokeRect(vrX, vrY, vrW, vrH);
+  }
+
+  // Animation Loop
+  let animId = null;
+  function loop() {
+    tickSimulation();
+    updateCamera();
+    draw();
+    animId = requestAnimationFrame(loop);
+  }
+
+  // Inspector Sidebar
+  function describe(n) {
+    if (!n) {
+      setChildren(inspectorBody, 
+        el("div", { className: "stat-card", style: "margin:0" },
+          el("div", { className: "sec-title" }, "Graph Intelligence Overview"),
+          el("div", { className: "stats-grid", style: "grid-template-columns:1fr 1fr;gap:8px;margin-top:8px" },
+            el("div", { className: "stat-card" }, el("div", { className: "val" }, num(nodes.length)), el("div", { className: "lbl" }, "Total Nodes")),
+            el("div", { className: "stat-card" }, el("div", { className: "val" }, num(edges.length)), el("div", { className: "lbl" }, "Knowledge Links")),
+            el("div", { className: "stat-card" }, el("div", { className: "val" }, num(islands.length)), el("div", { className: "lbl" }, "Topic Clusters")),
+            el("div", { className: "stat-card" }, el("div", { className: "val" }, num(nodes.filter(x => x.health === "contested").length)), el("div", { className: "lbl" }, "Contested"))),
+          el("div", { style: "margin-top:16px" },
+            el("div", { className: "sec-title" }, "Knowledge Topics (Click to filter)"),
+            ...topics.map((t) => {
+              const count = nodes.filter(x => topicOf(x) === t).length;
+              return el("div", {
+                className: "topic-stat-row",
+                onclick: () => { activeTopic = activeTopic === t ? null : t; refresh(); }
+              },
+                el("span", { className: "topic-stat-pill" },
+                  el("i", { style: `background:${TOPIC_COLORS.get(t)}` }),
+                  t.replaceAll("_", " ")),
+                el("span", { className: "mono", style: "color:var(--dust)" }, num(count)));
+            })),
+          el("p", { className: "hint", style: "margin-top:16px;line-height:1.6" },
+            "Hover any node to preview its title and strength. Click to open full execution commands, steps, and neighbor links. Drag nodes to explore relationships.")));
+      return;
+    }
+
+    const near = n.links.map((e) => ({ m: e.a === n ? e.b : e.a, s: e.s })).sort((x, y) => y.s - x.s).slice(0, 6);
+    const score = Math.round(Number(n.strength || 0) * 100);
+
+    setChildren(inspectorBody, 
+      el("div", { style: "display:flex;gap:6px;flex-wrap:wrap" },
+        el("span", { className: "pill " + (n.kind === "fix" ? "amber" : "ok") }, n.kind),
+        n.category ? el("span", { className: "pill" }, String(n.category).replaceAll("_", " ")) : null,
+        n.health !== "ok" ? el("span", { className: "pill " + (n.health === "contested" ? "bad" : "warn") }, n.health) : null,
+        n.source ? el("span", { className: "pill" }, "from " + n.source) : null),
+      el("div", {},
+        el("h3", { style: "margin:0 0 6px;font:600 1.05rem var(--f-display);line-height:1.4" }, n.label),
+        n.summary && n.summary !== n.label ? el("p", { style: "margin:0;color:var(--dust);font-size:.86rem" }, n.summary) : null),
+      el("div", { className: "detail-strength-box" },
+        el("div", { className: "strength-num-row" },
+          el("span", { style: "font:600 .76rem var(--f-display);text-transform:uppercase;color:var(--dust)" }, "Reliability Score"),
+          el("span", { className: "strength-score" }, `${score}%`)),
+        el("div", { className: "strength-bar-bg" },
+          el("div", { className: "strength-bar-fill", style: `width:${score}%` })),
+        el("div", { style: "display:flex;justify-content:space-between;margin-top:8px;font-size:.76rem;font-family:var(--f-display);color:var(--dust)" },
+          el("span", { style: "color:var(--moss)" }, `✔ ${num(n.worked)} worked`),
+          el("span", { style: "color:var(--ember)" }, `✖ ${num(n.failed)} failed`))),
+      (n.tags || []).length ? el("div", {},
+        el("div", { className: "sec-title" }, "Tags"),
+        el("div", { className: "chips-cloud" }, n.tags.map((t) => el("span", { className: "pill" }, t)))) : null,
+      el("div", { style: "display:flex;gap:8px;flex-wrap:wrap" },
+        el("button", {
+          className: "btn btn-act btn-sm",
+          onclick: () => {
+            current = "colony";
+            show("colony");
+          }
+        }, "Open Trail in Feed ↗"),
+        el("button", {
+          className: "btn btn-quiet btn-sm",
+          onclick: (e) => copyToClipboard(n.id, e.target)
+        }, "Copy ID")),
+      near.length ? el("div", {},
+        el("div", { className: "sec-title" }, "Connected Neighbors (" + near.length + ")"),
+        el("div", { style: "display:grid;gap:6px" }, near.map(({ m, s }) => el("div", {
+          className: "neighbor-card",
+          onclick: () => {
+            selected = m;
+            describe(m);
+            targetScale = Math.max(1.4, scale);
+            targetTx = -m.x * targetScale;
+            targetTy = -m.y * targetScale;
+          }
+        },
+          el("span", { style: "overflow:hidden;text-overflow:ellipsis;white-space:nowrap" }, cut(m.label, 34)),
+          el("span", { className: "similarity-tag" }, Math.round(s * 100) + "% match"))))) : null);
+  }
+
+  // Pointer & Drag Interactions
+  const world = (ev) => {
+    const r = canvas.getBoundingClientRect();
+    return {
+      x: (ev.clientX - r.left - W / 2 - tx) / scale,
+      y: (ev.clientY - r.top - H / 2 - ty) / scale
+    };
+  };
+
+  const pickNode = (p) => {
+    let best = null, bd = Infinity;
+    for (const n of nodes) {
+      if (!matches(n)) continue;
+      const d = Math.hypot(n.x - p.x, n.y - p.y);
+      if (d < n.r + 8 / scale && d < bd) { best = n; bd = d; }
+    }
+    return best;
+  };
+
+  let dragCanvas = null;
+  canvas.onpointerdown = (ev) => {
+    const w = world(ev);
+    const clickedNode = pickNode(w);
+    if (clickedNode) {
+      draggedNode = clickedNode;
+      draggedNode.pinned = true;
+      alpha = 0.25;
+      canvas.setPointerCapture(ev.pointerId);
+      return;
+    }
+
+    dragCanvas = { x: ev.clientX, y: ev.clientY, tx, ty, moved: false };
+    canvas.setPointerCapture(ev.pointerId);
+  };
+
+  canvas.onpointermove = (ev) => {
+    const w = world(ev);
+    if (draggedNode) {
+      draggedNode.x = w.x;
+      draggedNode.y = w.y;
+      alpha = Math.max(0.2, alpha);
+      return;
+    }
+
+    if (dragCanvas) {
+      const dx = ev.clientX - dragCanvas.x, dy = ev.clientY - dragCanvas.y;
+      if (Math.hypot(dx, dy) > 3) dragCanvas.moved = true;
+      tx = dragCanvas.tx + dx; ty = dragCanvas.ty + dy;
+      targetTx = tx; targetTy = ty;
+      return;
+    }
+
+    // Hover tooltip
+    const h = pickNode(w);
+    if (h !== hover) {
+      hover = h;
+      const tt = $("map-tooltip");
+      if (hover) {
+        tt.className = "map-tooltip visible";
+        tt.style.left = ev.clientX + "px";
+        tt.style.top = ev.clientY + "px";
+        setChildren(tt, 
+          el("div", { className: "tt-title" }, hover.label),
+          el("div", { className: "tt-meta" },
+            el("span", { className: "pill " + (hover.kind === "fix" ? "amber" : "ok") }, hover.kind),
+            el("span", {}, `${Math.round(hover.strength * 100)}% strength`),
+            el("span", {}, `✔ ${hover.worked} · ✖ ${hover.failed}`)));
+      } else {
+        tt.className = "map-tooltip";
+      }
+    } else if (hover) {
+      const tt = $("map-tooltip");
+      tt.style.left = ev.clientX + "px";
+      tt.style.top = ev.clientY + "px";
+    }
+  };
+
+  canvas.onpointerup = (ev) => {
+    if (draggedNode) {
+      draggedNode.pinned = false;
+      draggedNode = null;
+      return;
+    }
+
+    if (dragCanvas) {
+      const moved = dragCanvas.moved;
+      dragCanvas = null;
+      if (!moved) {
+        const clicked = pickNode(world(ev));
+        selected = clicked;
+        describe(selected);
+        if (selected) {
+          targetScale = Math.max(1.3, scale);
+          targetTx = -selected.x * targetScale;
+          targetTy = -selected.y * targetScale;
+        }
+      }
+    }
+  };
+
+  canvas.onwheel = (ev) => {
+    ev.preventDefault();
+    const r = canvas.getBoundingClientRect();
+    const mx = ev.clientX - r.left - W / 2, my = ev.clientY - r.top - H / 2;
+    const k = Math.exp(-ev.deltaY * 0.0018);
+    const next = Math.min(8, Math.max(0.1, scale * k));
+    tx = mx - ((mx - tx) * next) / scale;
+    ty = my - ((my - ty) * next) / scale;
+    scale = next; targetScale = scale; targetTx = tx; targetTy = ty;
+  };
+
+  // Button Action Bindings
+  btnZoomIn.onclick = () => { targetScale = Math.min(8, scale * 1.35); };
+  btnZoomOut.onclick = () => { targetScale = Math.max(0.1, scale / 1.35); };
+  btnFit.onclick = () => { fit(true); };
+  btnSim.onclick = () => {
+    simulationActive = !simulationActive;
+    btnSim.textContent = simulationActive ? "⏸ Physics" : "▶ Physics";
+    btnSim.className = "dock-btn" + (simulationActive ? "" : " active");
+    showToast(simulationActive ? "Physics resumed" : "Physics paused");
+  };
+  btnReheat.onclick = () => {
+    alpha = 1;
+    showToast("Simulation reheated");
+  };
+
+  // Radar Interactive Navigation (Click on radar to pan)
+  const radarArea = el("div", { className: "radar-canvas-area" }, radarCanvas);
+  radarArea.onclick = (ev) => {
+    const rect = radarCanvas.getBoundingClientRect();
+    const rx = ev.clientX - rect.left;
+    const ry = ev.clientY - rect.top;
+
+    const xs = nodes.map((n) => n.x), ys = nodes.map((n) => n.y);
+    if (!xs.length) return;
+    const minX = Math.min(...xs), maxX = Math.max(...xs);
+    const minY = Math.min(...ys), maxY = Math.max(...ys);
+    const gw = Math.max(120, maxX - minX + 80);
+    const gh = Math.max(100, maxY - minY + 80);
+    const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
+    const ms = Math.min((156 - 24) / gw, (88 - 24) / gh);
+
+    // Convert radar point to world point
+    const worldX = cx + (rx - 156 / 2) / ms;
+    const worldY = cy + (ry - 88 / 2) / ms;
+
+    targetTx = -worldX * scale;
+    targetTy = -worldY * scale;
+  };
+
+  const radarClose = el("button", { className: "radar-close-btn", title: "Hide Radar" }, "✕");
+  radarClose.onclick = () => {
+    showRadar = false;
+    radarCard.className = "map-radar-card collapsed";
+    btnRadarToggle.className = "dock-btn";
+  };
+
+  btnRadarToggle.onclick = () => {
+    showRadar = !showRadar;
+    radarCard.className = "map-radar-card" + (showRadar ? "" : " collapsed");
+    btnRadarToggle.className = "dock-btn" + (showRadar ? " active" : "");
+  };
+
+  setChildren(radarCard, 
+    el("div", { className: "radar-header" },
+      el("span", { className: "radar-title" }, "Radar View"),
+      radarClose),
+    radarArea);
+
+  // Assemble Top HUD
+  const hudTop = el("div", { className: "map-hud-top" },
+    el("div", { className: "map-hud-row" },
+      el("div", { className: "hud-pill-group" }, pillFix, pillProc, pillFact),
+      colorSelect,
+      labelBtn,
+      el("div", { className: "map-search-box" },
+        svg("svg", { viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", "stroke-width": "2" },
+          svg("circle", { cx: "11", cy: "11", r: "8" }), svg("line", { x1: "21", y1: "21", x2: "16.65", y2: "16.65" })),
+        searchInput),
+      countBadge),
+    el("div", { className: "map-hud-row" }, presetPillsContainer));
+
+  const canvasContainer = el("div", { className: "map-canvas-container" },
+    hudTop,
+    canvas,
+    mapDock,
+    radarCard);
+
+  const inspectorContainer = el("aside", { className: "map-inspector" },
+    el("div", { className: "inspector-header" },
+      el("h3", {},
+        svg("svg", { width: "16", height: "16", fill: "none", stroke: "currentColor", "stroke-width": "2", viewBox: "0 0 24 24" },
+          svg("circle", { cx: "12", cy: "12", r: "10" }), svg("line", { x1: "12", y1: "16", x2: "12", y2: "12" }), svg("line", { x1: "12", y1: "8", x2: "12.01", y2: "8" })),
+        "Node Inspector"),
+      selected ? el("button", { className: "clear-btn", onclick: () => { selected = null; describe(null); } }, "✕") : null),
+    inspectorBody);
+
+  setChildren(view, el("div", { className: "view-container", style: "padding-bottom:20px" },
+    el("div", { className: "page-header", style: "margin-bottom:14px" },
+      el("div", { className: "page-title" },
+        el("h1", {}, "Knowledge Constellation Map"),
+        el("p", {}, "Interactive topological network of agent knowledge islands, connected by semantic similarity."))),
+    el("div", { className: "map-wrapper" }, canvasContainer, inspectorContainer)));
+
+  const onResize = () => resize();
+  window.addEventListener("resize", onResize);
+
+  mapStop = () => {
+    if (animId) cancelAnimationFrame(animId);
+    window.removeEventListener("resize", onResize);
+    $("map-tooltip").className = "map-tooltip";
+    mapStop = null;
+  };
+
+  resize();
+  // Layout initial settling
+  for (let i = 0; i < 400; i++) tickSimulation();
+  fit(false);
+  refresh();
+  describe(null);
+  loop();
+}
+
+/* ========================================================================= */
+/* TAB: KNOWLEDGE                                                            */
+/* ========================================================================= */
+
+async function knowledge(view) {
+  const [k, gaps, s] = await Promise.all([
+    api("/v1/admin/knowledge"),
+    api("/v1/admin/gaps"),
+    api("/v1/admin/settings")
+  ]);
+
+  const kinds = k.kinds || {};
+  const asked = k.task_searches_30d || 0, answered = k.task_answered_30d || 0;
+  const coveragePercent = asked ? Math.round((100 * answered) / asked) : 0;
+
+  const onMap = (focus) => el("button", { className: "btn btn-quiet btn-sm", onclick: () => { mapFocus = focus; show("map"); } }, "Show on Map ↗");
+  const kindPill = (kind) => el("span", { className: "pill " + (kind === "fix" ? "amber" : "ok") }, kind);
+
+  const rows = (block) => (block.items || []).map((i) => [
+    kindPill(i.kind),
+    cut(i.label, 90),
+    meter(i.strength),
+    num(i.outcomes?.worked),
+    num(i.outcomes?.failed),
+    i.source?.type ? el("span", { className: "hint" }, i.source.type + (i.source.ref ? ": " + cut(i.source.ref, 40) : "")) : "agent",
+    el("code", {}, i.trail_id.slice(0, 8))
+  ]);
+
+  const blockCard = (title, b, help, focus) => el("div", { className: "stat-card", style: "margin-bottom:16px" },
+    el("div", { style: "display:flex;justify-content:space-between;align-items:center;margin-bottom:8px" },
+      el("h2", { style: "margin:0;font:600 1.05rem var(--f-display)" }, `${title} (${num(b.count)})`),
+      b.count ? onMap(focus) : null),
+    el("p", { className: "hint", style: "margin:0 0 14px" }, help),
+    (b.items || []).length ? table(["Kind", "About", "Strength", "Worked", "Failed", "Source", "ID"], rows(b), [3, 4])
+      : el("p", { className: "hint" }, "None. All clear!"));
+
+  const note = el("p", { style: "font-size:.86rem;margin-top:8px" });
+  const toggle = s.read_only.private ? el("button", {
+    className: "btn " + (gaps.enabled ? "btn-quiet" : "btn-act"),
+    onclick: async () => {
+      try {
+        await api("/v1/admin/settings", { method: "PUT", body: JSON.stringify({ record_gaps: !gaps.enabled }) });
+        showToast(gaps.enabled ? "Gaps recording paused" : "Gaps recording activated!");
+        show("knowledge");
+      } catch (err) { say(note, err.message, "bad"); }
+    }
+  }, gaps.enabled ? "Disable Gap Recording" : "Enable Gap Recording") : null;
+
+  setChildren(view, el("div", { className: "view-container" },
+    el("div", { className: "page-header" },
+      el("div", { className: "page-title" },
+        el("h1", {}, "Colony Knowledge Base"),
+        el("p", {}, "Holistic overview of organizational intelligence, knowledge health, freshness, and capability gaps."))),
+    el("div", { className: "knowledge-hero" },
+      el("div", { className: "stat-card" },
+        el("div", { className: "val" }, num(k.total)),
+        el("div", { className: "lbl" }, "Total Knowledge Entries"),
+        el("div", { className: "segmented-bar" },
+          el("span", { style: `width:${(kinds.fix || 0)/k.total*100}%;background:var(--amber)` }),
+          el("span", { style: `width:${(kinds.procedure || 0)/k.total*100}%;background:var(--moss)` }),
+          el("span", { style: `width:${(kinds.fact || 0)/k.total*100}%;background:var(--sapphire)` })),
+        el("div", { style: "display:flex;gap:12px;margin-top:8px;font-size:.74rem;font-family:var(--f-display);color:var(--dust)" },
+          el("span", {}, `${num(kinds.fix)} fixes`),
+          el("span", {}, `${num(kinds.procedure)} procedures`),
+          el("span", {}, `${num(kinds.fact)} facts`))),
+      el("div", { className: "stat-card ok" },
+        el("div", { className: "val" }, coveragePercent ? coveragePercent + "%" : "–"),
+        el("div", { className: "lbl" }, "Task Answer Rate (30d)"),
+        el("div", { className: "sub" }, `${num(answered)} of ${num(asked)} requests satisfied`)),
+      el("div", { className: "stat-card " + (k.stale?.count ? "warn" : "") },
+        el("div", { className: "val" }, num(k.stale?.count)),
+        el("div", { className: "lbl" }, "Stale Entries"),
+        el("div", { className: "sub" }, "no confirmation in 90 days")),
+      el("div", { className: "stat-card " + (k.contested?.count ? "bad" : "") },
+        el("div", { className: "val" }, num(k.contested?.count)),
+        el("div", { className: "lbl" }, "Contested Entries"),
+        el("div", { className: "sub" }, "fail more than they succeed"))),
+
+    el("div", { className: "stat-card", style: "margin-bottom:16px" },
+      el("h2", { style: "margin:0 0 10px;font:600 1.05rem var(--f-display)" }, "Where Knowledge Came From"),
+      table(["Source Provider", "Entries Count"], Object.entries(k.sources || {}).map(([src, n]) => [src, num(n)]), [1]),
+      el("p", { className: "hint", style: "margin:8px 0 0" }, "agent: written autonomously by AI agents after completing tasks. handover, document, person: imported via skills.")),
+
+    el("div", { className: "stat-card", style: "margin-bottom:16px" },
+      el("div", { style: "display:flex;justify-content:space-between;align-items:center;margin-bottom:8px" },
+        el("h2", { style: "margin:0;font:600 1.05rem var(--f-display)" }, `Requests Nobody's Knowledge Answered (${num((gaps.items || []).length)}, ${gaps.days} days)`),
+        toggle),
+      el("p", { className: "hint", style: "margin:0 0 12px" },
+        gaps.enabled ? "User prompt requests the colony could not resolve. Kept redacted for 30 days to guide missing documentation."
+                     : "Recording is currently disabled."),
+      note,
+      (gaps.items || []).length ? table(["Timestamp", "User", "Unanswered Task Request"], gaps.items.slice(0, 100).map((g) => [
+        new Date(g.at).toLocaleString(),
+        g.who || "–",
+        el("span", { style: "font-family:var(--f-display);font-size:.84rem" }, g.text)
+      ])) : el("p", { className: "hint" }, "No unanswered gaps logged.")),
+
+    blockCard("Contested Entries", k.contested || {}, "Entries with more failures than successes. Likely outdated or misleading.", "contested"),
+    blockCard("Stale Entries", k.stale || {}, "Entries untouched for 90 days with reduced decay strength.", "stale"),
+    blockCard("Unconfirmed Entries", k.unconfirmed || {}, "Recently imported handovers awaiting confirmation from agents.", "unconfirmed"),
+    blockCard("Most Used Entries", k.most_used || {}, "Top high-impact knowledge saving developer hours across the team.", "used")));
+}
+
+/* ========================================================================= */
+/* TAB: PEOPLE                                                               */
+/* ========================================================================= */
 
 function invitation(name, key) {
   return `Hi ${name},
@@ -426,412 +2313,232 @@ You need: Node.js 20 or newer (node --version) and Claude Code and/or Antigravit
 3. Restart Claude Code / Antigravity. In Antigravity, accept the permission for the myrmo tools ("always").
 4. Check it:   npx myrmo-mcp@latest doctor     (it says what to fix, if anything)
 
-The command is in your shell history with the key in it: delete that line (history -d) or edit it out. To keep the key out
-of it, save this message to a file, delete the key line from your chat, and use --key-file <that file> instead of --key <key>
-(it finds the key in the file).
-What it does: your agent looks the error up when a command fails, and shares what it solved with the team. Credentials,
-people's names, e-mails and customer data are removed; internal tool and service names are kept on purpose. Tell the
-person who set this up if something looks wrong or gets in the way.
+The command is in your shell history with the key in it: delete that line (history -d) or edit it out.
 `;
 }
 
-// navigator.clipboard exists only on a secure page (HTTPS or localhost), and a colony on a team network is plain HTTP:
-// then the text is selected and the browser's own copy command is used. When that is refused too, it stays selected.
-async function copyText(area) {
-  try {
-    if (navigator.clipboard && window.isSecureContext) { await navigator.clipboard.writeText(area.value); return true; }
-  } catch {}
-  area.focus(); area.select();
-  try { return document.execCommand("copy"); } catch { return false; }
-}
-
 function spark(values) {
-  const W = 84, H = 20, max = Math.max(1, ...values), bw = W / values.length;
-  return svg("svg", { viewBox: `0 0 ${W} ${H}`, width: W, height: H, role: "img", "aria-label": "Activity, last 14 days" },
-    values.map((v, i) => svg("rect", { x: i * bw + 0.5, y: H - (v / max) * (H - 2) - 1, width: Math.max(1, bw - 1.5), height: Math.max(v ? 2 : 1, (v / max) * (H - 2)), fill: v ? "var(--amber)" : "var(--wall)", rx: 1 })));
+  const W = 90, H = 22, max = Math.max(1, ...values), bw = W / values.length;
+  return svg("svg", { viewBox: `0 0 ${W} ${H}`, width: W, height: H, role: "img", "aria-label": "Activity sparkline" },
+    values.map((v, i) => svg("rect", {
+      x: i * bw + 0.5,
+      y: H - (v / max) * (H - 2) - 1,
+      width: Math.max(1, bw - 1.5),
+      height: Math.max(v ? 2 : 1, (v / max) * (H - 2)),
+      fill: v ? "var(--amber)" : "var(--wall)",
+      rx: 1
+    })));
 }
 
 async function people(view) {
   const [data, act] = await Promise.all([api("/v1/admin/people?days=30"), api("/v1/admin/activity?days=14")]);
   const seen = act.last_seen || {};
-  const note = el("p", { className: "msg" });
+  const note = el("p", { style: "font-size:.86rem;margin-top:8px" });
   const secret = el("div", { hidden: true });
-  const name = el("input", { type: "text", placeholder: "ana", maxLength: 32, autocomplete: "off", spellcheck: false, "aria-label": "Name of the person" });
-  const add = el("button", { className: "act", onclick: async () => {
-    const who = name.value.trim().toLowerCase();
+
+  const nameInput = el("input", { type: "text", placeholder: "e.g. ana, dev-lead, alex", maxLength: 32, autocomplete: "off", spellcheck: false });
+  const addBtn = el("button", { className: "btn btn-act", onclick: async () => {
+    const who = nameInput.value.trim().toLowerCase();
+    if (!who) return;
     try {
       const made = await api("/v1/admin/people", { method: "POST", body: JSON.stringify({ name: who }) });
-      name.value = ""; say(note, "");
-      const text = el("textarea", { readOnly: true, value: invitation(made.name, made.key), "aria-label": "Invitation message" });
-      const copy = el("button", { className: "act", onclick: async () => { copy.textContent = (await copyText(text)) ? "Copied" : "Selected: press Ctrl+C"; } }, "Copy the message");
-      secret.hidden = false; secret.className = "secret";
-      secret.replaceChildren(el("b", {}, "Send this to " + made.name + " privately. The key is shown only now."),
-        el("p", { className: "hint" }, "It is not stored anywhere readable: if it is lost, revoke the person and add them again."), text,
-        el("div", { className: "row", style: "margin-top:8px" }, copy, el("button", { className: "quiet", onclick: () => show("people") }, "Done, hide the key")));
+      nameInput.value = ""; say(note, "");
+      const inviteMsg = invitation(made.name, made.key);
+      const text = el("textarea", { readOnly: true, value: inviteMsg, style: "min-height:220px;font-family:var(--f-display);font-size:.82rem" });
+      const copyBtn = el("button", { className: "btn btn-act", onclick: () => copyToClipboard(inviteMsg, copyBtn) }, "Copy Invitation");
+
+      secret.hidden = false;
+      secret.className = "stat-card";
+      secret.style.borderColor = "var(--amber)";
+      setChildren(secret, 
+        el("div", { style: "display:flex;align-items:center;gap:8px;margin-bottom:8px" },
+          el("span", { style: "color:var(--amber);font-size:1.1rem" }, "🔑"),
+          el("b", { style: "color:var(--chalk)" }, "Access key created for " + made.name + ". Shown only once!")),
+        el("p", { className: "hint", style: "margin:0 0 10px" }, "The private key is cryptographically salted and cannot be recovered later."),
+        text,
+        el("div", { style: "display:flex;gap:8px;margin-top:10px" }, copyBtn,
+          el("button", { className: "btn btn-quiet", onclick: () => show("people") }, "Done & Dismiss")));
     } catch (err) { say(note, err.message, "bad"); }
-  } }, "Add person");
-  // Which Myrmo each person runs, against what the colony was released with: who needs to update.
-  const older = (a, b) => { const x = String(a).split(".").map(Number), y = String(b).split(".").map(Number); for (let i = 0; i < 3; i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) < (y[i] || 0); } return false; };
+  } }, "Generate Key & Invite");
+
   const released = data.released || {};
+  const older = (a, b) => {
+    const x = String(a).split(".").map(Number), y = String(b).split(".").map(Number);
+    for (let i = 0; i < 3; i++) if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) < (y[i] || 0);
+    return false;
+  };
+
   const versions = (p) => {
     const c = p.clients || {};
     const parts = [["myrmo-plugin", "plugin", released.plugin], ["myrmo-mcp", "mcp", released.mcp]].filter(([k]) => c[k]).map(([k, label, latest]) =>
-      latest && older(c[k], latest) ? el("span", { className: "pill warn", style: "white-space:nowrap", title: `${latest} released with this colony` }, `${label} ${c[k]} · update`) : el("span", { className: "pill", style: "white-space:nowrap" }, `${label} ${c[k]}`));
-    return parts.length ? el("span", { style: "display:inline-flex;gap:4px;flex-wrap:wrap" }, parts) : el("span", { className: "hint" }, "–");
+      latest && older(c[k], latest) ? el("span", { className: "pill warn", title: `${latest} released` }, `${label} ${c[k]} · update`)
+                                    : el("span", { className: "pill" }, `${label} ${c[k]}`));
+    return parts.length ? el("div", { style: "display:flex;gap:4px;flex-wrap:wrap" }, parts) : el("span", { className: "hint" }, "–");
   };
-  const behind = data.people.filter((p) => Object.entries(p.clients || {}).some(([k, v]) => (k === "myrmo-plugin" && released.plugin && older(v, released.plugin)) || (k === "myrmo-mcp" && released.mcp && older(v, released.mcp)))).length;
-  const perDay = (n) => (act.days || []).map((d) => { const p = d.people?.[n] || {}; return (p.searches || 0) + (p.published || 0) + (p.reports || 0); });
-  view.replaceChildren(el("main", { className: "plain" },
-    el("div", { className: "card" }, el("h2", {}, "Add a person"), el("label", {}, "Name (a handle: lowercase letters, digits, . - _)"), el("div", { className: "row" }, name, add), note, secret),
-    el("div", { className: "card" }, el("h2", {}, "People with a key"),
-      data.people.length ? table(["Person", "Since", "Last seen", "Myrmo", "14 days", "Searches", "Published", "Reports", "Used others'", "Helped others", ""],
-        data.people.map((p) => [p.name, day(p.created), seen[p.name] ? ago(seen[p.name]) : el("span", { className: "pill warn" }, "not connected yet"), versions(p), spark(perDay(p.name)),
-          num(p.searches), num(p.published), num(p.reports), num(p.used_others), num(p.helped_others),
-          el("button", { className: "danger", onclick: async () => {
-            if (!confirm("Revoke the key of " + p.name + "? It stops working at once.")) return;
-            try { await api("/v1/admin/people/" + encodeURIComponent(p.name), { method: "DELETE" }); show("people"); } catch (err) { alert(err.message); }
-          } }, "Revoke")]), [5, 6, 7, 8, 9])
-        : el("p", { className: "empty" }, "Nobody yet."),
-      el("p", { className: "hint" }, "Counts are the last 30 days. \"Last seen\" is the last time the person's key was used for anything, a check included."),
-      behind ? el("p", { className: "msg" }, `${behind} ${behind === 1 ? "person runs" : "people run"} an older Myrmo than this colony was released with. They are told when a session starts; in Claude Code it updates by itself once auto-update is on (/plugin > Marketplaces > myrmo > Enable auto-update), else: claude plugin update myrmo@myrmo. Other clients: npx myrmo-mcp@latest init with the same options as the first time.`) : null)));
-}
 
-/* ---------- Map: every entry as a point, linked to the entries most like it ---------- */
-
-let mapFocus = null; // "contested", "stale", "unconfirmed" or "used": highlighted when the map opens
-let mapStop = null;  // stops the previous map's animation and listeners when the tab is left
-
-async function map(view) {
-  if (mapStop) mapStop();
-  const g = await api("/v1/admin/map");
-  const css = getComputedStyle(document.documentElement);
-  const color = (v) => css.getPropertyValue(v).trim();
-  const KIND = { fix: color("--amber"), procedure: color("--moss"), fact: "#6fb3e0" };
-  // Topics: the category of each entry (procedures and facts are their own), in colours that read on both themes.
-  const PALETTE = ["#e8901c", "#2f9e44", "#1c7ed6", "#ae3ec9", "#e8590c", "#0ca678", "#d6336c", "#5c7cfa", "#74b816", "#15aabf", "#b08900", "#868e96"];
-  const topicOf = (n) => (n.kind === "fix" ? n.category || "other" : n.kind);
-  const topics = [...g.nodes.reduce((m, n) => m.set(topicOf(n), (m.get(topicOf(n)) || 0) + 1), new Map())].sort((a, b) => b[1] - a[1]).map(([t]) => t);
-  const TOPIC = new Map(topics.map((t, i) => [t, PALETTE[Math.min(i, PALETTE.length - 1)]]));
-  let colorBy = "topic";
-  const fillOf = (n) => (colorBy === "topic" ? TOPIC.get(topicOf(n)) : KIND[n.kind]) || color("--dust");
-  const nodes = g.nodes.map((n, i) => {
-    const a = i * 2.39996, r = 10 * Math.sqrt(i); // a sunflower spiral: an even start, no overlaps
-    return { ...n, x: Math.cos(a) * r, y: Math.sin(a) * r, vx: 0, vy: 0, r: 3.5 + 9 * Math.min(1, n.strength || 0), links: [] };
-  });
-  const byId = new Map(nodes.map((n) => [n.id, n]));
-  const edges = g.edges.map((e) => ({ a: byId.get(e.a), b: byId.get(e.b), s: e.s })).filter((e) => e.a && e.b);
-  for (const e of edges) { e.a.links.push(e); e.b.links.push(e); }
-  // Islands: the groups of linked entries, each named after its most common tag (or topic) once there are four or more.
-  const root = new Map(nodes.map((n) => [n, n]));
-  const find = (n) => { while (root.get(n) !== n) { root.set(n, root.get(root.get(n))); n = root.get(n); } return n; };
-  for (const e of edges) root.set(find(e.a), find(e.b));
-  const groups = new Map();
-  for (const n of nodes) { const r = find(n); (groups.get(r) || groups.set(r, []).get(r)).push(n); }
-  // A tag on more than a fifth of all entries (a provenance mark, the main stack) says nothing about one island.
-  const tagUse = new Map();
-  for (const n of nodes) for (const t of n.tags || []) tagUse.set(t, (tagUse.get(t) || 0) + 1);
-  const telling = (t) => (tagUse.get(t) || 0) <= Math.max(3, nodes.length / 5);
-  const islands = [...groups.values()].filter((m) => m.length >= 4).map((members) => {
-    const count = new Map();
-    for (const n of members) {
-      const tags = (n.tags || []).filter(telling);
-      for (const t of tags.length ? tags : [topicOf(n)]) count.set(t, (count.get(t) || 0) + 1);
-    }
-    const [name] = [...count].sort((a, b) => b[1] - a[1])[0] || ["?"];
-    return { members, name: String(name).replaceAll("_", " ") };
+  const perDay = (n) => (act.days || []).map((d) => {
+    const p = d.people?.[n] || {};
+    return (p.searches || 0) + (p.published || 0) + (p.reports || 0);
   });
 
-  const kinds = { fix: true, procedure: true, fact: true };
-  let query = "", focus = mapFocus, selected = null, hover = null;
-  mapFocus = null;
-  const matches = (n) => {
-    if (!kinds[n.kind]) return false;
-    if (focus === "used" ? !(n.worked > 0) : focus && n.health !== focus) return false;
-    if (!query) return true;
-    const text = (n.label + " " + (n.summary || "") + " " + (n.tags || []).join(" ")).toLowerCase();
-    return query.split(/\s+/).every((w) => text.includes(w));
-  };
-
-  const canvas = el("canvas", { style: "width:100%;height:68vh;display:block;cursor:grab;background:var(--tunnel);border-radius:var(--radius);touch-action:none" });
-  const detail = el("div", { className: "card", style: "margin:0" }, el("p", { className: "hint" }, "Click a point to see what it is. Drag to move around, scroll to zoom."));
-  const count = el("span", { className: "hint" });
-  const SHAPE = { fix: "border-radius:50%", procedure: "border-radius:1px", fact: "transform:rotate(45deg) scale(.85)" };
-  const box = (k, label) => el("label", { style: "display:inline-flex;gap:6px;align-items:center;margin-right:12px" },
-    el("input", { type: "checkbox", checked: true, onchange: (e) => { kinds[k] = e.target.checked; refresh(); } }),
-    el("i", { style: `display:inline-block;width:10px;height:10px;background:var(--dust);${SHAPE[k]}` }), label);
-  const legend = el("div", { className: "row", style: "flex-wrap:wrap;gap:6px 14px;margin-top:8px" });
-  const paint = el("select", { onchange: (e) => { colorBy = e.target.value; refresh(); } },
-    el("option", { value: "topic" }, "Colour by topic"), el("option", { value: "kind" }, "Colour by kind"));
-  const search = el("input", { type: "search", placeholder: "Search: lldap, deploy, 403…", style: "max-width:260px", oninput: (e) => { query = e.target.value.trim().toLowerCase(); refresh(); } });
-  const focusPill = el("span");
-  const setFocus = (f) => { focus = f; refresh(); };
-  function refresh() {
-    const shown = nodes.filter(matches).length;
-    count.textContent = `${num(shown)} of ${num(nodes.length)} shown · ${num(edges.length)} links`;
-    focusPill.replaceChildren(focus ? el("button", { className: "quiet", onclick: () => setFocus(null) }, `Showing: ${focus === "used" ? "most used" : focus} ✕`) : "");
-    const swatch = (c, text) => el("span", { className: "hint", style: "display:inline-flex;gap:6px;align-items:center" }, el("i", { style: `display:inline-block;width:10px;height:10px;border-radius:50%;background:${c}` }), text);
-    legend.replaceChildren(...(colorBy === "topic" ? topics.slice(0, 11).map((t) => swatch(TOPIC.get(t), t.replaceAll("_", " "))) : Object.entries(KIND).map(([k, c]) => swatch(c, k))));
-    draw();
-  }
-
-  view.replaceChildren(el("main", { className: "plain", style: "max-width:1400px" },
-    el("div", { className: "card" },
-      el("div", { className: "row", style: "flex-wrap:wrap;gap:10px;align-items:center" },
-        box("fix", "fixes"), box("procedure", "procedures"), box("fact", "facts"), paint, search, focusPill, count),
-      legend,
-      el("p", { className: "hint", style: "margin:8px 0 0" },
-        `Each point is an entry (a circle: a fix; a square: a procedure; a diamond: a fact); its size is its strength. A red ring: contested (fails more than it works). Faded: stale (no success in 90 days). A dashed ring: nobody has reported on it yet. A line joins entries that are about the same kind of task (${g.index === "task" ? "task index" : "error index"}), so islands are topics. ${g.total > g.nodes.length ? `Showing ${num(g.nodes.length)} of ${num(g.total)} entries.` : ""}`)),
-    el("div", { style: "display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:12px;align-items:start" }, canvas, detail)));
-
-  // Camera and canvas size.
-  let scale = 1, tx = 0, ty = 0, W = 0, H = 0;
-  const ctx = canvas.getContext("2d");
-  function resize() {
-    const dpr = window.devicePixelRatio || 1, rect = canvas.getBoundingClientRect();
-    W = rect.width; H = rect.height;
-    canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    draw();
-  }
-
-  // Forces: links pull similar entries together, every pair nearby pushes apart (on a grid, so it stays fast), and a
-  // weak pull to the centre keeps islands on screen.
-  let alpha = 1;
-  function tick() {
-    const cell = 90, grid = new Map();
-    for (const n of nodes) { const k = Math.floor(n.x / cell) + "," + Math.floor(n.y / cell); (grid.get(k) || grid.set(k, []).get(k)).push(n); }
-    for (const n of nodes) {
-      const cx = Math.floor(n.x / cell), cy = Math.floor(n.y / cell);
-      for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) {
-        for (const m of grid.get((cx + dx) + "," + (cy + dy)) || []) {
-          if (m === n) continue;
-          let x = n.x - m.x, y = n.y - m.y, d2 = x * x + y * y;
-          if (d2 < 0.01) { x = Math.random() - 0.5; y = Math.random() - 0.5; d2 = 0.5; }
-          if (d2 > cell * cell) continue;
-          const f = (400 * alpha) / d2;
-          n.vx += x * f; n.vy += y * f;
-        }
-      }
-      n.vx -= n.x * 0.002 * alpha; n.vy -= n.y * 0.002 * alpha;
-    }
-    for (const e of edges) {
-      const x = e.b.x - e.a.x, y = e.b.y - e.a.y, d = Math.sqrt(x * x + y * y) || 1;
-      const target = 18 + 60 * (1 - e.s), f = ((d - target) / d) * 0.5 * alpha;
-      e.a.vx += x * f; e.a.vy += y * f; e.b.vx -= x * f; e.b.vy -= y * f;
-    }
-    for (const n of nodes) {
-      n.vx *= 0.55; n.vy *= 0.55;
-      n.x += Math.max(-30, Math.min(30, n.vx)); n.y += Math.max(-30, Math.min(30, n.vy));
-    }
-    alpha = Math.max(0.02, alpha * 0.993);
-  }
-
-  function draw() {
-    if (!W) return;
-    ctx.clearRect(0, 0, W, H);
-    ctx.save();
-    ctx.translate(W / 2 + tx, H / 2 + ty); ctx.scale(scale, scale);
-    const lit = new Set();
-    if (selected) { lit.add(selected); for (const e of selected.links) { lit.add(e.a); lit.add(e.b); } }
-    ctx.lineWidth = 1 / scale;
-    for (const e of edges) {
-      const on = matches(e.a) && matches(e.b);
-      const near = selected && (e.a === selected || e.b === selected);
-      ctx.strokeStyle = near ? color("--chalk") : color("--dust");
-      ctx.globalAlpha = near ? 0.9 : on ? 0.08 + 0.35 * Math.max(0, (e.s - 0.4) / 0.6) : 0.03;
-      ctx.beginPath(); ctx.moveTo(e.a.x, e.a.y); ctx.lineTo(e.b.x, e.b.y); ctx.stroke();
-    }
-    for (const n of nodes) {
-      const on = matches(n);
-      ctx.globalAlpha = !on ? 0.1 : n.health === "stale" ? 0.4 : selected && !lit.has(n) ? 0.35 : 1;
-      ctx.fillStyle = fillOf(n);
-      ctx.beginPath();
-      if (n.kind === "procedure") ctx.rect(n.x - n.r * 0.9, n.y - n.r * 0.9, n.r * 1.8, n.r * 1.8);
-      else if (n.kind === "fact") { ctx.moveTo(n.x, n.y - n.r * 1.2); ctx.lineTo(n.x + n.r * 1.2, n.y); ctx.lineTo(n.x, n.y + n.r * 1.2); ctx.lineTo(n.x - n.r * 1.2, n.y); ctx.closePath(); }
-      else ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2);
-      ctx.fill();
-      if (on && (n.health === "contested" || n.health === "unconfirmed" || n === selected || n === hover)) {
-        ctx.lineWidth = (n === selected ? 2.5 : 1.8) / scale;
-        ctx.setLineDash(n.health === "unconfirmed" && n !== selected && n !== hover ? [3 / scale, 3 / scale] : []);
-        ctx.strokeStyle = n.health === "contested" ? color("--ember") : color("--chalk");
-        ctx.beginPath(); ctx.arc(n.x, n.y, n.r + 2.5 / scale, 0, Math.PI * 2); ctx.stroke();
-        ctx.setLineDash([]);
-      }
-    }
-    ctx.globalAlpha = 1;
-    // Island names, when nothing narrows the view.
-    if (!query && !focus && !selected) {
-      ctx.font = `600 ${11 / scale}px ${color("--f-display")}`;
-      ctx.fillStyle = color("--dust"); ctx.textAlign = "center";
-      for (const isl of islands) {
-        const xs = isl.members.map((n) => n.x), ys = isl.members.map((n) => n.y);
-        const x = xs.reduce((a, b) => a + b, 0) / xs.length, top = Math.min(...ys);
-        ctx.fillText(isl.name, x, top - 10 / scale);
-      }
-      ctx.textAlign = "start";
-    }
-    const label = hover || selected;
-    if (label) {
-      ctx.font = `${12 / scale}px ${color("--f-body")}`;
-      const text = cut(label.label, 70), w = ctx.measureText(text).width, x = label.x + label.r + 6 / scale, y = label.y - 8 / scale;
-      ctx.fillStyle = color("--soil"); ctx.globalAlpha = 0.85; ctx.fillRect(x - 3 / scale, y - 12 / scale, w + 6 / scale, 17 / scale);
-      ctx.globalAlpha = 1; ctx.fillStyle = color("--chalk"); ctx.fillText(text, x, y);
-    }
-    ctx.restore();
-  }
-
-  // The layout is computed before anything is drawn (measured: 500 steps bring linked entries to under a fifth of the
-  // average distance), then fitted to the canvas.
-  let running = true;
-  function fit() {
-    const xs = nodes.map((n) => n.x), ys = nodes.map((n) => n.y);
-    if (!xs.length) return;
-    const w = Math.max(...xs) - Math.min(...xs) + 80, h = Math.max(...ys) - Math.min(...ys) + 80;
-    scale = Math.min(3, Math.max(0.15, Math.min(W / w, H / h)));
-    tx = -((Math.max(...xs) + Math.min(...xs)) / 2) * scale; ty = -((Math.max(...ys) + Math.min(...ys)) / 2) * scale;
-  }
-  function layout() {
-    for (let i = 0; i < 500; i++) tick();
-    fit();
-    if (running) draw();
-  }
-
-  // Pointer: drag to pan, scroll to zoom, hover to name, click to open.
-  const world = (ev) => { const r = canvas.getBoundingClientRect(); return { x: (ev.clientX - r.left - W / 2 - tx) / scale, y: (ev.clientY - r.top - H / 2 - ty) / scale }; };
-  const pick = (p) => { let best = null, bd = Infinity; for (const n of nodes) { if (!matches(n)) continue; const d = Math.hypot(n.x - p.x, n.y - p.y); if (d < n.r + 6 / scale && d < bd) { best = n; bd = d; } } return best; };
-  let drag = null;
-  canvas.onpointerdown = (ev) => { drag = { x: ev.clientX, y: ev.clientY, tx, ty, moved: false }; canvas.setPointerCapture(ev.pointerId); canvas.style.cursor = "grabbing"; };
-  canvas.onpointermove = (ev) => {
-    if (drag) { const dx = ev.clientX - drag.x, dy = ev.clientY - drag.y; if (Math.abs(dx) + Math.abs(dy) > 3) drag.moved = true; tx = drag.tx + dx; ty = drag.ty + dy; draw(); return; }
-    const h = pick(world(ev)); if (h !== hover) { hover = h; canvas.style.cursor = h ? "pointer" : "grab"; draw(); }
-  };
-  canvas.onpointerup = (ev) => { const moved = drag?.moved; drag = null; canvas.style.cursor = "grab"; if (!moved) { selected = pick(world(ev)); describe(selected); draw(); } };
-  canvas.onwheel = (ev) => {
-    ev.preventDefault();
-    const r = canvas.getBoundingClientRect(), mx = ev.clientX - r.left - W / 2, my = ev.clientY - r.top - H / 2;
-    const k = Math.exp(-ev.deltaY * 0.0015), next = Math.min(8, Math.max(0.05, scale * k));
-    tx = mx - ((mx - tx) * next) / scale; ty = my - ((my - ty) * next) / scale; scale = next; draw();
-  };
-
-  function describe(n) {
-    if (!n) return detail.replaceChildren(el("p", { className: "hint" }, "Click a point to see what it is. Drag to move around, scroll to zoom."));
-    const near = n.links.map((e) => ({ m: e.a === n ? e.b : e.a, s: e.s })).sort((x, y) => y.s - x.s).slice(0, 6);
-    detail.replaceChildren(
-      el("div", { className: "row", style: "gap:6px;flex-wrap:wrap" }, el("span", { className: "pill " + (n.kind === "fix" ? "amber" : "ok") }, n.kind),
-        n.kind === "fix" && n.category ? el("span", { className: "pill" }, String(n.category).replaceAll("_", " ")) : null,
-        n.health !== "ok" ? el("span", { className: "pill " + (n.health === "contested" ? "bad" : "warn") }, n.health) : null,
-        n.source ? el("span", { className: "pill" }, "from " + n.source) : null),
-      el("h3", { style: "margin:10px 0 6px" }, n.label),
-      n.summary && n.summary !== n.label ? el("p", {}, n.summary) : null,
-      el("p", { style: "margin:8px 0" }, meter(n.strength), ` worked ${num(n.worked)} · failed ${num(n.failed)}`),
-      (n.tags || []).length ? el("p", { className: "hint" }, "Tags: " + n.tags.join(", ")) : null,
-      el("p", { className: "hint" }, `Since ${day(Date.parse(n.created_at) / 1000)} · id `, el("code", {}, n.id.slice(0, 8))),
-      near.length ? el("div", {}, el("h4", { style: "margin:12px 0 4px" }, "Most alike"),
-        el("ul", { style: "padding-left:18px;margin:0" }, near.map(({ m, s }) => el("li", {}, el("a", { href: "#", onclick: (e) => { e.preventDefault(); selected = m; describe(m); draw(); } }, cut(m.label, 60)), el("span", { className: "hint" }, ` ${s.toFixed(2)}`))))) : null);
-  }
-
-  const onResize = () => resize();
-  window.addEventListener("resize", onResize);
-  mapStop = () => { running = false; window.removeEventListener("resize", onResize); mapStop = null; };
-  resize();
-  layout();
-  refresh();
-  if (!nodes.length) detail.replaceChildren(el("p", { className: "empty" }, "The colony holds nothing yet."));
+  setChildren(view, el("div", { className: "view-container" },
+    el("div", { className: "page-header" },
+      el("div", { className: "page-title" },
+        el("h1", {}, "Team Access & Keys"),
+        el("p", {}, "Manage developer keys, inspect agent client versions, and monitor team collective contributions."))),
+    el("div", { className: "stat-card", style: "margin-bottom:20px" },
+      el("h2", { style: "margin:0 0 6px;font:600 1.05rem var(--f-display)" }, "Invite New Member"),
+      el("p", { className: "hint", style: "margin:0 0 12px" }, "Enter a handle (lowercase letters, digits, '.', '-', '_') to generate an operator invite."),
+      el("div", { style: "display:flex;gap:8px;max-width:440px" }, nameInput, addBtn),
+      note,
+      secret),
+    el("div", { className: "stat-card" },
+      el("h2", { style: "margin:0 0 12px;font:600 1.05rem var(--f-display)" }, `Active Team Members (${data.people.length})`),
+      data.people.length ? table(
+        ["Member", "Joined", "Last Seen", "Client Version", "14d Activity", "Searches", "Published", "Reports", "Used Others", "Helped Team", ""],
+        data.people.map((p) => [
+          el("div", { style: "display:flex;align-items:center;gap:8px" },
+            el("div", { className: "user-avatar-circle" }, p.name.slice(0, 2).toUpperCase()),
+            el("span", { style: "font-weight:600" }, p.name)),
+          day(p.created),
+          seen[p.name] ? ago(seen[p.name]) : el("span", { className: "pill warn" }, "not connected"),
+          versions(p),
+          spark(perDay(p.name)),
+          num(p.searches),
+          num(p.published),
+          num(p.reports),
+          num(p.used_others),
+          num(p.helped_others),
+          el("button", {
+            className: "btn btn-danger btn-sm",
+            onclick: async () => {
+              if (!confirm("Revoke key for @" + p.name + "? Immediate effect.")) return;
+              try {
+                await api("/v1/admin/people/" + encodeURIComponent(p.name), { method: "DELETE" });
+                showToast("Key revoked for " + p.name);
+                show("people");
+              } catch (err) { alert(err.message); }
+            }
+          }, "Revoke")
+        ]), [5, 6, 7, 8, 9])
+        : el("p", { className: "hint" }, "No team members created yet."))));
 }
 
-/* ---------- Knowledge: what the colony knows, how much of it holds, and what it is missing ---------- */
-
-async function knowledge(view) {
-  const [k, gaps, s] = await Promise.all([api("/v1/admin/knowledge"), api("/v1/admin/gaps"), api("/v1/admin/settings")]);
-  const kinds = k.kinds || {};
-  const asked = k.task_searches_30d || 0, answered = k.task_answered_30d || 0;
-  const tile = (value, label, hint) => el("div", { className: "card", style: "flex:1;min-width:150px;margin:0" }, el("div", { style: "font-size:28px;font-weight:600" }, value), el("div", {}, label), hint ? el("p", { className: "hint" }, hint) : null);
-  const kindPill = (kind) => el("span", { className: "pill " + (kind === "fix" ? "" : "ok") }, kind);
-  const rows = (block) => (block.items || []).map((i) => [kindPill(i.kind), cut(i.label, 90), meter(i.strength), num(i.outcomes?.worked), num(i.outcomes?.failed),
-    i.source?.type ? el("span", { className: "hint" }, i.source.type + (i.source.ref ? ": " + cut(i.source.ref, 40) : "")) : "agent", el("code", {}, i.trail_id.slice(0, 8))]);
-  const onMap = (focus) => el("button", { className: "quiet", onclick: () => { mapFocus = focus; show("map"); } }, "Show on the map");
-  const block = (title, b, help, focus) => el("div", { className: "card" }, el("div", { className: "row", style: "justify-content:space-between" }, el("h2", {}, `${title} (${num(b.count)})`), b.count ? onMap(focus) : null), el("p", { className: "hint" }, help),
-    (b.items || []).length ? table(["Kind", "About", "Strength", "Worked", "Failed", "Source", "Id"], rows(b), [3, 4]) : el("p", { className: "empty" }, "None."));
-  const note = el("p", { className: "msg" });
-  const toggle = s.read_only.private ? el("button", { className: gaps.enabled ? "quiet" : "act", onclick: async () => {
-    try { await api("/v1/admin/settings", { method: "PUT", body: JSON.stringify({ record_gaps: !gaps.enabled }) }); show("knowledge"); } catch (err) { say(note, err.message, "bad"); }
-  } }, gaps.enabled ? "Stop recording them" : "Record them") : null;
-  view.replaceChildren(el("main", { className: "plain" },
-    el("div", { className: "row", style: "gap:12px;flex-wrap:wrap;margin-bottom:12px;align-items:stretch" },
-      tile(num(k.total), "entries", [[kinds.fix, "fix", "fixes"], [kinds.procedure, "procedure", "procedures"], [kinds.fact, "fact", "facts"]].map(([n, one, many]) => `${num(n)} ${Number(n) === 1 ? one : many}`).join(" · ")),
-      tile(asked ? Math.round((100 * answered) / asked) + "%" : "–", "of tasks found an answer", `${num(answered)} of ${num(asked)} task requests in 30 days`),
-      tile(num(k.stale?.count), "stale", "no success in 90 days"),
-      tile(num(k.contested?.count), "contested", "fail more than they work")),
-    el("div", { className: "card" }, el("h2", {}, "Where it came from"),
-      table(["Source", "Entries"], Object.entries(k.sources || {}).map(([src, n]) => [src, num(n)]), [1]),
-      el("p", { className: "hint" }, "agent: written by a colleague's agent after solving or doing something. handover, document, person: imported (the import-knowledge skill turns a handover or a docs folder into entries).")),
-    el("div", { className: "card" }, el("h2", {}, `Requests nobody's knowledge answered (${num((gaps.items || []).length)}, ${gaps.days} days)`),
-      el("p", { className: "hint" }, gaps.enabled ? "What people asked their agents to do that the colony knew nothing about: what to write down next. Kept redacted for 30 days." : s.read_only.private ? "Off. When on, the task requests the colony could not answer are kept (redacted, 30 days) so you can see what knowledge is missing. Tell the team before turning it on." : "Only a private colony keeps requests."),
-      el("div", { className: "row" }, toggle), note,
-      (gaps.items || []).length ? table(["When", "Who", "Request"], gaps.items.slice(0, 100).map((g) => [new Date(g.at).toLocaleString(), g.who || "–", g.text])) : null),
-    block("Contested", k.contested || {}, "More failures than successes: probably wrong or out of date. Check it, correct it (publish a new version) or remove it from the Colony tab.", "contested"),
-    block("Stale", k.stale || {}, "Nobody has confirmed it for 90 days: its strength halved. Fine for rare tasks; for frequent ones it may no longer be true.", "stale"),
-    block("Unconfirmed", k.unconfirmed || {}, "No agent reported on it in its first two weeks. Imported handovers start here until agents use them.", "unconfirmed"),
-    block("Most used", k.most_used || {}, "What saves the team most work.", "used")));
-}
-
-/* ---------- Settings ---------- */
+/* ========================================================================= */
+/* TAB: SETTINGS                                                             */
+/* ========================================================================= */
 
 async function settings(view) {
   const s = await api("/v1/admin/settings");
-  const note = el("p", { className: "msg" });
-  const nets = el("input", { type: "text", value: s.allowed_networks.join(", "), placeholder: "192.168.219.0/24 (empty: everyone)", spellcheck: false });
+  const note = el("p", { style: "font-size:.86rem;margin-top:8px" });
+
+  const nets = el("input", { type: "text", value: s.allowed_networks.join(", "), placeholder: "e.g. 192.168.1.0/24 (empty: all allowed)", spellcheck: false });
   const rate = el("input", { type: "text", value: String(s.rate_limit_per_minute), inputMode: "numeric" });
   const pub = el("input", { type: "text", value: String(s.publish_limit_per_hour), inputMode: "numeric" });
-  const origin = (k) => el("span", { className: "pill" }, s.overridden.includes(k) ? "changed here" : "from the environment");
+
+  const originPill = (k) => el("span", { className: "pill " + (s.overridden.includes(k) ? "amber" : "") },
+    s.overridden.includes(k) ? "changed here" : "from environment");
+
   const send = async (patch, ok) => {
-    try { await api("/v1/admin/settings", { method: "PUT", body: JSON.stringify(patch) }); say(note, ok, "ok"); await new Promise((r) => setTimeout(r, 700)); show("settings"); }
-    catch (err) { say(note, err.message, "bad"); }
+    try {
+      await api("/v1/admin/settings", { method: "PUT", body: JSON.stringify(patch) });
+      showToast(ok);
+      await new Promise((r) => setTimeout(r, 600));
+      show("settings");
+    } catch (err) { say(note, err.message, "bad"); }
   };
-  const field = (title, key, input, help) => el("div", {}, el("label", {}, title, " ", origin(key)), el("div", { className: "row" }, input,
-    s.overridden.includes(key) ? el("button", { className: "quiet", onclick: () => send({ [key]: null }, "Back to the environment's value.") }, "Reset") : null), el("p", { className: "hint" }, help));
-  view.replaceChildren(el("main", { className: "plain" }, el("div", { className: "card" }, el("h2", {}, "Settings you can change while it runs"),
-    field("Networks allowed to connect", "allowed_networks", nets, "Addresses or ranges, separated by commas. Everyone else gets 403. You are connecting from " + s.your_address + ": a list that would shut it out is refused. The machine itself always gets in."),
-    field("Requests per minute, per person", "rate_limit_per_minute", rate, "0 means no limit."),
-    field("Trails published per hour, per person", "publish_limit_per_hour", pub, "0 means no limit."),
-    el("div", { className: "row", style: "margin-top:14px" }, el("button", { className: "act", onclick: () => {
-      const patch = {};
-      if (nets.value.trim() !== s.allowed_networks.join(", ")) patch.allowed_networks = nets.value.trim();
-      if (rate.value.trim() !== String(s.rate_limit_per_minute)) patch.rate_limit_per_minute = Number(rate.value);
-      if (pub.value.trim() !== String(s.publish_limit_per_hour)) patch.publish_limit_per_hour = Number(pub.value);
-      if (!Object.keys(patch).length) return say(note, "Nothing changed.");
-      send(patch, "Saved. It applies within seconds, on every gateway.");
-    } }, "Save")), note,
-    el("p", { className: "hint" }, "If a change locks everyone out, on the colony's machine run: docker compose -p myrmo-private --env-file .env.private exec gateway myrmo-server settings reset")),
-    el("div", { className: "card" }, el("h2", {}, "Set when the colony starts (read only)"),
-      table(["Setting", "Value"], [["Access keys required", s.read_only.require_key ? "yes" : "no"],
-        ["Organisation mode", s.read_only.private ? "on: network names kept, procedures and facts accepted, nothing rejected as sensitive" : "off"],
-        ["Task index", s.read_only.task_index ? "on: agents are told what the colony knows when a task starts" : "off"],
-        ["Decision engine", s.read_only.decision_engine], ["Server version", s.read_only.version],
-        ["Networks from the environment", s.from_environment.allowed_networks.join(", ") || "everyone"]]),
-      el("p", { className: "hint" }, "The operator token, the salt, the ports and the engine are not changed from a web page on purpose: they live in .env.private, readable only on the colony's machine."))));
+
+  const field = (title, key, input, help) => el("div", { style: "margin-bottom:16px" },
+    el("label", { style: "display:flex;align-items:center;gap:8px;font-weight:600;font-size:.84rem;margin-bottom:6px" },
+      title, originPill(key)),
+    el("div", { style: "display:flex;gap:8px" }, input,
+      s.overridden.includes(key) ? el("button", { className: "btn btn-quiet btn-sm", onclick: () => send({ [key]: null }, "Reset to environment default") }, "Reset") : null),
+    el("p", { className: "hint", style: "margin:4px 0 0" }, help));
+
+  setChildren(view, el("div", { className: "view-container" },
+    el("div", { className: "page-header" },
+      el("div", { className: "page-title" },
+        el("h1", {}, "Colony Configuration"),
+        el("p", {}, "Control access control lists, network rate limits, and inspect startup daemon parameters."))),
+    el("div", { className: "stat-card", style: "margin-bottom:20px" },
+      el("h2", { style: "margin:0 0 14px;font:600 1.05rem var(--f-display)" }, "Live Modifiable Settings"),
+      field("Allowed Networks (CIDR)", "allowed_networks", nets, "Comma-separated subnets allowed to query colony. Your IP: " + s.your_address),
+      field("Requests per minute / user", "rate_limit_per_minute", rate, "0 = unlimited queries."),
+      field("Publishes per hour / user", "publish_limit_per_hour", pub, "0 = unlimited publishes."),
+      el("div", { style: "margin-top:16px" },
+        el("button", { className: "btn btn-act", onclick: () => {
+          const patch = {};
+          if (nets.value.trim() !== s.allowed_networks.join(", ")) patch.allowed_networks = nets.value.trim();
+          if (rate.value.trim() !== String(s.rate_limit_per_minute)) patch.rate_limit_per_minute = Number(rate.value);
+          if (pub.value.trim() !== String(s.publish_limit_per_hour)) patch.publish_limit_per_hour = Number(pub.value);
+          if (!Object.keys(patch).length) return showToast("No changes detected");
+          send(patch, "Settings saved and propagated across gateways.");
+        } }, "Save Changes")),
+      note),
+    el("div", { className: "stat-card" },
+      el("h2", { style: "margin:0 0 12px;font:600 1.05rem var(--f-display)" }, "Startup Environment Parameters (Read-Only)"),
+      table(["Parameter", "Configured Value"], [
+        ["Access Keys Enforced", s.read_only.require_key ? "yes" : "no"],
+        ["Organization Private Mode", s.read_only.private ? "enabled" : "disabled"],
+        ["Task Semantic Index", s.read_only.task_index ? "enabled" : "disabled"],
+        ["Embedding / Decision Engine", s.read_only.decision_engine],
+        ["Server Daemon Version", s.read_only.version],
+        ["Default Allowed Networks", s.from_environment.allowed_networks.join(", ") || "everyone (0.0.0.0/0)"]
+      ]))));
 }
 
-/* ---------- Activity log ---------- */
+/* ========================================================================= */
+/* TAB: ACTIVITY                                                             */
+/* ========================================================================= */
 
 async function activity(view) {
   const [a, r] = await Promise.all([api("/v1/admin/audit"), api("/v1/admin/refused")]);
-  view.replaceChildren(el("main", { className: "plain" },
-    el("div", { className: "card" }, el("h2", {}, "What operators did (last 200)"),
-      a.items.length ? table(["When", "What"], a.items.map((i) => [when(i.ts), i.what])) : el("p", { className: "empty" }, "Nothing yet.")),
-    el("div", { className: "card" }, el("h2", {}, "Connections refused because their network is not allowed (30 days)"),
-      (r.items || []).length ? table(["Address", "Times", "Last"], r.items.map((i) => [el("code", {}, i.address), num(i.count), when(i.last)]), [1])
-        : el("p", { className: "empty" }, "None."),
-      el("p", { className: "hint" }, "An address behind a router that translates addresses is the router's, shared by many machines: allowing it allows all of them."))));
+  setChildren(view, el("div", { className: "view-container" },
+    el("div", { className: "page-header" },
+      el("div", { className: "page-title" },
+        el("h1", {}, "Audit Trail & Activity Log"),
+        el("p", {}, "Tamper-evident log of administrative actions, key lifecycle events, and network connection rejections."))),
+    el("div", { className: "stat-card", style: "margin-bottom:20px" },
+      el("h2", { style: "margin:0 0 12px;font:600 1.05rem var(--f-display)" }, "Operator Audit Events (Last 200)"),
+      a.items.length ? table(["Timestamp", "Action Executed"], a.items.map((i) => [
+        when(i.ts),
+        el("code", { style: "font-size:.82rem" }, i.what)
+      ])) : el("p", { className: "hint" }, "No operator activity recorded yet.")),
+    el("div", { className: "stat-card" },
+      el("h2", { style: "margin:0 0 12px;font:600 1.05rem var(--f-display)" }, "Subnet Refusal History (30 Days)"),
+      (r.items || []).length ? table(["IP Address", "Attempts", "Most Recent"], r.items.map((i) => [
+        el("code", { style: "font-size:.82rem" }, i.address),
+        num(i.count),
+        when(i.last)
+      ]), [1]) : el("p", { className: "hint" }, "No connection rejections logged."))));
 }
 
+// Global Event Listeners
 $("enter").onclick = enter;
 $("token").onkeydown = (e) => { if (e.key === "Enter") enter(); };
 $("leave").onclick = () => signOut("");
-$("tabs").onclick = (e) => { const t = e.target.closest("[data-tab]"); if (t) show(t.dataset.tab); };
+$("tabs").onclick = (e) => {
+  const t = e.target.closest("[data-tab]");
+  if (t) show(t.dataset.tab);
+};
+
+// Keyboard shortcuts: '/' focuses search on map or colony
+window.addEventListener("keydown", (e) => {
+  if (e.key === "/" && !["INPUT", "TEXTAREA"].includes(document.activeElement.tagName)) {
+    e.preventDefault();
+    const searchInp = document.querySelector('input[type="search"]');
+    if (searchInp) searchInp.focus();
+  }
+});
 
 (async () => {
-  if (token) { try { await api("/v1/admin/people?days=1"); start(); return; } catch {} }
+  if (token) {
+    try {
+      await api("/v1/admin/people?days=1");
+      start();
+      return;
+    } catch {}
+  }
   $("login").hidden = false;
 })();
 </script>
