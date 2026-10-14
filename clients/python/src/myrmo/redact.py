@@ -214,10 +214,18 @@ _RULES: List[Tuple[str, re.Pattern, Replacer]] = [
 ]
 
 
-def redact_text(text: str, report: Optional[Report] = None) -> str:
-    """Replace secrets and personal data in `text`, counting each kind in `report`."""
+#: What an organisation's own colony keeps: the addresses and host names of its network, because which machine does
+#: what is what its agents need. Credentials and personal data are removed everywhere.
+NETWORK_KINDS = frozenset({"ip", "ipv6", "mac", "hostname"})
+
+
+def redact_text(text: str, report: Optional[Report] = None, keep_network: bool = False) -> str:
+    """Replace secrets and personal data in `text`, counting each kind in `report`. `keep_network` keeps addresses and
+    host names, for an organisation's private colony."""
     report = {} if report is None else report
     for kind, pattern, replace in _RULES:
+        if keep_network and kind in NETWORK_KINDS:
+            continue
         if not pattern.search(text):
             continue
         hits = 0
@@ -236,15 +244,15 @@ def redact_text(text: str, report: Optional[Report] = None) -> str:
     return text
 
 
-def redact_value(value: Any, report: Optional[Report] = None) -> Any:
+def redact_value(value: Any, report: Optional[Report] = None, keep_network: bool = False) -> Any:
     """Deep copy of `value` with every string redacted."""
     report = {} if report is None else report
     if isinstance(value, str):
-        return redact_text(value, report)
+        return redact_text(value, report, keep_network)
     if isinstance(value, list):
-        return [redact_value(v, report) for v in value]
+        return [redact_value(v, report, keep_network) for v in value]
     if isinstance(value, dict):
-        return {k: redact_value(v, report) for k, v in value.items()}
+        return {k: redact_value(v, report, keep_network) for k, v in value.items()}
     return value
 
 
