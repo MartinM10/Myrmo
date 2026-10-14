@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.0](https://github.com/MartinM10/Myrmo/compare/server-v0.15.0...server-v0.16.0) (2026-10-14)
+
+
+### Features
+
+* **admin:** overhaul admin panel UX/UI and interactive knowledge map ([9efbf25](https://github.com/MartinM10/Myrmo/commit/9efbf25855df319e3fcf682dcb4ed5702d24027c))
+
 ## [0.15.0](https://github.com/MartinM10/Myrmo/compare/server-v0.14.0...server-v0.15.0) (2026-10-13)
 
 
