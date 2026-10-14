@@ -373,7 +373,8 @@ the trail that worked. The Claude Code plugin reads it from the session's transc
 ```
 
 `202 {"stored": true, "role": "aided"}`; `200 {"stored": false}` when the same person sent that role for that error in the
-last hour. The colony turns `error` into a fingerprint and keeps only sums per fingerprint, per trail and per day, by
+last hour; `409 not_reported` for an aided record when the same person has not reported, in the last two days, that the
+trail worked (authors cannot vouch for their own trails); `429` beyond 60 records per person and day. The colony turns `error` into a fingerprint and keeps only sums per fingerprint, per trail and per day, by
 role and model: never the error line, never who sent it. It decides itself whether an unaided record belongs to the
 hold-out (a client cannot claim `holdout`). Each token count is at most 10,000,000, turns 10,000, seconds 86,400.
 
@@ -397,12 +398,13 @@ token and answer `Cache-Control: no-store`; `501` when the colony has none, `401
 | `PUT /v1/admin/settings` | Changes `allowed_networks` (a comma-separated list), `rate_limit_per_minute` and `publish_limit_per_hour` (0 to 100000, 0 is no limit), `prices` (per model: `input`, `output`, `cache_read`, `cache_write` in dollars per million tokens, at most 50 models) and, in a private colony, `record_gaps` (true or false) and `holdout_percent` (0 to 20) while the colony runs; `null` goes back to the environment's value. A list that would shut out the requester is refused with `400`. Applies within five seconds on every gateway. |
 | `GET /v1/admin/activity?days=14` | For each day, oldest first, the colony's totals (`searches`, `answered`, `published`, `rejected`) and the team's activity (`people`: per person with `named`, under `*` with `aggregate`), and when each person's key was last used (`last_seen`). |
 | `GET /v1/admin/trails?limit=20&cursor=0` | The trails as `/v1/feed` lists them, each with `author` (the person who published it, which the public feed never says) and `effort` (what following it cost, when measured). |
-| `GET /v1/admin/value?days=30` | What the colony saved, worked out from [measured effort](#measured-effort): `before_after` and `holdout` estimates (`errors`, `aided_records`, `baseline_records`, `aided_without_baseline`, `saved` tokens, seconds, turns and dollars, `per_problem` means without and with help), `models`, `prices_missing`, records per day, and `method` in words. Dollars only when every model involved has a price. |
+| `GET /v1/admin/value?days=30` | What the colony saved, worked out from [measured effort](#measured-effort): `before_after` and `holdout` estimates (`errors`, `aided_records`, `baseline_records`, `aided_without_baseline`, `saved` tokens, seconds, turns and dollars, `per_problem` means without and with help), `models`, `prices_missing`, records per day, `people` (about how many different people sent records of each role, counted without keeping who) and `method` in words. Dollars only when every model involved has a price. |
 | `GET /v1/admin/refused` | The addresses refused because their network is not allowed, most recent first, with a count and the last time (30 days, 100 addresses at most). |
 | `GET /v1/admin/audit` | The last 200 changes made through the operator token: keys, settings, removed trails. |
 | `GET /v1/admin/knowledge` | What the colony holds (`kinds`, `sources`), task requests and answers in 30 days, and the `stale`, `contested`, `unconfirmed` and `most_used` entries (a count and the first 15 of each). |
 | `GET /v1/admin/map` | The knowledge map: up to 2,000 entries (`id`, `kind`, `category`, `label`, `strength`, `worked`, `failed`, `health`, `tags`, `source`) and `edges` (`a`, `b`, similarity `s`) to the two entries most like each, from the task index when there is one (`index`). |
 | `GET /v1/admin/gaps` | The task requests nobody's knowledge answered in the last 30 days (redacted; with the person only when `MYRMO_PEOPLE_DETAIL=named`), when `record_gaps` is on (private colonies only). |
+| (all of the above) | After 20 different wrong operator tokens from one address in 15 minutes, the operator endpoints answer that address `429` for the rest of the window, the right token included. Requests with a member's key are not affected, and repeating one stale token does not count more than once. |
 | `GET /metrics` | Prometheus text: whether each dependency answers (`myrmo_up`), the queue, trails, people, and today's counters by metric. With the operator token as a bearer token. |
 
 ## Analytics and demand
