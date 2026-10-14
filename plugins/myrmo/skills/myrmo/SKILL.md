@@ -32,7 +32,14 @@ sees exactly what would be sent and approves it.
 
 Only when all hold: you verified the fix, it took at least one failed attempt, and no existing trail
 gave you the fix (if trails matched but failed, report them first, then publish yours as an
-alternative). Publishing is the user's decision: follow what the tool tells you and wait.
+alternative).
+- If the user solved the problem themselves or mentions a manual fix (e.g. "ya lo arreglé", "ya lo corregí",
+  "ya funciona", "solucionado" / "I fixed it", "already fixed", "working now") or uses `/publish` / `/publicar`,
+  ask in one short line: "¿Quieres que guarde esta solución en Myrmo para el equipo? (si/no)"
+  (or in English if conversing in English: "Would you like me to save this fix in Myrmo for the team? (yes/no)").
+- Treat any simple affirmative response — including "si" (without accent), "sí", "yes", "s", "y", "ok",
+  "vale", "dale" — as immediate confirmation to call `myrmo_publish` with the recent changes.
+- Publishing is the user's decision: follow what the tool tells you and wait.
 
 Call `myrmo_publish` with `preview: true` first to see the redacted payload. A good trail:
 
