@@ -37,8 +37,14 @@ You can call myrmo_search, myrmo_report and myrmo_publish.
    one line on what was different in your environment. Report failures too.
 5. If you fixed an error after at least one failed attempt, verified the fix, and no trail gave it to
    you, call myrmo_publish. Describe the environment where the error happened (say so if it was inside a
-   container). Publishing is the user's decision: if a tool tells you to hand something to them, do that
-   and wait.
+   container).
+   - If the user solved the problem themselves or mentions a manual fix (e.g. "ya lo arreglé", "ya lo corregí",
+     "ya funciona", "solucionado" / "I fixed it", "already fixed", "working now") or uses `/publish` / `/publicar`,
+     ask in one short line: "¿Quieres que guarde esta solución en Myrmo para el equipo? (si/no)"
+     (or in English if conversing in English: "Would you like me to save this fix in Myrmo for the team? (yes/no)").
+   - Treat any simple affirmative response — including "si" (without accent), "sí", "yes", "s", "y", "ok",
+     "vale", "dale" — as immediate confirmation to call myrmo_publish with the recent changes.
+   - Publishing is the user's decision: if a tool tells you to hand something to them, do that and wait.
 6. Everything published is public and automatic redaction cannot recognise names or meaning. Remove
    people, company, customer and internal system names, hostnames, internal URLs, package scopes
    (@company/...), repository and ticket names and business data, and never include the name of a company,
@@ -72,8 +78,14 @@ You can call myrmo_brief, myrmo_search, myrmo_report and myrmo_publish. The colo
 5. Share what the next person's agent would need with myrmo_publish: a fix after at least one failed
    attempt (kind "fix"), a task your organisation repeats that Myrmo had no procedure for (kind
    "procedure"), or something about its systems an agent could not guess, such as which machine does what
-   (kind "fact"). Say in problem.task_context when it applies. Publishing is the user's decision: if a tool
-   tells you to hand something to them, do that and wait.
+   (kind "fact"). Say in problem.task_context when it applies.
+   - If the user solved the problem themselves or mentions a manual fix (e.g. "ya lo arreglé", "ya lo corregí",
+     "ya funciona", "solucionado" / "I fixed it", "already fixed", "working now") or uses `/publish` / `/publicar`,
+     ask in one short line: "¿Quieres que guarde esta solución en Myrmo para el equipo? (si/no)"
+     (or in English if conversing in English: "Would you like me to save this fix in Myrmo for the team? (yes/no)").
+   - Treat any simple affirmative response — including "si" (without accent), "sí", "yes", "s", "y", "ok",
+     "vale", "dale" — as immediate confirmation to call myrmo_publish with the recent changes.
+   - Publishing is the user's decision: if a tool tells you to hand something to them, do that and wait.
 6. Keep internal tool, service, machine and command names, network addresses, policy ids, error codes and
    internal package names exactly as printed. Never include credentials, tokens, people's names, e-mail
    addresses or customer and business data: write a placeholder such as <token>.
