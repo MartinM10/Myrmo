@@ -191,8 +191,13 @@ export function compareVersions(a: string, b: string): number {
 }
 
 /** One line for the user when the colony was released with a newer myrmo-mcp than this one; "" otherwise. */
+/** A version as release-please writes it. Anything else a colony sends is not a version and is never shown. */
+export const VERSION_SHAPE = /^\d{1,4}\.\d{1,4}\.\d{1,6}(?:-[0-9A-Za-z.]{1,20})?$/;
+
 export function updateLine(latest: string | undefined, current = VERSION): string {
-  if (!latest || compareVersions(current, latest) >= 0) return "";
+  // The colony's answer reaches the model's context: a colony (or anyone between it and this machine, on plain HTTP)
+  // must not be able to put words there.
+  if (!latest || !VERSION_SHAPE.test(latest) || compareVersions(current, latest) >= 0) return "";
   return `Myrmo note for the user: myrmo-mcp ${latest} is available (this machine runs ${current}). In Claude Code: claude plugin update myrmo@myrmo, or turn on auto-update in /plugin > Marketplaces > myrmo. Other clients: npx myrmo-mcp@latest init with the same options as the first time. Tell the user once; do not run it yourself.`;
 }
 

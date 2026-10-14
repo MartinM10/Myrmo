@@ -45,7 +45,7 @@ const isolated = () => ({ ...process.env, MYRMO_CONFIG: join(mkdtempSync(join(tm
 test("every publication answer says which colony it went to, and as whom", () => {
   const priv = destinationLine("http://10.20.0.17:8080", true, "key 1a2b3c4d");
   assert.match(priv, /PRIVATE colony/);
-  assert.match(priv, /192\.168\.219\.87:8080/);
+  assert.match(priv, /10\.20\.0\.17:8080/);
   assert.match(priv, /Acting as key 1a2b3c4d/);
   assert.match(destinationLine("https://myrmo.dev", false), /the PUBLIC colony: anyone can read/);
   assert.match(destinationLine("http://other.example:8080", false), /not marked private/);

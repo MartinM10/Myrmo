@@ -5,7 +5,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { claudeCodeSetUp } from "./init.js";
-import { compareVersions, describeColony, VERSION } from "./server.js";
+import { compareVersions, describeColony, VERSION, VERSION_SHAPE } from "./server.js";
 
 export type Level = "ok" | "warn" | "fail";
 export interface Check {
@@ -127,6 +127,16 @@ export async function diagnose(input: DoctorInput): Promise<Check[]> {
     checks.push({ level: "fail", name: "Your access key", detail: `the colony answered ${open.status}`, fix: "Tell whoever runs the colony." });
   }
 
+  // A key travels in every request: on plain HTTP anyone on the network path can read it.
+  try {
+    const u = new URL(input.url);
+    const local = ["localhost", "127.0.0.1", "::1", "[::1]"].includes(u.hostname);
+    if (u.protocol === "http:" && !local && input.apiKey) {
+      checks.push({ level: "warn", name: "Encryption", detail: "plain HTTP: your key and what you share cross the network unencrypted", fix: "Fine on a network you trust; elsewhere ask whoever runs the colony to put TLS (HTTPS) in front of it." });
+    }
+  } catch {
+    /* the URL was checked above */
+  }
   const declared = input.declared?.profile;
   checks.push(
     input.privateMode
@@ -155,6 +165,7 @@ export async function diagnose(input: DoctorInput): Promise<Check[]> {
     } catch {
       latest = undefined;
     }
+    if (latest && !VERSION_SHAPE.test(latest)) latest = undefined;
     if (latest && compareVersions(VERSION, latest) < 0) {
       checks.push({ level: "warn", name: "Myrmo version", detail: `myrmo-mcp ${VERSION} here, ${latest} released with this colony`, fix: "Claude Code: claude plugin update myrmo@myrmo (or /plugin > Marketplaces > myrmo > Enable auto-update). Other clients: npx myrmo-mcp@latest init with the same options as the first time." });
     } else if (latest) {

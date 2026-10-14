@@ -204,6 +204,19 @@ if (flag("--http")) {
   await server.connect(new StdioServerTransport());
 }
 
+/** Loopback and private addresses: where a reverse proxy of the same deployment connects from. */
+function trustedPeer(address: string): boolean {
+  const a = address.replace(/^::ffff:/i, "");
+  return (
+    a === "::1" ||
+    /^127\./.test(a) ||
+    /^10\./.test(a) ||
+    /^192\.168\./.test(a) ||
+    /^172\.(1[6-9]|2\d|3[01])\./.test(a) ||
+    /^f[cd][0-9a-f]{2}:/i.test(a)
+  );
+}
+
 async function readBody(req: IncomingMessage, limit = 256 * 1024): Promise<unknown> {
   const chunks: Buffer[] = [];
   let size = 0;
@@ -228,7 +241,12 @@ async function serveHttp(port: number, host: string) {
 
     // Every request gets its own server and transport: no sessions, so any replica can answer.
     const headers: Record<string, string> = {};
-    const forwarded = String(req.headers["x-forwarded-for"] ?? req.socket.remoteAddress ?? "").split(",")[0].trim();
+    // The caller's address, for the colony's per-address limits: X-Forwarded-For only from a proxy of this deployment
+    // (loopback or a private network, as the gateway's MYRMO_TRUSTED_PROXIES default), never from a caller who reached
+    // this port directly and could otherwise choose the address its quotas are counted against.
+    const peer = req.socket.remoteAddress ?? "";
+    const claimed = typeof req.headers["x-forwarded-for"] === "string" ? req.headers["x-forwarded-for"] : "";
+    const forwarded = (trustedPeer(peer) && claimed ? claimed.split(",")[0] : peer).trim();
     if (forwarded) headers["x-forwarded-for"] = forwarded;
     const agent = req.headers["x-myrmo-agent"];
     if (typeof agent === "string") headers["x-myrmo-agent"] = agent;

