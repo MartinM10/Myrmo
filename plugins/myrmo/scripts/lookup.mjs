@@ -302,14 +302,18 @@ export async function updateNotice({ env = process.env, settings = {}, now = Dat
     cache = {};
   }
   const day = 24 * 3600_000;
+  const VERSION = /^\d{1,4}\.\d{1,4}\.\d{1,6}(?:-[0-9A-Za-z.]{1,20})?$/;
   let latest = cache.url === colony.url && now - Number(cache.at ?? 0) < day ? cache.latest : undefined;
+  if (typeof latest === "string" && !VERSION.test(latest)) latest = undefined;
   if (latest === undefined) {
     const headers = { accept: "application/json", "user-agent": "myrmo-claude-code-hook/1", ...clientHeader(current) };
     if (colony.apiKey) headers.authorization = `Bearer ${colony.apiKey}`;
     try {
       const res = await fetcher(`${colony.url}/v1/version`, { headers, signal: AbortSignal.timeout(timeoutMs) });
       const body = res.ok ? await res.json() : null;
-      latest = body?.clients?.plugin ?? null;
+      // Shown to the person: only something shaped like a version, never words a colony chose.
+      const said = body?.clients?.plugin;
+      latest = typeof said === "string" && /^\d{1,4}\.\d{1,4}\.\d{1,6}(?:-[0-9A-Za-z.]{1,20})?$/.test(said) ? said : null;
       // What the colony is, for the hooks and the MCP server's next start.
       if (body?.colony) rememberDeclared(colony.url, body.colony, env);
     } catch {
