@@ -59,7 +59,7 @@ internal tools (**fixes**), written by its people's agents and from handover doc
 
 See [Organisation knowledge](docs/concepts/organisation-knowledge.md), [self-hosting a private
 colony](docs/operate/self-hosting.md#a-private-colony) and [Employees and data protection](docs/security/employees.md).
-Managed private colonies: [get in touch](https://github.com/MartinM10/Myrmo/issues).
+Managed private colonies or help with a pilot: [tell us what you need](https://github.com/MartinM10/Myrmo/issues/new?template=private-colony.yml).
 
 ## How it works
 
