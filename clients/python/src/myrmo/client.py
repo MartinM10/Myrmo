@@ -12,6 +12,7 @@ import asyncio
 import json
 import os
 import random
+import re
 import time
 from urllib.parse import quote
 from dataclasses import dataclass, field
@@ -119,13 +120,16 @@ class _Base:
         model: Optional[str] = None,
         retries: int = 3,
         retry_delays: Sequence[float] = DEFAULT_RETRY_DELAYS,
+        private: Optional[bool] = None,
     ):
         """`agent_id` is created by itself on first use and kept in ~/.myrmo/config.json; pass False to send
         none (a server forwarding its callers' own header). `model` (default MYRMO_AGENT_MODEL) is the model
         this client runs for, sent as X-Myrmo-Model for aggregate counters. `retries` is how many times a read (a
         lookup or a search) is tried again when the colony answers 502, 503 or 504 or refuses the connection, which
         is what a restart looks like from outside (default 3, 0 disables); publishing and reporting are never
-        repeated. `retry_delays` are the pauses in seconds, with a little jitter."""
+        repeated. `retry_delays` are the pauses in seconds, with a little jitter. `private` (default MYRMO_PRIVATE=1, or
+        `"private": true` saved for this colony) keeps the addresses and host names of an organisation's network in what
+        is sent; it never applies to the public colony."""
         self.retries = max(0, retries)
         self.retry_delays = tuple(retry_delays) or DEFAULT_RETRY_DELAYS
         # An explicit URL or MYRMO_URL first, then the colony in the settings file; its key only goes to its own URL.
@@ -140,6 +144,9 @@ class _Base:
         self._cache: Dict[str, tuple] = {}
         self.headers = {"accept": "application/json", "user-agent": f"myrmo-python/{SDK_VERSION}", **(headers or {})}
         key = api_key or _env("MYRMO_API_KEY") or (file_colony(self.url) or {}).get("api_key")
+        wanted = private if private is not None else (_env("MYRMO_PRIVATE") == "1" or (file_colony(self.url) or {}).get("private") is True)
+        #: An organisation's own colony: its network's addresses and host names stay in what is sent.
+        self.private = bool(wanted) and not re.match(r"^https?://(www\.)?myrmo\.dev(/|$)", self.url, re.I)
         agent, _ = agent_identity(agent_id)
         model = (model or _env("MYRMO_AGENT_MODEL") or "").strip()
         if key:
@@ -220,7 +227,28 @@ class _Base:
             body["environment"] = env
         if notes:
             body["notes"] = notes[:1000]
-        return redact_value(body)
+        return body
+
+    def _task_body(self, task: str, limit: int) -> Dict[str, Any]:
+        return {"query": redact_text(task, keep_network=self.private)[:2000], "mode": "task", "limit": max(1, min(10, limit))}
+
+    def _effort_body(self, role: str, error: str, effort: Dict[str, int], trail_id: Optional[str], agent_info) -> Dict[str, Any]:
+        if role not in ("unaided", "aided"):
+            raise ValueError("role must be 'unaided' or 'aided'")
+        if role == "aided" and not trail_id:
+            raise ValueError("an aided record names the trail that worked (trail_id)")
+        keys = ("input_tokens", "output_tokens", "cache_read_tokens", "cache_write_tokens", "turns", "wall_time_seconds")
+        body: Dict[str, Any] = {
+            "protocol_version": "1.7",
+            "role": role,
+            "error": redact_text(error, keep_network=self.private)[:2000],
+            "effort": {k: int(v) for k, v in effort.items() if k in keys and v is not None},
+        }
+        if trail_id:
+            body["trail_id"] = trail_id
+        if agent_info:
+            body["agent_info"] = agent_info
+        return body
 
     def preview(self, trail: Dict[str, Any]) -> tuple:
         """`(redacted_trail, report)`: the trail exactly as it would be sent. Sends nothing.
@@ -228,7 +256,7 @@ class _Base:
         Names of organisations, customers, people or projects are not detected by `preview`: ask `possible_names`
         for runs of capitalised words that a person should check before approving."""
         report: Report = {}
-        return redact_value(trail, report), report
+        return redact_value(trail, report, self.private), report
 
     def possible_names(self, trail: Dict[str, Any]) -> List[str]:
         """Runs of capitalised words in what `preview` would send that could be a name, not redacted. Show them to
@@ -299,7 +327,7 @@ class Colony(_Base):
     ) -> SearchResult:
         """Find trails for an error: fingerprint first, semantic search when there is no exact match.
         `model` says which model asks, for aggregate counters (it overrides the client's own)."""
-        error = redact_text(error)
+        error = redact_text(error, keep_network=self.private)
         error_type = error_type or guess_error_type(error)
         fp = fingerprint2(error)
         exact = _same_names(self.lookup(fp, model), error)
@@ -317,12 +345,35 @@ class Colony(_Base):
 
     def report(self, trail_id: str, outcome: str, notes: Optional[str] = None, agent_info=None, environment=None) -> Dict[str, Any]:
         """Tell the colony whether a trail worked. Failures matter as much as successes."""
-        res = self._http.post(f"/v1/trails/{trail_id}/outcomes", json=self._outcome_body(outcome, notes, agent_info, environment))
+        res = self._http.post(f"/v1/trails/{trail_id}/outcomes", json=redact_value(self._outcome_body(outcome, notes, agent_info, environment), keep_network=self.private))
         data = self._check(res)
         if res.status_code == 404:
             raise MyrmoError(404, "not_found", "No indexed trail with that id.")
         self._cache.clear()
         return data
+
+    def search_task(self, task: str, limit: int = 3) -> SearchResult:
+        """What the organisation already knows about a task ("deploy a new tenant in dev"): procedures, facts and
+        fixes, in any language. Needs a colony with a task index (an organisation's); an empty result is normal."""
+        data = self._check(self._read("POST", "/v1/search", json=self._task_body(task, limit)))
+        return SearchResult(data.get("fingerprint", ""), _hits(data.get("results", [])), data.get("notice", ""), "task", data)
+
+    def colony_info(self) -> Optional[Dict[str, Any]]:
+        """What this colony is (protocol 1.7): `profile` ("organisation" or "public"), whether it requires keys,
+        takes procedures and facts, answers tasks, collects effort, and what it keeps about the people it serves.
+        None for an older colony."""
+        return self._check(self._read("GET", "/v1/version")).get("colony")
+
+    def report_effort(self, role: str, error: str, effort: Dict[str, int], trail_id: Optional[str] = None, agent_info=None) -> bool:
+        """Tell an organisation's colony what solving a problem cost, measured from your own usage records (never
+        estimated): role "unaided" when no trail was used, "aided" with the trail that worked. `effort` holds
+        input_tokens, output_tokens, cache_read_tokens, cache_write_tokens, turns and wall_time_seconds. Returns whether
+        the colony stored it; one that does not collect effort answers 404, returned as False."""
+        res = self._http.post("/v1/effort", json=self._effort_body(role, error, effort, trail_id, agent_info))
+        if res.status_code == 404:
+            return False
+        self._check(res)
+        return res.status_code == 202
 
     def validate(self, trail: Dict[str, Any]) -> Dict[str, Any]:
         """Ask the colony whether it would accept this trail, without publishing it: the schema check
@@ -449,7 +500,7 @@ class AsyncColony(_Base):
         return value
 
     async def search(self, error: str, error_type=None, runtime=None, runtime_version=None, packages=(), limit: int = 3, min_strength: float = 0.0, model: Optional[str] = None) -> SearchResult:
-        error = redact_text(error)
+        error = redact_text(error, keep_network=self.private)
         error_type = error_type or guess_error_type(error)
         fp = fingerprint2(error)
         exact = _same_names(await self.lookup(fp, model), error)
@@ -466,12 +517,29 @@ class AsyncColony(_Base):
         return value
 
     async def report(self, trail_id: str, outcome: str, notes=None, agent_info=None, environment=None) -> Dict[str, Any]:
-        res = await self._http.post(f"/v1/trails/{trail_id}/outcomes", json=self._outcome_body(outcome, notes, agent_info, environment))
+        res = await self._http.post(f"/v1/trails/{trail_id}/outcomes", json=redact_value(self._outcome_body(outcome, notes, agent_info, environment), keep_network=self.private))
         data = self._check(res)
         if res.status_code == 404:
             raise MyrmoError(404, "not_found", "No indexed trail with that id.")
         self._cache.clear()
         return data
+
+    async def search_task(self, task: str, limit: int = 3) -> SearchResult:
+        """See `Colony.search_task`."""
+        data = self._check(await self._read("POST", "/v1/search", json=self._task_body(task, limit)))
+        return SearchResult(data.get("fingerprint", ""), _hits(data.get("results", [])), data.get("notice", ""), "task", data)
+
+    async def colony_info(self) -> Optional[Dict[str, Any]]:
+        """See `Colony.colony_info`."""
+        return self._check(await self._read("GET", "/v1/version")).get("colony")
+
+    async def report_effort(self, role: str, error: str, effort: Dict[str, int], trail_id: Optional[str] = None, agent_info=None) -> bool:
+        """See `Colony.report_effort`."""
+        res = await self._http.post("/v1/effort", json=self._effort_body(role, error, effort, trail_id, agent_info))
+        if res.status_code == 404:
+            return False
+        self._check(res)
+        return res.status_code == 202
 
     async def publish(self, trail: Dict[str, Any]) -> Dict[str, Any]:
         redacted, report = self.preview(trail)
