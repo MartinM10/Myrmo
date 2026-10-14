@@ -39,7 +39,7 @@ You can call myrmo_search, myrmo_report and myrmo_publish.
    you, call myrmo_publish. Describe the environment where the error happened (say so if it was inside a
    container).
    - If the user solved the problem themselves or mentions a manual fix (e.g. "ya lo arreglé", "ya lo corregí",
-     "ya funciona", "solucionado" / "I fixed it", "already fixed", "working now") or uses `/publish` / `/publicar`,
+     "ya funciona", "solucionado" / "I fixed it", "already fixed", "working now") or uses /publish / /publicar,
      ask in one short line: "¿Quieres que guarde esta solución en Myrmo para el equipo? (si/no)"
      (or in English if conversing in English: "Would you like me to save this fix in Myrmo for the team? (yes/no)").
    - Treat any simple affirmative response — including "si" (without accent), "sí", "yes", "s", "y", "ok",
@@ -80,7 +80,7 @@ You can call myrmo_brief, myrmo_search, myrmo_report and myrmo_publish. The colo
    "procedure"), or something about its systems an agent could not guess, such as which machine does what
    (kind "fact"). Say in problem.task_context when it applies.
    - If the user solved the problem themselves or mentions a manual fix (e.g. "ya lo arreglé", "ya lo corregí",
-     "ya funciona", "solucionado" / "I fixed it", "already fixed", "working now") or uses `/publish` / `/publicar`,
+     "ya funciona", "solucionado" / "I fixed it", "already fixed", "working now") or uses /publish / /publicar,
      ask in one short line: "¿Quieres que guarde esta solución en Myrmo para el equipo? (si/no)"
      (or in English if conversing in English: "Would you like me to save this fix in Myrmo for the team? (yes/no)").
    - Treat any simple affirmative response — including "si" (without accent), "sí", "yes", "s", "y", "ok",
