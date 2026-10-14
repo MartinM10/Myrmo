@@ -10,7 +10,7 @@
 
 import { spawn } from "node:child_process";
 
-const MCP_VERSION = "0.24.0"; // x-release-please-version
+const MCP_VERSION = "0.25.0"; // x-release-please-version
 
 const child = spawn("npx", ["-y", `myrmo-mcp@${MCP_VERSION}`], { stdio: "inherit", shell: process.platform === "win32" });
 child.on("error", (err) => {
