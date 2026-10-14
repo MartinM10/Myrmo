@@ -42,7 +42,7 @@ docker compose up -d --scale enricher=4
 | `MYRMO_DECISION_MODEL` | none | Model id sent with every request; hosted engines such as Jev require one (for example `jev-latest`). |
 | `LAYA_REPLICAS` | `1` | `0` keeps the bundled Laya container stopped, with its downloaded models, while a hosted engine answers (`MYRMO_DECISION_URL`); set it back to `1` and point `MYRMO_DECISION_URL` at `http://laya:8000/v1/systemone` to return to Laya. |
 | `MYRMO_MAX_PER_FINGERPRINT` | `64` | Most trails one exact fingerprint keeps. Errors named only by a path, a URL or a number (a Go module, a registry) all fingerprint alike, and one key can gather thousands; every exact lookup, search and merge check reads the whole key. A trail left out of a full key is still indexed and found by search. |
-| `MYRMO_ALLOWED_NETWORKS` | empty | Only these networks may connect: comma-separated ranges or addresses (`192.168.219.0/24, 10.0.0.7`). Everyone else gets `403` before anything is read. Empty means everyone. The machine's own loopback always passes. It looks at the address of the connection, never at `X-Forwarded-For`, so behind a reverse proxy list the proxy's network or filter in the proxy. |
+| `MYRMO_ALLOWED_NETWORKS` | empty | Only these networks may connect: comma-separated ranges or addresses (`10.20.0.0/24, 10.0.0.7`). Everyone else gets `403` before anything is read. Empty means everyone. The machine's own loopback always passes. It looks at the address of the connection, never at `X-Forwarded-For`, so behind a reverse proxy list the proxy's network or filter in the proxy. |
 | `MYRMO_MODEL_INJECTION_GATE` | `0` | `1` lets the decision model's prompt-injection score reject trails. Off because it was not reliable on real trails; the rules decide. |
 | `MYRMO_DECISION_FAIL_OPEN` | `0` | `1` indexes trails on the rules alone when the decision model cannot be reached, instead of leaving them queued. |
 | `MYRMO_EMBED_URL` | `http://embed:80` | Any server with the Text Embeddings Inference `/embed` API: the bundled service, or TEI itself on x86_64 and GPUs. |
@@ -56,6 +56,8 @@ docker compose up -d --scale enricher=4
 | `MYRMO_PRIVATE` | as `MYRMO_REQUIRE_KEY` | Organisation mode: keeps the network's addresses and host names, accepts procedures and facts, never rejects a trail as sensitive and lowers the quality bar ([organisation knowledge](../concepts/organisation-knowledge.md)). |
 | `MYRMO_TASK_EMBED_URL` | none | The task index: `http://embed:80/task`, with `EMBED_TASK_MODEL` set on the embed service (the private colony script sets both). Existing trails are filed in it when the enricher starts. `MYRMO_TASK_MIN_SIMILARITY` (default `0.55`) is its threshold, `MYRMO_TASK_COLLECTION` its collection. |
 | `MYRMO_RECORD_GAPS` | `0` | Private colonies: `1` keeps the task requests nobody could answer (redacted, 30 days) for the admin panel. The panel can switch it. |
+| `MYRMO_PEOPLE_DETAIL` | `aggregate` | Private colonies: `aggregate` counts the team's activity as a whole; `named` also counts per person (kept 90 days) and names people in reuse records and knowledge gaps. Turn `named` on only after telling the people it serves, and their representatives where the law asks for it: see [Employees and data protection](../security/employees.md). Declared to clients in `GET /v1/version`. |
+| `MYRMO_HOLDOUT_PERCENT` | `0` | Private colonies: share of error lookups (0 to 20) answered with nothing on purpose, so the Value tab can compare problems solved with and without the colony against a randomised control group. It costs those people the colony's help: keep it small and tell them. The panel can change it. |
 | `MYRMO_PUBLIC_URL` | `http://localhost:3000` | Address of the website, used to build the approval links of drafts. In production it takes the value of `MYRMO_SITE_URL`. |
 | `MYRMO_PUBLISH_LIMIT` | `0` locally, `30` in `deploy/docker-compose.prod.yml` | Trails a client may publish per hour. `0` disables the quota. |
 | `MYRMO_VOTES_PER_ADDRESS` | `3` | Distinct agent ids per address, trail and day whose outcome reports can count. Colleagues behind one office address count up to this number. `0` disables the check. |
@@ -173,11 +175,11 @@ colony for searches with no private match is not implemented yet. Three things m
 **On one Linux machine, in one command.** From the repository's root:
 
 ```bash
-MYRMO_ALLOWED_NETWORKS=192.168.219.0/24 bash deploy/private-colony.sh up
+MYRMO_ALLOWED_NETWORKS=10.20.0.0/24 bash deploy/private-colony.sh up
                                                # builds and starts it: keys required, only that network may connect,
                                                # no external decision service
 bash deploy/private-colony.sh keys add ana     # one key per person, shown once, with a message ready to send them
-bash deploy/private-colony.sh report 7         # each person's use and reuse between people
+bash deploy/private-colony.sh report 7         # the team's use and reuse between people
 bash deploy/private-colony.sh stats            # what it knows: fixes, procedures, facts, and what is stale or contested
 bash deploy/private-colony.sh gaps             # task requests nobody's knowledge answered (when recording is on)
 bash deploy/private-colony.sh doctor           # every check, with what to do about each failure
@@ -191,7 +193,10 @@ server from the checkout, and starts only what a private colony needs (no decisi
 new trails, and nothing is sent to any outside service). It runs in **organisation mode** with a **task index**, so the
 colony keeps procedures and facts besides fixes and tells agents what it knows when a task starts
 ([organisation knowledge](../concepts/organisation-knowledge.md)); `up` and `upgrade` add those settings to an
-`.env.private` written by an older version. The sections below explain each part.
+`.env.private` written by an older version. The colony counts its team's activity as a whole, never per person, unless you
+set `MYRMO_PEOPLE_DETAIL=named` after telling them ([Employees and data protection](../security/employees.md)). The colony
+says what it is to every client (`GET /v1/version`, protocol 1.7), so a person needs only the address and their key:
+`--private` is still accepted for clients older than that. The sections below explain each part.
 
 **Who can reach it.** Keys decide who may read and write; `MYRMO_ALLOWED_NETWORKS` decides who may even connect. Inside one
 building or a VPN, listing the team's network is enough for a pilot: no VPN is needed, and a machine on another network
@@ -241,10 +246,17 @@ prints it again for a key you still have.
   sized by strength, with contested, stale and unconfirmed entries marked: groups of linked entries form islands named after
   their most telling tag. Search, filter, zoom and click a point for its details; the Knowledge tab's lists open it with
   their entries highlighted.
-- **People:** add a person (the page shows the key once, inside the message to send them, with a copy button that works over
-  plain HTTP) and revoke a key; per person, when it was last used, a 14-day activity strip and the Myrmo version their agents
-  run (plugin and MCP server), marked when it is older than the one this colony was released with.
-- **Settings:** change, while it runs, the networks allowed to connect and the request and publish limits per person; each
+- **Value:** what the colony saves, from what solving problems cost people's agents with and without its help (tokens,
+  time, turns and, with prices set, dollars), a randomised estimate when the hold-out is on, which models solve problems
+  with help, and how it is worked out. See [what the colony saves](../concepts/organisation-knowledge.md#what-the-colony-saves).
+- **People:** add a person (the page shows the key once, inside the message to send them, which also says what the colony
+  keeps about them, with a copy button that works over plain HTTP), revoke a key, or revoke it and **erase** what the colony
+  keeps about the person (their right to erasure). Per person: when the key was last used and the Myrmo version their agents
+  run (plugin and MCP server), marked when it is older than the one this colony was released with. The team's totals; per
+  person activity only with `MYRMO_PEOPLE_DETAIL=named`.
+- **Settings:** change, while it runs, the networks allowed to connect, the request and publish limits per person, the
+  hold-out and the prices per model (a button fills Anthropic's public list prices of 2026-10-06; complete the rest from
+  your contract); each
   shows whether it comes from the environment or was changed there, and can go back. A list of networks that would shut out
   the address the change comes from is refused. If a change locks everyone out, `myrmo-server settings reset` on the
   colony's machine (it needs only Valkey) puts the environment's values back.
