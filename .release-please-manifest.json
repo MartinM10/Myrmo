@@ -3,6 +3,6 @@
   "protocol": "1.6.0",
   "server": "0.16.0",
   "clients/typescript/packages/myrmo": "0.16.0",
-  "clients/typescript/packages/myrmo-mcp": "0.25.0",
+  "clients/typescript/packages/myrmo-mcp": "0.25.1",
   "clients/python": "0.15.0"
 }

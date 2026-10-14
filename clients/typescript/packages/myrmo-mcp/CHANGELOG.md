@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.25.1](https://github.com/MartinM10/Myrmo/compare/mcp-v0.25.0...mcp-v0.25.1) (2026-10-14)
+
+
+### Bug fixes
+
+* **mcp:** remove nested backticks inside AGENTS_BLOCK template strings ([325ba1c](https://github.com/MartinM10/Myrmo/commit/325ba1c731793467b8f460070edd795ae6105463))
+
 ## [0.25.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.24.0...mcp-v0.25.0) (2026-10-14)
 
 
