@@ -20,6 +20,15 @@ static OUTCOME: LazyLock<jsonschema::Validator> = LazyLock::new(|| {
     jsonschema::draft7::new(&schema).expect("outcome schema compiles")
 });
 
+static EFFORT: LazyLock<jsonschema::Validator> = LazyLock::new(|| {
+    let schema = json!({
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "definitions": SCHEMA["definitions"].clone(),
+        "$ref": "#/definitions/effort_record"
+    });
+    jsonschema::draft7::new(&schema).expect("effort schema compiles")
+});
+
 fn errors(validator: &jsonschema::Validator, instance: &Value) -> Result<(), Vec<Value>> {
     let details: Vec<Value> = validator
         .iter_errors(instance)
@@ -39,6 +48,10 @@ pub fn validate_trail(instance: &Value) -> Result<(), Vec<Value>> {
 
 pub fn validate_outcome(instance: &Value) -> Result<(), Vec<Value>> {
     errors(&OUTCOME, instance)
+}
+
+pub fn validate_effort(instance: &Value) -> Result<(), Vec<Value>> {
+    errors(&EFFORT, instance)
 }
 
 #[cfg(test)]

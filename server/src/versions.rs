@@ -26,8 +26,25 @@ pub fn describe() -> Value {
         },
         "update": {
             "claude_code": "claude plugin update myrmo@myrmo (or turn on auto-update: /plugin > Marketplaces > myrmo > Enable auto-update)",
-            "other_clients": "npx myrmo-mcp@latest init (with the same --url, --key and --private as the first time)",
+            "other_clients": "npx myrmo-mcp@latest init (with the same --url and --key as the first time)",
         },
+    })
+}
+
+/// What this colony is, for clients (protocol 1.7). `profile` is `organisation` or `public`: an organisation's colony
+/// keeps its internal names, takes procedures and facts, and answers task requests; a client with a key for it needs no
+/// `--private` flag. `people_detail` and `holdout_percent` are said so the people a colony serves can see what it keeps
+/// about them and whether it may answer a lookup with nothing on purpose.
+pub fn colony(cfg: &crate::config::Config, holdout_percent: u64, task_index: bool) -> Value {
+    let organisation = cfg.private;
+    json!({
+        "profile": cfg.profile(),
+        "keys_required": cfg.require_key,
+        "kinds": if organisation { json!(["fix", "procedure", "fact"]) } else { json!(["fix"]) },
+        "task_search": organisation && task_index,
+        "effort": organisation,
+        "people_detail": if cfg.require_key { json!(cfg.people_detail.as_str()) } else { Value::Null },
+        "holdout_percent": if organisation { holdout_percent } else { 0 },
     })
 }
 

@@ -25,6 +25,10 @@ pub(super) struct Live {
     pub publish_limit: u64,
     /// Keep the task requests nobody could answer (private colonies only).
     pub record_gaps: bool,
+    /// Share of error lookups answered with nothing, to measure the colony against (private colonies only).
+    pub holdout_percent: u64,
+    /// What the organisation pays per million tokens of each model, for the Value tab.
+    pub prices: crate::effort::Prices,
     /// The settings an operator has changed (the others are as the environment says).
     pub overridden: Vec<&'static str>,
 }
@@ -38,6 +42,8 @@ fn from_environment(st: &AppState) -> Live {
         rate_limit: st.cfg.rate_limit_per_minute,
         publish_limit: st.cfg.publish_limit_per_hour,
         record_gaps: st.cfg.private && st.cfg.record_gaps,
+        holdout_percent: st.cfg.holdout_percent,
+        prices: crate::effort::Prices::new(),
         overridden: Vec::new(),
     }
 }
@@ -75,6 +81,25 @@ pub(super) async fn live(st: &AppState) -> Live {
             if let Some(v) = stored.get("record_gaps") {
                 live.record_gaps = st.cfg.private && v == "1";
                 live.overridden.push("record_gaps");
+            }
+            if let Some(n) = stored
+                .get("holdout_percent")
+                .and_then(|v| v.parse::<u64>().ok())
+            {
+                live.holdout_percent = if st.cfg.private {
+                    n.min(crate::config::HOLDOUT_MAX)
+                } else {
+                    0
+                };
+                live.overridden.push("holdout_percent");
+            }
+            if let Some(p) = stored
+                .get("prices")
+                .and_then(|v| serde_json::from_str::<Value>(v).ok())
+                .and_then(|v| crate::effort::parse_prices(&v).ok())
+            {
+                live.prices = p;
+                live.overridden.push("prices");
             }
         }
         Err(err) => {
@@ -172,29 +197,45 @@ pub(super) async fn people(
         .await
         .map_err(|e| internal(&e))?;
     let clients = crate::team::clients(&mut con).await.unwrap_or_default();
+    let named = st.cfg.people_detail == crate::config::PeopleDetail::Named;
+    let counts = |n: &BTreeMap<String, i64>| {
+        let get = |k: &str| n.get(k).copied().unwrap_or(0);
+        let sum = |p: &str| {
+            ["worked", "partially_worked", "failed", "not_applicable"]
+                .iter()
+                .map(|o| get(&format!("{p}_{o}")))
+                .sum::<i64>()
+        };
+        json!({
+            "searches": get("searches"), "published": get("published"), "reports": get("reports"),
+            "used_others": sum("used") + sum("reuse"), "used_others_worked": get("used_worked") + get("reuse_worked"),
+            "helped_others": sum("helped"), "helped_others_worked": get("helped_worked"),
+        })
+    };
     let people: Vec<Value> = holders
         .into_iter()
         .map(|(name, created)| {
-            let n = tally.get(&name).cloned().unwrap_or_default();
-            let get = |k: &str| n.get(k).copied().unwrap_or(0);
-            let sum = |p: &str| {
-                ["worked", "partially_worked", "failed", "not_applicable"]
-                    .iter()
-                    .map(|o| get(&format!("{p}_{o}")))
-                    .sum::<i64>()
-            };
-            json!({
-                "name": name, "created": created,
-                "searches": get("searches"), "published": get("published"), "reports": get("reports"),
-                "used_others": sum("used"), "used_others_worked": get("used_worked"),
-                "helped_others": sum("helped"), "helped_others_worked": get("helped_worked"),
-                "clients": clients.get(&name).cloned().unwrap_or_default(),
-            })
+            // Who has a key and which client they run is what managing access needs; what they did is only kept
+            // when the organisation chose to name people.
+            let mut row = json!({ "name": name, "created": created, "clients": clients.get(&name).cloned().unwrap_or_default() });
+            if named {
+                let c = counts(&tally.get(&name).cloned().unwrap_or_default());
+                row.as_object_mut().unwrap().extend(c.as_object().unwrap().clone());
+            }
+            row
         })
         .collect();
-    Ok(private(Json(
-        json!({ "days": days, "people": people, "reuse": reuse, "released": crate::versions::describe()["clients"] }),
-    )))
+    // The team's totals: the sum over people, or the team's own counts when nobody is named.
+    let mut team = BTreeMap::new();
+    for n in tally.values() {
+        for (k, v) in n {
+            *team.entry(k.clone()).or_insert(0) += v;
+        }
+    }
+    Ok(private(Json(json!({
+        "days": days, "people_detail": st.cfg.people_detail.as_str(), "people": people, "team": counts(&team),
+        "reuse": reuse, "released": crate::versions::describe()["clients"],
+    }))))
 }
 
 fn internal(err: &anyhow::Error) -> ApiError {
@@ -238,21 +279,102 @@ pub(super) async fn add_person(
     )))
 }
 
-/// DELETE /v1/admin/people/{name}: the key stops working at once.
+#[derive(serde::Deserialize)]
+pub(super) struct Revoke {
+    #[serde(default)]
+    erase: bool,
+}
+
+/// DELETE /v1/admin/people/{name}: the key stops working at once. With `?erase=true`, everything kept about the
+/// person's activity goes too (their right to erasure): counts, last use, client versions, their name in reuse records
+/// and knowledge gaps, and their name as the author of what they published, which stays as the organisation's
+/// knowledge. Erasing works for a person whose key was already revoked.
 pub(super) async fn revoke_person(
     State(st): State<AppState>,
     headers: HeaderMap,
     Path(name): Path<String>,
+    Query(q): Query<Revoke>,
 ) -> ApiResult<Response> {
     authorize_operator(&st, &headers)?;
-    match crate::access::revoke(&mut st.redis(), &name).await {
-        Ok(true) => {
-            audit(&st, &format!("key revoked for {name}")).await;
-            Ok(private(Json(json!({ "name": name, "revoked": true }))))
-        }
-        Ok(false) => Err(ApiError::not_found(format!("{name} has no key."))),
-        Err(err) => Err(internal(&err)),
+    if !crate::access::valid_person(&name) {
+        return Err(ApiError::bad_request("Not a person's name."));
     }
+    let mut con = st.redis();
+    let revoked = crate::access::revoke(&mut con, &name)
+        .await
+        .map_err(|e| internal(&e))?;
+    if !revoked && !q.erase {
+        return Err(ApiError::not_found(format!("{name} has no key.")));
+    }
+    if revoked {
+        audit(&st, &format!("key revoked for {name}")).await;
+    }
+    let mut erased = None;
+    if q.erase {
+        let mut n = crate::team::erase(&mut con, &name, keys::now())
+            .await
+            .map_err(|e| internal(&e))?;
+        n += erase_gaps(&st, &name).await.map_err(|e| internal(&e))?;
+        // The audit list names the person in its own entries; the erasure is recorded without the name.
+        let mut entries: Vec<String> = con
+            .lrange(AUDIT, 0, AUDIT_KEEP)
+            .await
+            .map_err(|e| internal(&e.into()))?;
+        for e in &mut entries {
+            if e.contains(&format!(" for {name}\"")) {
+                *e = e.replace(&format!(" for {name}\""), " for an erased person\"");
+            }
+        }
+        if !entries.is_empty() {
+            let _: () = redis::pipe()
+                .cmd("DEL")
+                .arg(AUDIT)
+                .ignore()
+                .cmd("RPUSH")
+                .arg(AUDIT)
+                .arg(&entries)
+                .ignore()
+                .query_async(&mut con)
+                .await
+                .map_err(|e| internal(&e.into()))?;
+        }
+        audit(&st, &format!("data of a person erased ({n} items)")).await;
+        erased = Some(n);
+    }
+    Ok(private(Json(
+        json!({ "name": name, "revoked": revoked, "erased": erased }),
+    )))
+}
+
+/// A person's name removed from the knowledge gaps they asked.
+async fn erase_gaps(st: &AppState, person: &str) -> anyhow::Result<u64> {
+    let mut con = st.redis();
+    let entries: Vec<String> = con.lrange(GAPS, 0, GAPS_KEEP).await?;
+    let mut n = 0;
+    let rewritten: Vec<String> = entries
+        .into_iter()
+        .map(|e| match serde_json::from_str::<Value>(&e) {
+            Ok(mut v) if v["who"] == person => {
+                v["who"] = Value::Null;
+                n += 1;
+                v.to_string()
+            }
+            _ => e,
+        })
+        .collect();
+    if n > 0 {
+        let _: () = redis::pipe()
+            .cmd("DEL")
+            .arg(GAPS)
+            .ignore()
+            .cmd("RPUSH")
+            .arg(GAPS)
+            .arg(&rewritten)
+            .ignore()
+            .query_async(&mut con)
+            .await?;
+    }
+    Ok(n)
 }
 
 fn describe(st: &AppState, live: &Live, peer: &str) -> Value {
@@ -263,17 +385,22 @@ fn describe(st: &AppState, live: &Live, peer: &str) -> Value {
         "rate_limit_per_minute": live.rate_limit,
         "publish_limit_per_hour": live.publish_limit,
         "record_gaps": live.record_gaps,
+        "holdout_percent": live.holdout_percent,
+        "prices": live.prices,
         "overridden": live.overridden,
         "from_environment": {
             "allowed_networks": list(&env.allowed),
             "rate_limit_per_minute": env.rate_limit,
             "publish_limit_per_hour": env.publish_limit,
             "record_gaps": env.record_gaps,
+            "holdout_percent": env.holdout_percent,
         },
         "your_address": peer,
         "read_only": {
             "require_key": st.cfg.require_key,
             "private": st.cfg.private,
+            "profile": st.cfg.profile(),
+            "people_detail": st.cfg.people_detail.as_str(),
             "task_index": st.tasks.is_some(),
             "decision_engine": if st.cfg.decision_url.is_some() { "configured" } else { "none (rules only)" },
             "version": env!("CARGO_PKG_VERSION"),
@@ -293,8 +420,9 @@ pub(super) async fn get_settings(
     Ok(private(Json(describe(&st, &live, &peer.ip().to_string()))))
 }
 
-/// PUT /v1/admin/settings: `{ "allowed_networks": "192.168.219.0/24", "rate_limit_per_minute": 120,
-/// "publish_limit_per_hour": 30 }`, any of them; `null` goes back to the environment's value. A list of networks that
+/// PUT /v1/admin/settings: `{ "allowed_networks": "10.20.0.0/24", "rate_limit_per_minute": 120,
+/// "publish_limit_per_hour": 30, "record_gaps": true, "holdout_percent": 5, "prices": {...} }`, any of them; `null` goes
+/// back to the environment's value. A list of networks that
 /// would shut out the very address the change comes from is refused, so the panel cannot lock its own user out.
 pub(super) async fn put_settings(
     State(st): State<AppState>,
@@ -323,7 +451,7 @@ pub(super) async fn put_settings(
                 for item in text.split(',').map(str::trim).filter(|s| !s.is_empty()) {
                     parsed.push(Cidr::parse(item).ok_or_else(|| {
                         ApiError::bad_request(format!(
-                            "{item:?} is not an address or a range such as 192.168.219.0/24."
+                            "{item:?} is not an address or a range such as 10.20.0.0/24."
                         ))
                     })?);
                 }
@@ -367,6 +495,30 @@ pub(super) async fn put_settings(
             ("record_gaps", _) => {
                 return Err(ApiError::bad_request("record_gaps is true or false."));
             }
+            ("holdout_percent", Value::Null) => unset.push("holdout_percent"),
+            ("holdout_percent", v) => {
+                if !st.cfg.private {
+                    return Err(ApiError::bad_request(
+                        "Only an organisation's private colony holds lookups out to measure itself.",
+                    ));
+                }
+                match v.as_u64() {
+                    Some(n) if n <= crate::config::HOLDOUT_MAX => {
+                        set.push(("holdout_percent", n.to_string()))
+                    }
+                    _ => {
+                        return Err(ApiError::bad_request(format!(
+                            "holdout_percent is a whole number from 0 to {}.",
+                            crate::config::HOLDOUT_MAX
+                        )));
+                    }
+                }
+            }
+            ("prices", Value::Null) => unset.push("prices"),
+            ("prices", v) => {
+                let prices = crate::effort::parse_prices(v).map_err(ApiError::bad_request)?;
+                set.push(("prices", serde_json::to_string(&prices).unwrap_or_default()));
+            }
             (other, _) => {
                 return Err(ApiError::bad_request(format!(
                     "{other:?} cannot be changed here."
@@ -403,6 +555,8 @@ pub(super) async fn put_settings(
             "allowed_networks" => list(&before.allowed),
             "rate_limit_per_minute" => before.rate_limit.to_string(),
             "record_gaps" => if before.record_gaps { "1" } else { "0" }.to_string(),
+            "holdout_percent" => before.holdout_percent.to_string(),
+            "prices" => serde_json::to_string(&before.prices).unwrap_or_default(),
             _ => before.publish_limit.to_string(),
         };
         audit(&st, &format!("setting {name}: {was} -> {value}")).await;
@@ -509,6 +663,11 @@ pub(super) async fn trails(
             _ => None,
         };
         item["author"] = json!(author);
+        // What following it cost, when the people who followed it measured it.
+        item["effort"] = crate::effort::of_trail(&mut con, &id)
+            .await
+            .unwrap_or(None)
+            .unwrap_or(Value::Null);
     }
     let next = (ids.len() == limit).then(|| (start + limit).to_string());
     Ok(private(Json(
@@ -574,10 +733,10 @@ pub(super) async fn record_gap(st: &AppState, caller: &Caller, query: &str, now:
     if !st.cfg.private || !live(st).await.record_gaps {
         return;
     }
-    let who = caller
-        .agent
-        .starts_with("person:")
-        .then(|| crate::team::handle(&caller.agent).to_string());
+    // Who asked is kept only when the organisation chose to name people.
+    let who = (st.cfg.people_detail == crate::config::PeopleDetail::Named
+        && caller.agent.starts_with("person:"))
+    .then(|| crate::team::handle(&caller.agent).to_string());
     let entry =
         json!({ "ts": now, "who": who, "text": query.chars().take(300).collect::<String>() });
     let result: redis::RedisResult<()> = redis::pipe()
@@ -836,6 +995,30 @@ pub(super) async fn map(State(st): State<AppState>, headers: HeaderMap) -> ApiRe
         "nodes": nodes,
         "edges": edges,
     }))))
+}
+
+/// GET /v1/admin/value?days=30: what the colony saved, how it was worked out, and the records per day.
+pub(super) async fn value(
+    State(st): State<AppState>,
+    headers: HeaderMap,
+    Query(q): Query<Days>,
+) -> ApiResult<Response> {
+    authorize_operator(&st, &headers)?;
+    let days = q.days.unwrap_or(30).clamp(1, 90);
+    let mut con = st.redis();
+    let per_fp = crate::effort::load(&mut con)
+        .await
+        .map_err(|e| internal(&e))?;
+    let live = live(&st).await;
+    let mut body = crate::effort::value(&per_fp, &live.prices);
+    body["days"] = json!(
+        crate::effort::daily(&mut con, days, keys::now())
+            .await
+            .map_err(|e| internal(&e))?
+    );
+    body["holdout_percent"] = json!(live.holdout_percent);
+    body["collecting"] = json!(st.cfg.private);
+    Ok(private(Json(body)))
 }
 
 #[cfg(test)]

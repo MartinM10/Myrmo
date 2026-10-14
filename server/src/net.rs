@@ -131,10 +131,10 @@ mod tests {
     fn only_the_listed_networks_may_connect_and_the_machine_itself_always_may() {
         let none: Vec<Cidr> = Vec::new();
         assert!(allows(ip("8.8.8.8"), &none), "no list, no filter");
-        let team = Cidr::parse_list("192.168.219.0/24, 10.9.9.9");
-        assert!(allows(ip("192.168.219.87"), &team));
+        let team = Cidr::parse_list("10.20.0.0/24, 10.9.9.9");
+        assert!(allows(ip("10.20.0.17"), &team));
         assert!(allows(ip("10.9.9.9"), &team));
-        assert!(allows(ip("::ffff:192.168.219.5"), &team));
+        assert!(allows(ip("::ffff:10.20.0.5"), &team));
         for outside in [
             "192.168.220.4",
             "192.168.212.9",

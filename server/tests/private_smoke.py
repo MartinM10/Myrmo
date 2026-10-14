@@ -92,9 +92,17 @@ try:
 
     print("team report")
     report = subprocess.run(["docker", "exec", CONTAINER, "myrmo-server", "team-report", "1"], capture_output=True, text=True).stdout
-    check(f"{ana} -> {luis}  worked" in report, "the report shows luis used ana's trail")
-    row = next((line for line in report.splitlines() if line.startswith(luis)), "")
-    check(row.split()[1:2] != ["0"], f"and counts luis's searches ({row.strip()})")
+    detail = subprocess.run(["docker", "exec", CONTAINER, "printenv", "MYRMO_PEOPLE_DETAIL"], capture_output=True, text=True).stdout.strip()
+    if detail == "named":
+        check(f"{ana} -> {luis}  worked" in report, "the report shows luis used ana's trail")
+        row = next((line for line in report.splitlines() if line.startswith(luis)), "")
+        check(row.split()[1:2] != ["0"], f"and counts luis's searches ({row.strip()})")
+    else:
+        # The default: the team as a whole, nobody by name.
+        check("the team as a whole" in report and ana not in report and luis not in report, "the report names nobody")
+        check("a colleague -> a colleague  worked" in report, "and still shows that one colleague reused another's trail")
+        row = next((line for line in report.splitlines() if line.startswith("(team)")), "")
+        check(row.split()[1:2] != ["0"], f"and counts the team's searches ({row.strip()})")
 
     print("revoking")
     keys("revoke", luis)

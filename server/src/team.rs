@@ -1,8 +1,14 @@
-//! What a private colony's team does with it, per person: the numbers that say whether it is worth keeping.
+//! What a private colony's team does with it: the numbers that say whether it is worth keeping.
 //!
-//! Only on a colony that requires access keys (MYRMO_REQUIRE_KEY=1), where a caller is a person. It keeps counts per
-//! person and day (searches, trails published, outcome reports) and one record each time a person reports on a trail
-//! another person published: reuse between people, the point of a shared colony. Never the text of a search.
+//! Only on a colony that requires access keys (MYRMO_REQUIRE_KEY=1), where a caller is a person. It keeps counts per day
+//! (searches, trails published, outcome reports) and one record each time a person reports on a trail another person
+//! published: reuse between people, the point of a shared colony. Never the text of a search.
+//!
+//! By default (`MYRMO_PEOPLE_DETAIL=aggregate`) the counts are the team's, under the field prefix `*`, and a reuse record
+//! names nobody: data protection law asks for the least personal data that does the job, and "is the colony used, and
+//! do people reuse each other's work?" needs no names. `named` counts per person and keeps those counts for 90 days;
+//! an organisation turns it on only after telling its people (docs/security/employees.md). Either way `erase` removes
+//! everything kept about one person.
 //!
 //!   myrmo-server team-report [days]   (default 7)
 
@@ -11,9 +17,16 @@ use redis::aio::ConnectionLike;
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
 
+use crate::config::PeopleDetail;
+
 const REUSE: &str = "team:reuse";
 const REUSE_KEEP: isize = 9_999;
+/// How long the team's own counts are kept: they name nobody.
 const DAY_TTL: i64 = 400 * 86_400;
+/// How long counts and reuse records that name a person are kept.
+pub const PERSON_DAYS: i64 = 90;
+/// The field prefix of the team's counts when people are not named. Not a valid handle, so it never meets a person's.
+pub const TEAM: &str = "*";
 
 fn day(ts: i64) -> String {
     chrono::DateTime::from_timestamp(ts, 0)
@@ -42,23 +55,40 @@ pub fn handle(agent: &str) -> &str {
     agent.strip_prefix("person:").unwrap_or(agent)
 }
 
-/// Adds the per-person count of one request to a pipeline.
-pub fn count(pipe: &mut redis::Pipeline, agent: &str, kind: &str, now: i64) {
+/// Whose count a request adds to: the person's handle, or the team's when people are not named.
+fn counted_as(detail: PeopleDetail, agent: &str) -> &str {
+    match detail {
+        PeopleDetail::Named => handle(agent),
+        PeopleDetail::Aggregate => TEAM,
+    }
+}
+
+fn ttl(detail: PeopleDetail) -> i64 {
+    match detail {
+        PeopleDetail::Named => PERSON_DAYS * 86_400,
+        PeopleDetail::Aggregate => DAY_TTL,
+    }
+}
+
+/// Adds the count of one request to a pipeline.
+pub fn count(pipe: &mut redis::Pipeline, detail: PeopleDetail, agent: &str, kind: &str, now: i64) {
     let key = day_key(now);
     pipe.cmd("HINCRBY")
         .arg(&key)
-        .arg(format!("{}|{kind}", handle(agent)))
+        .arg(format!("{}|{kind}", counted_as(detail, agent)))
         .arg(1)
         .ignore()
         .cmd("EXPIRE")
         .arg(&key)
-        .arg(DAY_TTL)
+        .arg(ttl(detail))
         .ignore();
 }
 
 /// One person reported on a trail another person published, and the report counted.
+#[allow(clippy::too_many_arguments)]
 pub async fn record_reuse<C: ConnectionLike + Send>(
     con: &mut C,
+    detail: PeopleDetail,
     now: i64,
     trail: &str,
     author: &str,
@@ -66,34 +96,174 @@ pub async fn record_reuse<C: ConnectionLike + Send>(
     outcome: &str,
 ) -> Result<()> {
     let key = day_key(now);
-    let entry = json!({ "ts": now, "trail": trail, "author": handle(author), "reporter": handle(reporter), "outcome": outcome });
-    redis::pipe()
-        .cmd("LPUSH")
-        .arg(REUSE)
-        .arg(entry.to_string())
-        .ignore()
-        .cmd("LTRIM")
+    let mut pipe = redis::pipe();
+    match detail {
+        PeopleDetail::Named => {
+            let entry = json!({ "ts": now, "trail": trail, "author": handle(author), "reporter": handle(reporter), "outcome": outcome });
+            pipe.cmd("LPUSH").arg(REUSE).arg(entry.to_string()).ignore();
+            pipe.cmd("HINCRBY")
+                .arg(&key)
+                .arg(format!("{}|used_{outcome}", handle(reporter)))
+                .arg(1)
+                .ignore()
+                .cmd("HINCRBY")
+                .arg(&key)
+                .arg(format!("{}|helped_{outcome}", handle(author)))
+                .arg(1)
+                .ignore();
+        }
+        PeopleDetail::Aggregate => {
+            let entry = json!({ "ts": now, "trail": trail, "author": null, "reporter": null, "outcome": outcome });
+            pipe.cmd("LPUSH").arg(REUSE).arg(entry.to_string()).ignore();
+            pipe.cmd("HINCRBY")
+                .arg(&key)
+                .arg(format!("{TEAM}|reuse_{outcome}"))
+                .arg(1)
+                .ignore();
+        }
+    }
+    pipe.cmd("LTRIM")
         .arg(REUSE)
         .arg(0)
         .arg(REUSE_KEEP)
         .ignore()
-        .cmd("HINCRBY")
-        .arg(&key)
-        .arg(format!("{}|used_{outcome}", handle(reporter)))
-        .arg(1)
-        .ignore()
-        .cmd("HINCRBY")
-        .arg(&key)
-        .arg(format!("{}|helped_{outcome}", handle(author)))
-        .arg(1)
-        .ignore()
         .cmd("EXPIRE")
         .arg(&key)
-        .arg(DAY_TTL)
+        .arg(ttl(detail))
         .ignore()
         .query_async::<()>(con)
         .await?;
+    prune_reuse(con, now).await
+}
+
+/// Drops reuse records that name a person once they are older than `PERSON_DAYS` (the list is newest first).
+async fn prune_reuse<C: ConnectionLike + Send>(con: &mut C, now: i64) -> Result<()> {
+    for _ in 0..50 {
+        let last: Option<String> = redis::cmd("LINDEX")
+            .arg(REUSE)
+            .arg(-1)
+            .query_async(con)
+            .await?;
+        let Some(entry) = last.and_then(|e| serde_json::from_str::<Value>(&e).ok()) else {
+            break;
+        };
+        let named = entry["author"].is_string() || entry["reporter"].is_string();
+        if !(named && entry["ts"].as_i64().unwrap_or(0) < now - PERSON_DAYS * 86_400) {
+            break;
+        }
+        redis::cmd("RPOP").arg(REUSE).query_async::<()>(con).await?;
+    }
     Ok(())
+}
+
+/// Everything the colony keeps about one person's activity, removed: their counts on every day still kept, when their
+/// key was last used, their client versions, and their name in reuse records. What they published stays, as knowledge
+/// of the organisation, but no longer says who wrote it (`erased_author` replaces the author). Returns how many items
+/// were removed or rewritten.
+pub async fn erase<C: ConnectionLike + Send>(con: &mut C, person: &str, now: i64) -> Result<u64> {
+    let mut removed = 0u64;
+    let prefix = format!("{person}|");
+    for d in 0..(DAY_TTL / 86_400) {
+        let key = day_key(now - d * 86_400);
+        let fields: Vec<String> = redis::cmd("HKEYS").arg(&key).query_async(con).await?;
+        let mine: Vec<&String> = fields.iter().filter(|f| f.starts_with(&prefix)).collect();
+        if !mine.is_empty() {
+            removed += redis::cmd("HDEL")
+                .arg(&key)
+                .arg(mine)
+                .query_async::<u64>(con)
+                .await?;
+        }
+    }
+    removed += redis::cmd("HDEL")
+        .arg(LAST_SEEN)
+        .arg(person)
+        .query_async::<u64>(con)
+        .await?;
+    let fields: Vec<String> = redis::cmd("HKEYS").arg(CLIENTS).query_async(con).await?;
+    let mine: Vec<&String> = fields.iter().filter(|f| f.starts_with(&prefix)).collect();
+    if !mine.is_empty() {
+        removed += redis::cmd("HDEL")
+            .arg(CLIENTS)
+            .arg(mine)
+            .query_async::<u64>(con)
+            .await?;
+    }
+    let entries: Vec<String> = redis::cmd("LRANGE")
+        .arg(REUSE)
+        .arg(0)
+        .arg(REUSE_KEEP)
+        .query_async(con)
+        .await?;
+    let mut changed = false;
+    let rewritten: Vec<String> = entries
+        .into_iter()
+        .map(|e| match serde_json::from_str::<Value>(&e) {
+            Ok(mut v) if v["author"] == person || v["reporter"] == person => {
+                for k in ["author", "reporter"] {
+                    if v[k] == person {
+                        v[k] = Value::Null;
+                    }
+                }
+                changed = true;
+                removed += 1;
+                v.to_string()
+            }
+            _ => e,
+        })
+        .collect();
+    if changed {
+        let mut pipe = redis::pipe();
+        pipe.cmd("DEL").arg(REUSE).ignore();
+        if !rewritten.is_empty() {
+            pipe.cmd("RPUSH").arg(REUSE).arg(rewritten).ignore();
+        }
+        pipe.query_async::<()>(con).await?;
+    }
+    // Their trails: there is no index by author, and a private colony holds thousands of trails at most.
+    let agent = crate::access::agent_of(person);
+    let mut cursor = 0u64;
+    loop {
+        let (next, keys): (u64, Vec<String>) = redis::cmd("SCAN")
+            .arg(cursor)
+            .arg("MATCH")
+            .arg("trail:*")
+            .arg("COUNT")
+            .arg(500)
+            .query_async(con)
+            .await?;
+        for key in keys {
+            let author: Option<String> = redis::cmd("HGET")
+                .arg(&key)
+                .arg("author")
+                .query_async(con)
+                .await?;
+            if author.as_deref() == Some(agent.as_str()) {
+                redis::cmd("HSET")
+                    .arg(&key)
+                    .arg("author")
+                    .arg(erased_author(person))
+                    .query_async::<()>(con)
+                    .await?;
+                removed += 1;
+            }
+        }
+        if next == 0 {
+            break;
+        }
+        cursor = next;
+    }
+    Ok(removed)
+}
+
+/// What replaces the author of a person's trails once their data is erased: still not anyone else, so nobody can
+/// reinforce those trails as their author, and no longer their name.
+pub fn erased_author(person: &str) -> String {
+    use sha2::{Digest, Sha256};
+    format!(
+        "erased:{}",
+        &hex::encode(Sha256::digest(person.as_bytes()))[..12]
+    )
 }
 
 /// Per person: each count summed over the days.
@@ -246,7 +416,13 @@ pub async fn cli(redis_url: &str, args: &[String]) -> Result<()> {
         per_day.push(fields);
     }
     let people = tally(&per_day);
-    println!("Last {days} days, per person");
+    if people.keys().all(|p| p == TEAM) {
+        println!(
+            "Last {days} days, the team as a whole (MYRMO_PEOPLE_DETAIL=aggregate: nobody is counted by name)"
+        );
+    } else {
+        println!("Last {days} days, per person");
+    }
     println!(
         "{:<20} {:>8} {:>9} {:>8} {:>22} {:>22}",
         "person",
@@ -266,12 +442,22 @@ pub async fn cli(redis_url: &str, args: &[String]) -> Result<()> {
             + get("helped_partially_worked")
             + get("helped_failed")
             + get("helped_not_applicable");
+        let person = if person == TEAM {
+            "(team)"
+        } else {
+            person.as_str()
+        };
+        let used = used
+            + get("reuse_worked")
+            + get("reuse_partially_worked")
+            + get("reuse_failed")
+            + get("reuse_not_applicable");
         println!(
             "{person:<20} {:>8} {:>9} {:>8} {:>22} {:>22}",
             get("searches"),
             get("published"),
             get("reports"),
-            format!("{used} ({})", get("used_worked")),
+            format!("{used} ({})", get("used_worked") + get("reuse_worked")),
             format!("{helped} ({})", get("helped_worked"))
         );
     }
@@ -305,8 +491,8 @@ pub async fn cli(redis_url: &str, args: &[String]) -> Result<()> {
             .unwrap_or_default();
         println!(
             "  {when}  {} -> {}  {}  {}",
-            e["author"].as_str().unwrap_or("?"),
-            e["reporter"].as_str().unwrap_or("?"),
+            e["author"].as_str().unwrap_or("a colleague"),
+            e["reporter"].as_str().unwrap_or("a colleague"),
             e["outcome"].as_str().unwrap_or("?"),
             label.unwrap_or_else(|| trail.to_string())
         );
@@ -356,6 +542,22 @@ mod tests {
         assert_eq!(t["ana"]["helped_worked"], 1);
         assert_eq!(t["luis"]["used_worked"], 1);
         assert_eq!(t.len(), 2);
+    }
+
+    #[test]
+    fn a_request_counts_for_the_team_unless_people_are_named() {
+        assert_eq!(counted_as(PeopleDetail::Aggregate, "person:ana"), TEAM);
+        assert_eq!(counted_as(PeopleDetail::Named, "person:ana"), "ana");
+        assert!(!crate::access::valid_person(TEAM));
+        assert_eq!(ttl(PeopleDetail::Named), 90 * 86_400);
+    }
+
+    #[test]
+    fn an_erased_author_is_nobody_and_stays_the_same() {
+        let a = erased_author("ana");
+        assert!(a.starts_with("erased:") && !a.contains("ana"));
+        assert_eq!(a, erased_author("ana"));
+        assert_ne!(a, erased_author("luis"));
     }
 
     #[test]
