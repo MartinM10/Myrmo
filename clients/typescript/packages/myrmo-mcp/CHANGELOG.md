@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.26.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.25.1...mcp-v0.26.0) (2026-10-14)
+
+
+### Features
+
+* **mcp,sdk-js:** set up from what the colony declares, and one rule for fixes the user made by hand ([c8d77d0](https://github.com/MartinM10/Myrmo/commit/c8d77d0ccce9e88da0023d6213be2e2d31d1b568))
+* **mcp:** npx myrmo-mcp init asks in a terminal, with the arrow keys ([45af87b](https://github.com/MartinM10/Myrmo/commit/45af87bb120562529ae8bee07b52313400b4790f))
+
+
+### Bug fixes
+
+* **mcp,plugin:** no words from a colony in the agent's context, and no spoofed caller addresses ([9d4ba9c](https://github.com/MartinM10/Myrmo/commit/9d4ba9cee118a589090db0ba91d3ea60a653997e))
+* **mcp:** an invitation without --private sets an organisation's colony up as one; init --help and config say more ([b717dfb](https://github.com/MartinM10/Myrmo/commit/b717dfb3b41c28ef02e3fe193f1e8cc643737877))
+
 ## [0.25.1](https://github.com/MartinM10/Myrmo/compare/mcp-v0.25.0...mcp-v0.25.1) (2026-10-14)
 
 

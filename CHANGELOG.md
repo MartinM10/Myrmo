@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.35.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.34.0...platform-v0.35.0) (2026-10-14)
+
+
+### Features
+
+* a form for organisations that want a private colony, instead of an empty issues page ([5718412](https://github.com/MartinM10/Myrmo/commit/5718412f881df9820da4fb6b2c174bdd0c8bb768))
+* **mcp:** npx myrmo-mcp init asks in a terminal, with the arrow keys ([45af87b](https://github.com/MartinM10/Myrmo/commit/45af87bb120562529ae8bee07b52313400b4790f))
+* **plugin:** measure what solving a problem cost, a publish skill, and follow the colony's declaration ([0f5d173](https://github.com/MartinM10/Myrmo/commit/0f5d173e213044e2907125f8dd5e4a65c574c061))
+* **protocol:** a colony says what it is, and clients can report what solving a problem cost ([bff26c4](https://github.com/MartinM10/Myrmo/commit/bff26c433c293e6b92e98ef56fdf28be00fca700))
+* **server:** measured value, a randomised hold-out, team-level activity by default, erasure ([5b38024](https://github.com/MartinM10/Myrmo/commit/5b380249fbdc5d581d7b4e907bdd388f5e1de45e))
+
+
+### Bug fixes
+
+* **mcp,plugin:** no words from a colony in the agent's context, and no spoofed caller addresses ([9d4ba9c](https://github.com/MartinM10/Myrmo/commit/9d4ba9cee118a589090db0ba91d3ea60a653997e))
+
+
+### Documentation
+
+* private colonies as a product for organisations, measured value, and employees' data ([25457f2](https://github.com/MartinM10/Myrmo/commit/25457f2dce41c802f768748e2c7572bf1ec7ad89))
+* what the rules catch now, what they cannot, and the new refusals ([0799cc5](https://github.com/MartinM10/Myrmo/commit/0799cc53f6492884359d4f34adf97a4f195f1e88))
+
 ## [0.34.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.33.0...platform-v0.34.0) (2026-10-14)
 
 

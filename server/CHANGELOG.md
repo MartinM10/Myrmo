@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.17.0](https://github.com/MartinM10/Myrmo/compare/server-v0.16.0...server-v0.17.0) (2026-10-14)
+
+
+### Features
+
+* **server:** measured value, a randomised hold-out, team-level activity by default, erasure ([5b38024](https://github.com/MartinM10/Myrmo/commit/5b380249fbdc5d581d7b4e907bdd388f5e1de45e))
+
+
+### Bug fixes
+
+* **server:** harden the rules and the new endpoints against a capable attacker ([b4946b8](https://github.com/MartinM10/Myrmo/commit/b4946b806cb5c79aeea09d29b9b0c20380d8c42f))
+
 ## [0.16.0](https://github.com/MartinM10/Myrmo/compare/server-v0.15.0...server-v0.16.0) (2026-10-14)
 
 
