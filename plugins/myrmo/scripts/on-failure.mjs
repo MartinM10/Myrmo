@@ -25,6 +25,9 @@
 //      it relied on and to share what the next person's agent would need (Stop hook): what is learned in a session
 //      otherwise leaves with it.
 //
+//   9. When a problem is solved, what it cost (tokens, time, model, from the session's transcript) is sent to a colony
+//      that collects it, to measure what the colony saves (effort.mjs). MYRMO_EFFORT=off turns it off.
+//
 // And on any colony:
 //   8. When a session starts, the person is told once a day if their colony was released with a newer Myrmo plugin
 //      (SessionStart; lookup.mjs `updateNotice`). MYRMO_UPDATE_CHECK=off turns it off.
@@ -36,6 +39,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import { measureAndSend } from "./effort.mjs";
 import { briefEnabled, briefNote, lookup, lookupEnabled, lookupNote, lookupTask, privateColony, taskOf, updateNotice } from "./lookup.mjs";
 
 // Commands that fail or print errors as part of normal work: a probe that found nothing, a diff that differs, a log
@@ -246,6 +250,10 @@ function quiet(state) {
   return { note: null, state };
 }
 
+/** A problem stays open for 45 minutes after its first failed command: what was spent since then is what it cost. */
+const PROBLEM_MS = 45 * 60_000;
+const openProblem = (state, now) => (state.problem && now - state.problem.at < PROBLEM_MS ? state.problem : null);
+
 export function decide(input, { now = Date.now(), state = {}, env = process.env, settings = {} } = {}) {
   const mode = hookMode(env, settings);
   if (mode === "off") return quiet(state);
@@ -264,10 +272,16 @@ export function decide(input, { now = Date.now(), state = {}, env = process.env,
     }
     return quiet(state);
   }
-  // 4b. The agent reported: nothing left to remind.
+  // 4b. The agent reported: nothing left to remind. A trail that worked for the open problem: what it cost with help.
   if (REPORT_TOOL.test(String(tool))) {
     const brief = state.brief ? { ...state.brief, reported: true } : state.brief;
-    return quiet(state.found || state.brief ? { ...state, found: null, brief } : state);
+    const outcome = String(input.tool_input?.outcome ?? "");
+    const trailId = String(input.tool_input?.trail_id ?? "").toLowerCase();
+    const problem = openProblem(state, now);
+    const helped = problem && /^[0-9a-f-]{36}$/.test(trailId) && (outcome === "worked" || outcome === "partially_worked");
+    const effort = helped ? { role: "aided", line: problem.line, trailId, from: problem.at, to: state.found?.solvedAt ?? now } : null;
+    const next = state.found || state.brief || helped ? { ...state, found: null, brief, ...(helped ? { problem: null } : {}) } : state;
+    return { note: null, state: next, effort };
   }
   if (!SHELLS.has(tool)) return quiet(state);
 
@@ -292,7 +306,8 @@ export function decide(input, { now = Date.now(), state = {}, env = process.env,
     // A company's own tools print errors in no known shape (`migrate: lock 'migrate' is held by ci-runner-17`), and those
     // are what a private colony is for: for a command that failed, its last line is the best guess.
     const line = lastErrorLine(output, { loose: true }) || lastLine(output);
-    const next = { ...state, failed: { key: commandKey(command), at: now, line }, failures: (state.failures ?? 0) + 1 };
+    const problem = openProblem(state, now) ?? (line ? { at: now, line } : null);
+    const next = { ...state, failed: { key: commandKey(command), at: now, line }, failures: (state.failures ?? 0) + 1, problem };
     const sig = signature(line);
     if (spent || tooSoon || (sig && seen.includes(sig))) return quiet(next);
     const exit = Number.isFinite(code) ? ` (exit ${code})` : "";
@@ -321,7 +336,10 @@ export function decide(input, { now = Date.now(), state = {}, env = process.env,
         `(not in this project's own code), publish it with myrmo_publish: the user sees exactly what would be sent and approves it. ` +
         `Describe where the error happened (say so if it was inside a container) and keep out names of people, companies, customers and internal systems. ` +
         `Skip it if the fix was obvious or specific to this project.`;
-    return { note, state: { ...state, nomatch: { ...nomatch, nudged: true }, count: (state.count ?? 0) + 1 } };
+    // Solved without a trail: what it cost without help.
+    const problem = openProblem(state, now);
+    const effort = problem ? { role: "unaided", line: problem.line, from: problem.at, to: now } : null;
+    return { note, state: { ...state, nomatch: { ...nomatch, nudged: true }, count: (state.count ?? 0) + 1, problem: null }, effort };
   }
 
   // 4c. A command that failed earlier now works, and Myrmo had returned trails for it: ask for the outcome.
@@ -332,7 +350,7 @@ export function decide(input, { now = Date.now(), state = {}, env = process.env,
       `Call myrmo_report once for the trail you followed: worked if it gave you the fix, partially_worked if it helped only in part, ` +
       `failed if you tried it and it did not help, not_applicable if it was about something else. ` +
       `It takes one call and is how good trails rise and stale ones fade. Skip it if you already reported.`;
-    return { note, state: { ...state, found: { ...found, nudged: true }, count: (state.count ?? 0) + 1 } };
+    return { note, state: { ...state, found: { ...found, nudged: true, solvedAt: now }, count: (state.count ?? 0) + 1 } };
   }
 
   // 2. Exit 0, but the output looks like an error.
@@ -463,6 +481,8 @@ async function main() {
     if (body) Object.assign(out, lookupNote(out.state.failed.line, body, out.state));
   }
   save(file, state, out.state);
+  // 9. A problem was solved: what it cost, to a colony that collects it.
+  if (out.effort) await measureAndSend(out.effort, input.transcript_path, { settings });
   if (!out.note) return;
   process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: input.hook_event_name ?? "PostToolUseFailure", additionalContext: out.note } }));
 }

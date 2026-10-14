@@ -7,14 +7,69 @@
 // --url` writes, whose key and private mode apply only to that very URL. For another colony of one's own it is opt-in
 // with MYRMO_HOOK_LOOKUP=1; it never runs against the public colony, and MYRMO_HOOK_LOOKUP=0 turns it off everywhere.
 
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname } from "node:path";
+import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { dirname, join } from "node:path";
 
 const PUBLIC_HOSTS = new Set(["myrmo.dev", "www.myrmo.dev"]);
 const trim = (url) => String(url ?? "").trim().replace(/\/+$/, "");
 
-/** The colony the hooks talk to: url, key and private mode, by the same rules as the SDKs. */
-export function colonyOf(env = process.env, settings = {}) {
+// --- what the colony says it is (GET /v1/version, `colony`, protocol 1.7) -------------------------------------------
+//
+// Remembered per URL in colonies.json next to the settings file, the same file the MCP server writes.
+
+/** Where the colonies' declarations are kept. */
+export function profilesPath(env = process.env) {
+  return join(dirname(env.MYRMO_CONFIG?.trim() || join(homedir(), ".myrmo", "config.json")), "colonies.json");
+}
+
+/** Only the fields the hooks act on, with the types they expect: the file and the colony's answer are untrusted. */
+export function cleanDeclared(value) {
+  if (!value || typeof value !== "object" || (value.profile !== "public" && value.profile !== "organisation")) return undefined;
+  return {
+    profile: value.profile,
+    effort: value.effort === true,
+    task_search: value.task_search === true,
+    people_detail: value.people_detail === "named" || value.people_detail === "aggregate" ? value.people_detail : null,
+    holdout_percent: Number.isInteger(value.holdout_percent) && value.holdout_percent >= 0 && value.holdout_percent <= 20 ? value.holdout_percent : 0,
+  };
+}
+
+export function readDeclared(url, env = process.env) {
+  try {
+    return cleanDeclared(JSON.parse(readFileSync(profilesPath(env), "utf8"))?.[trim(url)]?.colony);
+  } catch {
+    return undefined;
+  }
+}
+
+export function rememberDeclared(url, colony, env = process.env, now = Date.now()) {
+  const clean = cleanDeclared(colony);
+  if (!clean) return;
+  const file = profilesPath(env);
+  let all = {};
+  try {
+    all = JSON.parse(readFileSync(file, "utf8")) ?? {};
+  } catch {
+    all = {};
+  }
+  all[trim(url)] = { colony: clean, at: new Date(now).toISOString() };
+  try {
+    mkdirSync(dirname(file), { recursive: true });
+    const tmp = `${file}.${process.pid}.tmp`;
+    writeFileSync(tmp, JSON.stringify(all, null, 2), { mode: 0o600 });
+    renameSync(tmp, file);
+  } catch {
+    /* asked again next time */
+  }
+}
+
+/**
+ * The colony the hooks talk to: url, key and private mode, by the same rules as the MCP server. A colony that declares
+ * itself an organisation's is private for a person with a key for it; one that declares itself public never is,
+ * whatever the flags say; without a declaration the person's flag decides (MYRMO_PRIVATE=1, or `--private` saved by init).
+ */
+export function colonyOf(env = process.env, settings = {}, declared) {
   const saved = settings?.colony && typeof settings.colony.url === "string" ? settings.colony : null;
   const url = trim(env.MYRMO_URL || saved?.url || "https://myrmo.dev");
   const same = Boolean(saved) && trim(saved.url) === url;
@@ -24,12 +79,11 @@ export function colonyOf(env = process.env, settings = {}) {
   } catch {
     own = false;
   }
-  return {
-    url,
-    apiKey: env.MYRMO_API_KEY || (same && typeof saved.api_key === "string" ? saved.api_key : undefined),
-    own,
-    private: own && (env.MYRMO_PRIVATE === "1" || (same && saved.private === true)),
-  };
+  const apiKey = env.MYRMO_API_KEY || (same && typeof saved.api_key === "string" ? saved.api_key : undefined);
+  const explicit = env.MYRMO_PRIVATE === "1" || (same && saved.private === true);
+  const said = declared === undefined && own ? readDeclared(url, env) : declared;
+  const isPrivate = !own ? false : said?.profile === "public" ? false : said?.profile === "organisation" ? explicit || Boolean(apiKey) : explicit;
+  return { url, apiKey, own, private: isPrivate, declared: said };
 }
 
 /** Whether the colony is an organisation's own (the MCP server's private mode, same rule). */
@@ -254,7 +308,10 @@ export async function updateNotice({ env = process.env, settings = {}, now = Dat
     if (colony.apiKey) headers.authorization = `Bearer ${colony.apiKey}`;
     try {
       const res = await fetcher(`${colony.url}/v1/version`, { headers, signal: AbortSignal.timeout(timeoutMs) });
-      latest = res.ok ? ((await res.json())?.clients?.plugin ?? null) : null;
+      const body = res.ok ? await res.json() : null;
+      latest = body?.clients?.plugin ?? null;
+      // What the colony is, for the hooks and the MCP server's next start.
+      if (body?.colony) rememberDeclared(colony.url, body.colony, env);
     } catch {
       latest = null;
     }
