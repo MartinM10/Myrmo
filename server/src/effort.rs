@@ -48,6 +48,34 @@ fn day_key(ts: i64) -> String {
 pub fn holdout_key(agent: &str, fp: &str) -> String {
     format!("holdout:{agent}:{fp}")
 }
+fn people_key(role: &str) -> String {
+    format!("effort:people:{role}")
+}
+
+/// How many different people sent records of each role, approximately.
+pub async fn contributors<C: ConnectionLike + Send>(con: &mut C) -> anyhow::Result<Value> {
+    let mut out = serde_json::Map::new();
+    for role in ["unaided", "holdout", "aided"] {
+        let n: u64 = redis::cmd("PFCOUNT")
+            .arg(people_key(role))
+            .query_async(con)
+            .await?;
+        out.insert(role.to_string(), json!(n));
+    }
+    Ok(Value::Object(out))
+}
+
+/// The person reported in the last two days that this trail worked for them (set by the outcome report).
+pub fn helped_key(trail: &str, agent: &str) -> String {
+    format!("effort:helped:{trail}:{agent}")
+}
+fn quota_key(agent: &str, day: i64) -> String {
+    format!("effort:quota:{agent}:{day}")
+}
+/// Records one person may send in a day: a team's real problems fit many times over, and a person cannot swamp the
+/// sums by themselves.
+pub const DAILY_QUOTA: u64 = 60;
+
 fn once_key(agent: &str, fp: &str, role: &str) -> String {
     format!("effort:once:{agent}:{fp}:{role}")
 }
@@ -166,11 +194,13 @@ pub fn fingerprint_of(error: &str) -> String {
 
 /// Whether this person's lookup of this error falls in the hold-out today: the same answer all day, so asking again
 /// does not change it, and about `percent` of lookups over many people and errors.
-pub fn held_out(agent: &str, fp: &str, day: i64, percent: u64) -> bool {
+/// The colony's secret salt is part of the draw, so nobody can work out from the source which of their lookups will be
+/// held out and step around it.
+pub fn held_out(salt: &str, agent: &str, fp: &str, day: i64, percent: u64) -> bool {
     if percent == 0 {
         return false;
     }
-    let digest = Sha256::digest(format!("holdout|{agent}|{fp}|{day}").as_bytes());
+    let digest = Sha256::digest(format!("holdout|{salt}|{agent}|{fp}|{day}").as_bytes());
     let n = u64::from_be_bytes(digest[..8].try_into().unwrap_or([0; 8]));
     n % 100 < percent
 }
@@ -194,14 +224,46 @@ fn add(pipe: &mut redis::Pipeline, key: &str, role: &str, model: &str, cost: &Co
     pipe.cmd("EXPIRE").arg(key).arg(KEEP).ignore();
 }
 
+/// Why a record is refused before it is stored.
+#[derive(Debug, PartialEq)]
+pub enum Refusal {
+    /// An aided record for a trail the person did not report as working.
+    NotHelped,
+    /// More records today than `DAILY_QUOTA`.
+    Quota,
+}
+
 /// Stores a record. `role` is the one the colony decided: an unaided record becomes `holdout` when the colony itself
 /// held that lookup out. Returns false when the same person already sent this role for this error in the last hour.
+/// An aided record counts only for a trail the same person reported as working (or partly) in the last two days, so
+/// nobody can claim savings for a trail they never used.
 pub async fn store<C: ConnectionLike + Send>(
     con: &mut C,
     agent: &str,
     rec: &Record,
     now: i64,
-) -> anyhow::Result<(bool, &'static str)> {
+) -> anyhow::Result<Result<(bool, &'static str), Refusal>> {
+    if let (Some(id), "aided") = (&rec.trail_id, rec.role)
+        && !redis::cmd("EXISTS")
+            .arg(helped_key(id, agent))
+            .query_async::<bool>(con)
+            .await?
+    {
+        return Ok(Err(Refusal::NotHelped));
+    }
+    let quota = quota_key(agent, now / 86_400);
+    let (used,): (u64,) = redis::pipe()
+        .cmd("INCR")
+        .arg(&quota)
+        .cmd("EXPIRE")
+        .arg(&quota)
+        .arg(90_000)
+        .ignore()
+        .query_async(con)
+        .await?;
+    if used > DAILY_QUOTA {
+        return Ok(Err(Refusal::Quota));
+    }
     let fp = fingerprint_of(&rec.error);
     let first: Option<String> = redis::cmd("SET")
         .arg(once_key(agent, &fp, rec.role))
@@ -222,7 +284,7 @@ pub async fn store<C: ConnectionLike + Send>(
         rec.role
     };
     if first.is_none() {
-        return Ok((false, role));
+        return Ok(Ok((false, role)));
     }
     let mut pipe = redis::pipe();
     add(&mut pipe, &fp_key(&fp), role, &rec.model, &rec.cost);
@@ -231,8 +293,11 @@ pub async fn store<C: ConnectionLike + Send>(
         add(&mut pipe, &trail_key(id), role, &rec.model, &rec.cost);
     }
     pipe.cmd("SADD").arg(FPS).arg(&fp).ignore();
+    // How many different people the records come from, without a list of them (a HyperLogLog cannot be read back):
+    // a buyer should see whether the figures rest on a team or on one person.
+    pipe.cmd("PFADD").arg(people_key(role)).arg(agent).ignore();
     pipe.query_async::<()>(con).await?;
-    Ok((true, role))
+    Ok(Ok((true, role)))
 }
 
 /// Sums for one role and model.
@@ -627,16 +692,38 @@ mod tests {
 
     #[test]
     fn the_hold_out_is_stable_and_about_the_share_asked() {
-        assert!(!held_out("person:ana", "fp2_0123456789abcdef", 20_000, 0));
-        let a = held_out("person:ana", "fp2_0123456789abcdef", 20_000, 10);
+        assert!(!held_out(
+            "s",
+            "person:ana",
+            "fp2_0123456789abcdef",
+            20_000,
+            0
+        ));
+        let a = held_out("s", "person:ana", "fp2_0123456789abcdef", 20_000, 10);
         assert_eq!(
             a,
-            held_out("person:ana", "fp2_0123456789abcdef", 20_000, 10)
+            held_out("s", "person:ana", "fp2_0123456789abcdef", 20_000, 10)
         );
         let n = (0..10_000)
-            .filter(|i| held_out(&format!("person:{i}"), "fp2_0123456789abcdef", 20_000, 10))
+            .filter(|i| {
+                held_out(
+                    "s",
+                    &format!("person:{i}"),
+                    "fp2_0123456789abcdef",
+                    20_000,
+                    10,
+                )
+            })
             .count();
         assert!((800..1200).contains(&n), "{n}");
+        // Another salt, another draw: the source alone does not say which lookups are held out.
+        let differ = (0..200)
+            .filter(|i| {
+                let a = format!("person:{i}");
+                held_out("s", &a, "fp2_x", 1, 50) != held_out("t", &a, "fp2_x", 1, 50)
+            })
+            .count();
+        assert!(differ > 50, "{differ}");
     }
 
     #[test]

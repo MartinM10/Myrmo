@@ -95,6 +95,10 @@ pub fn stat_tokens(hour: i64) -> String {
 pub fn stat_agents(hour: i64) -> String {
     format!("stats:agents:{hour}")
 }
+/// Distinct operator credentials that failed from one client in the last 15 minutes (set of digest prefixes).
+pub fn operator_failures(client: &str) -> String {
+    format!("opfail:{client}")
+}
 pub fn hot(hour: i64) -> String {
     format!("hot:{hour}")
 }

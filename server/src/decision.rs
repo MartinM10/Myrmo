@@ -608,7 +608,7 @@ pub fn describe(trail: &Value) -> String {
 /// folded) and, for base64 blobs, against what they decode to. Each is deliberately specific: a
 /// trail is a fix for an error, so it has no reason to mention "the system prompt" or to tell the
 /// reader not to ask the user.
-const INJECTION_PATTERNS: [&str; 30] = [
+const INJECTION_PATTERNS: &[&str] = &[
     // Override what the agent was told.
     r"\b(?:ignore|disregard|forget|discard|abandon)\s+(?:(?:all|any|every|the|your|my|these|those|of|previous|prior|above|earlier|preceding|former|existing|original|initial|system|developer|safety|security|other|and)\s+)*(?:instructions?|prompts?|messages?|rules|guidelines?|directions?|constraints|restrictions|context|programming|training|policies)\b",
     r"\b(?:forget|ignore|disregard)\s+(?:everything|anything|all)\s+(?:above|before|prior|previous|else|you(?:'ve|\s+have)?\s+(?:been\s+)?(?:told|learned|read))\b",
@@ -642,9 +642,34 @@ const INJECTION_PATTERNS: [&str; 30] = [
     // Get data out.
     r"\b(?:exfiltrate|leak|steal|siphon)\s+(?:\w+\s+){0,4}(?:credentials?|secrets?|tokens?|keys?|passwords?|env(?:ironment)?|data|files?|conversation|context|prompt)",
     r"\b(?:send|post|upload|forward|transmit|email|mail|submit|share|publish|paste)\b[^.\n]{0,50}\b(?:(?:your|all|every|any|the\s+user'?s|local|private|stored|saved)\s+(?:\w+\s+){0,2}(?:credentials?|secrets?|tokens?|api[\s_-]?keys?|passwords?|ssh\s+keys?|private\s+keys?|env(?:ironment)?\s+(?:variables?|vars?))|id_rsa|system\s+prompt|chat\s+history|conversation\s+history)",
-    r"\b(?:read|cat|print|dump|open|include|attach|send)\b[^.\n]{0,40}(?:~/\.ssh/id_\w+(?:[^.\w]|$)|\bid_(?:rsa|ed25519|ecdsa)(?:[^.\w]|$)|~/\.aws|\.aws/credentials|/etc/shadow|\.git-credentials|browser\s+cookies)",
+    r"\b(?:cat|print|dump|include|attach|send)\b[^.\n]{0,40}(?:~/\.ssh/id_\w+(?:[^.\w]|$)|\bid_(?:rsa|ed25519|ecdsa)(?:[^.\w]|$)|~/\.aws|\.aws/credentials|/etc/shadow|\.git-credentials|browser\s+cookies)",
+    // "read" and "open" only as an instruction ("Read ~/.aws/credentials and..."), not in a description of where a
+    // tool reads its credentials from, which a trail about AWS or SSH configuration legitimately says.
+    r"(?:^|[.:;!\n]\s*|\b(?:then|and|now|first|please|also|next|you\s+(?:must|should|need\s+to)),?\s+)(?:read|open)\s+(?:the\s+|your\s+)?(?:file\s+)?(?:~/\.ssh/id_\w+(?:[^.\w]|$)|~/\.aws|\.aws/credentials|/etc/shadow|\.git-credentials|browser\s+cookies)",
     r"\b(?:reveal|print|show|repeat|output|display|leak|disclose)\s+(?:me\s+)?(?:your|the)\s+(?:system\s+prompt|(?:initial|hidden|secret|original)\s+(?:instructions?|prompt)|instructions)\b",
     r"\bwhat\s+(?:is|are)\s+your\s+(?:system\s+prompt|instructions)\b",
+    // Keep the user out of the loop, in more words: "must not mention it to the user".
+    r"\b(?:must|should|need|have)\s*(?:not|n't)\s+(?:to\s+)?(?:tell|inform|notify|warn|alert|mention|reveal|disclose)\b(?:\s+\w+){0,3}\s+(?:to\s+)?(?:the\s+|your\s+)?(?:user|human|operator|owner)\b",
+    r"\b(?:do\s*n[o']?t|don't|never)\s+(?:tell|mention|reveal|disclose)\s+(?:\w+\s+){1,3}(?:to\s+)?(?:the\s+|your\s+)?(?:user|human|operator)\b",
+    // The same families in the languages an attacker reaches for when the rules are English: Spanish, Portuguese,
+    // French, German, Italian. Matched on folded text, so accents may or may not be there.
+    r"\b(?:ignora|ignore|ignorez|ignoriere|ignorieren|olvida|olvide|esquece|esque[cç]a|oublie[sz]?|vergiss|vergessen|dimentica)\b[^.\n]{0,40}\b(?:instrucciones|instru[cç](?:o|õ)es|instructions|anweisungen|istruzioni|indicaciones|[oó]rdenes|regras|r[eè]gles|regeln|regole)\b",
+    r"\b(?:no|nunca|jam[aá]s)\s+(?:se\s+lo\s+|le\s+|lo\s+)?(?:digas|diga|menciones|mencione|cuentes|informes|avises|comentes|reveles)\b[^.\n]{0,30}\b(?:usuari[oa]|humano|operador)",
+    r"\bsin\s+(?:decir|avisar|informar|preguntar|consultar|notificar)(?:le)?\s+(?:nada\s+)?(?:al|a\s+la)\s+(?:usuari[oa]|humano|operador)\b",
+    r"\b(?:n[aã]o|sem)\s+(?:diga|conte|mencione|informe|avise|avisar|informar|dizer|perguntar)\b[^.\n]{0,30}\b(?:usu[aá]rio|humano|operador)",
+    r"\bne\s+(?:dis|dites|mentionne[sz]?|pr[eé]viens|informe[sz]?)\b[^.\n]{0,25}\butilisateur",
+    r"\bsans\s+(?:le\s+dire|pr[eé]venir|informer|demander)\b[^.\n]{0,25}\butilisateur",
+    r"\bohne\s+(?:den|die)\s+(?:benutzer|nutzer|anwender)\w*\s+zu\s+(?:fragen|informieren|benachrichtigen)",
+    r"\b(?:sag|sage|erw[aä]hne|informiere)\s+(?:dem|den)\s+(?:benutzer|nutzer)\w*\s+nicht",
+    r"\b(?:senza|non)\s+(?:dire|dirlo|avvisare|informare|chiedere|menzionare)\b[^.\n]{0,25}\butente",
+    r"\b(?:si\s+eres|como|tu\s+como|t[uú],?\s+como)\s+(?:un\s+|una\s+)?(?:asistente|agente|ia|modelo(?:\s+de\s+lenguaje)?|bot)\b[^.\n]{0,40}\b(?:debes|tienes\s+que|deber[aá]s|has\s+de)\b",
+    r"\b(?:se\s+voc[eê]\s+[eé]|como)\s+(?:um\s+|uma\s+)?(?:assistente|agente|ia|modelo)\b[^.\n]{0,40}\b(?:deve|precisa)\b",
+    r"\ben\s+tant\s+qu['e]\s*(?:ia|assistant|agent|mod[eè]le)\b[^.\n]{0,40}\b(?:dois|devez|doit)\b",
+    r"\bals\s+(?:ki|assistent|agent|sprachmodell)\b[^.\n]{0,40}\b(?:musst|sollst|m[uü]ssen)\b",
+    r"\bcome\s+(?:assistente|agente|ia|modello)\b[^.\n]{0,40}\b(?:devi|deve)\b",
+    // Exfiltration in any language: a transfer verb, a credential file and a destination in one sentence. A trail that
+    // only says where credentials live and links to the documentation has no verb asking to send them.
+    r"\b(?:send|upload|post|submit|share|transmit|forward|envi[aeo]\w*|mand[ae]\w*|sub[aei]\w*|compart\w*|envoy\w*|t[eé]l[eé]vers\w*|partag\w*|hochlad\w*|lade\b|schick\w*|teil\w*|invia\w*|invii\w*|caric\w*|condivid\w*)\b[^\n]{0,120}(?:~/\.(?:ssh|aws|netrc|npmrc|pypirc|docker|kube|git-credentials|myrmo|gnupg)|\.aws/credentials|\bid_(?:rsa|ed25519|ecdsa)\b|/etc/shadow|\.git-credentials)[^\n]{0,120}(?:https?://|\b[\w.+-]+@[\w-]+\.[\w.]+)",
 ];
 
 static INJECTION: LazyLock<RegexSet> = LazyLock::new(|| {

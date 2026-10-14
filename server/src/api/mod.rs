@@ -98,9 +98,75 @@ pub fn router(state: AppState) -> Router {
         .layer(cors)
         .layer(middleware::from_fn_with_state(
             state.clone(),
+            operator_throttle,
+        ))
+        .layer(middleware::from_fn_with_state(
+            state.clone(),
             network_filter,
         ))
         .with_state(state)
+}
+
+/// Distinct wrong operator tokens one client may try in 15 minutes before the operator endpoints answer it `429`.
+const OPERATOR_GUESSES: u64 = 20;
+
+/// Guessing the operator token: after `OPERATOR_GUESSES` different wrong tokens from one client in 15 minutes, the
+/// operator endpoints (`/v1/admin/*`, `/metrics`) refuse it until the window passes. Distinct tokens are counted, so a
+/// script repeating one stale token does not lock out an office behind the same address, and nothing else is affected.
+async fn operator_throttle(
+    State(st): State<AppState>,
+    ConnectInfo(peer): ConnectInfo<SocketAddr>,
+    req: Request,
+    next: Next,
+) -> Response {
+    let path = req.uri().path();
+    if !(path.starts_with("/v1/admin/") || path == "/metrics") {
+        return next.run(req).await;
+    }
+    let address = crate::net::client_address(
+        peer.ip(),
+        req.headers()
+            .get("x-forwarded-for")
+            .and_then(|v| v.to_str().ok()),
+        &st.cfg.trusted_proxies,
+    );
+    let key = keys::operator_failures(&keys::client_key(&st.cfg.salt, &address));
+    let presented = req
+        .headers()
+        .get(header::AUTHORIZATION)
+        .and_then(|v| v.to_str().ok())
+        .map(|v| hex::encode(Sha256::digest(v.as_bytes()))[..16].to_string());
+    let mut con = st.redis();
+    let tried: u64 = redis::cmd("SCARD")
+        .arg(&key)
+        .query_async(&mut con)
+        .await
+        .unwrap_or(0);
+    if tried >= OPERATOR_GUESSES {
+        tracing::warn!(peer = %address, "operator endpoints refused: too many wrong tokens");
+        let mut err = ApiError::new(
+            StatusCode::TOO_MANY_REQUESTS,
+            "rate_limited",
+            "Too many wrong operator tokens from this address. Wait 15 minutes.",
+        );
+        err.retry_after = Some(900);
+        return err.into_response();
+    }
+    let res = next.run(req).await;
+    if res.status() == StatusCode::UNAUTHORIZED {
+        let _: redis::RedisResult<()> = redis::pipe()
+            .cmd("SADD")
+            .arg(&key)
+            .arg(presented.unwrap_or_else(|| "none".into()))
+            .ignore()
+            .cmd("EXPIRE")
+            .arg(&key)
+            .arg(900)
+            .ignore()
+            .query_async(&mut con)
+            .await;
+    }
+    res
 }
 
 /// `GET /v1/version`: the versions released together, and what this colony is (`colony`), so clients set themselves up

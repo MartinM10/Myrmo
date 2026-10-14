@@ -60,7 +60,7 @@ async fn hold_out(st: &AppState, caller: &Caller, fp: &str, now: i64) -> bool {
         return false;
     }
     let percent = super::admin::live(st).await.holdout_percent;
-    if !crate::effort::held_out(&caller.agent, fp, now / 86_400, percent) {
+    if !crate::effort::held_out(&st.cfg.salt, &caller.agent, fp, now / 86_400, percent) {
         return false;
     }
     let mut con = st.redis();

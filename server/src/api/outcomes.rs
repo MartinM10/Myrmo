@@ -158,6 +158,21 @@ pub(super) async fn report_outcome(
         }
     }
     let mut analytics_outcome: Option<String> = None;
+    // A trail that helped this person: what lets their client say, within two days, what solving the problem cost with
+    // it (POST /v1/effort, role aided). An author cannot vouch for their own trail this way.
+    if st.cfg.private
+        && caller.declared
+        && !is_author
+        && (outcome == "worked" || outcome == "partially_worked")
+    {
+        let _: redis::RedisResult<()> = redis::cmd("SET")
+            .arg(crate::effort::helped_key(&id, &caller.agent))
+            .arg(1)
+            .arg("EX")
+            .arg(2 * 86_400)
+            .query_async(&mut con)
+            .await;
+    }
 
     let env = &report["environment"];
     let env_key = format!(
