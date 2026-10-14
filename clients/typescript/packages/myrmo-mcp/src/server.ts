@@ -44,27 +44,43 @@ export interface ServerOptions {
    * names and policies stay in what agents publish, and nothing is said to be public. See `privateMode`.
    */
   privateColony?: boolean;
+  /** What the colony says it is (GET /v1/version), once known: myrmo_status tells the person what it keeps about them. */
+  colonyDescription?: () => { profile?: string; people_detail?: string | null; holdout_percent?: number; effort?: boolean } | undefined;
 }
 
 const PUBLIC_HOSTS = new Set(["myrmo.dev", "www.myrmo.dev"]);
 
 /**
- * Whether the server runs for a private colony. Only the user's environment can say so, and never for the public
+ * Whether the server runs for an organisation's colony, where agents keep its internal names. Never for the public
  * colony: there, internal names would be published for anyone to read.
+ *
+ * Since protocol 1.7 the colony says what it is (`declared`, from GET /v1/version): a person with a key for a colony
+ * that declares itself an organisation's needs no flag, and a colony that declares itself public turns the mode off
+ * whatever the flags say. Without a declaration (an older colony, or one not reached yet) the person's flag decides:
+ * MYRMO_PRIVATE=1, or `"private": true` for this very colony in the settings file (`init --url ... --private`).
  */
-export function privateMode(url: string, env: Record<string, string | undefined> = process.env, fromFile = false): { on: boolean; warning?: string } {
-  // MYRMO_PRIVATE=1, or `"private": true` for this very colony in the settings file (`init --url ... --private`).
-  if (env.MYRMO_PRIVATE !== "1" && !fromFile) return { on: false };
+export function privateMode(
+  url: string,
+  env: Record<string, string | undefined> = process.env,
+  fromFile = false,
+  declared?: { profile?: string },
+  hasKey = false,
+): { on: boolean; warning?: string } {
+  const explicit = env.MYRMO_PRIVATE === "1" || fromFile;
   let host = "";
   try {
     host = new URL(url).hostname.toLowerCase();
   } catch {
-    return { on: false, warning: `MYRMO_PRIVATE=1 ignored: ${url} is not a valid colony URL.` };
+    return explicit ? { on: false, warning: `MYRMO_PRIVATE=1 ignored: ${url} is not a valid colony URL.` } : { on: false };
   }
   if (PUBLIC_HOSTS.has(host)) {
-    return { on: false, warning: "MYRMO_PRIVATE=1 ignored: the colony is the public one (set MYRMO_URL to your private colony)." };
+    return explicit ? { on: false, warning: "MYRMO_PRIVATE=1 ignored: the colony is the public one (set MYRMO_URL to your private colony)." } : { on: false };
   }
-  return { on: true };
+  if (declared?.profile === "public") {
+    return explicit ? { on: false, warning: `Private mode ignored: ${url} says it is not an organisation's colony, so internal names are removed as on the public one.` } : { on: false };
+  }
+  if (declared?.profile === "organisation") return { on: explicit || hasKey };
+  return { on: explicit };
 }
 
 const SEARCH_DESCRIPTION = `Search Myrmo, the shared memory of errors already solved by other AI agents.
@@ -150,6 +166,18 @@ export function destinationLine(url: string, privateMode: boolean, identity?: st
   return privateMode
     ? `Colony: ${url}, a PRIVATE colony (your organisation's own).${who}`
     : `Colony: ${url}, ${/^https?:\/\/(www\.)?myrmo\.dev\/?$/.test(url) ? "the PUBLIC colony: anyone can read what is published there" : "not marked private: nothing internal should go there"}.${who}`;
+}
+
+/** What the colony keeps about the people it serves, as it declares it, in words for the person. */
+export function describeColony(c?: { profile?: string; people_detail?: string | null; holdout_percent?: number; effort?: boolean }): string {
+  if (!c?.profile) return "";
+  if (c.profile === "public") return "The colony declares itself public.";
+  const parts = ["The colony declares itself your organisation's."];
+  if (c.people_detail === "named") parts.push("It counts each person's searches, reports and publications by name (kept 90 days).");
+  else if (c.people_detail === "aggregate") parts.push("It counts the team's activity as a whole, not per person.");
+  if (c.effort) parts.push("Your client may send it what solving a problem cost (tokens, time, model; no text), kept only as totals.");
+  if (c.holdout_percent) parts.push(`${c.holdout_percent}% of error lookups are answered with nothing at random, to measure what the colony saves.`);
+  return parts.join(" ");
 }
 
 /** -1, 0 or 1, comparing the numeric parts of two versions. */
@@ -438,6 +466,7 @@ export function createServer(opts: ServerOptions): McpServer {
           where(),
           `Publishing: ${opts.hosted ? "this hosted server never publishes (a person approves by link)" : opts.publishMode}${opts.publishChosen === false ? " (nobody has chosen yet: the first publish asks the user)" : ""}.`,
           opts.privateColony ? "Private mode: keep internal tool and service names, still leave out credentials, people's names, e-mail addresses and customer data." : "Public rules: leave out anything specific to a person or a company.",
+          describeColony(opts.colonyDescription?.()),
           `myrmo-mcp ${VERSION}.`,
           updateLine(opts.latestVersion?.()),
         ].filter(Boolean).join("\n"),

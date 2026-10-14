@@ -10,7 +10,7 @@ import { detectEnvironment, parsePackage } from "./environment.js";
 import { fingerprint2, guessErrorType } from "./fingerprint.js";
 import { namesConflict } from "./names.js";
 import { possibleNames, redactText, redactValue, type RedactionPolicy, type RedactionReport } from "./redact.js";
-import type { AgentInfo, DraftResult, DraftState, Environment, Hit, Outcome, PublishMode, PublishResult, SearchQuery, SearchResult, Trail, Validation } from "./types.js";
+import type { AgentInfo, ColonyInfo, DraftResult, EffortRecord, DraftState, Environment, Hit, Outcome, PublishMode, PublishResult, SearchQuery, SearchResult, Trail, Validation } from "./types.js";
 
 /** The public colony. Override with MYRMO_URL or the `url` option. */
 export const DEFAULT_URL = "https://myrmo.dev";
@@ -394,6 +394,31 @@ export class Colony {
       const trail = await this.trail(trailId);
       if (!trail || trail.status !== "queued" || Date.now() >= deadline) return trail;
       await new Promise((resolve) => setTimeout(resolve, options.intervalMs ?? 1500));
+    }
+  }
+
+  /**
+   * What this colony is (protocol 1.7, `colony` in GET /v1/version): its profile (`organisation` or `public`), whether
+   * it requires keys, takes procedures and facts, answers task requests and collects effort, and what it keeps about the
+   * people it serves. `null` for a colony older than 1.7.
+   */
+  async colonyInfo(): Promise<ColonyInfo | null> {
+    const { data } = await this.request<{ colony?: ColonyInfo }>("GET", "/v1/version", undefined, undefined, true);
+    return data?.colony ?? null;
+  }
+
+  /**
+   * Tell an organisation's colony what solving a problem cost, measured from your own usage records (never estimated):
+   * `unaided` when no trail was used, `aided` with the trail that worked. Returns whether the colony stored it; a colony
+   * that does not collect effort answers 404, which is returned as false.
+   */
+  async reportEffort(record: EffortRecord): Promise<boolean> {
+    const body = { protocol_version: "1.7", ...record, error: redactText(record.error, {}, this.policy).slice(0, 2000) };
+    try {
+      const { status } = await this.request<{ stored?: boolean }>("POST", "/v1/effort", body);
+      return status === 202;
+    } catch {
+      return false;
     }
   }
 

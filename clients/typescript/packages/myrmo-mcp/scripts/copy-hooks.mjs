@@ -23,4 +23,4 @@ if (!from) {
 }
 const to = join(pkg, "dist", "hooks");
 mkdirSync(to, { recursive: true });
-for (const file of ["antigravity-hook.mjs", "on-failure.mjs", "lookup.mjs"]) copyFileSync(join(from, file), join(to, file));
+for (const file of ["antigravity-hook.mjs", "on-failure.mjs", "lookup.mjs", "effort.mjs"]) copyFileSync(join(from, file), join(to, file));

@@ -37,6 +37,8 @@ export interface MyrmoConfig {
   hook?: HookMode;
   /** Send no agent id at all. */
   anonymous?: boolean;
+  /** Send an organisation's colony what solving a problem cost (tokens, time, model): on (where it collects it) or off. */
+  effort?: "on" | "off";
   /** Another colony to use, and what goes with it (see the top of this file). */
   colony?: ColonySettings;
 }
@@ -96,6 +98,7 @@ export function readConfig(): MyrmoConfig {
     if (attempts !== undefined) config.min_failed_attempts = attempts;
     if (raw.hook === "on" || raw.hook === "failures" || raw.hook === "off") config.hook = raw.hook;
     if (typeof raw.anonymous === "boolean") config.anonymous = raw.anonymous;
+    if (raw.effort === "on" || raw.effort === "off") config.effort = raw.effort;
     const colony = parseColony(raw.colony);
     if (colony) config.colony = colony;
     return config;
@@ -154,6 +157,7 @@ export const SETTINGS = [
   { key: "min-failed-attempts", file: "min_failed_attempts", values: `0 to ${MAX_MIN_FAILED_ATTEMPTS}`, default: String(DEFAULT_MIN_FAILED_ATTEMPTS), about: "Failed attempts before a fix is worth publishing. Higher means fewer, more selective trails." },
   { key: "hook", file: "hook", values: "on | failures | off", default: "on", about: "Claude Code plugin reminders. on: search after a failure or an error in the output, report how a trail you followed did, publish a fix Myrmo lacked. failures: only after a failed command." },
   { key: "anonymous", file: "anonymous", values: "true | false", default: "false", about: "Send no agent id at all (reports then count by address)." },
+  { key: "effort", file: "effort", values: "on | off", default: "on (only to an organisation's colony that collects it)", about: "Claude Code plugin: send your organisation's colony what solving a problem cost (tokens, time, model; no text), kept there only as totals." },
 ] as const;
 
 export interface SettingRow {
@@ -177,6 +181,7 @@ export function settingsReport(): SettingRow[] {
     "min-failed-attempts": { value: String(attempts.value), source: attempts.source },
     hook: hookEnv === "on" || hookEnv === "failures" || hookEnv === "off" ? { value: hookEnv, source: "env" } : file.hook ? { value: file.hook, source: "file" } : { value: "on", source: "default" },
     anonymous: anonEnv ? { value: String(["1", "true"].includes(anonEnv)), source: "env" } : file.anonymous !== undefined ? { value: String(file.anonymous), source: "file" } : { value: "false", source: "default" },
+    effort: process.env.MYRMO_EFFORT === "off" ? { value: "off", source: "env" } : file.effort ? { value: file.effort, source: "file" } : { value: "on", source: "default" },
   };
   return SETTINGS.map((s) => ({ key: s.key, ...rows[s.key], about: s.about, values: s.values, default: s.default }));
 }
@@ -200,6 +205,9 @@ export function setSetting(key: string, value: string): { ok: true; message: str
   } else if (key === "hook") {
     if (value !== "on" && value !== "failures" && value !== "off") return { ok: false, error: "hook takes on, failures or off." };
     patch = { hook: value };
+  } else if (key === "effort") {
+    if (value !== "on" && value !== "off") return { ok: false, error: "effort takes on or off." };
+    patch = { effort: value };
   } else {
     if (!["true", "false"].includes(value)) return { ok: false, error: "anonymous takes true or false." };
     patch = { anonymous: value === "true" };

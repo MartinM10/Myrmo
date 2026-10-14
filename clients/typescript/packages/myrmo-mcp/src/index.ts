@@ -12,6 +12,7 @@ import { Colony, configPath, minFailedAttempts as resolveMinFailedAttempts, publ
 import * as sdk from "myrmo";
 import { parseInitArgs, runInit } from "./init.js";
 import { createServer, privateMode, VERSION } from "./server.js";
+import { clean, readDeclared, rememberDeclared, type ColonyDescription } from "./profile.js";
 
 const args = process.argv.slice(2);
 const flag = (name: string) => args.includes(name);
@@ -111,14 +112,33 @@ if (args[0] === "export") {
   process.exit(0);
 }
 
+const colonyKey = process.env.MYRMO_API_KEY?.trim() || savedColony?.api_key;
+
+/** GET /v1/version from the colony, or null. The saved key belongs to the saved colony only (fileColony matches the URL). */
+async function askVersion(timeoutMs: number): Promise<{ clients?: { mcp?: string }; colony?: unknown } | null> {
+  try {
+    const res = await fetch(`${colonyUrl.replace(/\/+$/, "")}/v1/version`, {
+      headers: { accept: "application/json", "x-myrmo-client": `myrmo-mcp/${VERSION}`, ...(colonyKey ? { authorization: `Bearer ${colonyKey}` } : {}) },
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+    return res.ok ? ((await res.json()) as { clients?: { mcp?: string }; colony?: unknown }) : null;
+  } catch {
+    return null;
+  }
+}
+
 // `myrmo-mcp doctor`: checks that this machine can use the colony and says what to fix.
 if (args[0] === "doctor") {
   const { diagnose, render } = await import("./doctor.js");
+  const answer = await askVersion(5000);
+  const declared = clean(answer?.colony) ?? readDeclared(colonyUrl);
+  if (answer?.colony) rememberDeclared(colonyUrl, answer.colony);
   const checks = await diagnose({
     url: colonyUrl,
     saved: savedColony !== undefined,
-    apiKey: process.env.MYRMO_API_KEY?.trim() || savedColony?.api_key,
-    privateMode: privateMode(colonyUrl, process.env, savedColony?.private === true).on,
+    apiKey: colonyKey,
+    privateMode: privateMode(colonyUrl, process.env, savedColony?.private === true, declared, Boolean(colonyKey)).on,
+    declared,
     publish: publishMode,
     home: (await import("node:os")).homedir(),
   });
@@ -139,29 +159,32 @@ if (args[0] === "init") {
 if (flag("--http")) {
   await serveHttp(Number(option("--port", process.env.PORT ?? "3333")), option("--host", "0.0.0.0"));
 } else {
-  const privacy = privateMode(colonyUrl, process.env, savedColony?.private === true);
+  // What the colony says it is decides private mode (protocol 1.7). Known from an earlier start, it is used at once and
+  // refreshed in the background; the first time, the server waits up to two seconds for the colony to say it.
+  let declared: ColonyDescription | undefined = readDeclared(colonyUrl);
+  let latest: string | undefined;
+  const asked = askVersion(5000).then((body) => {
+    latest = body?.clients?.mcp;
+    if (body?.colony) {
+      rememberDeclared(colonyUrl, body.colony);
+      declared = clean(body.colony) ?? declared;
+    }
+  });
+  // Waiting only matters where the answer can change the mode: one's own colony, with a key or a --private flag.
+  const couldBePrivate = Boolean(colonyKey) || process.env.MYRMO_PRIVATE === "1" || savedColony?.private === true;
+  if (!declared && couldBePrivate && !/^https?:\/\/(www\.)?myrmo\.dev(\/|$)/i.test(colonyUrl)) {
+    await Promise.race([asked, new Promise((resolve) => setTimeout(resolve, 2000).unref())]);
+  }
+  const privacy = privateMode(colonyUrl, process.env, savedColony?.private === true, declared, Boolean(colonyKey));
   // In a private colony the network's addresses and host names stay in what is sent (the colony keeps them too).
   // It says which client it is, so an operator sees in the admin panel who runs an old one.
   const colony = new Colony({ publish: publishMode, private: privacy.on, headers: { "x-myrmo-client": `myrmo-mcp/${VERSION}` } });
-  // Which myrmo-mcp the colony was released with, asked once in the background: never holds the server up.
-  let latest: string | undefined;
-  {
-    // The saved key belongs to the saved colony only (fileColony matches the URL), as the SDK's own requests do.
-    const key = process.env.MYRMO_API_KEY?.trim() || savedColony?.api_key;
-    fetch(`${colony.url}/v1/version`, {
-      headers: { accept: "application/json", "x-myrmo-client": `myrmo-mcp/${VERSION}`, ...(key ? { authorization: `Bearer ${key}` } : {}) },
-      signal: AbortSignal.timeout(5000),
-    })
-      .then(async (res) => (res.ok ? ((await res.json()) as { clients?: { mcp?: string } }) : null))
-      .then((body) => { latest = body?.clients?.mcp; })
-      .catch(() => {});
-  }
   if (privacy.warning) console.error(`myrmo-mcp: ${privacy.warning}`);
   const server = createServer({
     colony,
     privateColony: privacy.on,
     identity: (() => {
-      const key = process.env.MYRMO_API_KEY?.trim() || savedColony?.api_key;
+      const key = colonyKey;
       if (key) return `key ${createHash("sha256").update(key).digest("hex").slice(0, 8)}`;
       const id = readConfig().agent_id;
       return id ? `agent ${id.slice(0, 8)}` : undefined;
@@ -174,6 +197,7 @@ if (flag("--http")) {
     },
     minFailedAttempts,
     latestVersion: () => latest,
+    colonyDescription: () => declared,
     fillLocalEnvironment: true,
     allowHighRisk,
   });

@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { diagnose, render } from "../dist/doctor.js";
 
-const base = { url: "http://192.168.219.87:8080", saved: true, apiKey: "myk_" + "a".repeat(64), privateMode: true, publish: "auto", nodeVersion: "20.11.0", home: "/nonexistent-home" };
+const base = { url: "http://10.20.0.17:8080", saved: true, apiKey: "myk_" + "a".repeat(64), privateMode: true, publish: "auto", nodeVersion: "20.11.0", home: "/nonexistent-home" };
 const answer = (routes) => async (url) => {
   const path = new URL(url).pathname;
   const r = routes[path];
