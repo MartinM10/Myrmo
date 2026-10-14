@@ -1,0 +1,8 @@
+# Actions are pinned to commit SHAs (a moved tag cannot change what runs with the release and deploy secrets);
+# Dependabot proposes the updates, with the tag in a comment.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
