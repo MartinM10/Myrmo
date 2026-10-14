@@ -141,8 +141,8 @@ test("Claude Code: without a private colony the hook sends nothing and never hol
 test("the colony can come from the settings file (`init --url`), and its key and private mode only apply to that URL", async () => {
   const { colonyOf } = await import("../scripts/lookup.mjs");
   const settings = { colony: { url: "https://myrmo.example.internal/", api_key: "myk_saved", private: true } };
-  const saved = colonyOf({}, settings);
-  assert.deepEqual(saved, { url: "https://myrmo.example.internal", apiKey: "myk_saved", own: true, private: true });
+  const saved = colonyOf({}, settings, null);
+  assert.deepEqual(saved, { url: "https://myrmo.example.internal", apiKey: "myk_saved", own: true, private: true, declared: null });
   assert.equal(lookupEnabled({}, settings), true);
   assert.equal(privateColony({}, settings), true);
 
