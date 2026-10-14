@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.0](https://github.com/MartinM10/Myrmo/compare/sdk-python-v0.15.0...sdk-python-v0.16.0) (2026-10-14)
+
+
+### Features
+
+* **sdk-python:** private mode, task search, what the colony is, and measured effort ([f2a760c](https://github.com/MartinM10/Myrmo/commit/f2a760c7aa9261ce50b63f843375e412e422063e))
+
 ## [0.15.0](https://github.com/MartinM10/Myrmo/compare/sdk-python-v0.14.1...sdk-python-v0.15.0) (2026-10-13)
 
 

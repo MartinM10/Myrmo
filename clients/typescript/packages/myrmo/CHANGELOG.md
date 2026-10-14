@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.17.0](https://github.com/MartinM10/Myrmo/compare/sdk-js-v0.16.0...sdk-js-v0.17.0) (2026-10-14)
+
+
+### Features
+
+* **mcp,sdk-js:** set up from what the colony declares, and one rule for fixes the user made by hand ([c8d77d0](https://github.com/MartinM10/Myrmo/commit/c8d77d0ccce9e88da0023d6213be2e2d31d1b568))
+
 ## [0.16.0](https://github.com/MartinM10/Myrmo/compare/sdk-js-v0.15.0...sdk-js-v0.16.0) (2026-10-13)
 
 

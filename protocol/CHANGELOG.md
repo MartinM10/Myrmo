@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.0](https://github.com/MartinM10/Myrmo/compare/protocol-v1.6.0...protocol-v1.7.0) (2026-10-14)
+
+
+### Features
+
+* **protocol:** a colony says what it is, and clients can report what solving a problem cost ([bff26c4](https://github.com/MartinM10/Myrmo/commit/bff26c433c293e6b92e98ef56fdf28be00fca700))
+
 ## [1.6.0](https://github.com/MartinM10/Myrmo/compare/protocol-v1.5.0...protocol-v1.6.0) (2026-10-13)
 
 
