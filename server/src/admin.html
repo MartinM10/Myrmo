@@ -2355,7 +2355,8 @@ async function value(view) {
     el("div", { className: "stat-card" },
       el("h2", { style: "margin:0 0 6px;font:600 1.05rem var(--f-display)" }, "How it is worked out"),
       el("p", { className: "hint", style: "margin:0" }, v.method),
-      el("p", { className: "hint", style: "margin:8px 0 0" }, "Records hold numbers only (tokens, seconds, turns, model) and are kept as totals per error and per day, never per person."))));
+      el("p", { className: "hint", style: "margin:8px 0 0" }, `Records come from about ${num(v.people?.aided)} people with help, ${num(v.people?.unaided)} without and ${num(v.people?.holdout)} held out: figures that rest on one or two people are not yet the team's.`),
+      el("p", { className: "hint", style: "margin:8px 0 0" }, "Records hold numbers only (tokens, seconds, turns, model) and are kept as totals per error and per day, never per person. A record with help counts only after the same person reported the trail worked."))));
 }
 
 /* ========================================================================= */

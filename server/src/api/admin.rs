@@ -1017,6 +1017,9 @@ pub(super) async fn value(
             .map_err(|e| internal(&e))?
     );
     body["holdout_percent"] = json!(live.holdout_percent);
+    body["people"] = crate::effort::contributors(&mut con)
+        .await
+        .map_err(|e| internal(&e))?;
     body["collecting"] = json!(st.cfg.private);
     Ok(private(Json(body)))
 }

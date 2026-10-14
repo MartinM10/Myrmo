@@ -28,7 +28,7 @@ pub(super) async fn report_effort(
         .details(json!(details)));
     }
     let record = crate::effort::parse(&body).map_err(ApiError::bad_request)?;
-    let (stored, role) = crate::effort::store(&mut st.redis(), &caller.agent, &record, keys::now())
+    let outcome = crate::effort::store(&mut st.redis(), &caller.agent, &record, keys::now())
         .await
         .map_err(|err| {
             tracing::warn!(error = %err, "effort not stored");
@@ -38,6 +38,23 @@ pub(super) async fn report_effort(
                 "A dependency is unavailable. Retry with backoff.",
             )
         })?;
+    let (stored, role) = match outcome {
+        Ok(done) => done,
+        Err(crate::effort::Refusal::NotHelped) => {
+            return Err(ApiError::new(
+                StatusCode::CONFLICT,
+                "not_reported",
+                "An aided record needs your own report that this trail worked (POST /v1/trails/{id}/outcomes) first.",
+            ));
+        }
+        Err(crate::effort::Refusal::Quota) => {
+            return Err(ApiError::new(
+                StatusCode::TOO_MANY_REQUESTS,
+                "rate_limited",
+                "Too many effort records today.",
+            ));
+        }
+    };
     let status = if stored {
         StatusCode::ACCEPTED
     } else {
