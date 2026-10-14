@@ -173,3 +173,32 @@ export type Validation =
   | { valid: false; errors: { path: string; message: string }[] }
   /** The colony could not say: unreachable, or an older one without the endpoint. Publishing then reports. */
   | { valid: null; reason: string };
+
+/** What a colony is: `colony` in GET /v1/version (protocol 1.7). */
+export interface ColonyInfo {
+  profile: "public" | "organisation";
+  keys_required?: boolean;
+  kinds?: ("fix" | "procedure" | "fact")[];
+  task_search?: boolean;
+  effort?: boolean;
+  people_detail?: "aggregate" | "named" | null;
+  holdout_percent?: number;
+}
+
+/** What solving one problem cost, for POST /v1/effort (protocol 1.7). */
+export interface EffortRecord {
+  role: "unaided" | "aided";
+  /** The error line the problem started with. */
+  error: string;
+  /** Required for aided: the trail that worked. */
+  trail_id?: string;
+  effort: {
+    input_tokens?: number;
+    output_tokens?: number;
+    cache_read_tokens?: number;
+    cache_write_tokens?: number;
+    turns?: number;
+    wall_time_seconds?: number;
+  };
+  agent_info?: { model: string; framework: string };
+}

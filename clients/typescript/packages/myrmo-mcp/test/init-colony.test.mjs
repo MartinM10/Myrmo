@@ -49,7 +49,7 @@ test("init saves the colony, writes the private rules and installs the Antigravi
   assert.deepEqual(config.colony, { url: "https://myrmo.example.internal", api_key: KEY, private: true, publish: "auto" });
   assert.equal(config.publish, undefined, "the public colony's choice is untouched");
   assert.ok(readFileSync(join(m.home, ".gemini", "GEMINI.md"), "utf8").includes(AGENTS_BLOCK_PRIVATE.split("\n")[1]));
-  for (const f of ["antigravity-hook.mjs", "on-failure.mjs", "lookup.mjs"]) assert.ok(existsSync(join(m.home, ".myrmo", "hooks", f)), f);
+  for (const f of ["antigravity-hook.mjs", "on-failure.mjs", "lookup.mjs", "effort.mjs"]) assert.ok(existsSync(join(m.home, ".myrmo", "hooks", f)), f);
   const hooks = JSON.parse(readFileSync(join(m.home, ".gemini", "config", "hooks.json"), "utf8"));
   assert.match(hooks.myrmo.PreInvocation[0].command, /^node ".*antigravity-hook\.mjs"$/);
   assert.ok(!m.out.join("\n").includes(KEY), "the key is never printed");

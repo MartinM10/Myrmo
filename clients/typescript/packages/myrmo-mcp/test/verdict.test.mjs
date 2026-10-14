@@ -43,7 +43,7 @@ const CLI = fileURLToPath(new URL("../dist/index.js", import.meta.url));
 const isolated = () => ({ ...process.env, MYRMO_CONFIG: join(mkdtempSync(join(tmpdir(), "myrmo-")), "c.json"), MYRMO_URL: "", MYRMO_API_KEY: "" });
 
 test("every publication answer says which colony it went to, and as whom", () => {
-  const priv = destinationLine("http://192.168.219.87:8080", true, "key 1a2b3c4d");
+  const priv = destinationLine("http://10.20.0.17:8080", true, "key 1a2b3c4d");
   assert.match(priv, /PRIVATE colony/);
   assert.match(priv, /192\.168\.219\.87:8080/);
   assert.match(priv, /Acting as key 1a2b3c4d/);
@@ -66,7 +66,7 @@ test("init can read the key from a file, so that it stays out of the command lin
   const dir = mkdtempSync(join(tmpdir(), "myrmo-key-"));
   const key = "myk_" + "ab".repeat(32);
   writeFileSync(join(dir, "k.txt"), `Hi\n\n   npx myrmo-mcp init --key ${key}\n`);
-  const parsed = parseInitArgs(["--url", "http://192.168.219.87:8080", "--key-file", join(dir, "k.txt"), "--private"]);
+  const parsed = parseInitArgs(["--url", "http://10.20.0.17:8080", "--key-file", join(dir, "k.txt"), "--private"]);
   assert.equal(parsed.key, key);
   assert.match(parseInitArgs(["--url", "http://x:8080", "--key-file", join(dir, "missing.txt")]), /cannot read/);
   assert.match(parseInitArgs(["--url", "http://x:8080", "--key-file"]), /needs the path/);

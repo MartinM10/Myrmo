@@ -90,3 +90,27 @@ test("searchTask asks the task index, keeps the organisation's names, and treats
     server.close();
   }
 });
+
+test("protocol 1.7: the colony says what it is, and effort is sent redacted with numbers only", async () => {
+  const seen = [];
+  const server = createServer((req, res) => {
+    let body = "";
+    req.on("data", (c) => (body += c));
+    req.on("end", () => {
+      seen.push({ url: req.url, method: req.method, body: body ? JSON.parse(body) : null });
+      res.setHeader("content-type", "application/json");
+      if (req.url === "/v1/version") return res.end(JSON.stringify({ server: "0.17.0", colony: { profile: "organisation", effort: true } }));
+      res.statusCode = req.url === "/v1/effort" ? 202 : 404;
+      res.end(JSON.stringify({ stored: true }));
+    });
+  });
+  await new Promise((r) => server.listen(0, "127.0.0.1", r));
+  const colony = new Colony({ url: `http://127.0.0.1:${server.address().port}`, agentId: false, retries: 0 });
+  assert.equal((await colony.colonyInfo()).profile, "organisation");
+  const ok = await colony.reportEffort({ role: "unaided", error: "auth failed with token sk-abcdefghijklmnopqrstuvwxyz0123", effort: { output_tokens: 120, turns: 2 } });
+  assert.equal(ok, true);
+  const sent = seen.find((s) => s.url === "/v1/effort").body;
+  assert.equal(sent.protocol_version, "1.7");
+  assert.doesNotMatch(sent.error, /sk-abcdef/, "redacted before it leaves the machine");
+  server.close();
+});

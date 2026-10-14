@@ -5,7 +5,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { claudeCodeSetUp } from "./init.js";
-import { compareVersions, VERSION } from "./server.js";
+import { compareVersions, describeColony, VERSION } from "./server.js";
 
 export type Level = "ok" | "warn" | "fail";
 export interface Check {
@@ -22,6 +22,8 @@ export interface DoctorInput {
   saved: boolean;
   apiKey?: string;
   privateMode: boolean;
+  /** What the colony says it is (GET /v1/version), when it said it. */
+  declared?: { profile?: string; people_detail?: string | null; holdout_percent?: number; effort?: boolean };
   publish: string;
   nodeVersion?: string;
   home: string;
@@ -117,7 +119,7 @@ export async function diagnose(input: DoctorInput): Promise<Check[]> {
     checks.push(
       input.apiKey
         ? { level: "fail", name: "Your access key", detail: "the colony does not accept it (401)", fix: "The key was copied wrong or has been revoked. Ask for a new one and run the setup command again." }
-        : { level: "fail", name: "Your access key", detail: "this colony needs a key and none is set", fix: "Run the setup command you were sent: npx myrmo-mcp init --url <colony> --key <your key> --private --publish auto." },
+        : { level: "fail", name: "Your access key", detail: "this colony needs a key and none is set", fix: "Run the setup command you were sent: npx myrmo-mcp init --url <colony> --key <your key> --publish auto." },
     );
   } else if (open.status === 200) {
     checks.push(input.apiKey ? { level: "ok", name: "Your access key", detail: "accepted" } : { level: "warn", name: "Your access key", detail: "this colony does not ask for a key", fix: "If it should be private, tell whoever runs it." });
@@ -125,11 +127,17 @@ export async function diagnose(input: DoctorInput): Promise<Check[]> {
     checks.push({ level: "fail", name: "Your access key", detail: `the colony answered ${open.status}`, fix: "Tell whoever runs the colony." });
   }
 
+  const declared = input.declared?.profile;
   checks.push(
     input.privateMode
-      ? { level: "ok", name: "Private mode", detail: "agents keep your internal names in what they publish" }
-      : { level: "warn", name: "Private mode", detail: "off: agents would strip internal names from what they publish", fix: "Run the setup command again with --private (or set MYRMO_PRIVATE=1)." },
+      ? { level: "ok", name: "Private mode", detail: `agents keep your internal names in what they publish${declared === "organisation" ? " (the colony declares itself your organisation's)" : ""}` }
+      : declared === "public"
+        ? { level: "ok", name: "Private mode", detail: "off: the colony declares itself public, so internal names are removed" }
+        : { level: "warn", name: "Private mode", detail: "off: agents would strip internal names from what they publish", fix: declared === "organisation" ? "Set your access key (npx myrmo-mcp init --url <colony> --key <your key>)." : "This colony does not say what it is (an older server): run the setup command again with --private (or set MYRMO_PRIVATE=1)." },
   );
+  if (input.declared?.profile === "organisation") {
+    checks.push({ level: "ok", name: "What the colony keeps", detail: describeColony(input.declared) });
+  }
   checks.push(
     input.publish === "auto"
       ? { level: "ok", name: "Publishing", detail: "agents publish what they solve, to this colony only" }
