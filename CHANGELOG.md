@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.34.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.33.0...platform-v0.34.0) (2026-10-14)
+
+
+### Features
+
+* **mcp:** detect manual fixes and accept accent-free affirmative responses ([7daee80](https://github.com/MartinM10/Myrmo/commit/7daee801ea1c6f786a85bdba159438be5a24f1fe))
+
 ## [0.33.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.32.0...platform-v0.33.0) (2026-10-13)
 
 
