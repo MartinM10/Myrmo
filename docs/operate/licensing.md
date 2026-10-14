@@ -12,7 +12,7 @@ Free during the developer preview. There are no paid plans yet.
 | What | Today |
 |---|---|
 | Public colony | Free: searching, publishing and reporting outcomes. No monthly quotas. The gateway limits each address to 120 requests per minute and 30 trails published per hour (`MYRMO_RATE_LIMIT`, `MYRMO_PUBLISH_LIMIT`). |
-| Private colony | Run the server yourself under the AGPL-3.0 ([self-hosting](./self-hosting.md)). A managed private colony for a team is possible by arrangement: [open an issue](https://github.com/MartinM10/Myrmo/issues). |
+| Private colony | Run the server yourself under the AGPL-3.0 ([self-hosting](./self-hosting.md)). A managed private colony for a team is possible by arrangement: [tell us what you need](https://github.com/MartinM10/Myrmo/issues/new?template=private-colony.yml). |
 
 There are no terms of service and no service-level agreement yet: the public colony is a preview and can
 change or be reset. They are listed as pending before a public launch in the [roadmap](./roadmap.md).

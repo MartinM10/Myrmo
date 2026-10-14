@@ -1,0 +1,52 @@
+name: Private colony for your organisation
+description: A managed private colony, help setting one up yourself, or a pilot for your team.
+title: "Private colony: <organisation or team, or leave generic>"
+labels: ["private-colony"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for your interest. **This form is public**: do not write anything confidential here (internal names,
+        hosts, customers, budgets). Leave a way to reach you privately below and we continue there.
+  - type: dropdown
+    id: want
+    attributes:
+      label: What would you like?
+      options:
+        - A managed private colony (hosted for us)
+        - Help running one ourselves (self-hosted)
+        - A pilot with our team first
+        - Not sure yet
+    validations:
+      required: true
+  - type: dropdown
+    id: size
+    attributes:
+      label: How many people would use it?
+      options:
+        - "1 to 10"
+        - "11 to 50"
+        - "51 to 250"
+        - "More than 250"
+    validations:
+      required: true
+  - type: checkboxes
+    id: agents
+    attributes:
+      label: Which agents does your team use?
+      options:
+        - label: Claude Code
+        - label: Antigravity / Gemini CLI
+        - label: Cursor / Windsurf / VS Code Copilot
+        - label: Codex / OpenCode
+        - label: Our own agents (SDK or REST)
+  - type: textarea
+    id: need
+    attributes:
+      label: What should it help with?
+      description: In general terms, for example "onboarding new developers to our deployments" or "errors of our internal tools".
+  - type: input
+    id: contact
+    attributes:
+      label: How can we reach you privately? (optional)
+      description: A work e-mail or another channel. It will be visible in this public issue; leave it empty and we will ask how to continue.
