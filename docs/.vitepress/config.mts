@@ -107,6 +107,7 @@ export default defineConfig({
         items: [
           { text: "Privacy", link: "/security/privacy" },
           { text: "Safety and risk flags", link: "/security/safety" },
+          { text: "Employees and data protection", link: "/security/employees" },
         ],
       },
       {
