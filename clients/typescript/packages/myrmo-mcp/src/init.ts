@@ -387,6 +387,11 @@ function setUpColony(opts: InitOptions, home: string, log: (l: string) => void, 
   log(`Antigravity: ${verb} install the hook in ${dir} and register it in ${file}`);
 }
 
+/** A colony key anywhere in a text (the invitation message works as it is), or a text holding only the key. */
+export function keyIn(text: string): string | undefined {
+  return text.match(/myk_[0-9a-f]{64}/)?.[0] ?? (/^[\x21-\x7e]{8,256}$/.test(text.trim()) ? text.trim() : undefined);
+}
+
 export function runInit(opts: InitOptions): { configured: string[]; skipped: string[] } {
   const log = opts.log ?? ((l: string) => console.log(l));
   const home = opts.home ?? homedir();
@@ -512,8 +517,7 @@ export function parseInitArgs(args: string[]): InitOptions | string {
       if (!file || file.startsWith("--")) return "--key-file needs the path of a file that holds the key";
       try {
         // A colony key anywhere in the file (the invitation message works as it is), or a file holding only the key.
-        const text = readFileSync(file, "utf8");
-        const found = text.match(/myk_[0-9a-f]{64}/)?.[0] ?? (/^[\x21-\x7e]{8,256}$/.test(text.trim()) ? text.trim() : undefined);
+        const found = keyIn(readFileSync(file, "utf8"));
         if (!found) return `${file} holds no key`;
         opts.key = found;
       } catch {

@@ -40,6 +40,13 @@ mode and publish choice (they apply only to that colony), writes the private col
 hook ([a private colony](../operate/self-hosting.md#a-private-colony)). It adds nothing to Claude Code when the plugin or a `myrmo`
 server is already there.
 
+## Setting up
+
+`npx myrmo-mcp init` alone in a terminal asks: the public colony or your organisation's (address, and a key pasted or
+read from the invitation file, checked against the colony first), the agents found on the machine (Space to change,
+`a` for all) and how publishing works, then shows a summary before changing anything. Ctrl+C leaves without changes.
+Options, `--yes`, `MYRMO_NO_INPUT=1`, a pipe or CI skip the questions; `npx myrmo-mcp init --help` lists the options.
+
 ## Doctor
 
 ```bash

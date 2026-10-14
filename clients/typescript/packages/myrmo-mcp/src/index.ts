@@ -64,6 +64,7 @@ const INIT_USAGE = `myrmo-mcp init [options]: set up the agents on this machine 
   --read-only                  with --agents-md: agents in this repository search and report, never publish
   --no-rules                   do not write usage rules into Gemini CLI's or Windsurf's global instructions
   --dry-run                    show what would change, change nothing
+  --yes                        do not ask anything (init alone in a terminal asks a few questions)
 
 Afterwards: npx myrmo-mcp doctor (checks everything), npx myrmo-mcp config (shows and changes settings).`;
 if (args[0] === "init" && (flag("--help") || flag("-h"))) {
@@ -174,7 +175,65 @@ if (args[0] === "doctor") {
 }
 
 if (args[0] === "init") {
-  const parsed = parseInitArgs(args.slice(1));
+  const { canAsk, Cancelled, terminal, wizard } = await import("./wizard.js");
+  // `init` alone in a terminal asks a few questions (arrows and Enter); any option, --yes, a script or CI: as before.
+  if (args.length === 1 && canAsk()) {
+    const { existsSync, readFileSync } = await import("node:fs");
+    const { homedir } = await import("node:os");
+    const { join } = await import("node:path");
+    const { CLIENT_IDS, findClaudeCli, keyIn, targets } = await import("./init.js");
+    const home = homedir();
+    const found = new Map(targets(home).map((t) => [t.id, { name: t.name, found: existsSync(t.marker) }]));
+    const clients = CLIENT_IDS.map((id) =>
+      id === "claude-code"
+        ? { id, name: "Claude Code", found: Boolean(findClaudeCli(home)) || existsSync(join(home, ".claude")) }
+        : { id, name: found.get(id)?.name ?? id, found: found.get(id)?.found ?? false },
+    );
+    try {
+      const answer = await wizard(terminal(), {
+        clients,
+        savedUrl: readConfig().colony?.url,
+        readKeyFile: (path) => {
+          try {
+            return keyIn(readFileSync(path.replace(/^~(?=\/)/, home), "utf8")) ?? null;
+          } catch {
+            return null;
+          }
+        },
+        probe: async (url, key) => {
+          try {
+            const res = await fetch(`${url}/v1/version`, { headers: { accept: "application/json", ...(key ? { authorization: `Bearer ${key}` } : {}) }, signal: AbortSignal.timeout(5000) });
+            const body = (await res.json().catch(() => null)) as { colony?: { profile?: string; people_detail?: string | null }; error?: { message?: string } } | null;
+            if (res.ok) return { ok: true, status: res.status, profile: body?.colony?.profile, people: body?.colony?.people_detail ?? null };
+            const why = res.status === 401 ? "The colony does not accept this key (copied wrong, or revoked)." : res.status === 403 ? (body?.error?.message ?? "This machine's network is not allowed to connect.") : `The colony answered ${res.status}.`;
+            return { ok: false, status: res.status, detail: why };
+          } catch {
+            return { ok: false, detail: "No answer from that address (wrong address, or not reachable from this network)." };
+          }
+        },
+      });
+      if (answer.cancelled) {
+        console.log("Nothing was changed.");
+        process.exit(0);
+      }
+      const opts: Parameters<typeof runInit>[0] = { clients: answer.clients, dryRun: false };
+      if (answer.url) Object.assign(opts, { url: answer.url, key: answer.key, private: Boolean(answer.key), publish: answer.publish });
+      else {
+        // Back to the public colony when another one was saved, and its publishing choice.
+        const saved = readConfig().colony?.url;
+        if (saved && !/^https?:\/\/(www\.)?myrmo\.dev\/?$/i.test(saved)) opts.url = "https://myrmo.dev";
+        if (answer.publicPublish) setSetting("publish", answer.publicPublish);
+      }
+      console.log("");
+      runInit(opts);
+      console.log("\nCheck it any time with: npx myrmo-mcp doctor");
+      process.exit(0);
+    } catch (err) {
+      if (err instanceof Cancelled) process.exit(130);
+      throw err;
+    }
+  }
+  const parsed = parseInitArgs(args.slice(1).filter((a) => a !== "--yes"));
   if (typeof parsed === "string") {
     console.error(parsed);
     process.exit(2);
