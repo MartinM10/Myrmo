@@ -107,7 +107,7 @@ jobs:
         with:
           # A manual run publishes the tagged release, not whatever main is now.
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.npm_tag != '' && inputs.npm_tag || needs.release-please.outputs.release_sha || github.sha }}
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
           registry-url: https://registry.npmjs.org
