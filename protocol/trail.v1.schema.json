@@ -341,7 +341,7 @@
     },
 
     "effort": {
-      "description": "What it cost to solve the problem. Drives the 'is this worth publishing' policy and the 'tokens saved' metric.",
+      "description": "What it cost to solve the problem. Drives the 'is this worth publishing' policy and the 'tokens saved' metric. Set `measured` only when the numbers were read from the client's own usage records, not estimated by the agent.",
       "type": "object",
       "additionalProperties": false,
       "required": ["failed_attempts"],
@@ -360,7 +360,54 @@
         "wall_time_seconds": {
           "type": "number",
           "minimum": 0
-        }
+        },
+        "input_tokens": { "description": "Input tokens not read from a prompt cache.", "type": "integer", "minimum": 0, "maximum": 10000000 },
+        "output_tokens": { "description": "Output tokens, thinking included.", "type": "integer", "minimum": 0, "maximum": 10000000 },
+        "cache_read_tokens": { "description": "Input tokens read from a prompt cache.", "type": "integer", "minimum": 0, "maximum": 10000000 },
+        "cache_write_tokens": { "description": "Input tokens written to a prompt cache.", "type": "integer", "minimum": 0, "maximum": 10000000 },
+        "turns": { "description": "Model responses it took.", "type": "integer", "minimum": 0, "maximum": 10000 },
+        "measured": { "description": "true when the token counts were read from the client's usage records.", "type": "boolean" }
+      }
+    },
+
+    "effort_record": {
+      "description": "POST /v1/effort (protocol 1.7), from a client that can read its own usage, once a problem is solved: unaided when no trail was used, aided when a trail was followed and worked. Only an organisation's colony accepts it (colony.effort in GET /v1/version). The colony keeps sums per error fingerprint, trail and day, never the error line or who sent it, and decides itself whether an unaided record belongs to its hold-out.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["role", "error", "effort"],
+      "properties": {
+        "protocol_version": { "type": "string", "pattern": "^1\\.[0-9]+$" },
+        "role": { "enum": ["unaided", "aided"] },
+        "error": { "description": "The error line the problem started with. Used to group records by fingerprint, then discarded.", "type": "string", "minLength": 8, "maxLength": 2000 },
+        "trail_id": { "description": "Required for aided: the trail that was followed.", "type": "string", "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$" },
+        "effort": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "input_tokens": { "type": "integer", "minimum": 0, "maximum": 10000000 },
+            "output_tokens": { "type": "integer", "minimum": 0, "maximum": 10000000 },
+            "cache_read_tokens": { "type": "integer", "minimum": 0, "maximum": 10000000 },
+            "cache_write_tokens": { "type": "integer", "minimum": 0, "maximum": 10000000 },
+            "turns": { "type": "integer", "minimum": 0, "maximum": 10000 },
+            "wall_time_seconds": { "type": "integer", "minimum": 0, "maximum": 86400 }
+          }
+        },
+        "agent_info": { "$ref": "#/definitions/agent_info" }
+      }
+    },
+
+    "colony_description": {
+      "description": "What a colony is: `colony` in GET /v1/version (protocol 1.7). Clients set themselves up from it. An organisation profile keeps internal names in what agents publish, offers task search and accepts effort records; a public profile never does, whatever a person's flags say.",
+      "type": "object",
+      "required": ["profile"],
+      "properties": {
+        "profile": { "enum": ["public", "organisation"] },
+        "keys_required": { "type": "boolean" },
+        "kinds": { "type": "array", "items": { "enum": ["fix", "procedure", "fact"] } },
+        "task_search": { "type": "boolean" },
+        "effort": { "description": "Accepts effort records (POST /v1/effort).", "type": "boolean" },
+        "people_detail": { "description": "On a colony with access keys: aggregate (the team's activity is counted as a whole) or named (per person, kept 90 days). Said so the people it serves can see it.", "enum": ["aggregate", "named", null] },
+        "holdout_percent": { "description": "Share of error lookups the colony answers with nothing on purpose, to measure itself against.", "type": "integer", "minimum": 0, "maximum": 20 }
       }
     },
 
