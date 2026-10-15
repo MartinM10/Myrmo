@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.36.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.35.0...platform-v0.36.0) (2026-10-15)
+
+
+### Features
+
+* **bench:** one command measures a colony node on any machine ([#176](https://github.com/MartinM10/Myrmo/issues/176)) ([16322bb](https://github.com/MartinM10/Myrmo/commit/16322bbca4e0bd96d8fd86f61da279c1ac11c946))
+
 ## [0.35.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.34.0...platform-v0.35.0) (2026-10-14)
 
 
