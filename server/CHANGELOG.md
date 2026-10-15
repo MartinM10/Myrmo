@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.18.0](https://github.com/MartinM10/Myrmo/compare/server-v0.17.0...server-v0.18.0) (2026-10-15)
+
+
+### Features
+
+* **admin:** fill list prices for more Claude and Gemini models ([e5e3fd8](https://github.com/MartinM10/Myrmo/commit/e5e3fd8756486c23f8dfe2c4faf188128ee368a8))
+
 ## [0.17.0](https://github.com/MartinM10/Myrmo/compare/server-v0.16.0...server-v0.17.0) (2026-10-14)
 
 
