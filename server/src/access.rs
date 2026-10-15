@@ -69,14 +69,6 @@ pub async fn authenticate<C: redis::aio::ConnectionLike + Send>(
     Ok(person.map(|p| (p, d)))
 }
 
-/// The person a key belongs to, or None for an unknown or revoked key.
-pub async fn person_of<C: redis::aio::ConnectionLike + Send>(
-    con: &mut C,
-    key: &str,
-) -> Result<Option<String>> {
-    Ok(authenticate(con, key).await?.map(|(p, _)| p))
-}
-
 pub async fn add<C: redis::aio::ConnectionLike + Send>(
     con: &mut C,
     person: &str,
@@ -98,7 +90,9 @@ pub async fn add_batch<C: redis::aio::ConnectionLike + Send>(
     }
     for person in people {
         if !valid_person(person) {
-            bail!("{person:?} is not a valid name: 2-32 lowercase letters, digits, '.', '-' or '_'");
+            bail!(
+                "{person:?} is not a valid name: 2-32 lowercase letters, digits, '.', '-' or '_'"
+            );
         }
     }
     // Check for duplicates within the input
@@ -251,7 +245,9 @@ pub async fn cli(redis_url: &str, args: &[String]) -> Result<()> {
             );
         }
         ["generate", count_str] => {
-            let count: usize = count_str.parse().map_err(|_| anyhow::anyhow!("invalid count: {count_str}"))?;
+            let count: usize = count_str
+                .parse()
+                .map_err(|_| anyhow::anyhow!("invalid count: {count_str}"))?;
             let pairs = generate_n(&mut con, count, "pilot", now).await?;
             for (person, key) in &pairs {
                 println!("{person}\t{key}");
@@ -261,7 +257,9 @@ pub async fn cli(redis_url: &str, args: &[String]) -> Result<()> {
             );
         }
         ["generate", count_str, prefix] => {
-            let count: usize = count_str.parse().map_err(|_| anyhow::anyhow!("invalid count: {count_str}"))?;
+            let count: usize = count_str
+                .parse()
+                .map_err(|_| anyhow::anyhow!("invalid count: {count_str}"))?;
             let pairs = generate_n(&mut con, count, prefix, now).await?;
             for (person, key) in &pairs {
                 println!("{person}\t{key}");
@@ -274,9 +272,13 @@ pub async fn cli(redis_url: &str, args: &[String]) -> Result<()> {
             let revoked = revoke(&mut con, person).await?;
             let erased_items = crate::team::erase(&mut con, person, now).await?;
             if revoked {
-                eprintln!("{person}'s key revoked and {erased_items} data item(s) erased (GDPR compliance).");
+                eprintln!(
+                    "{person}'s key revoked and {erased_items} data item(s) erased (GDPR compliance)."
+                );
             } else {
-                eprintln!("{person} had no active key, but {erased_items} activity data item(s) were erased.");
+                eprintln!(
+                    "{person} had no active key, but {erased_items} activity data item(s) were erased."
+                );
             }
         }
         ["revoke", person] => {
@@ -294,7 +296,9 @@ pub async fn cli(redis_url: &str, args: &[String]) -> Result<()> {
                 println!("{person}\t{when}");
             }
         }
-        _ => bail!("usage: myrmo-server keys add <person...> | generate <N> [prefix] | list | revoke <person> [--erase] | erase <person>"),
+        _ => bail!(
+            "usage: myrmo-server keys add <person...> | generate <N> [prefix] | list | revoke <person> [--erase] | erase <person>"
+        ),
     }
     Ok(())
 }

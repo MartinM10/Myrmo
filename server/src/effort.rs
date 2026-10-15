@@ -783,49 +783,84 @@ pub async fn cli_pilot_roi(st: &crate::state::AppState, args: &[String]) -> anyh
 
     println!("============================================================");
     println!("                   MYRMO PILOT ROI SUMMARY                  ");
-    println!("        Period: Last {} days ({} to {})", r["pilot_days"], r["period"]["from"].as_str().unwrap_or(""), r["period"]["to"].as_str().unwrap_or(""));
+    println!(
+        "        Period: Last {} days ({} to {})",
+        r["pilot_days"],
+        r["period"]["from"].as_str().unwrap_or(""),
+        r["period"]["to"].as_str().unwrap_or("")
+    );
     println!("============================================================\n");
 
     println!("1. Team Engagement:");
-    println!("   Active Team Keys:     {} / {}", r["team"]["active_keys"], r["team"]["total_keys"]);
+    println!(
+        "   Active Team Keys:     {} / {}",
+        r["team"]["active_keys"], r["team"]["total_keys"]
+    );
     println!("   Trails Searched:      {}", r["trails_searched"]);
     println!("   Hits Followed:        {}", r["hits_followed"]);
 
     println!("\n2. Colony Impact & Success Rate:");
-    println!("   Success Rate WITH:    {}% (followed trails that worked)", r["success_rate_with_colony"]);
+    println!(
+        "   Success Rate WITH:    {}% (followed trails that worked)",
+        r["success_rate_with_colony"]
+    );
     if r["holdouts_evaluated"].as_u64().unwrap_or(0) > 0 {
-        println!("   Success Rate WITHOUT: {}% (from {} randomized holdouts)", r["success_rate_without_colony"], r["holdouts_evaluated"]);
+        println!(
+            "   Success Rate WITHOUT: {}% (from {} randomized holdouts)",
+            r["success_rate_without_colony"], r["holdouts_evaluated"]
+        );
         let with_sr = r["success_rate_with_colony"].as_f64().unwrap_or(0.0);
         let without_sr = r["success_rate_without_colony"].as_f64().unwrap_or(0.0);
         if with_sr > without_sr {
-            println!("   Relative Lift:        +{:.1}% higher resolution rate with Colony", with_sr - without_sr);
+            println!(
+                "   Relative Lift:        +{:.1}% higher resolution rate with Colony",
+                with_sr - without_sr
+            );
         }
     } else {
-        println!("   Hold-out Status:      Off (Set holdout_percent in admin to activate randomized control group)");
+        println!(
+            "   Hold-out Status:      Off (Set holdout_percent in admin to activate randomized control group)"
+        );
     }
 
     println!("\n3. Measured Developer Savings (Telemetry):");
-    println!("   Tokens Saved:         {:.0} tokens", r["saved"]["tokens"].as_f64().unwrap_or(0.0));
-    println!("   Agent Time Saved:     {:.1} hours ({:.0} seconds)", r["saved"]["hours"].as_f64().unwrap_or(0.0), r["saved"]["seconds"].as_f64().unwrap_or(0.0));
-    println!("   Agent Turns Saved:    {:.0} turns", r["saved"]["turns"].as_f64().unwrap_or(0.0));
+    println!(
+        "   Tokens Saved:         {:.0} tokens",
+        r["saved"]["tokens"].as_f64().unwrap_or(0.0)
+    );
+    println!(
+        "   Agent Time Saved:     {:.1} hours ({:.0} seconds)",
+        r["saved"]["hours"].as_f64().unwrap_or(0.0),
+        r["saved"]["seconds"].as_f64().unwrap_or(0.0)
+    );
+    println!(
+        "   Agent Turns Saved:    {:.0} turns",
+        r["saved"]["turns"].as_f64().unwrap_or(0.0)
+    );
     if let Some(dollars) = r["saved"]["dollars"].as_f64() {
         println!("   Financial Savings:    ${:.2}", dollars);
     } else {
-        println!("   Financial Savings:    Configure model token prices in admin Settings to view dollar ROI");
+        println!(
+            "   Financial Savings:    Configure model token prices in admin Settings to view dollar ROI"
+        );
     }
 
     println!("\n4. Per-Problem Comparison (Baseline vs Colony):");
     let per = &r["per_problem"];
     let without = &per["without"];
     let with = &per["with"];
-    println!("   Without Colony:       {:.0} tokens | {:.1} mins | {:.0} turns",
+    println!(
+        "   Without Colony:       {:.0} tokens | {:.1} mins | {:.0} turns",
         without["tokens"].as_f64().unwrap_or(0.0),
         without["seconds"].as_f64().unwrap_or(0.0) / 60.0,
-        without["turns"].as_f64().unwrap_or(0.0));
-    println!("   With Colony:          {:.0} tokens | {:.1} mins | {:.0} turns",
+        without["turns"].as_f64().unwrap_or(0.0)
+    );
+    println!(
+        "   With Colony:          {:.0} tokens | {:.1} mins | {:.0} turns",
         with["tokens"].as_f64().unwrap_or(0.0),
         with["seconds"].as_f64().unwrap_or(0.0) / 60.0,
-        with["turns"].as_f64().unwrap_or(0.0));
+        with["turns"].as_f64().unwrap_or(0.0)
+    );
     println!("============================================================");
 
     Ok(())

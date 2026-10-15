@@ -266,14 +266,19 @@ pub(super) async fn add_person(
             return Err(ApiError::bad_request("count must be between 1 and 500."));
         }
         let prefix = body["prefix"].as_str().unwrap_or("pilot").trim();
-        let created = crate::access::generate_n(&mut st.redis(), count as usize, prefix, keys::now())
-            .await
-            .map_err(|e| internal(&e))?;
+        let created =
+            crate::access::generate_n(&mut st.redis(), count as usize, prefix, keys::now())
+                .await
+                .map_err(|e| internal(&e))?;
         let keys_json: Vec<Value> = created
             .iter()
             .map(|(p, k)| json!({ "name": p, "key": k }))
             .collect();
-        audit(&st, &format!("generated {count} keys with prefix '{prefix}'")).await;
+        audit(
+            &st,
+            &format!("generated {count} keys with prefix '{prefix}'"),
+        )
+        .await;
         return Ok(private((
             StatusCode::CREATED,
             Json(json!({ "created": keys_json, "keys": keys_json })),
@@ -289,7 +294,9 @@ pub(super) async fn add_person(
         for v in names_arr {
             let s = v.as_str().unwrap_or_default().trim().to_ascii_lowercase();
             if !crate::access::valid_person(&s) {
-                return Err(ApiError::bad_request(format!("{s:?} is not a valid name: 2-32 lowercase letters, digits, '.', '-' or '_'")));
+                return Err(ApiError::bad_request(format!(
+                    "{s:?} is not a valid name: 2-32 lowercase letters, digits, '.', '-' or '_'"
+                )));
             }
             names.push(s);
         }
@@ -307,7 +314,11 @@ pub(super) async fn add_person(
             .iter()
             .map(|(p, k)| json!({ "name": p, "key": k }))
             .collect();
-        audit(&st, &format!("batch keys created for {} people", created.len())).await;
+        audit(
+            &st,
+            &format!("batch keys created for {} people", created.len()),
+        )
+        .await;
         return Ok(private((
             StatusCode::CREATED,
             Json(json!({ "created": keys_json, "keys": keys_json })),
@@ -1081,7 +1092,11 @@ pub(super) async fn value(
         .await
         .map_err(|e| internal(&e))?;
     body["collecting"] = json!(st.cfg.private);
-    body["pilot_roi"] = json!(crate::effort::pilot_roi(&mut con, &st, 14, keys::now()).await.unwrap_or(Value::Null));
+    body["pilot_roi"] = json!(
+        crate::effort::pilot_roi(&mut con, &st, 14, keys::now())
+            .await
+            .unwrap_or(Value::Null)
+    );
     Ok(private(Json(body)))
 }
 

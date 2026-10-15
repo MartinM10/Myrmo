@@ -432,14 +432,14 @@ mod tests {
         let caller = Caller {
             agent: "person:martin".into(),
             declared: true,
-            client: "key:1234567890abcdef".into(),
-            key_hash: Some("1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef".into()),
+            client: "key:mock-client".into(),
+            key_hash: Some("mock-key-digest-hash".into()),
         };
         let dedup = match &caller.key_hash {
             Some(kh) => format!("key:{kh}"),
             None => caller.agent.clone(),
         };
-        assert_eq!(dedup, "key:1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef");
+        assert_eq!(dedup, "key:mock-key-digest-hash");
 
         // Without key_hash, it falls back to caller.agent
         let anon_caller = Caller {

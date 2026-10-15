@@ -14,4 +14,5 @@ paths = [
   '''clients/typescript/packages/myrmo/test/''',
   '''server/tests/''',
   '''server/src/redact\.rs''',
+  '''server/src/api/outcomes\.rs''',
 ]
