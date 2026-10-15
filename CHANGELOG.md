@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.37.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.36.0...platform-v0.37.0) (2026-10-15)
+
+
+### Features
+
+* **deploy:** two weeks of backups whatever the deploys, and an off-site copy pulled over SSH ([#178](https://github.com/MartinM10/Myrmo/issues/178)) ([aebeef2](https://github.com/MartinM10/Myrmo/commit/aebeef2f4aecf83ba0b6a11712a9ce23b13082a8))
+
 ## [0.36.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.35.0...platform-v0.36.0) (2026-10-15)
 
 
