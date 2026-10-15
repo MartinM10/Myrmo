@@ -392,18 +392,65 @@ describes that path only.
 | Publish | `POST /v1/trails` (`202`) |
 | Outcome report | `POST /v1/trails/{id}/outcomes` |
 
-Reported per scenario: requests per second, p50 and p99 latency, error rate, and the machine it ran
-on. The suite fails if any path has more than 1% errors or a p99 above one second.
+Reported per scenario: requests per second, p50, p95 and p99 latency, error rate, and the machine it ran
+on. k6 marks the run as failed if any path has more than 1% errors.
+
+### Run it on your machine
+
+Only Docker with Compose v2 is needed (Linux, macOS including Apple Silicon, or Windows with WSL2):
+
+```bash
+git clone https://github.com/MartinM10/Myrmo && cd Myrmo
+./bench/load/run.sh                    # 10,000 trails, 64 virtual users, 30 s per path
+./bench/load/run.sh --trails 100000    # the size of the published runs (indexing takes longer)
+```
+
+The script builds and starts a colony of its own (Compose project `myrmo-bench`, no published ports, so it never
+touches a colony already running on the machine), publishes the synthetic trails, waits until every one is indexed,
+pauses the enrichers, runs k6 one path at a time, and removes the colony and its data (`--keep` leaves it running).
+The first run builds the server and the embedding service natively for your CPU, which takes several minutes; later
+runs reuse the images and take about five minutes with the defaults.
+
+It ends with a block like this one, from a 64-vCPU server (run `load-20261015-155438`), also saved in
+`bench/results/load-<date>-<time>/summary.md`:
+
+```markdown
+### Myrmo load benchmark
+
+| Path | Requests/s | p50 | p95 | p99 | Errors |
+|---|---|---|---|---|---|
+| Fingerprint lookup | 31,024 | 1.9 ms | 2.9 ms | 4.6 ms | 0.00% |
+| Semantic search | 216 | 291 ms | 380 ms | 429 ms | 0.00% |
+| Semantic search (40 req/s) | 40.0 | 23.9 ms | 34.9 ms | 41.3 ms | 0.00% |
+| Publish (202) | 20,433 | 2.3 ms | 5.2 ms | 8.7 ms | 0.00% |
+| Outcome report | 17,768 | 3.4 ms | 4.6 ms | 6.4 ms | 0.00% |
+
+- **Machine:** Intel(R) Xeon(R) Platinum 8358 CPU @ 2.60GHz (64 cores, 64 threads), 126 GiB RAM, Ubuntu 24.04.5 LTS, x86_64
+- **Docker:** Docker 29.9.1 on Ubuntu 24.04.5 LTS (x86_64), 64 CPUs and 126 GiB available to containers
+- **Colony:** server 0.18.0, 10,000 synthetic trails, embeddings on CPU (one embed container), enrichers paused during the run
+- **Load:** 64 virtual users, 30 s per path, one path at a time, generator on the same machine
+- **Date:** 2026-10-15
+```
+
+Even with 64 cores, saturated semantic search stays near 200 requests per second: one embedding container does the
+work, and it is the place to scale (more replicas, or a GPU).
+
+The *Docker* line matters: Docker Desktop (macOS, Windows) runs containers in a VM with its own CPU and memory limits
+(Settings > Resources), and those bound the numbers more than the hardware does. Paste the block into a
+[Benchmark result](https://github.com/MartinM10/Myrmo/issues/new?template=benchmark-result.yml) issue: slow machines
+are as useful as fast ones.
+
+To run k6 against a colony you started yourself (the scale suite does), use the overrides by hand:
 
 ```bash
 docker compose -f docker-compose.yml -f bench/compose.yml up -d
-python bench/load/populate.py http://localhost:8080 100000     # synthetic trails
+python bench/load/populate.py http://localhost:8080 100000     # synthetic trails, targets in bench/load/targets.json
 docker compose -f docker-compose.yml -f bench/compose.yml run --rm loadtest
 ```
 
 > [!WARNING]
-> The bench overrides disable rate limiting and fill the colony with synthetic trails. Never run
-> them against a production colony.
+> The bench settings disable rate limiting and fill the colony with synthetic trails. Never point them at a
+> production colony.
 
 ### Latest results
 

@@ -1,0 +1,79 @@
+# The colony the load benchmark measures: run it with bench/load/run.sh, not by hand.
+# Its own project (myrmo-bench) and no published ports, so it never touches a colony already running on the machine.
+# No rate limits, no decision model (heuristic enrichment), four enrichers to index the synthetic trails quickly.
+name: myrmo-bench
+
+x-server-env: &server-env
+  REDIS_URL: redis://valkey:6379
+  QDRANT_URL: http://qdrant:6333
+  MYRMO_EMBED_URL: http://embed:80
+  MYRMO_DECISION_URL: ""
+  MYRMO_RATE_LIMIT: "0"
+  MYRMO_PUBLISH_LIMIT: "0"
+  MYRMO_QUEUE_MAX: "0"
+  RUST_LOG: warn
+
+services:
+  gateway:
+    build:
+      context: ../..
+      dockerfile: server/Dockerfile
+    image: myrmo/server:bench
+    command: ["serve"]
+    environment: *server-env
+    depends_on: [valkey, qdrant, embed]
+
+  enricher:
+    image: myrmo/server:bench
+    command: ["enrich"]
+    environment: *server-env
+    depends_on: [gateway]
+    deploy:
+      replicas: 4
+
+  valkey:
+    image: valkey/valkey:9.1-alpine
+    command: ["valkey-server", "--save", "", "--appendonly", "no"]
+
+  qdrant:
+    image: qdrant/qdrant:v1.19.2
+
+  embed:
+    build:
+      context: ../..
+      dockerfile: deploy/embed/Dockerfile
+      # Only the error model: the task model of a private colony is not measured here.
+      args:
+        TASK_MODEL: ""
+    image: myrmo/embed:bench
+
+  populate:
+    image: python:3.12-slim
+    profiles: ["tools"]
+    working_dir: /src
+    volumes:
+      - ../..:/src:ro
+      - ${MYRMO_BENCH_OUT:-../results/load-manual}:/out
+    command: ["python", "bench/load/populate.py", "http://gateway:8080", "${MYRMO_BENCH_TRAILS:-10000}", "/out/targets.json"]
+    depends_on: [gateway]
+
+  loadtest:
+    image: grafana/k6:1.3.0
+    profiles: ["tools"]
+    working_dir: /src/bench/load
+    volumes:
+      - ../..:/src:ro
+      - ${MYRMO_BENCH_OUT:-../results/load-manual}:/results
+    environment:
+      BASE: http://gateway:8080
+      VUS: ${MYRMO_BENCH_VUS:-64}
+      SECONDS: ${MYRMO_BENCH_SECONDS:-30}
+      TARGETS: /results/targets.json
+      OUT: /results
+      TRAILS: ${MYRMO_BENCH_TRAILS:-10000}
+      MACHINE: ${MYRMO_BENCH_MACHINE:-}
+      DOCKER: ${MYRMO_BENCH_DOCKER:-}
+      COLONY: ${MYRMO_BENCH_COLONY:-}
+      PRINT: "0"
+    command: ["run", "--quiet", "load.js"]
+    depends_on: [gateway]
