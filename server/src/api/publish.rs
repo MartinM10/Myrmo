@@ -266,6 +266,8 @@ pub(super) async fn create_draft(
         .arg(i32::from(caller.declared))
         .arg("client")
         .arg(&caller.client)
+        .arg("key_hash")
+        .arg(caller.key_hash.as_deref().unwrap_or_default())
         .ignore()
         .cmd("EXPIRE")
         .arg(keys::draft(&token))
@@ -393,6 +395,7 @@ pub(super) async fn publish_draft(
         agent: draft.get("agent").cloned().unwrap_or_default(),
         declared: draft.get("declared").is_some_and(|d| d == "1"),
         client: draft.get("client").cloned().unwrap_or_default(),
+        key_hash: draft.get("key_hash").filter(|h| !h.is_empty()).cloned(),
     };
     let result = async {
         // The creator's quota applies, not the approver's: the person approving is not the agent.

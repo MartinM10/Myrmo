@@ -4,8 +4,9 @@
 //!   myrmo-server enrich   enrichment worker (run as many as needed)
 //!   myrmo-server all      both in one process, for small deployments
 //!   myrmo-server migrate-fingerprints   refile every trail under its fp2 (also done once, in the background, at start)
-//!   myrmo-server keys add <person> | list | revoke <person>   access keys of a private colony (MYRMO_REQUIRE_KEY=1)
+//!   myrmo-server keys add <person> | generate <N> | list | revoke <person> [--erase]
 //!   myrmo-server team-report [days]   what each person of a private colony did with it, and reuse between people
+//!   myrmo-server pilot-roi [days]     executive ROI summary for 2-week pilots (searches, lift, savings)
 
 mod access;
 mod analytics;
@@ -65,6 +66,11 @@ async fn main() -> Result<()> {
     }
     let st = state::AppState::connect(cfg.clone()).await?;
 
+    if mode == "pilot-roi" {
+        let args: Vec<String> = std::env::args().skip(2).collect();
+        return effort::cli_pilot_roi(&st, &args).await;
+    }
+
     if matches!(mode.as_str(), "serve" | "enrich" | "all") {
         // Trails filed under the retired fp1 are moved to fp2 once, without holding anything up.
         let moving = st.clone();
@@ -99,7 +105,7 @@ async fn main() -> Result<()> {
             serve(st).await
         }
         other => anyhow::bail!(
-            "unknown mode {other:?}; expected serve, enrich, all, migrate-fingerprints, keys or team-report"
+            "unknown mode {other:?}; expected serve, enrich, all, migrate-fingerprints, keys, team-report or pilot-roi"
         ),
     }
 }

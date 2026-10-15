@@ -98,7 +98,12 @@ pub(super) async fn by_fingerprint(
     }
     if hold_out(&st, &caller, &fp, keys::now()).await {
         let err = json!({ "error": { "code": "not_found", "message": "No trail for this fingerprint yet." } });
-        return Ok(cacheable(err, StatusCode::NOT_FOUND, 60));
+        let mut res = (StatusCode::NOT_FOUND, Json(err)).into_response();
+        res.headers_mut().insert(
+            header::CACHE_CONTROL,
+            HeaderValue::from_static("private, no-cache, no-store"),
+        );
+        return Ok(res);
     }
     let mut con = st.redis();
     let cached: Option<String> = con.get(keys::fingerprint_cache(&fp)).await?;

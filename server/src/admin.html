@@ -2338,6 +2338,53 @@ async function value(view) {
     !v.collecting ? el("div", { className: "alert-banner info", style: "margin-bottom:20px" }, el("span", { className: "alert-text" }, "Only an organisation's private colony collects measured effort.")) : null,
     (v.prices_missing || []).length ? el("div", { className: "alert-banner warn", style: "margin-bottom:20px" },
       el("span", { className: "alert-text" }, "No price for " + v.prices_missing.join(", ") + ": dollars are left out where they are used. Add them in Settings.")) : null,
+    (() => {
+      const roi = v.pilot_roi;
+      if (!roi) return null;
+      return el("div", { className: "stat-card", style: "margin-bottom:20px;border-color:var(--amber)" },
+        el("div", { style: "display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:12px" },
+          el("div", {},
+            el("div", { style: "display:flex;align-items:center;gap:8px" },
+              el("span", { style: "color:var(--amber);font-size:1.15rem" }, "🚀"),
+              el("h2", { style: "margin:0;font:600 1.15rem var(--f-display)" }, "2-Week Pilot ROI Summary")),
+            el("p", { className: "hint", style: "margin:2px 0 0" }, `Period: ${roi.period?.from || "–"} to ${roi.period?.to || "–"} (${roi.pilot_days} days) · ${roi.team?.active_keys || 0} active developer keys`)),
+          el("button", { className: "btn btn-act btn-sm", onclick: (e) => {
+            const report = `# Myrmo Pilot ROI Summary (${roi.pilot_days} Days)
+**Period:** ${roi.period?.from} to ${roi.period?.to}
+**Team Engagement:** ${roi.team?.active_keys} active keys, ${num(roi.trails_searched)} trails searched, ${num(roi.hits_followed)} hits followed.
+
+## Colony Impact & Resolution Rate
+- **Success Rate with Colony:** ${roi.success_rate_with_colony}% (followed trails that worked)
+- **Success Rate without Colony:** ${roi.success_rate_without_colony}% (${roi.holdout_percent > 0 ? "randomized holdout" : "unaided baseline"})
+${roi.success_rate_with_colony > roi.success_rate_without_colony ? `- **Net Resolution Lift:** +${(roi.success_rate_with_colony - roi.success_rate_without_colony).toFixed(1)}%` : ""}
+
+## Measured Developer Savings
+- **Tokens Saved:** ${num(roi.saved.tokens)}
+- **Engineering Time Saved:** ${roi.saved.hours} hours (${num(roi.saved.seconds)} seconds)
+- **Agent Turns Saved:** ${num(roi.saved.turns)} turns
+${roi.saved.dollars != null ? `- **Financial Savings:** $${Number(roi.saved.dollars).toFixed(2)}` : ""}
+
+## Per-Problem Comparison
+- **With Colony:** ${num(roi.per_problem?.with?.tokens)} tokens | ${(roi.per_problem?.with?.seconds / 60).toFixed(1)} mins | ${num(roi.per_problem?.with?.turns)} turns
+- **Without Colony:** ${num(roi.per_problem?.without?.tokens)} tokens | ${(roi.per_problem?.without?.seconds / 60).toFixed(1)} mins | ${num(roi.per_problem?.without?.turns)} turns
+`;
+            copyToClipboard(report, e.target);
+            showToast("Pilot ROI report copied to clipboard!");
+          } }, "📋 Copy Pilot ROI Report")),
+        el("div", { style: "display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:12px" },
+          kpi(num(roi.trails_searched), "Trails Searched", `${num(roi.team?.active_keys || 0)} developers`),
+          kpi(num(roi.hits_followed), "Hits Followed", `${num(roi.aided_records || 0)} aided fixes`),
+          kpi(`${roi.success_rate_with_colony}%`, "Success Rate (With Colony)", "followed hits that worked"),
+          kpi(`${roi.success_rate_without_colony}%`, "Success Rate (Without)", roi.holdout_percent > 0 ? `${roi.holdout_percent}% hold-out control` : "unaided baseline"),
+          kpi(num(roi.saved.tokens), "Tokens Saved", roi.baseline_method === "holdout" ? "randomized hold-out" : "before & after"),
+          kpi(`${roi.saved.hours} h`, "Dev Time Saved", `${num(roi.saved.turns)} turns saved`),
+          kpi(roi.saved.dollars != null ? "$" + Number(roi.saved.dollars).toFixed(2) : "–", "Cost Saved", roi.saved.dollars != null ? "at your token prices" : "set in Settings")),
+        el("div", { className: "hint", style: "border-top:1px solid var(--tunnel);padding-top:8px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px" },
+          el("span", {}, roi.holdouts_evaluated > 0
+            ? `Control group: ${num(roi.holdouts_evaluated)} lookups held out at random (${roi.holdout_percent}%). Resolution lift: +${(roi.success_rate_with_colony - roi.success_rate_without_colony).toFixed(1)}% higher success.`
+            : "Hold-out is inactive. Enable a 5-10% hold-out in Settings to measure against a randomized control group."),
+          el("span", {}, `Measured per-problem: ${(roi.per_problem?.with?.seconds / 60).toFixed(1)}m with colony vs ${(roi.per_problem?.without?.seconds / 60).toFixed(1)}m without.`)));
+    })(),
     estimateCard("Before and after", v.before_after, "Every error measured both without help and with it. An estimate: errors people solved alone may differ from the ones the colony knew."),
     estimateCard("Hold-out (randomised)", v.holdout, v.holdout_percent
       ? `${v.holdout_percent}% of error lookups are answered with nothing at random; those problems are the control group, so this difference is caused by the colony.`
@@ -2412,30 +2459,105 @@ async function people(view) {
   const note = el("p", { style: "font-size:.86rem;margin-top:8px" });
   const secret = el("div", { hidden: true });
 
+  const showSingleSecret = (made) => {
+    nameInput.value = ""; say(note, "");
+    const inviteMsg = invitation(made.name, made.key, data.people_detail);
+    const text = el("textarea", { readOnly: true, value: inviteMsg, style: "min-height:220px;font-family:var(--f-display);font-size:.82rem" });
+    const copyBtn = el("button", { className: "btn btn-act", onclick: () => copyToClipboard(inviteMsg, copyBtn) }, "Copy Invitation");
+
+    secret.hidden = false;
+    secret.className = "stat-card";
+    secret.style.borderColor = "var(--amber)";
+    secret.style.marginTop = "16px";
+    setChildren(secret, 
+      el("div", { style: "display:flex;align-items:center;gap:8px;margin-bottom:8px" },
+        el("span", { style: "color:var(--amber);font-size:1.1rem" }, "🔑"),
+        el("b", { style: "color:var(--chalk)" }, "Access key created for " + made.name + ". Shown only once!")),
+      el("p", { className: "hint", style: "margin:0 0 10px" }, "The private key is cryptographically salted and cannot be recovered later."),
+      text,
+      el("div", { style: "display:flex;gap:8px;margin-top:10px" }, copyBtn,
+        el("button", { className: "btn btn-quiet", onclick: () => show("people") }, "Done & Dismiss")));
+  };
+
+  const showBatchSecret = (keys) => {
+    say(note, "");
+    secret.hidden = false;
+    secret.className = "stat-card";
+    secret.style.borderColor = "var(--amber)";
+    secret.style.marginTop = "16px";
+
+    const allInvites = keys.map((k) => `# ${k.name}\n${invitation(k.name, k.key, data.people_detail)}`).join("\n" + "=".repeat(60) + "\n\n");
+    const initCmds = keys.map((k) => `${k.name}: npx myrmo-mcp@latest init --url ${location.origin} --key ${k.key} --private --publish auto`).join("\n");
+    const csv = ["name,key,init_command", ...keys.map((k) => `"${k.name}","${k.key}","npx myrmo-mcp@latest init --url ${location.origin} --key ${k.key} --private --publish auto"`)].join("\n");
+
+    const text = el("textarea", { readOnly: true, value: initCmds, style: "min-height:160px;font-family:var(--f-display);font-size:.82rem;width:100%" });
+
+    const copyCmdsBtn = el("button", { className: "btn btn-act", onclick: () => copyToClipboard(initCmds, copyCmdsBtn) }, "Copy Setup Commands");
+    const copyInvitesBtn = el("button", { className: "btn btn-quiet", onclick: () => copyToClipboard(allInvites, copyInvitesBtn) }, "Copy All Invitations");
+    const copyCsvBtn = el("button", { className: "btn btn-quiet", onclick: () => copyToClipboard(csv, copyCsvBtn) }, "Copy CSV");
+
+    const keyRows = keys.map((k) => {
+      const copyRowBtn = el("button", { className: "copy-code-btn", style: "padding:2px 8px;font-size:.72rem", onclick: () => copyToClipboard(`npx myrmo-mcp@latest init --url ${location.origin} --key ${k.key} --private --publish auto`, copyRowBtn) }, "Copy Command");
+      return el("tr", {},
+        el("td", { style: "padding:6px 10px;font-weight:600;font-family:var(--f-display)" }, k.name),
+        el("td", { style: "padding:6px 10px;font-family:var(--f-display);color:var(--dust);font-size:.8rem" }, k.key),
+        el("td", { style: "padding:6px 10px;text-align:right" }, copyRowBtn));
+    });
+
+    const keysTable = el("div", { style: "max-height:200px;overflow-y:auto;border:1px solid var(--wall);border-radius:var(--radius-sm);margin-bottom:12px;background:var(--soil)" },
+      el("table", { style: "width:100%;border-collapse:collapse;font-size:.82rem" },
+        el("thead", {},
+          el("tr", { style: "border-bottom:1px solid var(--wall);color:var(--dust);text-align:left" },
+            el("th", { style: "padding:6px 10px" }, "Member"),
+            el("th", { style: "padding:6px 10px" }, "Access Key"),
+            el("th", { style: "padding:6px 10px;text-align:right" }, "Action"))),
+        el("tbody", {}, ...keyRows)));
+
+    setChildren(secret,
+      el("div", { style: "display:flex;align-items:center;gap:8px;margin-bottom:8px" },
+        el("span", { style: "color:var(--amber);font-size:1.1rem" }, "🔑"),
+        el("b", { style: "color:var(--chalk)" }, `${keys.length} Access keys generated for team pilot. Shown only once!`)),
+      el("p", { className: "hint", style: "margin:0 0 10px" }, "These private keys are cryptographically salted and cannot be recovered later. Distribute them to pilot participants."),
+      keysTable,
+      text,
+      el("div", { style: "display:flex;gap:8px;margin-top:10px;flex-wrap:wrap" },
+        copyCmdsBtn, copyInvitesBtn, copyCsvBtn,
+        el("button", { className: "btn btn-quiet", onclick: () => show("people") }, "Done & Dismiss")));
+  };
+
   const nameInput = el("input", { type: "text", placeholder: "e.g. ana, dev-lead, alex", maxLength: 32, autocomplete: "off", spellcheck: false });
   const addBtn = el("button", { className: "btn btn-act", onclick: async () => {
     const who = nameInput.value.trim().toLowerCase();
     if (!who) return;
     try {
       const made = await api("/v1/admin/people", { method: "POST", body: JSON.stringify({ name: who }) });
-      nameInput.value = ""; say(note, "");
-      const inviteMsg = invitation(made.name, made.key, data.people_detail);
-      const text = el("textarea", { readOnly: true, value: inviteMsg, style: "min-height:220px;font-family:var(--f-display);font-size:.82rem" });
-      const copyBtn = el("button", { className: "btn btn-act", onclick: () => copyToClipboard(inviteMsg, copyBtn) }, "Copy Invitation");
-
-      secret.hidden = false;
-      secret.className = "stat-card";
-      secret.style.borderColor = "var(--amber)";
-      setChildren(secret, 
-        el("div", { style: "display:flex;align-items:center;gap:8px;margin-bottom:8px" },
-          el("span", { style: "color:var(--amber);font-size:1.1rem" }, "🔑"),
-          el("b", { style: "color:var(--chalk)" }, "Access key created for " + made.name + ". Shown only once!")),
-        el("p", { className: "hint", style: "margin:0 0 10px" }, "The private key is cryptographically salted and cannot be recovered later."),
-        text,
-        el("div", { style: "display:flex;gap:8px;margin-top:10px" }, copyBtn,
-          el("button", { className: "btn btn-quiet", onclick: () => show("people") }, "Done & Dismiss")));
+      showSingleSecret(made);
     } catch (err) { say(note, err.message, "bad"); }
   } }, "Generate Key & Invite");
+
+  const countInput = el("input", { type: "number", value: "10", min: "1", max: "250", style: "width:70px", title: "Number of keys to generate" });
+  const prefixInput = el("input", { type: "text", value: "pilot", placeholder: "prefix", maxLength: 20, style: "width:110px", autocomplete: "off", spellcheck: false });
+  const genBatchBtn = el("button", { className: "btn btn-act", onclick: async () => {
+    const count = parseInt(countInput.value, 10) || 10;
+    const prefix = prefixInput.value.trim().toLowerCase() || "pilot";
+    try {
+      const made = await api("/v1/admin/people", { method: "POST", body: JSON.stringify({ count, prefix }) });
+      if (made.keys && made.keys.length) showBatchSecret(made.keys);
+    } catch (err) { say(note, err.message, "bad"); }
+  } }, "Generate Pilot Keys");
+
+  const batchNamesInput = el("input", { type: "text", placeholder: "or comma-separated handles: ana, bob, carlos, dev-lead", style: "flex:1", autocomplete: "off", spellcheck: false });
+  const addNamesBtn = el("button", { className: "btn btn-quiet", onclick: async () => {
+    const raw = batchNamesInput.value.trim();
+    if (!raw) return;
+    const names = raw.split(/[\s,]+/).filter(Boolean);
+    if (!names.length) return;
+    try {
+      const made = await api("/v1/admin/people", { method: "POST", body: JSON.stringify({ names }) });
+      batchNamesInput.value = "";
+      if (made.keys && made.keys.length) showBatchSecret(made.keys);
+    } catch (err) { say(note, err.message, "bad"); }
+  } }, "Create Named Batch");
 
   const released = data.released || {};
   const older = (a, b) => {
@@ -2484,9 +2606,21 @@ async function people(view) {
         el("h1", {}, "Team Access & Keys"),
         el("p", {}, "Manage developer keys, inspect agent client versions, and monitor team collective contributions."))),
     el("div", { className: "stat-card", style: "margin-bottom:20px" },
-      el("h2", { style: "margin:0 0 6px;font:600 1.05rem var(--f-display)" }, "Invite New Member"),
-      el("p", { className: "hint", style: "margin:0 0 12px" }, "Enter a handle (lowercase letters, digits, '.', '-', '_') to generate an operator invite."),
-      el("div", { style: "display:flex;gap:8px;max-width:440px" }, nameInput, addBtn),
+      el("h2", { style: "margin:0 0 6px;font:600 1.05rem var(--f-display)" }, "Invite Members & Pilot Keys"),
+      el("p", { className: "hint", style: "margin:0 0 14px" }, "Generate individual access keys for single developers or batch-generate keys for a 2-week team pilot."),
+      el("div", { style: "display:grid;gap:14px" },
+        el("div", {},
+          el("div", { style: "font:600 .78rem var(--f-display);color:var(--chalk);margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em" }, "Single Member"),
+          el("div", { style: "display:flex;gap:8px;max-width:440px" }, nameInput, addBtn)),
+        el("div", { style: "border-top:1px solid var(--wall);padding-top:14px" },
+          el("div", { style: "font:600 .78rem var(--f-display);color:var(--amber-ink);margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em" }, "🚀 B2B Pilot Batch Generation"),
+          el("p", { className: "hint", style: "margin:0 0 8px" }, "Generate N numbered keys (e.g. pilot-01..pilot-10) with one click:"),
+          el("div", { style: "display:flex;gap:8px;align-items:center;flex-wrap:wrap" },
+            el("span", { style: "font-size:.82rem;color:var(--dust)" }, "Count:"), countInput,
+            el("span", { style: "font-size:.82rem;color:var(--dust)" }, "Prefix:"), prefixInput,
+            genBatchBtn),
+          el("div", { style: "display:flex;gap:8px;margin-top:10px;align-items:center" },
+            batchNamesInput, addNamesBtn))),
       note,
       secret),
     el("div", { className: "stat-card", style: "margin-bottom:20px" },

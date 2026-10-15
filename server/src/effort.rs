@@ -638,6 +638,199 @@ pub async fn of_trail<C: ConnectionLike + Send>(
     Ok((n > 0).then(|| json!({ "records": n, "tokens": tokens / n, "seconds": seconds / n })))
 }
 
+/// Detailed summary of a Pilot's ROI (searches, followed hits, success rate with vs without colony, tokens/time saved).
+pub async fn pilot_roi<C: ConnectionLike + Send>(
+    con: &mut C,
+    st: &crate::state::AppState,
+    days: i64,
+    now: i64,
+) -> anyhow::Result<Value> {
+    let days = days.clamp(1, 90);
+    let start_ts = now - (days - 1) * 86_400;
+    let from_date = chrono::DateTime::from_timestamp(start_ts, 0)
+        .unwrap_or_default()
+        .format("%Y-%m-%d")
+        .to_string();
+    let to_date = chrono::DateTime::from_timestamp(now, 0)
+        .unwrap_or_default()
+        .format("%Y-%m-%d")
+        .to_string();
+
+    // 1. Team search & report activity over the pilot period
+    let (tally, _) = crate::team::summary(con, days, now, 1000).await?;
+    let mut total_searches = 0u64;
+    let mut used_worked = 0u64;
+    let mut used_partially = 0u64;
+    let mut used_failed = 0u64;
+    let mut used_na = 0u64;
+    let mut reports_count = 0u64;
+
+    for counts in tally.values() {
+        let get = |k: &str| counts.get(k).copied().unwrap_or(0) as u64;
+        total_searches += get("searches");
+        reports_count += get("reports");
+        used_worked += get("used_worked") + get("reuse_worked");
+        used_partially += get("used_partially_worked") + get("reuse_partially_worked");
+        used_failed += get("used_failed") + get("reuse_failed");
+        used_na += get("used_not_applicable") + get("reuse_not_applicable");
+    }
+    let hits_followed = (used_worked + used_partially + used_failed + used_na).max(reports_count);
+
+    // 2. Success rate with colony
+    let total_with_evaluated = used_worked + used_partially + used_failed;
+    let success_rate_with_colony = if total_with_evaluated > 0 {
+        round2((used_worked + used_partially) as f64 / total_with_evaluated as f64 * 100.0)
+    } else {
+        0.0
+    };
+
+    // 3. Hold-out lookups & success rate without colony
+    let mut holdouts_evaluated = 0u64;
+    for d in 0..days {
+        let ts = now - d * 86_400;
+        let holdout_n: Option<u64> = redis::cmd("HGET")
+            .arg(crate::analytics::day_key(ts))
+            .arg("holdout")
+            .query_async(con)
+            .await
+            .unwrap_or(None);
+        holdouts_evaluated += holdout_n.unwrap_or(0);
+    }
+
+    let daily_effort = daily(con, days, now).await?;
+    let mut holdout_solved = 0u64;
+    let mut unaided_solved = 0u64;
+    let mut aided_solved = 0u64;
+    for d in &daily_effort {
+        holdout_solved += d["holdout"].as_u64().unwrap_or(0);
+        unaided_solved += d["unaided"].as_u64().unwrap_or(0);
+        aided_solved += d["aided"].as_u64().unwrap_or(0);
+    }
+
+    let success_rate_without_colony = if holdouts_evaluated > 0 {
+        round2((holdout_solved as f64 / holdouts_evaluated as f64 * 100.0).clamp(0.0, 100.0))
+    } else if total_searches > 0 && unaided_solved > 0 {
+        round2((unaided_solved as f64 / total_searches as f64 * 100.0).clamp(0.0, 100.0))
+    } else {
+        0.0
+    };
+
+    // 4. Measured savings (from effort records)
+    let per_fp = load(con).await?;
+    let live = crate::api::admin::live(st).await;
+    let val = value(&per_fp, &live.prices);
+    let holdout_est = &val["holdout"];
+    let before_after_est = &val["before_after"];
+
+    let has_holdout_errors = holdout_est["errors"].as_u64().unwrap_or(0) > 0;
+    let primary_est = if has_holdout_errors {
+        holdout_est
+    } else {
+        before_after_est
+    };
+
+    let saved = &primary_est["saved"];
+    let tokens_saved = saved["tokens"].as_f64().unwrap_or(0.0);
+    let seconds_saved = saved["seconds"].as_f64().unwrap_or(0.0);
+    let turns_saved = saved["turns"].as_f64().unwrap_or(0.0);
+    let dollars_saved = saved["dollars"].as_f64();
+
+    // 5. Team keys & participation
+    let all_keys = crate::access::list(con).await.unwrap_or_default();
+    let total_keys = all_keys.len() as u64;
+    let last_seen_map = crate::team::last_seen(con).await.unwrap_or_default();
+    let since = now - days * 86_400;
+    let active_keys = last_seen_map.values().filter(|ts| **ts >= since).count() as u64;
+
+    Ok(json!({
+        "pilot_days": days,
+        "period": { "from": from_date, "to": to_date },
+        "trails_searched": total_searches,
+        "hits_followed": hits_followed,
+        "success_rate_with_colony": success_rate_with_colony,
+        "success_rate_without_colony": success_rate_without_colony,
+        "holdout_percent": live.holdout_percent,
+        "holdouts_evaluated": holdouts_evaluated,
+        "holdout_solved": holdout_solved,
+        "aided_records": aided_solved,
+        "saved": {
+            "tokens": tokens_saved,
+            "seconds": seconds_saved,
+            "hours": round2(seconds_saved / 3600.0),
+            "turns": turns_saved,
+            "dollars": dollars_saved,
+        },
+        "per_problem": primary_est["per_problem"],
+        "baseline_method": if has_holdout_errors { "holdout" } else { "before_after" },
+        "team": {
+            "total_keys": total_keys,
+            "active_keys": active_keys,
+            "contributors": contributors(con).await.unwrap_or(json!({})),
+        }
+    }))
+}
+
+/// CLI command `myrmo-server pilot-roi [days]`
+pub async fn cli_pilot_roi(st: &crate::state::AppState, args: &[String]) -> anyhow::Result<()> {
+    let days: i64 = args
+        .first()
+        .map(|d| d.parse())
+        .transpose()?
+        .unwrap_or(14)
+        .clamp(1, 90);
+    let mut con = st.redis();
+    let r = pilot_roi(&mut con, st, days, crate::keys::now()).await?;
+
+    println!("============================================================");
+    println!("                   MYRMO PILOT ROI SUMMARY                  ");
+    println!("        Period: Last {} days ({} to {})", r["pilot_days"], r["period"]["from"].as_str().unwrap_or(""), r["period"]["to"].as_str().unwrap_or(""));
+    println!("============================================================\n");
+
+    println!("1. Team Engagement:");
+    println!("   Active Team Keys:     {} / {}", r["team"]["active_keys"], r["team"]["total_keys"]);
+    println!("   Trails Searched:      {}", r["trails_searched"]);
+    println!("   Hits Followed:        {}", r["hits_followed"]);
+
+    println!("\n2. Colony Impact & Success Rate:");
+    println!("   Success Rate WITH:    {}% (followed trails that worked)", r["success_rate_with_colony"]);
+    if r["holdouts_evaluated"].as_u64().unwrap_or(0) > 0 {
+        println!("   Success Rate WITHOUT: {}% (from {} randomized holdouts)", r["success_rate_without_colony"], r["holdouts_evaluated"]);
+        let with_sr = r["success_rate_with_colony"].as_f64().unwrap_or(0.0);
+        let without_sr = r["success_rate_without_colony"].as_f64().unwrap_or(0.0);
+        if with_sr > without_sr {
+            println!("   Relative Lift:        +{:.1}% higher resolution rate with Colony", with_sr - without_sr);
+        }
+    } else {
+        println!("   Hold-out Status:      Off (Set holdout_percent in admin to activate randomized control group)");
+    }
+
+    println!("\n3. Measured Developer Savings (Telemetry):");
+    println!("   Tokens Saved:         {:.0} tokens", r["saved"]["tokens"].as_f64().unwrap_or(0.0));
+    println!("   Agent Time Saved:     {:.1} hours ({:.0} seconds)", r["saved"]["hours"].as_f64().unwrap_or(0.0), r["saved"]["seconds"].as_f64().unwrap_or(0.0));
+    println!("   Agent Turns Saved:    {:.0} turns", r["saved"]["turns"].as_f64().unwrap_or(0.0));
+    if let Some(dollars) = r["saved"]["dollars"].as_f64() {
+        println!("   Financial Savings:    ${:.2}", dollars);
+    } else {
+        println!("   Financial Savings:    Configure model token prices in admin Settings to view dollar ROI");
+    }
+
+    println!("\n4. Per-Problem Comparison (Baseline vs Colony):");
+    let per = &r["per_problem"];
+    let without = &per["without"];
+    let with = &per["with"];
+    println!("   Without Colony:       {:.0} tokens | {:.1} mins | {:.0} turns",
+        without["tokens"].as_f64().unwrap_or(0.0),
+        without["seconds"].as_f64().unwrap_or(0.0) / 60.0,
+        without["turns"].as_f64().unwrap_or(0.0));
+    println!("   With Colony:          {:.0} tokens | {:.1} mins | {:.0} turns",
+        with["tokens"].as_f64().unwrap_or(0.0),
+        with["seconds"].as_f64().unwrap_or(0.0) / 60.0,
+        with["turns"].as_f64().unwrap_or(0.0));
+    println!("============================================================");
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

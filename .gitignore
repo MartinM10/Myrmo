@@ -24,3 +24,5 @@ seed-out/
 /myrmo-film-small.mp4
 # MyrmoBench agent transcripts: raw model output, kept locally for analysis only
 bench/results/*/transcripts/
+target/
+server/target/

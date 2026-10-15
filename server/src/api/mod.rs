@@ -13,8 +13,9 @@ mod trails;
 
 use admin::{
     activity as admin_activity, add_person, audit_list, gaps as admin_gaps, get_settings,
-    knowledge as admin_knowledge, map as admin_map, page as admin_page, people, put_settings,
-    refused, revoke_person, trails as admin_trails, value as admin_value,
+    knowledge as admin_knowledge, map as admin_map, page as admin_page, people,
+    pilot_roi as admin_pilot_roi, put_settings, refused, revoke_person, trails as admin_trails,
+    value as admin_value,
 };
 use effort::report_effort;
 use feed::{activity, analytics, demand, feed, stats};
@@ -88,6 +89,7 @@ pub fn router(state: AppState) -> Router {
         .route("/v1/admin/map", get(admin_map))
         .route("/v1/admin/refused", get(refused))
         .route("/v1/admin/value", get(admin_value))
+        .route("/v1/admin/pilot-roi", get(admin_pilot_roi))
         .layer(middleware::from_fn_with_state(state.clone(), rate_limit))
         .route("/admin", get(admin_page))
         .route("/healthz", get(|| async { "ok" }))
@@ -274,20 +276,24 @@ fn parse_body(body: Result<Bytes, BytesRejection>) -> ApiResult<Value> {
 
 /// Who is calling: a pseudonymous client key (daily-rotated hash of the address) and
 /// the agent key used for de-duplication (`X-Myrmo-Agent` when valid, else the client).
-#[derive(Clone)]
+/// When an API key is authenticated, `key_hash` holds the key's digest, and `client` is bound
+/// strictly to that key hash to prevent sybil inflation.
+#[derive(Clone, Debug)]
 pub struct Caller {
     pub agent: String,
-    /// The caller sent a valid `X-Myrmo-Agent`; `agent` is not just the address hash.
+    /// The caller sent a valid `X-Myrmo-Agent` or authenticated with an access key; `agent` is not just the address hash.
     pub declared: bool,
-    /// Daily-rotated hash of the address. Unlike `agent`, the caller cannot choose it, so
-    /// quotas are counted against it.
+    /// Daily-rotated hash of the address, or key hash prefix when an API key is used. Unlike `agent`, the caller cannot choose it, so
+    /// quotas and rate limits are counted against it.
     pub client: String,
+    /// The authenticated API key digest (SHA-256), if the request carried a valid access key.
+    pub key_hash: Option<String>,
 }
 
 /// On a colony that requires keys: the agent id of the person whose key the request carries (`None` for the operator
-/// token, which acts under the address). A missing or unknown key is refused, and so is every request while Valkey
-/// cannot say whose a key is: unlike the rate limiter, access fails closed.
-async fn key_holder(st: &AppState, headers: &HeaderMap) -> ApiResult<Option<String>> {
+/// token, which acts under the address) and the key's digest. A missing or unknown key is refused, and so is every
+/// request while Valkey cannot say whose a key is: unlike the rate limiter, access fails closed.
+async fn key_holder(st: &AppState, headers: &HeaderMap) -> ApiResult<Option<(String, String)>> {
     let unauthorized = || {
         ApiError::new(
             StatusCode::UNAUTHORIZED,
@@ -310,8 +316,8 @@ async fn key_holder(st: &AppState, headers: &HeaderMap) -> ApiResult<Option<Stri
         return Ok(None);
     }
     let mut con = st.redis();
-    match crate::access::person_of(&mut con, given).await {
-        Ok(Some(person)) => Ok(Some(crate::access::agent_of(&person))),
+    match crate::access::authenticate(&mut con, given).await {
+        Ok(Some((person, digest))) => Ok(Some((crate::access::agent_of(&person), digest))),
         Ok(None) => Err(unauthorized()),
         Err(err) => {
             tracing::warn!(error = %err, "access keys unavailable");
@@ -365,31 +371,58 @@ async fn rate_limit(
             .and_then(|v| v.to_str().ok()),
         &st.cfg.trusted_proxies,
     );
-    let client = keys::client_key(&st.cfg.salt, &address);
-    let declared_agent = if st.cfg.require_key {
+    let ip_client = keys::client_key(&st.cfg.salt, &address);
+
+    let (declared_agent, key_hash) = if st.cfg.require_key {
         match key_holder(&st, req.headers()).await {
-            Ok(holder) => holder,
+            Ok(Some((agent, digest))) => (Some(agent), Some(digest)),
+            Ok(None) => (None, None),
             Err(err) => return err.into_response(),
         }
     } else {
-        req.headers()
-            .get("x-myrmo-agent")
-            .and_then(|v| v.to_str().ok())
-            .filter(|v| valid_agent_id(v))
-            .map(str::to_string)
+        // Even when keys are not strictly required, if a valid access key is sent,
+        // authenticate with it so identity and quotas are strictly tied to the key.
+        let bearer_key = crate::access::bearer(
+            req.headers()
+                .get(header::AUTHORIZATION)
+                .and_then(|v| v.to_str().ok()),
+        );
+        let mut key_auth = None;
+        if let Some(key) = bearer_key.filter(|k| k.starts_with(crate::access::PREFIX)) {
+            let mut con = st.redis();
+            if let Ok(Some((person, digest))) = crate::access::authenticate(&mut con, key).await {
+                key_auth = Some((crate::access::agent_of(&person), digest));
+            }
+        }
+        if let Some((agent, digest)) = key_auth {
+            (Some(agent), Some(digest))
+        } else {
+            let declared = req
+                .headers()
+                .get("x-myrmo-agent")
+                .and_then(|v| v.to_str().ok())
+                .filter(|v| valid_agent_id(v))
+                .map(str::to_string);
+            (declared, None)
+        }
     };
     let declared = declared_agent.is_some();
-    // With keys, the person is known, so everything counted per address (who published a trail, places per trail,
-    // hourly totals, quotas) is counted per person: a team behind one office address or VPN is not one caller.
-    let client = match &declared_agent {
-        Some(person) if st.cfg.require_key => person.clone(),
-        _ => client,
+    // With keys, the caller identity is strictly bound to the authenticated key hash.
+    // Quotas and rate limits are counted against key:{digest}, eliminating sybil inflation
+    // from self-declared agent ids.
+    let client = match &key_hash {
+        Some(digest) => format!("key:{}", &digest[..16]),
+        None => match &declared_agent {
+            Some(person) if st.cfg.require_key => person.clone(),
+            _ => ip_client,
+        },
     };
     let agent = declared_agent.unwrap_or_else(|| client.clone());
     req.extensions_mut().insert(Caller {
         agent: agent.clone(),
         declared,
         client: client.clone(),
+        key_hash,
     });
 
     let now = keys::now();

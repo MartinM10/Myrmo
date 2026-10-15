@@ -19,7 +19,7 @@ const PAGE: &str = include_str!("../admin.html");
 
 /// What may be changed while the colony runs. Each falls back to the environment variable it came from.
 #[derive(Clone)]
-pub(super) struct Live {
+pub(crate) struct Live {
     pub allowed: Vec<Cidr>,
     pub rate_limit: u64,
     pub publish_limit: u64,
@@ -50,7 +50,7 @@ fn from_environment(st: &AppState) -> Live {
 
 /// The settings in force: the environment's, with what the operator changed on top. Read from Valkey at most every five
 /// seconds; if Valkey cannot be asked the last answer, or the environment's, stands.
-pub(super) async fn live(st: &AppState) -> Live {
+pub(crate) async fn live(st: &AppState) -> Live {
     if let Some((at, live)) = CACHE.lock().unwrap().as_ref()
         && at.elapsed() < CACHE_FOR
     {
@@ -247,7 +247,11 @@ fn internal(err: &anyhow::Error) -> ApiError {
     )
 }
 
-/// POST /v1/admin/people {"name": "ana"}: a key for a person, returned once.
+/// POST /v1/admin/people: create access keys.
+/// Supports:
+/// - Single: `{"name": "ana"}`
+/// - Batch names: `{"names": ["ana", "bob"]}`
+/// - N keys for pilots: `{"count": 10, "prefix": "pilot"}`
 pub(super) async fn add_person(
     State(st): State<AppState>,
     headers: HeaderMap,
@@ -255,6 +259,62 @@ pub(super) async fn add_person(
 ) -> ApiResult<Response> {
     authorize_operator(&st, &headers)?;
     let body = parse_body(body)?;
+
+    // Mode 1: Generate N keys (e.g. {"count": 10, "prefix": "pilot"})
+    if let Some(count) = body["count"].as_u64() {
+        if count == 0 || count > 500 {
+            return Err(ApiError::bad_request("count must be between 1 and 500."));
+        }
+        let prefix = body["prefix"].as_str().unwrap_or("pilot").trim();
+        let created = crate::access::generate_n(&mut st.redis(), count as usize, prefix, keys::now())
+            .await
+            .map_err(|e| internal(&e))?;
+        let keys_json: Vec<Value> = created
+            .iter()
+            .map(|(p, k)| json!({ "name": p, "key": k }))
+            .collect();
+        audit(&st, &format!("generated {count} keys with prefix '{prefix}'")).await;
+        return Ok(private((
+            StatusCode::CREATED,
+            Json(json!({ "created": keys_json, "keys": keys_json })),
+        )));
+    }
+
+    // Mode 2: Batch names (e.g. {"names": ["ana", "bob"]})
+    if let Some(names_arr) = body["names"].as_array() {
+        if names_arr.is_empty() {
+            return Err(ApiError::bad_request("names array must not be empty."));
+        }
+        let mut names = Vec::new();
+        for v in names_arr {
+            let s = v.as_str().unwrap_or_default().trim().to_ascii_lowercase();
+            if !crate::access::valid_person(&s) {
+                return Err(ApiError::bad_request(format!("{s:?} is not a valid name: 2-32 lowercase letters, digits, '.', '-' or '_'")));
+            }
+            names.push(s);
+        }
+        let name_refs: Vec<&str> = names.iter().map(String::as_str).collect();
+        let created = crate::access::add_batch(&mut st.redis(), &name_refs, keys::now())
+            .await
+            .map_err(|err| {
+                if err.to_string().contains("already has a key") {
+                    ApiError::new(StatusCode::CONFLICT, "exists", err.to_string())
+                } else {
+                    internal(&err)
+                }
+            })?;
+        let keys_json: Vec<Value> = created
+            .iter()
+            .map(|(p, k)| json!({ "name": p, "key": k }))
+            .collect();
+        audit(&st, &format!("batch keys created for {} people", created.len())).await;
+        return Ok(private((
+            StatusCode::CREATED,
+            Json(json!({ "created": keys_json, "keys": keys_json })),
+        )));
+    }
+
+    // Mode 3: Single name {"name": "ana"}
     let name = body["name"].as_str().unwrap_or_default().to_string();
     if !crate::access::valid_person(&name) {
         return Err(ApiError::bad_request(
@@ -1021,7 +1081,23 @@ pub(super) async fn value(
         .await
         .map_err(|e| internal(&e))?;
     body["collecting"] = json!(st.cfg.private);
+    body["pilot_roi"] = json!(crate::effort::pilot_roi(&mut con, &st, 14, keys::now()).await.unwrap_or(Value::Null));
     Ok(private(Json(body)))
+}
+
+/// GET /v1/admin/pilot-roi?days=14: clean Pilot ROI Summary for B2B enterprise pilots.
+pub(super) async fn pilot_roi(
+    State(st): State<AppState>,
+    headers: HeaderMap,
+    Query(q): Query<Days>,
+) -> ApiResult<Response> {
+    authorize_operator(&st, &headers)?;
+    let days = q.days.unwrap_or(14).clamp(1, 90);
+    let mut con = st.redis();
+    let summary = crate::effort::pilot_roi(&mut con, &st, days, keys::now())
+        .await
+        .map_err(|e| internal(&e))?;
+    Ok(private(Json(summary)))
 }
 
 #[cfg(test)]

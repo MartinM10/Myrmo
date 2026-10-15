@@ -114,9 +114,13 @@ pub(super) async fn report_outcome(
     let is_author = author.as_deref() == Some(&caller.agent)
         || published_from.as_deref() == Some(&caller.client);
     let eligible = author_may_report(is_author, &outcome);
+    let dedup_identity = match &caller.key_hash {
+        Some(kh) => format!("key:{kh}"),
+        None => caller.agent.clone(),
+    };
     let first_today: bool = eligible
         && redis::cmd("SET")
-            .arg(keys::seen(&id, &caller.agent))
+            .arg(keys::seen(&id, &dedup_identity))
             .arg(1)
             .arg("NX")
             .arg("EX")
@@ -130,7 +134,7 @@ pub(super) async fn report_outcome(
         let (known, distinct): (bool, u64) = redis::pipe()
             .cmd("SISMEMBER")
             .arg(&vote_key)
-            .arg(&caller.agent)
+            .arg(&dedup_identity)
             .cmd("SCARD")
             .arg(&vote_key)
             .query_async(&mut con)
@@ -140,7 +144,7 @@ pub(super) async fn report_outcome(
             let (used,): (u64,) = redis::pipe()
                 .cmd("SADD")
                 .arg(&vote_key)
-                .arg(&caller.agent)
+                .arg(&dedup_identity)
                 .ignore()
                 .cmd("EXPIRE")
                 .arg(&vote_key)
@@ -421,5 +425,33 @@ mod tests {
         assert_eq!(credited_tokens(5_000, 200_000), 5_000);
         assert_eq!(credited_tokens(9_000_000_000, 200_000), 200_000);
         assert_eq!(credited_tokens(-5, 200_000), 0);
+    }
+
+    #[test]
+    fn outcome_dedup_identity_uses_key_hash_when_present() {
+        let caller = Caller {
+            agent: "person:martin".into(),
+            declared: true,
+            client: "key:1234567890abcdef".into(),
+            key_hash: Some("1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef".into()),
+        };
+        let dedup = match &caller.key_hash {
+            Some(kh) => format!("key:{kh}"),
+            None => caller.agent.clone(),
+        };
+        assert_eq!(dedup, "key:1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef");
+
+        // Without key_hash, it falls back to caller.agent
+        let anon_caller = Caller {
+            agent: "agent-custom-123".into(),
+            declared: true,
+            client: "client-addr".into(),
+            key_hash: None,
+        };
+        let anon_dedup = match &anon_caller.key_hash {
+            Some(kh) => format!("key:{kh}"),
+            None => anon_caller.agent.clone(),
+        };
+        assert_eq!(anon_dedup, "agent-custom-123");
     }
 }
