@@ -1,0 +1,32 @@
+name: Benchmark result
+description: Share what ./bench/load/run.sh (or MyrmoBench) measured on your machine.
+title: "Benchmark: <CPU or machine>, <load or MyrmoBench>"
+labels: ["benchmark"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for running it. Every result helps, slow machines included: they show where a colony stops keeping up.
+        `./bench/load/run.sh` prints a block between two dashed lines; paste it below as it is.
+  - type: dropdown
+    id: suite
+    attributes:
+      label: Which benchmark?
+      options:
+        - Load (bench/load/run.sh)
+        - MyrmoBench (bench/myrmobench/run.py)
+        - Another suite in bench/
+    validations:
+      required: true
+  - type: textarea
+    id: summary
+    attributes:
+      label: The summary
+      description: The block the script printed (it is also in bench/results/load-<date>-<time>/summary.md).
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Anything else?
+      description: Other load on the machine, a laptop on battery, Docker Desktop limits you changed, errors you saw, ideas.

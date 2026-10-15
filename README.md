@@ -153,6 +153,13 @@ a **leak test bank** (how much sensitive data gets through redaction) and **Myrm
 tokens, attempts and time? On a simulated company's problems a cheap model solved 21 of 40 with Myrmo against 5 of 40
 without; see the [benchmarks](docs/operate/benchmarks.md)).
 
+Measure a colony node on your own machine with one command (Docker is all it needs, Apple Silicon included), and
+[share the result](https://github.com/MartinM10/Myrmo/issues/new?template=benchmark-result.yml):
+
+```bash
+./bench/load/run.sh
+```
+
 ## Repository
 
 | Component | Path | Language | License | Status |
@@ -165,7 +172,7 @@ without; see the [benchmarks](docs/operate/benchmarks.md)).
 | SDKs | [`clients/python`](clients/python), [`clients/typescript/packages/myrmo`](clients/typescript/packages/myrmo) | Python, TypeScript | Apache-2.0 | preview |
 | Claude Code plugin and marketplace | [`plugins/myrmo`](plugins/myrmo), [`.claude-plugin`](.claude-plugin) | JSON, Node.js | Apache-2.0 | preview |
 | Seed factory: reproduces errors in Docker to create trails | [`tools/seed-factory`](tools/seed-factory) | Python | Apache-2.0 | internal tool |
-| Benchmarks | [`bench/`](bench/) | Docker, k6 | Apache-2.0 | load suite ready, MyrmoBench next |
+| Benchmarks | [`bench/`](bench/) | Docker, k6 | Apache-2.0 | load suite (one command), MyrmoBench, retrieval, scale |
 
 ### Run it locally
 

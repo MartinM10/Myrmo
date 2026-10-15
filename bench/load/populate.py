@@ -1,10 +1,11 @@
 """Fill a colony with synthetic trails for load testing.
 
-    python bench/load/populate.py http://localhost:8080 100000
+    python bench/load/populate.py http://localhost:8080 100000 [targets.json]
 
 Variants of the seed trails with randomised identifiers, so every trail gets its own
 fingerprint. Published through the public API with 32 concurrent workers. Writes the
-fingerprints and ids it created to bench/load/targets.json for the k6 scenarios.
+fingerprints and ids it created to targets.json (bench/load/targets.json unless a path is
+given) for the k6 scenarios. bench/load/run.sh does all of this for you.
 Run it against a colony with MYRMO_RATE_LIMIT=0; never against a production colony.
 """
 
@@ -24,7 +25,7 @@ BASE = (sys.argv[1] if len(sys.argv) > 1 else "http://localhost:8080").rstrip("/
 COUNT = int(sys.argv[2]) if len(sys.argv) > 2 else 100_000
 ROOT = Path(__file__).resolve().parents[2]
 SEEDS = json.loads((ROOT / "deploy/seed/trails.json").read_text(encoding="utf-8"))
-OUT = Path(__file__).with_name("targets.json")
+OUT = Path(sys.argv[3]) if len(sys.argv) > 3 else Path(__file__).with_name("targets.json")
 
 WORDS = ["alpha", "beacon", "cobalt", "delta", "ember", "falcon", "garnet", "harbor", "indigo", "juniper",
          "kepler", "lumen", "matrix", "nimbus", "onyx", "prism", "quartz", "raven", "sierra", "tundra"]
@@ -71,7 +72,7 @@ def main() -> None:
                 print(f"{n}/{COUNT} published in {time.time() - start:.0f}s", flush=True)
     sample = random.Random(0).sample(created, min(5000, len(created)))
     OUT.write_text(json.dumps({"trail_ids": [t for t, _ in sample], "fingerprints": [f for _, f in sample]}), encoding="utf-8")
-    print(f"published {len(created)} trails in {time.time() - start:.0f}s; targets in {OUT.name}")
+    print(f"published {len(created)} trails in {time.time() - start:.0f}s; targets in {OUT}")
 
 
 if __name__ == "__main__":

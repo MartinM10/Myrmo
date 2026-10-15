@@ -1,9 +1,10 @@
 // k6 load test for a Myrmo colony. One scenario per path, run one after another so each
 // number measures that path alone.
 //
+//   bench/load/run.sh                                     everything, with one command
 //   k6 run -e BASE=http://gateway:8080 -e VUS=64 bench/load/load.js
 //
-// Needs bench/load/targets.json from populate.py.
+// Needs the targets.json written by populate.py (TARGETS, or bench/load/targets.json).
 
 import http from "k6/http";
 import { check } from "k6";
@@ -13,7 +14,8 @@ const BASE = __ENV.BASE || "http://localhost:8080";
 const VUS = Number(__ENV.VUS || 64);
 const SECONDS = Number(__ENV.SECONDS || 30);
 const DURATION = `${SECONDS}s`;
-const targets = JSON.parse(open("./targets.json"));
+const OUT = __ENV.OUT || "/results";
+const targets = JSON.parse(open(__ENV.TARGETS || "./targets.json"));
 const seeds = JSON.parse(open("../../deploy/seed/trails.json"));
 
 const step = (name, fn, startAfter) => ({
@@ -50,7 +52,7 @@ export const options = {
     publish: step(PATHS[3], "publish", `${3 * gap}s`),
     outcome: step(PATHS[4], "outcome", `${4 * gap}s`),
   },
-  summaryTrendStats: ["med", "p(99)"],
+  summaryTrendStats: ["med", "p(95)", "p(99)"],
   // Every path must stay below 1% errors. Thresholds also make k6 keep per-path metrics.
   thresholds: Object.fromEntries(
     PATHS.flatMap((p) => [
@@ -98,8 +100,36 @@ export function outcome() {
   check(res, { "202": (r) => r.status === 202 });
 }
 
+const thousands = (n) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+const rate = (n) => (n >= 100 ? thousands(n) : n.toFixed(1));
+const ms = (v) => (v >= 1000 ? `${(v / 1000).toFixed(1)} s` : v >= 100 ? `${Math.round(v)} ms` : `${v.toFixed(1)} ms`);
+
+// What to paste into an issue: the numbers and where they were measured, nothing else.
+function markdown(out) {
+  const rows = out.scenarios.map(
+    (s) => `| ${s.name} | ${rate(s.rps)} | ${ms(s.p50_ms)} | ${ms(s.p95_ms)} | ${ms(s.p99_ms)} | ${(s.error_rate * 100).toFixed(2)}% |`,
+  );
+  const about = [
+    ["Machine", __ENV.MACHINE],
+    ["Docker", __ENV.DOCKER],
+    ["Colony", __ENV.COLONY],
+    ["Load", `${VUS} virtual users, ${SECONDS} s per path, one path at a time, generator on the same machine`],
+    ["Date", out.date],
+  ].filter(([, v]) => v);
+  return [
+    "### Myrmo load benchmark",
+    "",
+    "| Path | Requests/s | p50 | p95 | p99 | Errors |",
+    "|---|---|---|---|---|---|",
+    ...rows,
+    "",
+    ...about.map(([k, v]) => `- **${k}:** ${v}`),
+    "",
+  ].join("\n");
+}
+
 export function handleSummary(data) {
-  const out = { date: new Date().toISOString().slice(0, 10), vus: VUS, duration: DURATION, scenarios: [] };
+  const out = { date: new Date().toISOString().slice(0, 10), vus: VUS, duration: DURATION, trails: Number(__ENV.TRAILS || 0), scenarios: [] };
   for (const name of PATHS) {
     const d = data.metrics[`http_req_duration{path:${name}}`];
     const n = data.metrics[`http_reqs{path:${name}}`];
@@ -110,9 +140,13 @@ export function handleSummary(data) {
       requests: n.values.count,
       rps: n.values.count / SECONDS,
       p50_ms: d.values.med,
+      p95_ms: d.values["p(95)"],
       p99_ms: d.values["p(99)"],
       error_rate: f ? f.values.rate : 0,
     });
   }
-  return { stdout: JSON.stringify(out, null, 2) + "\n", "/results/load-summary.json": JSON.stringify(out, null, 2) };
+  const md = markdown(out);
+  // run.sh prints the saved summary itself (PRINT=0); run by hand, k6 prints it.
+  const stdout = __ENV.PRINT === "0" ? "" : "\n" + md;
+  return { stdout, [`${OUT}/load-summary.json`]: JSON.stringify(out, null, 2), [`${OUT}/summary.md`]: md };
 }

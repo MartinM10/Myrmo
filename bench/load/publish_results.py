@@ -1,10 +1,12 @@
 """Publish a k6 load summary to the website.
 
+    python bench/load/publish_results.py bench/results/load-<date>-<time> "Docker Desktop, 12 vCPU (Intel Core i7-12700H)" 12
     python bench/load/publish_results.py "Docker Desktop, 12 vCPU (Intel Core i7-12700H)" 12
 
-Reads bench/results/load-summary.json (written by load.js), archives it under
-bench/results/<run_id>/ and updates the `load` section of web/assets/bench-results.js,
-keeping any MyrmoBench (`value`) results already published.
+With a run directory (written by bench/load/run.sh) it publishes that run as it is. Without one it reads
+bench/results/load-summary.json (load.js run by hand) and archives it under bench/results/<run_id>/.
+Either way it updates the `load` section of web/assets/bench-results.js, keeping any MyrmoBench (`value`)
+results already published.
 """
 
 from __future__ import annotations
@@ -22,15 +24,21 @@ SITE = ROOT / "web/assets/bench-results.js"
 
 
 def main() -> None:
-    if len(sys.argv) < 3:
+    args = sys.argv[1:]
+    run_dir = Path(args.pop(0)) if args and Path(args[0]).is_dir() else None
+    if len(args) < 2:
         sys.exit(__doc__)
-    hardware, vcpus = sys.argv[1], int(sys.argv[2])
-    summary = json.loads(SUMMARY.read_text(encoding="utf-8"))
-    run_id = "load-" + datetime.now(timezone.utc).strftime("%Y%m%d-%H%M")
+    hardware, vcpus = args[0], int(args[1])
 
-    archive = ROOT / "bench/results" / run_id
-    archive.mkdir(parents=True, exist_ok=True)
-    shutil.copy(SUMMARY, archive / "load-summary.json")
+    if run_dir:
+        archive = run_dir.resolve()
+        run_id = archive.name
+    else:
+        run_id = "load-" + datetime.now(timezone.utc).strftime("%Y%m%d-%H%M")
+        archive = ROOT / "bench/results" / run_id
+        archive.mkdir(parents=True, exist_ok=True)
+        shutil.copy(SUMMARY, archive / "load-summary.json")
+    summary = json.loads((archive / "load-summary.json").read_text(encoding="utf-8"))
     (archive / "environment.json").write_text(json.dumps({"hardware": hardware, "vcpus": vcpus}, indent=2), encoding="utf-8")
 
     current = SITE.read_text(encoding="utf-8")
@@ -47,6 +55,7 @@ def main() -> None:
                 "rps": round(s["rps"], 1),
                 "rps_per_vcpu": round(s["rps"] / vcpus, 1),
                 "p50_ms": round(s["p50_ms"], 2),
+                **({"p95_ms": round(s["p95_ms"], 2)} if "p95_ms" in s else {}),
                 "p99_ms": round(s["p99_ms"], 2),
                 "error_rate": s["error_rate"],
             }
