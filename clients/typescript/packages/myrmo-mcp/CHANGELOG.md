@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.27.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.26.0...mcp-v0.27.0) (2026-10-15)
+
+
+### Features
+
+* **b2b:** batch API keys, hold-out ROI telemetry and sybil hardening for pilots ([51dcdc8](https://github.com/MartinM10/Myrmo/commit/51dcdc8bd9452f35abd46354e88234aae4e64efc))
+
 ## [0.26.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.25.1...mcp-v0.26.0) (2026-10-14)
 
 
