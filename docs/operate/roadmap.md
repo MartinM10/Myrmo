@@ -46,4 +46,4 @@ by the rest of the documentation as available.
 | **Minor protocol versions** that old colonies accept | The schema rejects unknown fields; a new minor needs an extension point. | Before the next minor version |
 | **Re-reading trails** indexed while the decision model was down | Trails now wait in the queue instead (`MYRMO_DECISION_FAIL_OPEN` off). | If the model has long outages |
 | **Alerts** on `/readyz` and on the queue depth | A GitHub Actions workflow checks every 15 minutes and opens an issue. It needs a person to read issues; paging is not set up. | When someone depends on uptime |
-| **Off-site backups** | `deploy/backup.sh` can upload each archive to an S3-compatible store (`MYRMO_BACKUP_S3_URI`). It is off until the operator sets a bucket and credentials. | Before the data matters |
+| **Off-site backups** | Another machine can pull the archives over SSH with a key limited to fetching them (`deploy/pull-backups.sh`, `.ps1`), or `deploy/backup.sh` uploads each one to an S3-compatible store (`MYRMO_BACKUP_S3_URI`). Both need the operator to set them up. | Before the data matters |
