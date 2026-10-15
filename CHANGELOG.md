@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.38.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.37.0...platform-v0.38.0) (2026-10-15)
+
+
+### Features
+
+* **b2b:** batch API keys, hold-out ROI telemetry and sybil hardening for pilots ([51dcdc8](https://github.com/MartinM10/Myrmo/commit/51dcdc8bd9452f35abd46354e88234aae4e64efc))
+
+
+### Bug fixes
+
+* **ci:** rustfmt, clippy dead code, gitleaks allowlist and sync llms.txt ([18c5492](https://github.com/MartinM10/Myrmo/commit/18c5492cb099d8841603affba3255942241cc06c))
+
+
+### Documentation
+
+* **comparison:** enrich other-sources matrix and add private pilot contact ([daf4c2e](https://github.com/MartinM10/Myrmo/commit/daf4c2e96a28ce0c97677cfe4aec8ab6b8d29e55))
+
 ## [0.37.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.36.0...platform-v0.37.0) (2026-10-15)
 
 

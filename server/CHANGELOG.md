@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.19.0](https://github.com/MartinM10/Myrmo/compare/server-v0.18.0...server-v0.19.0) (2026-10-15)
+
+
+### Features
+
+* **b2b:** batch API keys, hold-out ROI telemetry and sybil hardening for pilots ([51dcdc8](https://github.com/MartinM10/Myrmo/commit/51dcdc8bd9452f35abd46354e88234aae4e64efc))
+
+
+### Bug fixes
+
+* **ci:** rustfmt, clippy dead code, gitleaks allowlist and sync llms.txt ([18c5492](https://github.com/MartinM10/Myrmo/commit/18c5492cb099d8841603affba3255942241cc06c))
+
 ## [0.18.0](https://github.com/MartinM10/Myrmo/compare/server-v0.17.0...server-v0.18.0) (2026-10-15)
 
 
