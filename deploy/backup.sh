@@ -1,9 +1,13 @@
 #!/usr/bin/env bash
 # Back up everything a colony knows: Qdrant (the trails and their vectors) and Valkey (outcomes,
-# fingerprints, the feed, drafts). One archive per run, the newest N kept.
+# fingerprints, the feed, drafts). One archive per run; every archive of the last MYRMO_BACKUP_KEEP_DAYS days is kept,
+# and always the newest MYRMO_BACKUP_KEEP whatever their age.
 #
 #   bash deploy/backup.sh                 # from the directory of the compose project
-#   MYRMO_BACKUP_DIR=/mnt/backups MYRMO_BACKUP_KEEP=30 bash deploy/backup.sh
+#   MYRMO_BACKUP_DIR=/mnt/backups MYRMO_BACKUP_KEEP_DAYS=30 bash deploy/backup.sh
+#
+# Another machine can pull the archives over SSH with deploy/pull-backups.sh (or .ps1 on Windows), through a key that
+# can only run deploy/backup-serve.sh.
 #
 # Off-site copy: set MYRMO_BACKUP_S3_URI (for example s3://my-bucket/myrmo) and the archive is uploaded after it is
 # written, with the AWS CLI. Any S3-compatible store works (Backblaze B2, Cloudflare R2, MinIO, Hetzner): also set
@@ -23,6 +27,7 @@ set -euo pipefail
 PROJECT="${MYRMO_PROJECT:-myrmo}"            # the compose project name (the container name prefix)
 DIR="${MYRMO_BACKUP_DIR:-$HOME/myrmo-backups}"
 KEEP="${MYRMO_BACKUP_KEEP:-14}"
+KEEP_DAYS="${MYRMO_BACKUP_KEEP_DAYS:-14}"
 COLLECTION="${MYRMO_COLLECTION:-trails}"
 VALKEY="${PROJECT}-valkey-1"
 GATEWAY="${PROJECT}-gateway-1"                 # any container on the network with curl
@@ -58,8 +63,11 @@ tar czf "$archive.partial" -C "$work" manifest.txt valkey.rdb qdrant.snapshot
 tar tzf "$archive.partial" >/dev/null          # the archive must be readable before it counts
 mv "$archive.partial" "$archive"
 
-# Keep the newest $KEEP.
-ls -1t "$DIR"/myrmo-*.tar.gz 2>/dev/null | tail -n +"$((KEEP + 1))" | xargs -r rm -f --
+# Every deploy writes an archive too, so a count alone would let a busy day of deploys push out the daily ones: keep
+# everything younger than $KEEP_DAYS days, and the newest $KEEP whatever their age.
+ls -1t "$DIR"/myrmo-*.tar.gz 2>/dev/null | tail -n +"$((KEEP + 1))" | while IFS= read -r old; do
+  if [ -n "$(find "$old" -mtime +"$((KEEP_DAYS - 1))" 2>/dev/null)" ]; then rm -f -- "$old"; fi
+done
 
 if [ -n "${MYRMO_BACKUP_S3_URI:-}" ]; then
   if command -v aws >/dev/null 2>&1 \

@@ -110,15 +110,55 @@ colony.example.com {
 ## Backups
 
 `deploy/backup.sh` writes one archive per run with a consistent snapshot of Valkey and of Qdrant,
-checks that it is readable and keeps the newest 14. Run it from the directory of the compose project,
-daily from cron:
+checks that it is readable and keeps every archive of the last 14 days, and always the newest 14 whatever their age
+(a deploy writes one too, so a count alone would let a busy day push out the daily ones). Run it from the directory
+of the compose project, daily from cron:
 
 ```bash
 17 3 * * * cd $HOME/myrmo && bash deploy/backup.sh >> $HOME/myrmo-backups/backup.log 2>&1
 ```
 
-`MYRMO_BACKUP_DIR` (default `~/myrmo-backups`) and `MYRMO_BACKUP_KEEP` change where and how many.
-The backups stay on the same host unless you copy them elsewhere. For an off-site copy, install the AWS CLI and set
+`MYRMO_BACKUP_DIR` (default `~/myrmo-backups`), `MYRMO_BACKUP_KEEP_DAYS` (14) and `MYRMO_BACKUP_KEEP` (14) change
+where and how long.
+
+The backups stay on the same host unless you copy them elsewhere. There are two ways.
+
+**To another machine you own** (a PC at home, a NAS, a second server), pulled over SSH with a key that can do nothing
+but fetch archives. On that machine, create the key and give the colony's host an alias in `~/.ssh/config`:
+
+```bash
+ssh-keygen -t ed25519 -f ~/.ssh/myrmo-backups -N "" -C "myrmo backups"
+# ~/.ssh/config
+#   Host myrmo-backups
+#     HostName <the colony host>
+#     User <its user>
+#     IdentityFile ~/.ssh/myrmo-backups
+```
+
+On the colony's host, add the public key to `~/.ssh/authorized_keys` with a forced command, so it can only run
+`deploy/backup-serve.sh` (`list` and `get <archive>`, no shell, no forwarding):
+
+```text
+command="bash /home/<user>/myrmo/deploy/backup-serve.sh",restrict ssh-ed25519 AAAA... myrmo backups
+```
+
+Then pull from the other machine, on a schedule. It copies only what is new, checks each archive before keeping it,
+deletes local copies older than 60 days, and catches up after the machine was off, as long as it runs within the
+colony's 14 days:
+
+```bash
+# Linux or macOS, hourly from cron
+0 * * * * MYRMO_PULL_HOST=myrmo-backups bash /path/to/myrmo/deploy/pull-backups.sh >> ~/myrmo-backups-copy/pull.log 2>&1
+```
+
+```powershell
+# Windows (the built-in OpenSSH client): once by hand, then as a daily task that also runs when a day was missed
+powershell -NoProfile -ExecutionPolicy Bypass -File C:\myrmo\pull-backups.ps1 -SshHost myrmo-backups
+```
+
+`deploy/pull-backups.ps1` explains how to register the task.
+
+**To an object store.** Install the AWS CLI and set
 `MYRMO_BACKUP_S3_URI=s3://my-bucket/myrmo` (and `MYRMO_BACKUP_S3_ENDPOINT` for an S3-compatible store such as Backblaze
 B2, Cloudflare R2 or MinIO); the credentials are the usual `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`. Each archive is
 uploaded after it is written. A failed upload is reported and the local archive stays, unless
