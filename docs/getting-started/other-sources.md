@@ -1,6 +1,6 @@
 ---
 title: "Using Myrmo next to other sources of answers"
-description: "What Myrmo is for and what it is not, how it compares with cq and other shared-memory projects, in which order an agent should consult it next to documentation search or Stack Overflow's MCP server, and what must never be copied into a trail."
+description: "What Myrmo is for and what it is not, how it compares with static memory files, internal RAG, cloud memory SaaS and cq, in which order an agent should consult it next to docs or human Q&A, and what must never be copied into a trail."
 ---
 
 # Next to other sources
@@ -36,6 +36,32 @@ trail you tried (myrmo_report).
 
 Connecting the other source is its own setup: follow that source's documentation for the address, the login it needs and
 its terms of use. Nothing in Myrmo depends on it.
+
+## Memory files, internal RAG, cloud memory SaaS and Myrmo
+
+Teams giving AI agents persistence across sessions commonly evaluate four architectures: static repository files (`CLAUDE.md`, `AGENTS.md`), internal documentation search (RAG over wikis or codebases), closed-source cloud memory services (such as Mem0 or Memco), and Myrmo.
+
+They answer different needs. A static instruction file establishes coding conventions; an internal RAG pipeline retrieves architecture documents. When teams attempt to use either pattern—or a generalist conversational memory SaaS—for operational errors and organisational procedures, they run into distinct architectural limits:
+
+| Dimension | Static memory files (`CLAUDE.md`, `AGENTS.md`) | Internal docs & RAG | Closed-source cloud memory SaaS | Myrmo (public or private colony) |
+|---|---|---|---|---|
+| **Knowledge representation** | Freeform markdown instructions, rules, and tips | Unstructured text chunks (wiki pages, specs, code) | Conversational summaries or freeform memory snippets | Strict JSON Schema ([`trail.v1`](../reference/protocol.md)): problem, root cause, dead ends, exact commands, verification evidence |
+| **Lookup cost & latency** | Read on every turn. Consumes context window tokens whether relevant or not | Vector search per query. Embedding generation and vector DB latency on every search | Vector search and LLM extraction on read/write. Continuous third-party token and SaaS subscription costs | **Local fingerprint v2 + edge caching**: zero LLM and zero vector cost on repeat errors (HTTP `GET` cached at CDN/proxy). Vector search only for novel errors or task briefing |
+| **Retrieval timing** | Static; always present in context | On demand, when the agent explicitly queries docs | Per turn or conversation sync; single general semantic index | **Dual index**: task start intent matching (`myrmo_brief` for `procedure`, `fact`, `fix`) + exact/semantic error matching on command failure (`myrmo_search`) |
+| **Safety & execution** | Unstructured text. Agent extracts commands without isolation or risk assessment | Mixed prose and code blocks. No execution boundaries or safety checks | Freeform text injected into prompts. Secret redaction relies on prompt instructions ("do not store secrets") | **Deterministic client + server regex redaction** (100+ test vectors). Strict separation of prose from commands. Automated risk flags (`low`, `medium`, `high`) on every command; prompt-injection filtering |
+| **Quality & decay** | Manual pruning. Outdated advice accumulates indefinitely | No verification feedback. Documentation rots silently over time | Recency weighting or LLM-driven overwrite. No execution verification | **Outcome tracking**: agents report `worked`, `partially_worked`, `failed`. Strength decays with a 90-day half-life; contested entries surface in admin stats. Measured savings via randomized hold-out |
+| **Hosting & sovereignty** | Versioned in Git repository | Company intranet or enterprise cloud | Proprietary multi-tenant cloud. Code and prompts sent to third-party servers | **100% open protocol** (Apache-2.0), self-hostable single Rust binary (AGPL-3.0) with zero external network egress, or private managed colony |
+
+### Why these architectural differences matter
+
+Four concrete design choices distinguish Myrmo from generic memory architectures:
+
+1. **Local fingerprint v2 with edge caching.** Most agent memory architectures require an LLM call or a vector embedding calculation for every single lookup. When 50 developers or CI pipelines hit the same broken build flag or missing dependency, computing embeddings 50 times wastes tokens and adds seconds of latency. Myrmo computes an `fp2_` hash locally on the developer's machine in sub-millisecond time. The repeat error is answered by a plain HTTP `GET /v1/trails/by-fingerprint/{fp}` served from an in-memory cache or reverse proxy, with zero model invocations and zero vector distance calculations.
+2. **Dual index in private colonies.** An error line has different semantics from an engineer's initial request. Searching an error index with "deploy tenant to staging" finds nothing because no error has occurred yet; searching a task index with a C++ linker error misses the specific compiler flags. Private colonies maintain two distinct indexes:
+   - *The error index*: hashes normalized error strings and indexes error signatures for instant matching when commands fail (`myrmo_search`).
+   - *The task index*: indexes multilingual task intent embeddings, allowing `myrmo_brief` to surface verified `procedure`, `fact`, and `fix` trails the moment a developer describes what they want to build, before the agent plans its steps.
+3. **Deterministic secret redaction and strict schemas vs. prompt-based trust.** Sending raw terminal output or code to a third-party memory cloud introduces data leakage risks. Relying on an LLM system prompt ("strip all secrets before saving") frequently fails on novel token shapes, connection strings, and private hostnames. Myrmo executes deterministic, rule-based redaction on the client machine using checked test vectors before any payload is transmitted, and repeats the check on the server. Furthermore, Myrmo trails are not raw markdown blobs: they separate explanatory prose from executable commands and patches, assigning risk flags (`low`, `medium`, `high`) to every command so the consuming agent can evaluate safety before execution.
+4. **Self-hostable open protocol vs. closed SaaS lock-in.** Proprietary memory platforms lock institutional engineering knowledge inside closed platforms and require sending internal repository names, paths, and toolchain logs to external servers. Myrmo's protocol is an open Apache-2.0 specification with published test vectors. The colony server is written in Rust, licensed under the AGPL-3.0, and runs on a single machine or VPC via Docker Compose (`deploy/private-colony.sh`) with zero external network dependencies.
 
 ## Next to other shared-memory projects
 

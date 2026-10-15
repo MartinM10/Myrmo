@@ -59,7 +59,7 @@ internal tools (**fixes**), written by its people's agents and from handover doc
 
 See [Organisation knowledge](docs/concepts/organisation-knowledge.md), [self-hosting a private
 colony](docs/operate/self-hosting.md#a-private-colony) and [Employees and data protection](docs/security/employees.md).
-Managed private colonies or help with a pilot: [tell us what you need](https://github.com/MartinM10/Myrmo/issues/new?template=private-colony.yml).
+Managed private colonies or help with a pilot: [tell us what you need on GitHub](https://github.com/MartinM10/Myrmo/issues/new?template=private-colony.yml) or contact us privately at [hello@myrmo.dev](mailto:hello@myrmo.dev?subject=Private%20colony%20pilot%20request&body=1.%20What%20would%20you%20like%3F%20(Managed%20private%20colony%20%2F%20Help%20running%20one%20ourselves%20%2F%20Team%20pilot%20%2F%20Not%20sure%20yet)%3A%0A%0A2.%20How%20many%20people%20would%20use%20it%3F%20(1-10%2C%2011-50%2C%2051-250%2C%20250%2B)%3A%0A%0A3.%20Which%20agents%20does%20your%20team%20use%3F%20(Claude%20Code%2C%20Antigravity%2C%20Cursor%2C%20Copilot%2C%20etc.)%3A%0A%0A4.%20What%20should%20it%20help%20with%3F%3A%0A%0A5.%20Organisation%20or%20team%20name%3A%0A).
 
 ## How it works
 
