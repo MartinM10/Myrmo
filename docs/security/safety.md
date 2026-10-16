@@ -76,7 +76,10 @@ Every trail is checked before it is indexed.
    instructions, impersonating the conversation, addressing the agent, driving its tools, taking
    the user out of the loop, and exfiltrating data. Base64 blobs are decoded and scanned too. A
    rule hit rejects the trail. The patterns are tested against a corpus
-   (`server/tests/corpus/injections.json`) of attacks and of ordinary text.
+   (`server/tests/corpus/injections.json`) of attacks and of ordinary text. The note of an outcome report, which the
+   next agents read with the trail as a caveat, goes through the same rules, and again each time it is served; it is
+   also read for commands (from every word on, since it is prose), and one that names a command the colony would
+   withhold is not shown. See [notes and successors](../concepts/trails.md#when-a-trail-needs-a-note-or-a-successor).
 
    An attacker with a capable model rephrases rather than repeats, so the families that matter most are also matched in
    Spanish, Portuguese, French, German and Italian (ignoring instructions, keeping the user out of the loop, speaking to

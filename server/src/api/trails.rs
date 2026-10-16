@@ -148,11 +148,27 @@ pub(super) async fn remove_trail(
             .ignore();
         pipe.cmd("DEL").arg(keys::fingerprint_cache(fp)).ignore();
     }
+    // A successor also lives under the fingerprint of the trail it amends, and is named by it.
+    if let (Some(target), Some(target_fp)) = (meta.get("amends"), meta.get("amends_fp")) {
+        pipe.cmd("SREM")
+            .arg(keys::fingerprint(target_fp))
+            .arg(&id)
+            .ignore();
+        pipe.cmd("DEL")
+            .arg(keys::fingerprint_cache(target_fp))
+            .ignore();
+        pipe.cmd("SREM")
+            .arg(keys::amended_by(target))
+            .arg(&id)
+            .ignore();
+    }
     pipe.cmd("ZREM").arg(keys::FEED).arg(&id).ignore();
     pipe.cmd("SREM").arg(keys::DIRTY).arg(&id).ignore();
     for key in [
         keys::outcomes(&id),
         keys::replies(&id),
+        keys::caveats(&id),
+        keys::amended_by(&id),
         keys::environments(&id),
         keys::anon_author(&id),
         keys::pub_addr(&id),

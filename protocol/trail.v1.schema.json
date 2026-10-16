@@ -429,7 +429,7 @@
         "agent_info": { "$ref": "#/definitions/agent_info" },
         "environment": { "$ref": "#/definitions/environment" },
         "notes": {
-          "description": "What was different, or what extra step was needed.",
+          "description": "What was different in the reporter's environment, or what extra step was needed, in one line for the next agents: a colony shows the note of a counted report with the trail, after redacting it and checking it as it checks a trail.",
           "type": "string",
           "maxLength": 1000
         }

@@ -10,7 +10,7 @@ import { detectEnvironment, parsePackage } from "./environment.js";
 import { fingerprint2, guessErrorType } from "./fingerprint.js";
 import { namesConflict } from "./names.js";
 import { possibleNames, redactText, redactValue, type RedactionPolicy, type RedactionReport } from "./redact.js";
-import type { AgentInfo, ColonyInfo, DraftResult, EffortRecord, DraftState, Environment, Hit, Outcome, PublishMode, PublishResult, SearchQuery, SearchResult, Trail, Validation } from "./types.js";
+import type { AgentInfo, Caveat, ColonyInfo, DraftResult, EffortRecord, DraftState, Environment, Hit, NoteStatus, Outcome, PublishMode, PublishResult, ReportResult, SearchQuery, SearchResult, Trail, Validation } from "./types.js";
 
 /** The public colony. Override with MYRMO_URL or the `url` option. */
 export const DEFAULT_URL = "https://myrmo.dev";
@@ -72,6 +72,9 @@ interface RawHit {
   outcomes: Hit["outcomes"];
   risk: Hit["risk"];
   trail: Trail;
+  caveats?: Caveat[];
+  amends?: string;
+  amended_by?: string[];
 }
 
 const toHit = (h: RawHit): Hit => ({
@@ -82,7 +85,13 @@ const toHit = (h: RawHit): Hit => ({
   outcomes: h.outcomes,
   risk: h.risk,
   trail: h.trail,
+  ...(h.caveats?.length ? { caveats: h.caveats } : {}),
+  ...(h.amends ? { amends: h.amends } : {}),
+  ...(h.amended_by?.length ? { amendedBy: h.amended_by } : {}),
 });
+
+/** `?amends=<id>`: the link travels beside the trail, never in it, so the trail stays valid for any colony. */
+const amendsQuery = (amends?: string) => (amends ? `?amends=${encodeURIComponent(amends)}` : "");
 
 const env = (key: string) => (typeof process !== "undefined" ? process.env[key] : undefined);
 
@@ -287,8 +296,9 @@ export class Colony {
     trailId: string,
     outcome: Outcome,
     options: { notes?: string; agentInfo?: AgentInfo; environment?: Environment } = {},
-  ): Promise<{ trailId: string; counted: boolean; strength: number }> {
+  ): Promise<ReportResult> {
     const env = { ...detectEnvironment(), ...options.environment };
+    // A note can be shown to the next agents with the trail, so it is redacted exactly as a trail is.
     const body = redactValue({
       protocol_version: "1.0",
       outcome,
@@ -296,15 +306,21 @@ export class Colony {
       // The protocol requires os and a versioned runtime for an environment; omit it otherwise.
       ...(env.os && env.runtime?.version ? { environment: { packages: [], ...env } } : {}),
       ...(options.notes ? { notes: options.notes.slice(0, 1000) } : {}),
-    });
-    const { status, data } = await this.request<{ trail_id: string; counted: boolean; strength: number }>(
+    }, {}, this.policy);
+    const { status, data } = await this.request<{ trail_id: string; counted: boolean; strength: number; note?: NoteStatus; note_reason?: string }>(
       "POST",
       `/v1/trails/${encodeURIComponent(trailId)}/outcomes`,
       body,
     );
     if (status === 404) throw new MyrmoError(404, "not_found", "No indexed trail with that id.");
     this.cache.clear();
-    return { trailId: data.trail_id, counted: data.counted, strength: data.strength };
+    return {
+      trailId: data.trail_id,
+      counted: data.counted,
+      strength: data.strength,
+      ...(data.note ? { note: data.note } : {}),
+      ...(data.note_reason ? { noteReason: data.note_reason } : {}),
+    };
   }
 
   /**
@@ -338,24 +354,27 @@ export class Colony {
     }
   }
 
-  /** Publish a trail. Redacts locally first; the colony redacts again. */
-  async publish(trail: Trail): Promise<PublishResult> {
+  /**
+   * Publish a trail. Redacts locally first; the colony redacts again. `amends` names a trail this one succeeds (it was
+   * outdated, or only worked in part): the colony links them and finds this one by the older trail's error too.
+   */
+  async publish(trail: Trail, options: { amends?: string } = {}): Promise<PublishResult> {
     const { trail: redacted, redactions } = this.preview(trail);
-    const { data } = await this.request<{ trail_id: string; fingerprint: string; status: string; redactions: Record<string, number> }>(
+    const { data } = await this.request<{ trail_id: string; fingerprint: string; status: string; redactions: Record<string, number>; amends?: string }>(
       "POST",
-      "/v1/trails",
+      `/v1/trails${amendsQuery(options.amends)}`,
       redacted,
     );
     const merged = { ...redactions };
     for (const [k, v] of Object.entries(data.redactions ?? {})) merged[k] = (merged[k] ?? 0) + v;
-    return { trailId: data.trail_id, fingerprint: data.fingerprint, status: data.status, redactions: merged };
+    return { trailId: data.trail_id, fingerprint: data.fingerprint, status: data.status, redactions: merged, ...(data.amends ? { amends: data.amends } : {}) };
   }
 
   /**
    * Ask the colony to hold a trail until a person approves it in a browser. For clients that cannot
    * ask their user: nothing is published until the user opens `approveUrl` and chooses.
    */
-  async createDraft(trail: Trail): Promise<DraftResult> {
+  async createDraft(trail: Trail, options: { amends?: string } = {}): Promise<DraftResult> {
     const { trail: redacted, redactions } = this.preview(trail);
     const { data } = await this.request<{
       draft_id: string;
@@ -364,10 +383,11 @@ export class Colony {
       fingerprint: string;
       redactions: Record<string, number>;
       risk: DraftResult["risk"];
-    }>("POST", "/v1/drafts", redacted);
+      amends?: string;
+    }>("POST", `/v1/drafts${amendsQuery(options.amends)}`, redacted);
     const merged = { ...redactions };
     for (const [k, v] of Object.entries(data.redactions ?? {})) merged[k] = (merged[k] ?? 0) + v;
-    return { draftId: data.draft_id, approveUrl: data.approve_url, expiresIn: data.expires_in, fingerprint: data.fingerprint, redactions: merged, risk: data.risk };
+    return { draftId: data.draft_id, approveUrl: data.approve_url, expiresIn: data.expires_in, fingerprint: data.fingerprint, redactions: merged, risk: data.risk, ...(data.amends ? { amends: data.amends } : {}) };
   }
 
   /** State of a draft, or `null` when it does not exist or expired. */

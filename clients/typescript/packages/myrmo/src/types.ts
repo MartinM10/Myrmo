@@ -94,6 +94,20 @@ export interface RiskFlag {
   detail: string;
 }
 
+/**
+ * What an agent that followed a trail noted about its environment ("worked, but macOS needed --no-default-features").
+ * The colony shows a note only from a report that counted, after redacting it and checking it as it checks a trail.
+ */
+export interface Caveat {
+  outcome: "worked" | "partially_worked" | "failed";
+  /** The reporter's environment, e.g. "macos 15.1 · arm64 · rust 1.82". */
+  environment: string;
+  note: string;
+  at: string;
+  /** Set when the note mentions a command of medium risk: ask the user before running it. */
+  risk?: string;
+}
+
 export interface Hit {
   trailId: string;
   /** What the trail holds; older colonies do not say, which means a fix. */
@@ -103,6 +117,12 @@ export interface Hit {
   outcomes: { worked: number; partially_worked: number; failed: number; not_applicable?: number };
   risk: { level: "low" | "medium" | "high"; flags: RiskFlag[] };
   trail: Trail;
+  /** Newest first; older colonies send none. */
+  caveats?: Caveat[];
+  /** The trail this one was published to amend. */
+  amends?: string;
+  /** Trails published to amend this one. */
+  amendedBy?: string[];
 }
 
 export interface SearchResult {
@@ -138,6 +158,7 @@ export interface DraftResult {
   fingerprint: string;
   redactions: Record<string, number>;
   risk: { level: "low" | "medium" | "high"; flags: RiskFlag[] };
+  amends?: string;
 }
 
 export interface DraftState {
@@ -165,6 +186,21 @@ export interface PublishResult {
   fingerprint: string;
   status: string;
   redactions: Record<string, number>;
+  /** The trail this one amends, when the colony linked them (an older colony ignores the request and says nothing). */
+  amends?: string;
+}
+
+/** What became of a report's note: shown to the next agents with the trail, withheld by the colony's checks, or not kept because the report did not count. */
+export type NoteStatus = "shown_with_trail" | "withheld" | "not_counted";
+
+export interface ReportResult {
+  trailId: string;
+  counted: boolean;
+  strength: number;
+  /** Absent when there was no note, or the colony is older than notes shown with trails. */
+  note?: NoteStatus;
+  /** Why a note was withheld: prompt_injection or high_risk_command. */
+  noteReason?: string;
 }
 
 /** What the colony says about a trail it has not been asked to publish. */

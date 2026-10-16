@@ -563,6 +563,10 @@ struct Candidate {
     id: String,
     payload: Value,
     outcomes: Outcomes,
+    /// What agents that followed the trail noted about their environment, newest first, already checked.
+    caveats: Vec<Value>,
+    /// Trails published as this one's successors.
+    amended_by: Vec<String>,
 }
 
 impl Candidate {
@@ -596,18 +600,47 @@ async fn load(st: &AppState, ids: &[String]) -> ApiResult<Vec<Candidate>> {
         pipe.cmd("HGETALL").arg(keys::outcomes(id));
     }
     let hashes: Vec<HashMap<String, String>> = pipe.query_async(&mut st.redis()).await?;
+    // Caveats then successors, in one round trip: both are lists of strings.
+    let mut pipe = redis::pipe();
+    for id in ids {
+        pipe.cmd("LRANGE")
+            .arg(keys::caveats(id))
+            .arg(0)
+            .arg(CAVEATS_SERVED as isize - 1);
+    }
+    for id in ids {
+        pipe.cmd("SMEMBERS").arg(keys::amended_by(id));
+    }
+    let mut lists: Vec<Vec<String>> = pipe.query_async(&mut st.redis()).await?;
+    let successors = lists.split_off(ids.len());
     Ok(ids
         .iter()
         .zip(hashes)
-        .filter_map(|(id, hash)| {
+        .zip(lists.into_iter().zip(successors))
+        .filter_map(|((id, hash), (caveats, mut amended_by))| {
+            amended_by.sort();
+            amended_by.truncate(MAX_SUCCESSORS_SERVED);
             payloads.get(id).map(|payload| Candidate {
                 id: id.clone(),
                 payload: payload.clone(),
                 outcomes: Outcomes::from_hash(&hash),
+                caveats: caveats
+                    .iter()
+                    .filter_map(|c| serde_json::from_str::<Value>(c).ok())
+                    // Checked in full when written; the injection rules, which change most, again with today's.
+                    .filter(|c| {
+                        !crate::decision::looks_injected(c["note"].as_str().unwrap_or_default())
+                    })
+                    .collect(),
+                amended_by,
             })
         })
         .collect())
 }
+
+/// Caveats served with a trail, and successors named: enough to warn, few enough to keep a result short.
+const CAVEATS_SERVED: usize = 3;
+const MAX_SUCCESSORS_SERVED: usize = 3;
 
 /// The risk of a stored trail, assessed with today's rules. The analysis is cheap, and serving it
 /// fresh means a rule added tomorrow also covers every trail indexed yesterday. If the stored
@@ -620,7 +653,7 @@ fn current_risk(payload: &Value) -> Value {
 }
 
 fn result_json(c: &Candidate, via: &str, score: f64, overlap: Option<f64>, now: i64) -> Value {
-    json!({
+    let mut result = json!({
         "trail_id": c.id,
         "kind": c.payload["kind"].as_str().unwrap_or("fix"),
         "match": { "via": via, "score": round3(score), "environment_overlap": overlap.map(round3) },
@@ -629,7 +662,18 @@ fn result_json(c: &Candidate, via: &str, score: f64, overlap: Option<f64>, now: 
         "risk": current_risk(&c.payload),
         "seed": crate::analytics::is_seed(&c.payload["trail"]["agent_info"]),
         "trail": c.payload["trail"],
-    })
+    });
+    // Present only when there is something to say, so a plain result stays as short as before.
+    if !c.caveats.is_empty() {
+        result["caveats"] = json!(c.caveats);
+    }
+    if let Some(amends) = c.payload["amends"].as_str() {
+        result["amends"] = json!(amends);
+    }
+    if !c.amended_by.is_empty() {
+        result["amended_by"] = json!(c.amended_by);
+    }
+    result
 }
 
 fn round3(x: f64) -> f64 {

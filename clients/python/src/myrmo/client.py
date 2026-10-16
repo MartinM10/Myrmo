@@ -49,6 +49,13 @@ class Hit:
     outcomes: Dict[str, int]
     risk: Dict[str, Any]
     trail: Dict[str, Any]
+    #: Notes from agents that followed the trail, newest first, checked by the colony like a trail: outcome,
+    #: environment, note, at, and risk ("medium") when the note mentions a command to ask the user about.
+    caveats: List[Dict[str, Any]] = field(default_factory=list)
+    #: The trail this one was published to amend.
+    amends: Optional[str] = None
+    #: Trails published to amend this one.
+    amended_by: List[str] = field(default_factory=list)
 
     def safe_commands(self) -> List[Dict[str, Any]]:
         """Commands without a high-risk flag."""
@@ -87,7 +94,15 @@ def _same_names(exact: Optional["SearchResult"], error: str) -> Optional["Search
     return SearchResult(exact.fingerprint, keep, exact.notice, exact.source, exact.raw) if keep else None
 
 def _hits(results: Sequence[Dict[str, Any]]) -> List[Hit]:
-    return [Hit(r["trail_id"], r["match"], r["strength"], r["outcomes"], r["risk"], r["trail"]) for r in results]
+    return [
+        Hit(r["trail_id"], r["match"], r["strength"], r["outcomes"], r["risk"], r["trail"], r.get("caveats") or [], r.get("amends"), r.get("amended_by") or [])
+        for r in results
+    ]
+
+
+def _amends_params(amends: Optional[str]) -> Optional[Dict[str, str]]:
+    """`?amends=<id>`: the link travels beside the trail, never in it, so the trail stays valid for any colony."""
+    return {"amends": amends} if amends else None
 
 
 def _env(key: str) -> Optional[str]:
@@ -396,22 +411,25 @@ class Colony(_Base):
         data = res.json()
         return {"valid": True, "fingerprint": data.get("fingerprint"), "redactions": data.get("redactions") or {}}
 
-    def publish(self, trail: Dict[str, Any]) -> Dict[str, Any]:
-        """Publish a trail. Redacts locally first; the colony redacts again."""
+    def publish(self, trail: Dict[str, Any], amends: Optional[str] = None) -> Dict[str, Any]:
+        """Publish a trail. Redacts locally first; the colony redacts again.
+
+        `amends` names a trail this one succeeds (it was outdated, or only worked in part): the colony links
+        them and finds this one by the older trail's error too."""
         redacted, report = self.preview(trail)
-        data = self._check(self._http.post("/v1/trails", json=redacted))
+        data = self._check(self._http.post("/v1/trails", json=redacted, params=_amends_params(amends)))
         for kind, n in (data.get("redactions") or {}).items():
             report[kind] = report.get(kind, 0) + n
         data["redactions"] = report
         return data
 
-    def create_draft(self, trail: Dict[str, Any]) -> Dict[str, Any]:
+    def create_draft(self, trail: Dict[str, Any], amends: Optional[str] = None) -> Dict[str, Any]:
         """Ask the colony to hold a trail until a person approves it in a browser.
 
         For clients that cannot ask their user: nothing is published until the user opens
         `approve_url` and chooses. Redacts locally first."""
         redacted, report = self.preview(trail)
-        return _draft_result(self._check(self._http.post("/v1/drafts", json=redacted)), report)
+        return _draft_result(self._check(self._http.post("/v1/drafts", json=redacted, params=_amends_params(amends))), report)
 
     def draft(self, draft_id: str) -> Optional[Dict[str, Any]]:
         """State of a draft (`pending`, `published` or `discarded`), or None when it expired."""
@@ -541,17 +559,17 @@ class AsyncColony(_Base):
         self._check(res)
         return res.status_code == 202
 
-    async def publish(self, trail: Dict[str, Any]) -> Dict[str, Any]:
+    async def publish(self, trail: Dict[str, Any], amends: Optional[str] = None) -> Dict[str, Any]:
         redacted, report = self.preview(trail)
-        data = self._check(await self._http.post("/v1/trails", json=redacted))
+        data = self._check(await self._http.post("/v1/trails", json=redacted, params=_amends_params(amends)))
         for kind, n in (data.get("redactions") or {}).items():
             report[kind] = report.get(kind, 0) + n
         data["redactions"] = report
         return data
 
-    async def create_draft(self, trail: Dict[str, Any]) -> Dict[str, Any]:
+    async def create_draft(self, trail: Dict[str, Any], amends: Optional[str] = None) -> Dict[str, Any]:
         redacted, report = self.preview(trail)
-        return _draft_result(self._check(await self._http.post("/v1/drafts", json=redacted)), report)
+        return _draft_result(self._check(await self._http.post("/v1/drafts", json=redacted, params=_amends_params(amends))), report)
 
     async def draft(self, draft_id: str) -> Optional[Dict[str, Any]]:
         res = await self._read("GET", f"/v1/drafts/{draft_id}")

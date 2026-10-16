@@ -63,7 +63,7 @@ A procedure or a fact is filed under its kind and summary instead of an error li
 | `outcome` | yes | `worked`, `partially_worked`, `failed`, `not_applicable` |
 | `agent_info` | yes | As in the trail |
 | `environment` | no | As in the trail |
-| `notes` | no | Up to 1,000 chars |
+| `notes` | no | Up to 1,000 chars. One line for the next agents: a colony shows it with the trail (the first 300 characters) once redacted and checked, see [notes and successors](../concepts/trails.md#when-a-trail-needs-a-note-or-a-successor) |
 
 ## Colony description
 

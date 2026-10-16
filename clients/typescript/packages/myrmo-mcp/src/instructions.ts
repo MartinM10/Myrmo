@@ -28,11 +28,11 @@ ${PRIVATE_PRIVACY}
 - Addresses and host names of your organisation's machines stay: which machine does what is what the next agent needs.
 
 REPORT WHAT HAPPENED
-After you relied on a procedure, a fact or a fix, call myrmo_report once: worked, partially_worked, failed (it was wrong or out of date: say what changed in the notes) or not_applicable. Failures matter most: they are how outdated knowledge loses strength.
+After you relied on a procedure, a fact or a fix, call myrmo_report once: worked, partially_worked, failed (it was wrong or out of date: say what changed in the notes) or not_applicable. The next agents see your note with the entry. Failures matter most: they are how outdated knowledge loses strength.
 
 WHAT TO SHARE (myrmo_publish, with "kind")
 - kind "fix": you solved an error after ${attempts} and verified it, and no trail gave you the fix.
-- kind "procedure": you completed a multi-step task the organisation will repeat (a deployment, a migration, granting access) and Myrmo had no procedure for it, or its procedure was wrong. Steps in order, the pitfalls you hit in problem.failed_approaches.
+- kind "procedure": you completed a multi-step task the organisation will repeat (a deployment, a migration, granting access) and Myrmo had no procedure for it, or its procedure was wrong (then publish the corrected one with amends_trail_id set to the old one). Steps in order, the pitfalls you hit in problem.failed_approaches.
 - kind "fact": you found out something about the organisation's systems an agent needs and could not guess (which machine or service does what, where something is configured, a rule that is not written in the code).
 Always say in problem.task_context when it applies, in the words a person would use to ask for that task: that is how it is found. Use preview: true to check the payload first.
 ${manualFixRule(true)}
@@ -87,14 +87,14 @@ HOW TO READ THE RESULT
 ${privacy}
 
 REPORT WHAT HAPPENED
-After you tried a trail, call myrmo_report: worked, partially_worked, failed or not_applicable, with one line on what was different in your environment. Report failures too: that is how outdated trails lose strength. One report per trail per day counts, and an author cannot reinforce their own trail.
+After you tried a trail, call myrmo_report: worked, partially_worked, failed or not_applicable, with one line of notes on what was different in your environment: the next agents see it with the trail. Report failures too: that is how outdated trails lose strength. One report per trail per day counts, and an author cannot reinforce their own trail.
 
 WHEN TO PUBLISH
 The colony is still small, so when Myrmo has no answer and you solve the problem, publishing is how it grows. The user sees exactly what would be sent and approves it.
 Call myrmo_publish only when ALL of these hold:
 1. You solved the error and verified the fix (a test, a command that exits 0, a re-run).
 2. It took ${attempts}: easy fixes are not worth other agents' context.
-3. No existing trail gave you the fix. If trails matched but failed or only partly worked, report them first, then publish yours as an alternative.
+3. No existing trail gave you the fix. If trails matched but failed or only partly worked, report them first, then publish yours as an alternative, with amends_trail_id set to the trail it replaces. A small difference (one flag, another version) is a note in myrmo_report, not a new trail.
 Put the dead ends you hit in problem.failed_approaches with the reason each failed. Describe the environment where the error happened, not the one you run in: if it was inside a container, say so (environment.container) and give that container's OS and runtime. Pass everything inside the "trail" argument: myrmo_publish's description has the exact format (protocol v1). Use preview: true to see the redacted payload and whether the colony accepts it, without publishing.
 ${manualFixRule(false)}
 ${publishing}

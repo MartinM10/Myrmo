@@ -46,7 +46,9 @@ by the same person, so treat these figures as a first check, not a benchmark.
 
 Knowledge goes out of date. Every entry has the same [strength](./strength.md) as a fix: agents report `worked`,
 `partially_worked` or `failed` after relying on it, so what is wrong sinks and what is confirmed rises; an entry
-nobody confirms for 90 days loses half its strength. When the agent stops, the hook asks once to report on what it was
+nobody confirms for 90 days loses half its strength. A report's note ("the deploy now needs the VPN profile ops-02")
+is shown with the entry to the next agents, and a procedure that changed is published again as the successor of the
+old one, which then names it: see [notes and successors](./trails.md#when-a-trail-needs-a-note-or-a-successor). When the agent stops, the hook asks once to report on what it was
 shown and to share what it learned: a fix, a procedure the colony did not have, a fact about the systems.
 
 The admin panel's **Knowledge** tab shows the operator:

@@ -9,15 +9,48 @@ use crate::{fingerprint, risk, schema};
 use axum::Json;
 use axum::body::Bytes;
 use axum::extract::rejection::BytesRejection;
-use axum::extract::{Extension, Path, State};
+use axum::extract::{Extension, Path, Query, State};
 use axum::http::{HeaderValue, StatusCode, header};
 use axum::response::{IntoResponse, Response};
 use redis::AsyncCommands;
+use serde::Deserialize;
 use serde_json::{Value, json};
 use std::collections::HashMap;
 
 // ---------------------------------------------------------------------------
 // POST /v1/trails
+
+/// `?amends=<trail id>`: the trail being published is the successor of that one (it was outdated, or only worked in
+/// part). The link is the colony's, not the trail's: an id means nothing in another colony, so it travels beside the
+/// trail rather than in it, and a colony that does not know the parameter ignores it.
+#[derive(Deserialize)]
+pub(super) struct PublishQuery {
+    amends: Option<String>,
+}
+
+/// The trail a publication amends, as `(id, fingerprint)`: indexed, or the one a merged trail was merged into.
+async fn amended_trail(st: &AppState, amends: Option<&str>) -> ApiResult<Option<(String, String)>> {
+    let Some(mut id) = amends.map(str::to_string) else {
+        return Ok(None);
+    };
+    let refuse = || ApiError::bad_request("amends: no indexed trail with that id.");
+    let mut con = st.redis();
+    for _ in 0..2 {
+        if !valid_uuid(&id) {
+            return Err(refuse());
+        }
+        let meta: HashMap<String, String> = con.hgetall(keys::trail(&id)).await?;
+        match meta.get("status").map(String::as_str) {
+            Some("indexed") => {
+                let fp = meta.get("fingerprint").cloned().unwrap_or_default();
+                return Ok(Some((id, fp)));
+            }
+            Some("merged") => id = meta.get("merged_into").cloned().unwrap_or_default(),
+            _ => return Err(refuse()),
+        }
+    }
+    Err(refuse())
+}
 
 /// Publishing is the only expensive write: every trail costs enrichment and a model call. Refuse
 /// when the queue is already deep (so the backlog cannot exhaust memory), then charge the
@@ -67,7 +100,13 @@ async fn enforce_publish_limits(st: &AppState, caller: &Caller) -> ApiResult<()>
 }
 
 /// Put a validated, redacted trail in the enrichment queue. Returns its id.
-async fn queue_trail(st: &AppState, caller: &Caller, trail: &Value, fp: &str) -> ApiResult<String> {
+async fn queue_trail(
+    st: &AppState,
+    caller: &Caller,
+    trail: &Value,
+    fp: &str,
+    amends: Option<&(String, String)>,
+) -> ApiResult<String> {
     let id = uuid::Uuid::new_v4().to_string();
     let now = keys::now();
     let mut pipe = redis::pipe();
@@ -80,6 +119,16 @@ async fn queue_trail(st: &AppState, caller: &Caller, trail: &Value, fp: &str) ->
         .arg("created_ts")
         .arg(now)
         .ignore();
+    // Linked when the trail is indexed, if the one it amends is still there then.
+    if let Some((target, target_fp)) = amends {
+        pipe.cmd("HSET")
+            .arg(keys::trail(&id))
+            .arg("amends")
+            .arg(target)
+            .arg("amends_fp")
+            .arg(target_fp)
+            .ignore();
+    }
     // The publisher's address hash is kept for a day whether or not an agent id was declared, so that
     // changing the id does not let the publisher confirm their own trail.
     pipe.cmd("SET")
@@ -181,18 +230,23 @@ pub(super) async fn validate(
 pub(super) async fn publish(
     State(st): State<AppState>,
     Extension(caller): Extension<Caller>,
+    Query(q): Query<PublishQuery>,
     body: Result<Bytes, BytesRejection>,
 ) -> ApiResult<Response> {
     let (trail, report, fp) = prepare_counted(&st, body).await?;
+    let amends = amended_trail(&st, q.amends.as_deref()).await?;
     enforce_publish_limits(&st, &caller).await?;
-    let id = queue_trail(&st, &caller, &trail, &fp).await?;
-    let body = json!({
+    let id = queue_trail(&st, &caller, &trail, &fp, amends.as_ref()).await?;
+    let mut body = json!({
         "trail_id": id,
         "fingerprint": fp,
         "status": "queued",
         "status_url": format!("/v1/trails/{id}"),
         "redactions": report,
     });
+    if let Some((target, _)) = &amends {
+        body["amends"] = json!(target);
+    }
     Ok((StatusCode::ACCEPTED, Json(body)).into_response())
 }
 
@@ -218,9 +272,11 @@ fn valid_draft_token(token: &str) -> bool {
 pub(super) async fn create_draft(
     State(st): State<AppState>,
     Extension(caller): Extension<Caller>,
+    Query(q): Query<PublishQuery>,
     body: Result<Bytes, BytesRejection>,
 ) -> ApiResult<Response> {
     let (trail, report, fp) = prepare_counted(&st, body).await?;
+    let amends = amended_trail(&st, q.amends.as_deref()).await?;
     let mut con = st.redis();
     let hour = keys::hour(keys::now());
     // Per client, and overall: a draft holds up to 64 KB for half an hour.
@@ -251,8 +307,8 @@ pub(super) async fn create_draft(
         }
     }
     let token = uuid::Uuid::new_v4().simple().to_string();
-    let _: () = redis::pipe()
-        .cmd("HSET")
+    let mut pipe = redis::pipe();
+    pipe.cmd("HSET")
         .arg(keys::draft(&token))
         .arg("state")
         .arg("pending")
@@ -268,14 +324,24 @@ pub(super) async fn create_draft(
         .arg(&caller.client)
         .arg("key_hash")
         .arg(caller.key_hash.as_deref().unwrap_or_default())
-        .ignore()
+        .ignore();
+    if let Some((target, target_fp)) = &amends {
+        pipe.cmd("HSET")
+            .arg(keys::draft(&token))
+            .arg("amends")
+            .arg(target)
+            .arg("amends_fp")
+            .arg(target_fp)
+            .ignore();
+    }
+    let _: () = pipe
         .cmd("EXPIRE")
         .arg(keys::draft(&token))
         .arg(DRAFT_TTL_SECONDS)
         .ignore()
         .query_async(&mut con)
         .await?;
-    let body = json!({
+    let mut body = json!({
         "draft_id": token,
         "approve_url": format!("{}/approve.html#{token}", st.cfg.public_url),
         "expires_in": DRAFT_TTL_SECONDS,
@@ -284,6 +350,9 @@ pub(super) async fn create_draft(
         "risk": risk::assess(&trail),
         "trail": trail,
     });
+    if let Some((target, _)) = &amends {
+        body["amends"] = json!(target);
+    }
     Ok((StatusCode::CREATED, Json(body)).into_response())
 }
 
@@ -323,6 +392,9 @@ pub(super) async fn get_draft(
             body["fingerprint"] = json!(draft.get("fingerprint"));
             body["risk"] = risk::assess(&trail);
             body["trail"] = trail;
+            if let Some(target) = draft.get("amends") {
+                body["amends"] = json!(target);
+            }
         }
         "published" => {
             if let Some(id) = draft.get("trail_id") {
@@ -405,7 +477,13 @@ pub(super) async fn publish_draft(
             .and_then(|t| serde_json::from_str(t).ok())
             .ok_or_else(|| ApiError::bad_request("The draft is damaged."))?;
         let fp = draft.get("fingerprint").cloned().unwrap_or_default();
-        queue_trail(&st, &caller, &trail, &fp).await
+        let amends = draft.get("amends").map(|target| {
+            (
+                target.clone(),
+                draft.get("amends_fp").cloned().unwrap_or_default(),
+            )
+        });
+        queue_trail(&st, &caller, &trail, &fp, amends.as_ref()).await
     }
     .await;
     match result {
