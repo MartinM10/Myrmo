@@ -541,9 +541,10 @@ export function parseInitArgs(args: string[], readStdin: () => string = () => re
     const a = args[i];
     if (a === "--dry-run") opts.dryRun = true;
     else if (a === "--client") {
-      const id = args[++i];
-      if (!id || !CLIENT_IDS.includes(id)) return `--client needs one of: ${CLIENT_IDS.join(", ")}`;
-      opts.clients.push(id);
+      // One id or several, comma-separated, as the help says; the flag may also be repeated.
+      const ids = (args[++i] ?? "").split(",").map((id) => id.trim()).filter(Boolean);
+      if (!ids.length || ids.some((id) => !CLIENT_IDS.includes(id))) return `--client needs one of: ${CLIENT_IDS.join(", ")}`;
+      for (const id of ids) if (!opts.clients.includes(id)) opts.clients.push(id);
     } else if (a === "--agents-md") {
       const next = args[i + 1];
       opts.agentsMd = next && !next.startsWith("--") ? (i++, next) : "AGENTS.md";

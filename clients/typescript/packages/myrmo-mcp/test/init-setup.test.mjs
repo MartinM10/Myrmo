@@ -134,6 +134,9 @@ test("--no-rules leaves the instruction files alone, and --dry-run writes nothin
   runInit({ env: only(), clients: [], dryRun: true, home, log: () => {} });
   assert.equal(existsSync(gemini.file), false);
   assert.deepEqual(parseInitArgs(["--no-rules"]), { clients: [], dryRun: false, rules: false });
+  assert.deepEqual(parseInitArgs(["--client", "cursor,opencode"]).clients, ["cursor", "opencode"], "a comma-separated list, as the help says");
+  assert.deepEqual(parseInitArgs(["--client", "cursor", "--client", "codex", "--client", "cursor"]).clients, ["cursor", "codex"]);
+  assert.match(parseInitArgs(["--client", "cursor,nope"]), /--client needs one of/);
 });
 
 test("the full usage block tells agents about privacy and the environment", () => {
