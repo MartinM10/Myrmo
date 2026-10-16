@@ -97,13 +97,47 @@ function ago(date) {
   return `${Math.round(s / 86400)} d ago`;
 }
 
-/** 41200 -> "41.2k" */
-function compact(n) {
+/** A count from the API as a number. API data is untrusted: anything that is not a finite number gives `fallback`. */
+function num(value, fallback = 0) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+/** 41200 -> "41.2k". Anything that is not a number reads "—", never as the value itself. */
+function compact(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return "—";
   if (n >= 1e9) return `${(n / 1e9).toFixed(1)}B`;
   if (n >= 1e6) return `${(n / 1e6).toFixed(1)}M`;
   if (n >= 1e3) return `${(n / 1e3).toFixed(1)}k`;
   return String(n);
 }
 
-window.Myrmo = { initCopyButtons, esc, highlightJson, trailStrength, agentGlyph, ago, compact };
+// A developer's own copy of the site. Only there may ?api= point the colony page at another server.
+const LOCAL_HOSTS = ["localhost", "127.0.0.1", "[::1]"];
+
+/**
+ * Where the colony page reads its data; `loc` is window.location, a parameter so it can be tested.
+ * On a public site it is always the page's own origin: a link with ?api= must not make the site show another
+ * server's data under its name, nor tell visitors to connect their agents to that server.
+ */
+function apiBase(loc = window.location) {
+  const local = loc.protocol === "file:" || LOCAL_HOSTS.includes(loc.hostname);
+  const fromQuery = local ? new URLSearchParams(loc.search).get("api") : null;
+  if (fromQuery) {
+    try {
+      const url = new URL(fromQuery);
+      if (url.protocol === "http:" || url.protocol === "https:") return url.origin + url.pathname.replace(/\/+$/, "");
+    } catch {
+      /* not an address: ignore it */
+    }
+  }
+  if (!loc.protocol.startsWith("http")) return null;
+  // Local development serves the site on :3000 and the API on :8080; in production
+  // both live behind the same origin.
+  if (loc.port === "3000") return `${loc.protocol}//${loc.hostname}:8080`;
+  return loc.origin;
+}
+
+window.Myrmo = { initCopyButtons, esc, highlightJson, trailStrength, agentGlyph, ago, num, compact, apiBase };
 })();

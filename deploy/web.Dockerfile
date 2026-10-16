@@ -11,7 +11,7 @@ ENV MYRMO_SITE_URL=${MYRMO_SITE_URL} \
     MYRMO_DOCS_NO_GIT=1
 RUN npm run build
 
-FROM nginx:1.27-alpine
+FROM nginx:1.28-alpine
 COPY deploy/nginx-web.conf /etc/nginx/conf.d/default.conf
 COPY deploy/nginx-security-headers.conf /etc/nginx/snippets/security-headers.conf
 COPY web/ /usr/share/nginx/html/

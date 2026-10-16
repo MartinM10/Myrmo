@@ -12,7 +12,11 @@
 }
 
 (headers) {
+	# HSTS for every response, the API and /mcp included (nginx only covers the website). The deletion below makes
+	# Caddy apply these after the upstream answered, so this value replaces nginx's instead of doubling it. No
+	# includeSubDomains or preload: those commit every subdomain to HTTPS for a year, a decision not taken yet.
 	header {
+		Strict-Transport-Security "max-age=31536000"
 		X-Content-Type-Options nosniff
 		Referrer-Policy strict-origin-when-cross-origin
 		-Server
@@ -61,5 +65,6 @@ myrmo.dev {
 }
 
 www.myrmo.dev {
+	import headers
 	redir https://myrmo.dev{uri} permanent
 }
