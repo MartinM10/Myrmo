@@ -9,6 +9,8 @@ pub const FEED: &str = "feed";
 pub const ACTIVITY: &str = "activity";
 pub const DIRTY: &str = "dirty";
 pub const STAT_TRAILS: &str = "stats:trails";
+/// The last backup `deploy/backup.sh` made of this colony (hash: ts, archive, bytes, trails, offsite_ts).
+pub const BACKUP_LAST: &str = "backup:last";
 
 /// Status and lightweight metadata of a trail (hash).
 pub fn trail(id: &str) -> String {

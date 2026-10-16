@@ -120,7 +120,8 @@ of the compose project, daily from cron:
 ```
 
 `MYRMO_BACKUP_DIR` (default `~/myrmo-backups`), `MYRMO_BACKUP_KEEP_DAYS` (14) and `MYRMO_BACKUP_KEEP` (14) change
-where and how long.
+where and how long. Archives are readable by their owner only. Each backup is recorded in the colony, so the admin
+panel warns when there is none or the last one is more than two days old (`GET /v1/admin/backup`).
 
 The backups stay on the same host unless you copy them elsewhere. There are two ways.
 

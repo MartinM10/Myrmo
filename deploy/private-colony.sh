@@ -11,7 +11,7 @@
 #   bash deploy/private-colony.sh status             # is it up, and does it refuse a request without a key
 #   bash deploy/private-colony.sh doctor             # every check, with what to do about each failure
 #   bash deploy/private-colony.sh upgrade            # pull this checkout, rebuild and restart; data and keys stay
-#   bash deploy/private-colony.sh backup [schedule]  # one archive now, or a daily one at 03:17 (cron, 14 kept)
+#   bash deploy/private-colony.sh backup [schedule]  # one archive now, or a daily one at 03:17 (cron, two weeks kept)
 #   bash deploy/private-colony.sh logs [service]     # follow the logs (gateway, enricher, embed, qdrant, valkey)
 #   bash deploy/private-colony.sh down               # stop it; the data stays in its Docker volumes
 #
@@ -257,7 +257,7 @@ EOF
       line="17 3 * * * cd $(pwd) && MYRMO_PROJECT=$PROJECT bash deploy/backup.sh >> \$HOME/myrmo-backups/backup.log 2>&1"
       mkdir -p "$HOME/myrmo-backups"
       (crontab -l 2>/dev/null | grep -v "deploy/backup.sh" | grep -v "private-colony.sh backup"; echo "$line # private-colony.sh backup") | crontab -
-      echo "Scheduled: a backup every day at 03:17, the newest 14 kept in ~/myrmo-backups (see deploy/backup.sh for an off-site copy)."
+      echo "Scheduled: a backup every day at 03:17, two weeks kept in ~/myrmo-backups, readable by you only. Keep a copy on another machine too: deploy/pull-backups.sh (or .ps1), or an S3-compatible store (see deploy/backup.sh)."
     else
       MYRMO_PROJECT="$PROJECT" bash deploy/backup.sh
     fi

@@ -881,6 +881,34 @@ fn health_item(c: &super::Candidate, now: i64) -> Value {
     })
 }
 
+/// Days after which the panel warns that the last backup is old: a daily backup missed twice.
+const BACKUP_OLD_DAYS: f64 = 2.0;
+
+/// What the panel says about backups, from what `deploy/backup.sh` recorded.
+fn backup_status(h: &HashMap<String, String>, now: i64) -> Value {
+    let int = |k: &str| h.get(k).and_then(|v| v.parse::<i64>().ok());
+    let Some(ts) = int("ts") else {
+        return json!({ "last_at": null, "old": true });
+    };
+    let age_days = ((now - ts).max(0) as f64 / 86_400.0 * 10.0).round() / 10.0;
+    json!({
+        "last_at": keys::iso(ts),
+        "age_days": age_days,
+        "old": age_days > BACKUP_OLD_DAYS,
+        "archive": h.get("archive"),
+        "bytes": int("bytes"),
+        "trails": int("trails"),
+        "offsite_at": int("offsite_ts").map(keys::iso),
+    })
+}
+
+/// GET /v1/admin/backup: when the colony was last backed up, so the panel can warn before it matters.
+pub(super) async fn backup(State(st): State<AppState>, headers: HeaderMap) -> ApiResult<Response> {
+    authorize_operator(&st, &headers)?;
+    let h: HashMap<String, String> = st.redis().hgetall(keys::BACKUP_LAST).await?;
+    Ok(private(Json(backup_status(&h, keys::now()))))
+}
+
 /// POST /v1/admin/trails/{id}/confirm: a person vouches that the entry is still valid ("Still valid" in the panel).
 /// It counts as one success and restarts its clock, so knowledge a small team relies on without anyone reporting on
 /// it does not fade: in a team of three, an author cannot raise their own entry and nobody else may have needed it.
@@ -1201,6 +1229,35 @@ pub(super) async fn pilot_roi(
         )));
     }
     Ok(private(Json(summary)))
+}
+
+#[cfg(test)]
+mod backup_tests {
+    use super::*;
+
+    #[test]
+    fn a_colony_never_backed_up_is_flagged_and_an_old_backup_too() {
+        assert_eq!(
+            backup_status(&HashMap::new(), 0),
+            json!({ "last_at": null, "old": true })
+        );
+        let day = 86_400;
+        let h: HashMap<String, String> = [
+            ("ts", "1000000"),
+            ("archive", "myrmo-x.tar.gz"),
+            ("bytes", "748035"),
+            ("trails", "119"),
+        ]
+        .into_iter()
+        .map(|(k, v)| (k.to_string(), v.to_string()))
+        .collect();
+        let fresh = backup_status(&h, 1_000_000 + day / 2);
+        assert_eq!(fresh["old"], false);
+        assert_eq!(fresh["age_days"], 0.5);
+        assert_eq!(fresh["trails"], 119);
+        assert_eq!(fresh["offsite_at"], Value::Null);
+        assert_eq!(backup_status(&h, 1_000_000 + 3 * day)["old"], true);
+    }
 }
 
 #[cfg(test)]

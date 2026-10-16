@@ -12,10 +12,10 @@ mod search;
 mod trails;
 
 use admin::{
-    activity as admin_activity, add_person, audit_list, confirm_trail, gaps as admin_gaps,
-    get_settings, knowledge as admin_knowledge, map as admin_map, page as admin_page, people,
-    pilot_roi as admin_pilot_roi, put_settings, refused, revoke_person, trails as admin_trails,
-    value as admin_value,
+    activity as admin_activity, add_person, audit_list, backup as admin_backup, confirm_trail,
+    gaps as admin_gaps, get_settings, knowledge as admin_knowledge, map as admin_map,
+    page as admin_page, people, pilot_roi as admin_pilot_roi, put_settings, refused, revoke_person,
+    trails as admin_trails, value as admin_value,
 };
 use effort::report_effort;
 use feed::{activity, analytics, demand, feed, stats};
@@ -85,6 +85,7 @@ pub fn router(state: AppState) -> Router {
         .route("/v1/admin/activity", get(admin_activity))
         .route("/v1/admin/trails", get(admin_trails))
         .route("/v1/admin/trails/{id}/confirm", post(confirm_trail))
+        .route("/v1/admin/backup", get(admin_backup))
         .route("/v1/admin/gaps", get(admin_gaps))
         .route("/v1/admin/knowledge", get(admin_knowledge))
         .route("/v1/admin/map", get(admin_map))
