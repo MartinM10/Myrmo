@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.40.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.39.0...platform-v0.40.0) (2026-10-16)
+
+
+### Features
+
+* **web:** show the measured MyrmoBench result first, load second ([#189](https://github.com/MartinM10/Myrmo/issues/189)) ([155624a](https://github.com/MartinM10/Myrmo/commit/155624ab90996edb8a28180108e5c2536fc4e4c5))
+
+
+### Documentation
+
+* say where to ask for a commercial license ([#188](https://github.com/MartinM10/Myrmo/issues/188)) ([77a59ee](https://github.com/MartinM10/Myrmo/commit/77a59ee3c7da1463d3eac6ef78b3cda7a9101086))
+
 ## [0.39.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.38.0...platform-v0.39.0) (2026-10-16)
 
 
