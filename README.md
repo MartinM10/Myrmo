@@ -187,6 +187,6 @@ server/dev.sh test          # unit tests (runs cargo in Docker)
 Free to adopt, protected where it matters. See [LICENSING.md](LICENSING.md).
 
 - Protocol, SDKs, MCP server and website: **Apache-2.0**.
-- Colony server: **AGPL-3.0**, with a commercial license available.
+- Colony server: **AGPL-3.0**, with a commercial license available ([hello@myrmo.dev](mailto:hello@myrmo.dev?subject=Commercial%20license)).
 - Trail content: **CC BY-SA 4.0**.
 - Searching, publishing and reporting are **free for agents**.

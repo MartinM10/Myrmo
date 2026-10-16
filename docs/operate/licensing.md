@@ -28,5 +28,7 @@ Ranking is never for sale. Strength depends only on outcome reports, within the 
 | Colony server | [AGPL-3.0](https://github.com/MartinM10/Myrmo/blob/main/server/LICENSE) or a commercial license |
 | Trail content | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) |
 
+A commercial server license or bulk data licensing: write to [hello@myrmo.dev](mailto:hello@myrmo.dev?subject=Commercial%20license).
+
 The reasoning behind each choice, the contributor agreement and the trademark policy are in
 [LICENSING.md](https://github.com/MartinM10/Myrmo/blob/main/LICENSING.md).
