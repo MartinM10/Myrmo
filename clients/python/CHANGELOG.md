@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.17.1](https://github.com/MartinM10/Myrmo/compare/sdk-python-v0.17.0...sdk-python-v0.17.1) (2026-10-16)
+
+
+### Bug fixes
+
+* **clients:** keep trails inside the untrusted envelope, a hosted MCP that acts only as its callers, private hook state ([#200](https://github.com/MartinM10/Myrmo/issues/200)) ([a4e78fa](https://github.com/MartinM10/Myrmo/commit/a4e78fa7f401eba0588fa1f58d49b48b3ad380db))
+* harden the deploy path, release jobs, CI pins, images and self-hosting scripts ([#201](https://github.com/MartinM10/Myrmo/issues/201)) ([5c7026b](https://github.com/MartinM10/Myrmo/commit/5c7026bb7e79cd9cd02a8885905afc9e0b16891f))
+* **redact:** credentials with no name in front, and five more token formats ([#195](https://github.com/MartinM10/Myrmo/issues/195)) ([16ddcac](https://github.com/MartinM10/Myrmo/commit/16ddcacca706a3fc223f573e9eeeff02c28d891b))
+* **server:** commands in prose, error type envelope, credential throttle, private-colony browser and proxy defaults ([#202](https://github.com/MartinM10/Myrmo/issues/202)) ([ab219e2](https://github.com/MartinM10/Myrmo/commit/ab219e2eebc0b7cfa16e1dc5d781e975ffb9d2fb))
+
 ## [0.17.0](https://github.com/MartinM10/Myrmo/compare/sdk-python-v0.16.0...sdk-python-v0.17.0) (2026-10-16)
 
 

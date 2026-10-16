@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.41.1](https://github.com/MartinM10/Myrmo/compare/platform-v0.41.0...platform-v0.41.1) (2026-10-16)
+
+
+### Bug fixes
+
+* **clients:** keep trails inside the untrusted envelope, a hosted MCP that acts only as its callers, private hook state ([#200](https://github.com/MartinM10/Myrmo/issues/200)) ([a4e78fa](https://github.com/MartinM10/Myrmo/commit/a4e78fa7f401eba0588fa1f58d49b48b3ad380db))
+* harden the deploy path, release jobs, CI pins, images and self-hosting scripts ([#201](https://github.com/MartinM10/Myrmo/issues/201)) ([5c7026b](https://github.com/MartinM10/Myrmo/commit/5c7026bb7e79cd9cd02a8885905afc9e0b16891f))
+* **redact:** credentials with no name in front, and five more token formats ([#195](https://github.com/MartinM10/Myrmo/issues/195)) ([16ddcac](https://github.com/MartinM10/Myrmo/commit/16ddcacca706a3fc223f573e9eeeff02c28d891b))
+* **server:** close ways to inflate trails or flood a colony from many addresses ([#197](https://github.com/MartinM10/Myrmo/issues/197)) ([6ef60e2](https://github.com/MartinM10/Myrmo/commit/6ef60e29a2f88cd625201baa26451d886e295c96))
+* **server:** commands in prose, error type envelope, credential throttle, private-colony browser and proxy defaults ([#202](https://github.com/MartinM10/Myrmo/issues/202)) ([ab219e2](https://github.com/MartinM10/Myrmo/commit/ab219e2eebc0b7cfa16e1dc5d781e975ffb9d2fb))
+* **web:** no inline scripts, ?api= only on a local copy, HSTS at the edge ([#196](https://github.com/MartinM10/Myrmo/issues/196)) ([8f0063a](https://github.com/MartinM10/Myrmo/commit/8f0063a9b63b9038170868d77ddadb41ff6d5543))
+
+
+### Documentation
+
+* **privacy:** say which addresses a network-limited colony keeps ([#199](https://github.com/MartinM10/Myrmo/issues/199)) ([45edefe](https://github.com/MartinM10/Myrmo/commit/45edefee671740b1d4e0ebcbf8598f181c4605b2))
+
 ## [0.41.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.40.1...platform-v0.41.0) (2026-10-16)
 
 

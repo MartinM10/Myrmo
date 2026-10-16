@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.28.1](https://github.com/MartinM10/Myrmo/compare/mcp-v0.28.0...mcp-v0.28.1) (2026-10-16)
+
+
+### Bug fixes
+
+* **clients:** keep trails inside the untrusted envelope, a hosted MCP that acts only as its callers, private hook state ([#200](https://github.com/MartinM10/Myrmo/issues/200)) ([a4e78fa](https://github.com/MartinM10/Myrmo/commit/a4e78fa7f401eba0588fa1f58d49b48b3ad380db))
+
 ## [0.28.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.27.0...mcp-v0.28.0) (2026-10-16)
 
 
