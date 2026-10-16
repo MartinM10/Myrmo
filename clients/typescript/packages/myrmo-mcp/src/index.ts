@@ -46,7 +46,7 @@ const USAGE = `myrmo-mcp ${VERSION}: the Myrmo MCP server and its commands.
   myrmo-mcp doctor                   check that this machine can use the colony, and say what to fix
   myrmo-mcp config [setting value]   show or change a setting (publish, hook, ...)
   myrmo-mcp export <dir> [--skill]   write the colony's trails as Markdown notes
-  myrmo-mcp pilot-roi [days] [--json] fetch and print the Pilot ROI Summary (tokens, time, hold-out)
+  myrmo-mcp pilot-roi [days] [--json] a private colony's pilot summary (needs MYRMO_ADMIN_TOKEN)
   myrmo-mcp --version
 
 Docs: https://myrmo.dev/docs/reference/mcp`;
@@ -143,53 +143,31 @@ if (args[0] === "export") {
 
 const colonyKey = process.env.MYRMO_API_KEY?.trim() || savedColony?.api_key;
 
+// `myrmo-mcp pilot-roi [days] [--json]`: the pilot summary of a private colony, for its operator. The server renders the
+// text, so this command and `myrmo-server pilot-roi` always say the same thing.
 if (args[0] === "pilot-roi") {
-  const daysArg = args.find((a, i) => i > 0 && !a.startsWith("-"));
-  const days = daysArg ? parseInt(daysArg, 10) || 14 : 14;
-  const adminKey = process.env.MYRMO_ADMIN_KEY?.trim() || colonyKey;
-  const url = `${colonyUrl.replace(/\/+$/, "")}/v1/admin/pilot-roi?days=${days}`;
+  const daysArg = args.slice(1).find((a) => !a.startsWith("-"));
+  const days = Math.min(90, Math.max(1, Number.parseInt(daysArg ?? "14", 10) || 14));
+  const token = process.env.MYRMO_ADMIN_TOKEN?.trim();
+  if (!token) {
+    console.error("pilot-roi needs the colony's operator token: MYRMO_ADMIN_TOKEN=<token> npx myrmo-mcp pilot-roi [days]");
+    process.exit(2);
+  }
+  const json = flag("--json");
+  const url = `${colonyUrl.replace(/\/+$/, "")}/v1/admin/pilot-roi?days=${days}${json ? "" : "&format=text"}`;
   try {
-    const res = await fetch(url, {
-      headers: {
-        accept: "application/json",
-        ...(adminKey ? { authorization: `Bearer ${adminKey}` } : {}),
-      },
-      signal: AbortSignal.timeout(10000),
-    });
+    const res = await fetch(url, { headers: { authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(15_000) });
+    const body = await res.text();
     if (!res.ok) {
-      const errBody = await res.text();
-      console.error(`Failed to fetch Pilot ROI from ${url} (${res.status}): ${errBody || res.statusText}`);
-      if (res.status === 401) {
-        console.error("Tip: Provide MYRMO_ADMIN_KEY=<admin_key> or configure MYRMO_API_KEY.");
-      }
+      console.error(`${colonyUrl} answered ${res.status}: ${body.slice(0, 300)}`);
+      if (res.status === 401 || res.status === 403) console.error("Check MYRMO_ADMIN_TOKEN: it is the colony's operator token, not a person's key.");
+      if (res.status === 404) console.error("This colony is older than the pilot summary: upgrade it.");
       process.exit(1);
     }
-    const data = (await res.json()) as Record<string, any>;
-    if (flag("--json")) {
-      console.log(JSON.stringify(data, null, 2));
-      process.exit(0);
-    }
-    console.log(`\n=== Myrmo Pilot ROI Summary (Last ${data.days ?? days} Days) ===`);
-    console.log(`Colony: ${colonyUrl}`);
-    console.log(`Trails Searched:           ${Number(data.trails_searched ?? 0).toLocaleString()}`);
-    console.log(`Colony Hits Followed:      ${Number(data.hits_followed ?? 0).toLocaleString()}`);
-    console.log(`Success Rate With Colony:  ${((Number(data.success_rate_with_colony) || 0) * 100).toFixed(1)}%`);
-    console.log(`Success Rate Without:      ${((Number(data.success_rate_without_colony) || 0) * 100).toFixed(1)}% (via hold-out / baseline)`);
-    console.log(`Hold-outs Evaluated:       ${Number(data.holdouts_evaluated ?? 0).toLocaleString()}`);
-    if (data.saved) {
-      console.log(`Tokens Saved:              ~${Number(data.saved.tokens_estimated ?? 0).toLocaleString()} tokens`);
-      console.log(`Developer Time Saved:      ~${data.saved.hours_estimated ?? 0}h (~${Number(data.saved.seconds_estimated ?? 0).toLocaleString()}s across ${data.saved.turns_saved ?? 0} turns)`);
-      if (data.saved.cost_dollars_estimated != null) {
-        console.log(`Estimated Token Savings:   ~$${data.saved.cost_dollars_estimated}`);
-      }
-    }
-    if (data.team) {
-      console.log(`Active Team Members:       ${data.team.active_keys ?? 0} / ${data.team.total_keys ?? 0} keys`);
-    }
-    console.log("====================================================\n");
+    process.stdout.write(json ? `${JSON.stringify(JSON.parse(body), null, 2)}\n` : body);
     process.exit(0);
-  } catch (err: any) {
-    console.error(`Error connecting to colony at ${url}: ${err.message}`);
+  } catch (err) {
+    console.error(`Could not reach ${colonyUrl}: ${err instanceof Error ? err.message : String(err)}`);
     process.exit(1);
   }
 }

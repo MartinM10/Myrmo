@@ -2340,50 +2340,38 @@ async function value(view) {
       el("span", { className: "alert-text" }, "No price for " + v.prices_missing.join(", ") + ": dollars are left out where they are used. Add them in Settings.")) : null,
     (() => {
       const roi = v.pilot_roi;
-      if (!roi) return null;
-      return el("div", { className: "stat-card", style: "margin-bottom:20px;border-color:var(--amber)" },
+      if (!roi || !roi.savings) return null;
+      const a = roi.activity || {}, f = roi.followed || {}, sv = roi.savings, saved = sv.saved || {};
+      const method = sv.method === "holdout" ? "randomised hold-out" : "before and after";
+      const pp = (side) => sv.per_problem?.[side] || {};
+      const caveats = roi.caveats || [];
+      const report = [
+        `# Myrmo pilot summary, last ${roi.pilot_days} days (${roi.period?.from} to ${roi.period?.to})`,
+        "",
+        `- People active: ${num(a.people_active)} of ${num(a.keys)} keys; ${num(a.searches)} searches, ${num(a.reports)} reports.`,
+        `- A colleague's entry followed: worked ${num(f.worked)}, partially ${num(f.partially_worked)}, failed ${num(f.failed)}, not applicable ${num(f.not_applicable)}` + (f.worked_rate != null ? ` (${f.worked_rate}% worked or partly worked).` : "."),
+        `- Savings (${method}; ${num(sv.errors_compared)} error(s) solved both with and without the colony: ${num(sv.problems_with)} problem(s) with, ${num(sv.problems_without)} without): ${num(saved.tokens)} tokens, ${saved.hours} h of agent time, ${num(saved.turns)} turns` + (saved.dollars != null ? `, $${Number(saved.dollars).toFixed(2)}.` : "."),
+        `- Per problem: ${num(pp("without").tokens)} tokens and ${((pp("without").seconds || 0) / 60).toFixed(1)} min without the colony, ${num(pp("with").tokens)} tokens and ${((pp("with").seconds || 0) / 60).toFixed(1)} min with it.`,
+        ...(caveats.length ? ["", "Read with care:", ...caveats.map((c) => `- ${c}`)] : []),
+        "",
+      ].join("\n");
+      return el("div", { className: "stat-card", style: "margin-bottom:20px" },
         el("div", { style: "display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:12px" },
           el("div", {},
-            el("div", { style: "display:flex;align-items:center;gap:8px" },
-              el("span", { style: "color:var(--amber);font-size:1.15rem" }, "🚀"),
-              el("h2", { style: "margin:0;font:600 1.15rem var(--f-display)" }, "2-Week Pilot ROI Summary")),
-            el("p", { className: "hint", style: "margin:2px 0 0" }, `Period: ${roi.period?.from || "–"} to ${roi.period?.to || "–"} (${roi.pilot_days} days) · ${roi.team?.active_keys || 0} active developer keys`)),
+            el("h2", { style: "margin:0;font:600 1.15rem var(--f-display)" }, "Pilot summary"),
+            el("p", { className: "hint", style: "margin:2px 0 0" }, `Last ${roi.pilot_days} days (${roi.period?.from || "–"} to ${roi.period?.to || "–"}) · ${num(a.people_active)} of ${num(a.keys)} people active`)),
           el("button", { className: "btn btn-act btn-sm", onclick: (e) => {
-            const report = `# Myrmo Pilot ROI Summary (${roi.pilot_days} Days)
-**Period:** ${roi.period?.from} to ${roi.period?.to}
-**Team Engagement:** ${roi.team?.active_keys} active keys, ${num(roi.trails_searched)} trails searched, ${num(roi.hits_followed)} hits followed.
-
-## Colony Impact & Resolution Rate
-- **Success Rate with Colony:** ${roi.success_rate_with_colony}% (followed trails that worked)
-- **Success Rate without Colony:** ${roi.success_rate_without_colony}% (${roi.holdout_percent > 0 ? "randomized holdout" : "unaided baseline"})
-${roi.success_rate_with_colony > roi.success_rate_without_colony ? `- **Net Resolution Lift:** +${(roi.success_rate_with_colony - roi.success_rate_without_colony).toFixed(1)}%` : ""}
-
-## Measured Developer Savings
-- **Tokens Saved:** ${num(roi.saved.tokens)}
-- **Engineering Time Saved:** ${roi.saved.hours} hours (${num(roi.saved.seconds)} seconds)
-- **Agent Turns Saved:** ${num(roi.saved.turns)} turns
-${roi.saved.dollars != null ? `- **Financial Savings:** $${Number(roi.saved.dollars).toFixed(2)}` : ""}
-
-## Per-Problem Comparison
-- **With Colony:** ${num(roi.per_problem?.with?.tokens)} tokens | ${(roi.per_problem?.with?.seconds / 60).toFixed(1)} mins | ${num(roi.per_problem?.with?.turns)} turns
-- **Without Colony:** ${num(roi.per_problem?.without?.tokens)} tokens | ${(roi.per_problem?.without?.seconds / 60).toFixed(1)} mins | ${num(roi.per_problem?.without?.turns)} turns
-`;
             copyToClipboard(report, e.target);
-            showToast("Pilot ROI report copied to clipboard!");
-          } }, "📋 Copy Pilot ROI Report")),
+            showToast("Pilot summary copied.");
+          } }, "Copy summary")),
         el("div", { style: "display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:12px" },
-          kpi(num(roi.trails_searched), "Trails Searched", `${num(roi.team?.active_keys || 0)} developers`),
-          kpi(num(roi.hits_followed), "Hits Followed", `${num(roi.aided_records || 0)} aided fixes`),
-          kpi(`${roi.success_rate_with_colony}%`, "Success Rate (With Colony)", "followed hits that worked"),
-          kpi(`${roi.success_rate_without_colony}%`, "Success Rate (Without)", roi.holdout_percent > 0 ? `${roi.holdout_percent}% hold-out control` : "unaided baseline"),
-          kpi(num(roi.saved.tokens), "Tokens Saved", roi.baseline_method === "holdout" ? "randomized hold-out" : "before & after"),
-          kpi(`${roi.saved.hours} h`, "Dev Time Saved", `${num(roi.saved.turns)} turns saved`),
-          kpi(roi.saved.dollars != null ? "$" + Number(roi.saved.dollars).toFixed(2) : "–", "Cost Saved", roi.saved.dollars != null ? "at your token prices" : "set in Settings")),
-        el("div", { className: "hint", style: "border-top:1px solid var(--tunnel);padding-top:8px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px" },
-          el("span", {}, roi.holdouts_evaluated > 0
-            ? `Control group: ${num(roi.holdouts_evaluated)} lookups held out at random (${roi.holdout_percent}%). Resolution lift: +${(roi.success_rate_with_colony - roi.success_rate_without_colony).toFixed(1)}% higher success.`
-            : "Hold-out is inactive. Enable a 5-10% hold-out in Settings to measure against a randomized control group."),
-          el("span", {}, `Measured per-problem: ${(roi.per_problem?.with?.seconds / 60).toFixed(1)}m with colony vs ${(roi.per_problem?.without?.seconds / 60).toFixed(1)}m without.`)));
+          kpi(num(a.searches), "Searches", `${num(a.reports)} reports`),
+          kpi(f.worked_rate != null ? `${f.worked_rate}%` : "–", "Followed and worked", `${num((f.worked || 0) + (f.partially_worked || 0))} of ${num((f.worked || 0) + (f.partially_worked || 0) + (f.failed || 0))} colleagues' entries`),
+          kpi(num(saved.tokens), "Tokens saved", `${method}, ${num(sv.errors_compared)} errors`),
+          kpi(`${saved.hours} h`, "Agent time saved", `${num(saved.turns)} turns`),
+          kpi(saved.dollars != null ? "$" + Number(saved.dollars).toFixed(2) : "–", "Cost saved", saved.dollars != null ? "at your token prices" : "set prices in Settings")),
+        caveats.length ? el("div", { className: sv.enough ? "hint" : "alert-banner warn", style: "margin-top:4px" },
+          el("span", { className: "alert-text" }, caveats.join(" "))) : null);
     })(),
     estimateCard("Before and after", v.before_after, "Every error measured both without help and with it. An estimate: errors people solved alone may differ from the ones the colony knew."),
     estimateCard("Hold-out (randomised)", v.holdout, v.holdout_percent
@@ -2473,7 +2461,7 @@ async function people(view) {
       el("div", { style: "display:flex;align-items:center;gap:8px;margin-bottom:8px" },
         el("span", { style: "color:var(--amber);font-size:1.1rem" }, "🔑"),
         el("b", { style: "color:var(--chalk)" }, "Access key created for " + made.name + ". Shown only once!")),
-      el("p", { className: "hint", style: "margin:0 0 10px" }, "The private key is cryptographically salted and cannot be recovered later."),
+      el("p", { className: "hint", style: "margin:0 0 10px" }, "It is shown only now: the colony keeps only a SHA-256 digest of it, so it cannot be shown again."),
       text,
       el("div", { style: "display:flex;gap:8px;margin-top:10px" }, copyBtn,
         el("button", { className: "btn btn-quiet", onclick: () => show("people") }, "Done & Dismiss")));
@@ -2517,7 +2505,7 @@ async function people(view) {
       el("div", { style: "display:flex;align-items:center;gap:8px;margin-bottom:8px" },
         el("span", { style: "color:var(--amber);font-size:1.1rem" }, "🔑"),
         el("b", { style: "color:var(--chalk)" }, `${keys.length} Access keys generated for team pilot. Shown only once!`)),
-      el("p", { className: "hint", style: "margin:0 0 10px" }, "These private keys are cryptographically salted and cannot be recovered later. Distribute them to pilot participants."),
+      el("p", { className: "hint", style: "margin:0 0 10px" }, "They are shown only now: the colony keeps only a SHA-256 digest of each, so they cannot be shown again. Give each person theirs privately."),
       keysTable,
       text,
       el("div", { style: "display:flex;gap:8px;margin-top:10px;flex-wrap:wrap" },

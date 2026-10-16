@@ -7,6 +7,9 @@ useDefault = true
 # private keys on purpose: they exist to be redacted. Nothing outside these paths is excused.
 [allowlist]
 description = "Invented secrets in test fixtures"
+# A test value in server/src/api/outcomes.rs that looked like a key, replaced in the commit after it. Only that commit
+# is excused: the file itself is scanned like any other.
+commits = ["51dcdc8bd9452f35abd46354e88234aae4e64efc"]
 paths = [
   '''protocol/redact\.v1\.vectors\.json''',
   '''bench/leaks/''',
@@ -14,5 +17,4 @@ paths = [
   '''clients/typescript/packages/myrmo/test/''',
   '''server/tests/''',
   '''server/src/redact\.rs''',
-  '''server/src/api/outcomes\.rs''',
 ]

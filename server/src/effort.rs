@@ -638,7 +638,101 @@ pub async fn of_trail<C: ConnectionLike + Send>(
     Ok((n > 0).then(|| json!({ "records": n, "tokens": tokens / n, "seconds": seconds / n })))
 }
 
-/// Detailed summary of a Pilot's ROI (searches, followed hits, success rate with vs without colony, tokens/time saved).
+/// Errors measured both with and without the colony below which a pilot summary says its difference is not yet evidence.
+const MIN_ERRORS_COMPARED: u64 = 5;
+
+/// What a pilot summary is built from, gathered from Valkey by [`pilot_roi`].
+pub struct PilotInputs {
+    pub days: i64,
+    pub from: String,
+    pub to: String,
+    pub searches: u64,
+    pub reports: u64,
+    /// Reports on a colleague's entry: worked, partially_worked, failed, not_applicable.
+    pub followed: [u64; 4],
+    pub holdout_percent: u64,
+    pub lookups_held_out: u64,
+    /// [`value`] over every measured problem.
+    pub value: Value,
+    pub keys: u64,
+    pub active: u64,
+}
+
+/// The pilot summary an operator shows a team: what was used, what worked, and what it saved, each with the number it
+/// rests on. Savings come from [`value`], which compares the same errors solved with and without the colony; the
+/// randomised hold-out is preferred when it has data. Two figures that measure different things are never set side by
+/// side as "with" and "without": a lookup held out is not a problem, and a followed entry that worked is not a solved
+/// task. When the data is too thin to conclude, the summary says so.
+pub fn pilot_summary(i: &PilotInputs) -> Value {
+    let [worked, partially, failed, not_applicable] = i.followed;
+    let judged = worked + partially + failed;
+    let worked_rate =
+        (judged > 0).then(|| round2((worked + partially) as f64 / judged as f64 * 100.0));
+    let holdout = &i.value["holdout"];
+    let use_holdout = holdout["errors"].as_u64().unwrap_or(0) > 0;
+    let (method, estimate) = if use_holdout {
+        ("holdout", holdout)
+    } else {
+        ("before_after", &i.value["before_after"])
+    };
+    let compared = estimate["errors"].as_u64().unwrap_or(0);
+    let mut caveats: Vec<String> = Vec::new();
+    if compared == 0 {
+        caveats.push("No error was solved both with and without the colony yet, so there is no measured saving.".into());
+    } else if compared < MIN_ERRORS_COMPARED {
+        caveats.push(format!(
+            "Only {compared} error(s) were solved both with and without the colony: too few to conclude anything."
+        ));
+    }
+    if !use_holdout {
+        caveats.push(if i.holdout_percent == 0 {
+            "Savings are before-and-after: errors people solved alone may differ from the ones the colony knew. Set a hold-out of a few percent for a randomised comparison.".into()
+        } else {
+            "The hold-out has no matched records yet, so savings are before-and-after: errors people solved alone may differ from the ones the colony knew.".into()
+        });
+    }
+    if judged > 0 {
+        caveats.push("Followed entries that worked counts partially_worked as worked; it says how often what the colony gave was right, not how many tasks were solved.".into());
+    }
+    let saved = &estimate["saved"];
+    json!({
+        "pilot_days": i.days,
+        "period": { "from": i.from, "to": i.to },
+        "activity": {
+            "searches": i.searches,
+            "reports": i.reports,
+            "keys": i.keys,
+            "people_active": i.active,
+        },
+        "followed": {
+            "worked": worked,
+            "partially_worked": partially,
+            "failed": failed,
+            "not_applicable": not_applicable,
+            "worked_rate": worked_rate,
+        },
+        "holdout": { "percent": i.holdout_percent, "lookups_held_out": i.lookups_held_out },
+        "savings": {
+            "method": method,
+            "errors_compared": compared,
+            "problems_with": estimate["aided_records"],
+            "problems_without": estimate["baseline_records"],
+            "enough": compared >= MIN_ERRORS_COMPARED,
+            "saved": {
+                "tokens": saved["tokens"],
+                "seconds": saved["seconds"],
+                "hours": round2(saved["seconds"].as_f64().unwrap_or(0.0) / 3600.0),
+                "turns": saved["turns"],
+                "dollars": saved["dollars"],
+            },
+            "per_problem": estimate["per_problem"],
+        },
+        "caveats": caveats,
+        "method": METHOD,
+    })
+}
+
+/// [`pilot_summary`] over the last `days`, read from Valkey.
 pub async fn pilot_roi<C: ConnectionLike + Send>(
     con: &mut C,
     st: &crate::state::AppState,
@@ -646,131 +740,60 @@ pub async fn pilot_roi<C: ConnectionLike + Send>(
     now: i64,
 ) -> anyhow::Result<Value> {
     let days = days.clamp(1, 90);
-    let start_ts = now - (days - 1) * 86_400;
-    let from_date = chrono::DateTime::from_timestamp(start_ts, 0)
-        .unwrap_or_default()
-        .format("%Y-%m-%d")
-        .to_string();
-    let to_date = chrono::DateTime::from_timestamp(now, 0)
-        .unwrap_or_default()
-        .format("%Y-%m-%d")
-        .to_string();
-
-    // 1. Team search & report activity over the pilot period
-    let (tally, _) = crate::team::summary(con, days, now, 1000).await?;
-    let mut total_searches = 0u64;
-    let mut used_worked = 0u64;
-    let mut used_partially = 0u64;
-    let mut used_failed = 0u64;
-    let mut used_na = 0u64;
-    let mut reports_count = 0u64;
-
-    for counts in tally.values() {
-        let get = |k: &str| counts.get(k).copied().unwrap_or(0) as u64;
-        total_searches += get("searches");
-        reports_count += get("reports");
-        used_worked += get("used_worked") + get("reuse_worked");
-        used_partially += get("used_partially_worked") + get("reuse_partially_worked");
-        used_failed += get("used_failed") + get("reuse_failed");
-        used_na += get("used_not_applicable") + get("reuse_not_applicable");
-    }
-    let hits_followed = (used_worked + used_partially + used_failed + used_na).max(reports_count);
-
-    // 2. Success rate with colony
-    let total_with_evaluated = used_worked + used_partially + used_failed;
-    let success_rate_with_colony = if total_with_evaluated > 0 {
-        round2((used_worked + used_partially) as f64 / total_with_evaluated as f64 * 100.0)
-    } else {
-        0.0
+    let date = |ts: i64| {
+        chrono::DateTime::from_timestamp(ts, 0)
+            .unwrap_or_default()
+            .format("%Y-%m-%d")
+            .to_string()
     };
-
-    // 3. Hold-out lookups & success rate without colony
-    let mut holdouts_evaluated = 0u64;
+    let (tally, _) = crate::team::summary(con, days, now, 1000).await?;
+    let (mut searches, mut reports, mut followed) = (0u64, 0u64, [0u64; 4]);
+    for counts in tally.values() {
+        let get = |k: &str| counts.get(k).copied().unwrap_or(0).max(0) as u64;
+        searches += get("searches");
+        reports += get("reports");
+        for (slot, outcome) in ["worked", "partially_worked", "failed", "not_applicable"]
+            .iter()
+            .enumerate()
+        {
+            // Named people count as used_*, a team counted as a whole as reuse_*: one or the other, never both.
+            followed[slot] += get(&format!("used_{outcome}")) + get(&format!("reuse_{outcome}"));
+        }
+    }
+    let mut lookups_held_out = 0u64;
     for d in 0..days {
-        let ts = now - d * 86_400;
-        let holdout_n: Option<u64> = redis::cmd("HGET")
-            .arg(crate::analytics::day_key(ts))
+        let n: Option<u64> = redis::cmd("HGET")
+            .arg(crate::analytics::day_key(now - d * 86_400))
             .arg("holdout")
             .query_async(con)
             .await
             .unwrap_or(None);
-        holdouts_evaluated += holdout_n.unwrap_or(0);
+        lookups_held_out += n.unwrap_or(0);
     }
-
-    let daily_effort = daily(con, days, now).await?;
-    let mut holdout_solved = 0u64;
-    let mut unaided_solved = 0u64;
-    let mut aided_solved = 0u64;
-    for d in &daily_effort {
-        holdout_solved += d["holdout"].as_u64().unwrap_or(0);
-        unaided_solved += d["unaided"].as_u64().unwrap_or(0);
-        aided_solved += d["aided"].as_u64().unwrap_or(0);
-    }
-
-    let success_rate_without_colony = if holdouts_evaluated > 0 {
-        round2((holdout_solved as f64 / holdouts_evaluated as f64 * 100.0).clamp(0.0, 100.0))
-    } else if total_searches > 0 && unaided_solved > 0 {
-        round2((unaided_solved as f64 / total_searches as f64 * 100.0).clamp(0.0, 100.0))
-    } else {
-        0.0
-    };
-
-    // 4. Measured savings (from effort records)
-    let per_fp = load(con).await?;
     let live = crate::api::admin::live(st).await;
-    let val = value(&per_fp, &live.prices);
-    let holdout_est = &val["holdout"];
-    let before_after_est = &val["before_after"];
-
-    let has_holdout_errors = holdout_est["errors"].as_u64().unwrap_or(0) > 0;
-    let primary_est = if has_holdout_errors {
-        holdout_est
-    } else {
-        before_after_est
-    };
-
-    let saved = &primary_est["saved"];
-    let tokens_saved = saved["tokens"].as_f64().unwrap_or(0.0);
-    let seconds_saved = saved["seconds"].as_f64().unwrap_or(0.0);
-    let turns_saved = saved["turns"].as_f64().unwrap_or(0.0);
-    let dollars_saved = saved["dollars"].as_f64();
-
-    // 5. Team keys & participation
-    let all_keys = crate::access::list(con).await.unwrap_or_default();
-    let total_keys = all_keys.len() as u64;
-    let last_seen_map = crate::team::last_seen(con).await.unwrap_or_default();
     let since = now - days * 86_400;
-    let active_keys = last_seen_map.values().filter(|ts| **ts >= since).count() as u64;
-
-    Ok(json!({
-        "pilot_days": days,
-        "period": { "from": from_date, "to": to_date },
-        "trails_searched": total_searches,
-        "hits_followed": hits_followed,
-        "success_rate_with_colony": success_rate_with_colony,
-        "success_rate_without_colony": success_rate_without_colony,
-        "holdout_percent": live.holdout_percent,
-        "holdouts_evaluated": holdouts_evaluated,
-        "holdout_solved": holdout_solved,
-        "aided_records": aided_solved,
-        "saved": {
-            "tokens": tokens_saved,
-            "seconds": seconds_saved,
-            "hours": round2(seconds_saved / 3600.0),
-            "turns": turns_saved,
-            "dollars": dollars_saved,
-        },
-        "per_problem": primary_est["per_problem"],
-        "baseline_method": if has_holdout_errors { "holdout" } else { "before_after" },
-        "team": {
-            "total_keys": total_keys,
-            "active_keys": active_keys,
-            "contributors": contributors(con).await.unwrap_or(json!({})),
-        }
+    let active = crate::team::last_seen(con)
+        .await
+        .unwrap_or_default()
+        .values()
+        .filter(|ts| **ts >= since)
+        .count() as u64;
+    Ok(pilot_summary(&PilotInputs {
+        days,
+        from: date(now - (days - 1) * 86_400),
+        to: date(now),
+        searches,
+        reports,
+        followed,
+        holdout_percent: live.holdout_percent,
+        lookups_held_out,
+        value: value(&load(con).await?, &live.prices),
+        keys: crate::access::list(con).await.unwrap_or_default().len() as u64,
+        active,
     }))
 }
 
-/// CLI command `myrmo-server pilot-roi [days]`
+/// `myrmo-server pilot-roi [days]`: the pilot summary as text.
 pub async fn cli_pilot_roi(st: &crate::state::AppState, args: &[String]) -> anyhow::Result<()> {
     let days: i64 = args
         .first()
@@ -778,92 +801,86 @@ pub async fn cli_pilot_roi(st: &crate::state::AppState, args: &[String]) -> anyh
         .transpose()?
         .unwrap_or(14)
         .clamp(1, 90);
-    let mut con = st.redis();
-    let r = pilot_roi(&mut con, st, days, crate::keys::now()).await?;
+    let r = pilot_roi(&mut st.redis(), st, days, crate::keys::now()).await?;
+    print!("{}", pilot_text(&r));
+    Ok(())
+}
 
-    println!("============================================================");
-    println!("                   MYRMO PILOT ROI SUMMARY                  ");
-    println!(
-        "        Period: Last {} days ({} to {})",
+/// The summary as plain text, every figure next to what it rests on.
+pub fn pilot_text(r: &Value) -> String {
+    let n = |v: &Value| v.as_f64().unwrap_or(0.0);
+    let a = &r["activity"];
+    let f = &r["followed"];
+    let s = &r["savings"];
+    let saved = &s["saved"];
+    let mut out = format!(
+        "Myrmo pilot summary, last {} days ({} to {})\n\n",
         r["pilot_days"],
         r["period"]["from"].as_str().unwrap_or(""),
         r["period"]["to"].as_str().unwrap_or("")
     );
-    println!("============================================================\n");
-
-    println!("1. Team Engagement:");
-    println!(
-        "   Active Team Keys:     {} / {}",
-        r["team"]["active_keys"], r["team"]["total_keys"]
+    out += &format!(
+        "Use\n  people active: {} of {} keys\n  searches: {}\n  reports: {}\n\n",
+        a["people_active"], a["keys"], a["searches"], a["reports"]
     );
-    println!("   Trails Searched:      {}", r["trails_searched"]);
-    println!("   Hits Followed:        {}", r["hits_followed"]);
-
-    println!("\n2. Colony Impact & Success Rate:");
-    println!(
-        "   Success Rate WITH:    {}% (followed trails that worked)",
-        r["success_rate_with_colony"]
+    out += &format!(
+        "A colleague's entry followed\n  worked {} · partially {} · failed {} · not applicable {}\n",
+        f["worked"], f["partially_worked"], f["failed"], f["not_applicable"]
     );
-    if r["holdouts_evaluated"].as_u64().unwrap_or(0) > 0 {
-        println!(
-            "   Success Rate WITHOUT: {}% (from {} randomized holdouts)",
-            r["success_rate_without_colony"], r["holdouts_evaluated"]
-        );
-        let with_sr = r["success_rate_with_colony"].as_f64().unwrap_or(0.0);
-        let without_sr = r["success_rate_without_colony"].as_f64().unwrap_or(0.0);
-        if with_sr > without_sr {
-            println!(
-                "   Relative Lift:        +{:.1}% higher resolution rate with Colony",
-                with_sr - without_sr
-            );
+    if let Some(rate) = f["worked_rate"].as_f64() {
+        out += &format!("  worked or partly worked: {rate}%\n");
+    }
+    out += &format!(
+        "\nSavings ({}, {} error(s) solved both with and without the colony: {} problem(s) with, {} without)\n",
+        if s["method"] == "holdout" {
+            "randomised hold-out"
+        } else {
+            "before and after"
+        },
+        s["errors_compared"],
+        s["problems_with"],
+        s["problems_without"]
+    );
+    out += &format!(
+        "  tokens: {:.0} · agent time: {:.1} h · turns: {:.0}",
+        n(&saved["tokens"]),
+        n(&saved["hours"]),
+        n(&saved["turns"])
+    );
+    match saved["dollars"].as_f64() {
+        Some(d) => out += &format!(" · ${d:.2}\n"),
+        None => out += " · dollars: set model prices in Settings\n",
+    }
+    let (with, without) = (&s["per_problem"]["with"], &s["per_problem"]["without"]);
+    out += &format!(
+        "  per problem without: {:.0} tokens, {:.1} min, {:.0} turns\n  per problem with:    {:.0} tokens, {:.1} min, {:.0} turns\n",
+        n(&without["tokens"]),
+        n(&without["seconds"]) / 60.0,
+        n(&without["turns"]),
+        n(&with["tokens"]),
+        n(&with["seconds"]) / 60.0,
+        n(&with["turns"])
+    );
+    let held = r["holdout"]["percent"].as_u64().unwrap_or(0);
+    out += &if held > 0 {
+        format!(
+            "  hold-out: {held}% of error lookups answered with nothing at random ({} lookups)\n",
+            r["holdout"]["lookups_held_out"]
+        )
+    } else {
+        "  hold-out: off\n".to_string()
+    };
+    let caveats: Vec<&str> = r["caveats"]
+        .as_array()
+        .map(|c| c.iter().filter_map(Value::as_str).collect())
+        .unwrap_or_default();
+    if !caveats.is_empty() {
+        out += "\nRead with care\n";
+        for c in caveats {
+            out += &format!("  - {c}\n");
         }
-    } else {
-        println!(
-            "   Hold-out Status:      Off (Set holdout_percent in admin to activate randomized control group)"
-        );
     }
-
-    println!("\n3. Measured Developer Savings (Telemetry):");
-    println!(
-        "   Tokens Saved:         {:.0} tokens",
-        r["saved"]["tokens"].as_f64().unwrap_or(0.0)
-    );
-    println!(
-        "   Agent Time Saved:     {:.1} hours ({:.0} seconds)",
-        r["saved"]["hours"].as_f64().unwrap_or(0.0),
-        r["saved"]["seconds"].as_f64().unwrap_or(0.0)
-    );
-    println!(
-        "   Agent Turns Saved:    {:.0} turns",
-        r["saved"]["turns"].as_f64().unwrap_or(0.0)
-    );
-    if let Some(dollars) = r["saved"]["dollars"].as_f64() {
-        println!("   Financial Savings:    ${:.2}", dollars);
-    } else {
-        println!(
-            "   Financial Savings:    Configure model token prices in admin Settings to view dollar ROI"
-        );
-    }
-
-    println!("\n4. Per-Problem Comparison (Baseline vs Colony):");
-    let per = &r["per_problem"];
-    let without = &per["without"];
-    let with = &per["with"];
-    println!(
-        "   Without Colony:       {:.0} tokens | {:.1} mins | {:.0} turns",
-        without["tokens"].as_f64().unwrap_or(0.0),
-        without["seconds"].as_f64().unwrap_or(0.0) / 60.0,
-        without["turns"].as_f64().unwrap_or(0.0)
-    );
-    println!(
-        "   With Colony:          {:.0} tokens | {:.1} mins | {:.0} turns",
-        with["tokens"].as_f64().unwrap_or(0.0),
-        with["seconds"].as_f64().unwrap_or(0.0) / 60.0,
-        with["turns"].as_f64().unwrap_or(0.0)
-    );
-    println!("============================================================");
-
-    Ok(())
+    out
 }
 
 #[cfg(test)]
@@ -1081,5 +1098,81 @@ mod tests {
         );
         assert!(parse_prices(&json!({ "m": { "input": -1, "output": 2, "cache_read": 0.1, "cache_write": 1.25 } })).is_err());
         assert!(parse_prices(&json!({ "m": { "input": 1 } })).is_err());
+    }
+
+    fn estimate_with(errors: u64, with: u64, without: u64, tokens: f64) -> Value {
+        json!({
+            "errors": errors, "aided_records": with, "baseline_records": without,
+            "saved": { "tokens": tokens, "seconds": 7200.0, "turns": 30.0, "dollars": null },
+            "per_problem": { "with": { "tokens": 1000.0 }, "without": { "tokens": 4000.0 } },
+        })
+    }
+
+    fn inputs(value: Value, followed: [u64; 4], holdout_percent: u64) -> PilotInputs {
+        PilotInputs {
+            days: 14,
+            from: "2026-10-01".into(),
+            to: "2026-10-14".into(),
+            searches: 120,
+            reports: 40,
+            followed,
+            holdout_percent,
+            lookups_held_out: 9,
+            value,
+            keys: 6,
+            active: 4,
+        }
+    }
+
+    #[test]
+    fn a_pilot_with_no_matched_errors_says_there_is_no_measured_saving() {
+        let empty = json!({ "holdout": estimate_with(0, 0, 0, 0.0), "before_after": estimate_with(0, 0, 0, 0.0) });
+        let r = pilot_summary(&inputs(empty, [0; 4], 0));
+        assert_eq!(r["savings"]["enough"], false);
+        assert_eq!(r["followed"]["worked_rate"], Value::Null);
+        let caveats = r["caveats"].to_string();
+        assert!(caveats.contains("no measured saving"), "{caveats}");
+        assert!(caveats.contains("Set a hold-out"), "{caveats}");
+    }
+
+    #[test]
+    fn the_randomised_hold_out_is_preferred_when_it_has_matched_errors() {
+        let both = json!({ "holdout": estimate_with(6, 12, 8, 30000.0), "before_after": estimate_with(9, 20, 30, 90000.0) });
+        let r = pilot_summary(&inputs(both, [10, 2, 3, 1], 10));
+        assert_eq!(r["savings"]["method"], "holdout");
+        assert_eq!(r["savings"]["errors_compared"], 6);
+        assert_eq!(r["savings"]["saved"]["tokens"], 30000.0);
+        assert_eq!(r["savings"]["saved"]["hours"], 2.0);
+        assert_eq!(r["savings"]["enough"], true);
+        // 12 of 15 judged: partially_worked counts as worked, not_applicable is left out.
+        assert_eq!(r["followed"]["worked_rate"], 80.0);
+        assert!(!r["caveats"].to_string().contains("before-and-after"));
+    }
+
+    #[test]
+    fn a_thin_comparison_is_flagged_and_before_after_is_named_as_such() {
+        let thin = json!({ "holdout": estimate_with(0, 0, 0, 0.0), "before_after": estimate_with(2, 3, 5, 5000.0) });
+        let r = pilot_summary(&inputs(thin, [1, 0, 0, 0], 5));
+        assert_eq!(r["savings"]["method"], "before_after");
+        assert_eq!(r["savings"]["enough"], false);
+        let caveats = r["caveats"].to_string();
+        assert!(caveats.contains("Only 2 error(s)"), "{caveats}");
+        assert!(
+            caveats.contains("hold-out has no matched records yet"),
+            "{caveats}"
+        );
+    }
+
+    #[test]
+    fn a_pilot_summary_never_sets_two_different_measures_side_by_side() {
+        let both = json!({ "holdout": estimate_with(6, 12, 8, 30000.0), "before_after": estimate_with(9, 20, 30, 90000.0) });
+        let r = pilot_summary(&inputs(both, [10, 2, 3, 1], 10));
+        let text = format!("{r}{}", pilot_text(&r)).to_lowercase();
+        for misleading in ["success_rate_without", "lift", "success rate without"] {
+            assert!(!text.contains(misleading), "{misleading}");
+        }
+        assert!(pilot_text(&r).contains(
+            "6 error(s) solved both with and without the colony: 12 problem(s) with, 8 without"
+        ));
     }
 }
