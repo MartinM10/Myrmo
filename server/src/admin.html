@@ -1155,13 +1155,14 @@ function trailCard(t, onRemove) {
 }
 
 async function colony(view) {
-  const [ready, stats, team, act, refused, first] = await Promise.all([
+  const [ready, stats, team, act, refused, first, backup] = await Promise.all([
     fetch("/readyz").then((r) => r.json()).catch(() => ({})),
     api("/v1/stats"),
     api("/v1/admin/people?days=7"),
     api("/v1/admin/activity?days=14"),
     api("/v1/admin/refused"),
     api("/v1/admin/trails?limit=30"),
+    api("/v1/admin/backup").catch(() => null),
   ]);
 
   $("live-dot").className = "pulse-dot " + (ready.ready ? "ok" : "bad");
@@ -1176,6 +1177,11 @@ async function colony(view) {
   }
   if (ready.queue_max && ready.queue_depth >= 0.8 * ready.queue_max) {
     alerts.push(["warn", `Ingestion queue buildup: ${num(ready.queue_depth)} / ${num(ready.queue_max)} trails awaiting verification.`]);
+  }
+  if (backup && backup.last_at === null) {
+    alerts.push(["warn", "No backup recorded yet. Schedule a daily one on the colony's machine: bash deploy/private-colony.sh backup schedule (or wait for the next scheduled one to show here)."]);
+  } else if (backup && backup.old) {
+    alerts.push(["warn", `The last backup is ${backup.age_days} days old (${backup.archive || "unknown archive"}). Check the schedule: bash deploy/private-colony.sh doctor.`]);
   }
   const day1 = Date.now() / 1000 - 86400;
   const recentRefused = (refused.items || []).filter((r) => r.last >= day1);

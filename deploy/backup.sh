@@ -20,6 +20,8 @@
 # Restore with deploy/restore.sh. Run it from cron, for example daily:
 #   17 3 * * * cd $HOME/myrmo && bash deploy/backup.sh >> $HOME/myrmo-backups/backup.log 2>&1
 set -euo pipefail
+# An archive holds everything the colony knows: only its owner may read it.
+umask 077
 
 # Settings for the off-site copy can live in a file only you can read, so that cron and the deploy script both see them.
 [ -f "$HOME/.myrmo-backup.env" ] && . "$HOME/.myrmo-backup.env"
@@ -69,11 +71,17 @@ ls -1t "$DIR"/myrmo-*.tar.gz 2>/dev/null | tail -n +"$((KEEP + 1))" | while IFS=
   if [ -n "$(find "$old" -mtime +"$((KEEP_DAYS - 1))" 2>/dev/null)" ]; then rm -f -- "$old"; fi
 done
 
+# Recorded in the colony itself, so that its panel can say how old the last backup is (and warn when none is recent).
+size="$(wc -c < "$archive" | tr -d ' ')"
+docker exec "$VALKEY" valkey-cli HSET backup:last ts "$(date +%s)" archive "$(basename "$archive")" bytes "$size" \
+  trails "${trails:-0}" >/dev/null 2>&1 || echo "$(date -u +%FT%TZ) WARNING: could not record the backup in the colony" >&2
+
 if [ -n "${MYRMO_BACKUP_S3_URI:-}" ]; then
   if command -v aws >/dev/null 2>&1 \
     && aws ${MYRMO_BACKUP_S3_ENDPOINT:+--endpoint-url "$MYRMO_BACKUP_S3_ENDPOINT"} s3 cp "$archive" \
          "${MYRMO_BACKUP_S3_URI%/}/$(basename "$archive")" --only-show-errors; then
     echo "$(date -u +%FT%TZ) uploaded to ${MYRMO_BACKUP_S3_URI%/}/$(basename "$archive")"
+    docker exec "$VALKEY" valkey-cli HSET backup:last offsite_ts "$(date +%s)" >/dev/null 2>&1 || true
   else
     echo "$(date -u +%FT%TZ) WARNING: the off-site copy failed (is the aws CLI installed, and are the credentials set?)" >&2
     [ "${MYRMO_BACKUP_S3_REQUIRED:-0}" != "1" ] || exit 1
