@@ -263,8 +263,8 @@ addresses shows up as one shared address, the one to allow) and, when that is Do
 machine the URL must use its network address, not `localhost`; `doctor` shows it too, and the colony logs the refusal. The first `up` asks for the networks, so a colony is not opened to a
 whole building by accident. Do not rely on `ufw` for this: Docker publishes ports with rules of its own and a `ufw allow
 from` line does not stop anyone. The script listens on every interface (`MYRMO_HOST_IP=0.0.0.0` in `.env.private`; give one
-interface's address to serve only that network) and trusts no reverse proxy's `X-Forwarded-For` (`MYRMO_TRUSTED_PROXIES`
-empty), since none stands in front of it.
+interface's address to serve only that network) and writes `MYRMO_TRUSTED_PROXIES` empty, since no reverse proxy stands
+in front of it; with one in front, list its address there.
 
 **Over the internet, use TLS.** The traffic, keys and the operator token included, is plain HTTP. That is acceptable on the
 team's own private network; anywhere else, anyone on the way can read a key and use the colony as that person. So `up`

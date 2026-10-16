@@ -76,7 +76,8 @@ ensure_settings() {
   add MYRMO_HOLDOUT_PERCENT 0
   # The compose file listens on 127.0.0.1 only unless told otherwise; a private colony serves its team's network.
   add MYRMO_HOST_IP 0.0.0.0
-  # No reverse proxy stands in front of a private colony: no address may claim to speak for another (X-Forwarded-For).
+  # No reverse proxy stands in front of a private colony: written empty, so the file says so (an empty value leaves the
+  # choice to the server). With a proxy in front, list its address here.
   add MYRMO_TRUSTED_PROXIES ""
   [ -z "$added" ] || echo "Added to $ENV_FILE:$added"
 }
