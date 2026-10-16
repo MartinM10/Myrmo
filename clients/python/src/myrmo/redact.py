@@ -31,6 +31,15 @@ _ENV_REFERENCE = re.compile(r"^(?:\$\{?[A-Z_][A-Z0-9_]*\}?|%[A-Za-z_][A-Za-z0-9_
 _CODE_REFERENCE = re.compile(r"^[A-Za-z_][\w.]*(?:\(\)|[(\[])$")
 
 
+def _assignment(m: "re.Match[str]") -> Optional[str]:
+    # `"$PWD:/src"` and `$PATH:/opt/bin` expand a shell variable and go on with more text: the name gives no value.
+    # `$TOKEN=value` is still redacted, since what follows the `=` may well be a secret.
+    name = m.group(1)
+    if (name.startswith("$") and name.rstrip().endswith(":")) or _is_reference(m.group(3)):
+        return None
+    return m.group(1) + m.group(2) + _full("secret")
+
+
 def _is_reference(value: str) -> bool:
     lower = value.lower()
     return (
@@ -187,9 +196,9 @@ _RULES: List[Tuple[str, re.Pattern, Replacer]] = [
         ("connection_string", r"\b([a-z][a-z0-9+.\-]{0,30}://)[A-Za-z0-9_\-.~%]{20,}@", re.I, lambda m: m.group(1) + _full("connection_string") + "@"),
         ("url_secret", r"([?&;](?:access_token|refresh_token|id_token|token|api[_-]?key|apikey|secret|client_secret|password|passwd|pwd|sig|signature|x-amz-signature|x-amz-security-token|x-amz-credential|private_token|sessionid|jwt)=)([^&\s'\x22<>#]{4,})", re.I, _keep_prefix("url_secret", 2)),
         # `name = value`, in code, config, JSON, env files and command lines.
-        ("password_assignment", r"\b([\w.\-]{0,64}(?:" + _NAMES_STRONG + r")[\w.\-]{0,64}['\x22]?[ \t]*[=:][ \t]*)(['\x22]?)([^\s'\x22,;<>]{4,})", re.I, lambda m: None if _is_reference(m.group(3)) else m.group(1) + m.group(2) + _full("secret")),
-        ("password_assignment", r"\b([\w.\-]{0,64}(?:" + _NAMES_WEAK + r")[\w.\-]{0,64}['\x22]?[ \t]*[=:][ \t]*)(['\x22]?)([^\s'\x22,;<>]{12,})", re.I, lambda m: None if _is_reference(m.group(3)) else m.group(1) + m.group(2) + _full("secret")),
-        ("password_assignment", r"((?:^|\s)--?(?:" + _CLI_NAMES + r")(?:=|[ \t]+))(['\x22]?)([^\s'\x22<>\-][^\s'\x22<>]{2,})", re.I, lambda m: None if _is_reference(m.group(3)) else m.group(1) + m.group(2) + _full("secret")),
+        ("password_assignment", r"(\$?\b[\w.\-]{0,64}(?:" + _NAMES_STRONG + r")[\w.\-]{0,64}['\x22]?[ \t]*[=:][ \t]*)(['\x22]?)([^\s'\x22,;<>]{4,})", re.I, _assignment),
+        ("password_assignment", r"(\$?\b[\w.\-]{0,64}(?:" + _NAMES_WEAK + r")[\w.\-]{0,64}['\x22]?[ \t]*[=:][ \t]*)(['\x22]?)([^\s'\x22,;<>]{12,})", re.I, _assignment),
+        ("password_assignment", r"((?:^|\s)--?(?:" + _CLI_NAMES + r")(?:=|[ \t]+))(['\x22]?)([^\s'\x22<>\-][^\s'\x22<>]{2,})", re.I, _assignment),
         # Personal data.
         ("email", r"\b[A-Za-z0-9._%+\-]{1,64}@[A-Za-z0-9.\-]{1,255}\.[A-Za-z]{2,}\b", 0, lambda m: None if m.group(0).startswith("git@") else _full("email")),
         ("ip", r"\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b", 0, _ip),
