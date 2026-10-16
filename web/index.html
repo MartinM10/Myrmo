@@ -394,6 +394,7 @@
   .track i { display: block; height: 100%; border-radius: 2px; }
   .track .without { background: var(--dust); }
   .track .with { background: var(--amber); }
+  .track .notes { background: color-mix(in srgb, var(--amber) 45%, var(--dust)); }
   .pending .track {
     background: repeating-linear-gradient(135deg, var(--wall) 0 6px, transparent 6px 12px);
     opacity: 0.6;
@@ -406,7 +407,6 @@
     border-radius: var(--radius);
     color: var(--dust);
   }
-  .task-list { display: flex; flex-wrap: wrap; gap: 6px; }
   .load-table-wrap { overflow-x: auto; }
   .load-table { width: 100%; border-collapse: collapse; font-size: var(--t-sm); }
   .load-table th, .load-table td { padding: 10px 8px; border-bottom: 1px solid var(--wall); text-align: right; white-space: nowrap; }
@@ -717,9 +717,15 @@
     </div>
 
     <div class="bench">
+      <div class="bench-block" id="bench-value">
+        <h3>MyrmoBench: does following a trail help?</h3>
+        <p><strong>On problems only a company's own people have met, what its agents captured took a cheap model from 5 to 21 solved out of 40, in less than half the turns.</strong> Four problems of a simulated company (its deploy policy, its private package index, a stale migration lock, its config format). A capable pioneer solved each one cold and published what it learnt; a cheap follower then tried each one 10 times without help, with the same knowledge as plain Markdown notes, and with Myrmo.</p>
+        <p>Notes help about as often as Myrmo (23 against 21 of 40: no real difference). What Myrmo adds is the delivery: the fix arrives at the failure, so the follower gets there in 9 turns instead of 17, and nobody has to write or maintain the notes. The runs and their statistics are on the <a href="docs/operate/benchmarks">benchmarks page</a>.</p>
+        <div class="compare" id="bench-compare"></div>
+      </div>
       <div class="bench-block" id="bench-load">
-        <h3>Load: what one colony node sustains</h3>
-        <p>k6 against the Docker deployment with 100,000 indexed trails, 64 concurrent clients, each path measured alone. The whole colony and the load generator share one desktop, so these are floor numbers for a single node.</p>
+        <h3>Load: one node, one desktop</h3>
+        <p>A repeated error is answered by its exact fingerprint in about 2 ms, without a model or a vector search. k6 against the Docker deployment with 100,000 indexed trails and 64 concurrent clients; colony and load generator share one desktop, so these are floor numbers.</p>
         <div class="load-table-wrap">
           <table class="load-table">
             <thead><tr><th scope="col">Path</th><th scope="col">req/s</th><th scope="col">p50</th><th scope="col">p99</th></tr></thead>
@@ -729,27 +735,12 @@
         <p class="bench-meta" id="load-meta"></p>
         <p>Retrieval quality and a run with a million trails are on the <a href="docs/operate/benchmarks">benchmarks page</a>.</p>
       </div>
-      <div class="bench-block" id="bench-value">
-        <h3>Next: MyrmoBench, does following a trail help?</h3>
-        <p><strong>First result: on company problems, knowledge a team's agents captured quadruples a cheap model's success.</strong> Eight tasks exist: four public breakages and four problems of a simulated company. A capable model solves the public ones at once. On the company problems, pioneers published their fixes only when the hook reminded them at the moment a problem was solved; a cheap model then solved 21 of 40 with Myrmo against 5 of 40 with no help, as often as with the same fixes as plain Markdown notes (23 of 40) but in about half the turns. These runs and their analysis are on the <a href="docs/operate/benchmarks">benchmarks page</a>; the bars below fill in from the first published run. The runner drives Claude Code, OpenCode, Gemini CLI or Antigravity agents.</p>
-        <p>
-          Each task is a container with a breakage agents really hit. A pioneer agent solves each one cold and lays
-          a trail. Follower agents then solve the same tasks three ways: without Myrmo, with Myrmo before any trail for the
-          task exists (what it costs when it cannot help), and with the pioneer's trail.
-        </p>
-        <div class="compare" id="bench-compare"></div>
-        <div class="task-list" aria-label="Tasks">
-          <span class="pill">uv · PATH in Docker</span><span class="pill">pg8000 · SCRAM</span><span class="pill">TLS · corporate CA</span>
-          <span class="pill">Node · ERR_REQUIRE_ESM</span><span class="pill">company · deploy policy</span><span class="pill">company · private package index</span>
-          <span class="pill">company · stale migration lock</span><span class="pill">company · internal config format</span>
-        </div>
-      </div>
-
     </div>
 
     <div class="code" style="max-width: 640px">
       <pre><span class="tk-c"># reproduce the load numbers on this page</span>
-<span class="tk-p">$</span> docker compose -f docker-compose.yml -f bench/compose.yml run --rm loadtest</pre>
+<span class="tk-p">$</span> git clone https://github.com/MartinM10/Myrmo && cd Myrmo
+<span class="tk-p">$</span> ./bench/load/run.sh</pre>
       <button class="copy" type="button">Copy</button>
     </div>
   </section>
@@ -856,34 +847,25 @@
     const R = window.MYRMO_BENCH ?? null;
     const compare = document.getElementById("bench-compare");
     const value = R?.value;
+    // Three conditions when the run has them: no help, the same knowledge as Markdown notes, and Myrmo.
+    const conditions = [["without", "no help", "without"], ["notes", "as notes", "notes"], ["with", "with Myrmo", "with"]]
+      .filter(([key]) => value?.[key]);
     const metrics = [
-      ["Tasks solved", "success_rate", (v) => `${Math.round(v * 100)}%`, false],
-      ["Tokens per task (median)", "median_tokens", (v) => M.compact(v), true],
-      ["Failed attempts per task (median)", "median_failed_attempts", (v) => v.toFixed(1), true],
-      ["Wall time per task (median)", "median_seconds", (v) => `${Math.round(v)} s`, true],
+      ["Problems solved", (c) => c.solved, (c) => `${c.solved} of ${c.runs}`],
+      ["Turns to the fix (median of solved runs, fewer is better)", (c) => c.median_turns_solved, (c) => `${c.median_turns_solved}`],
     ];
     compare.classList.toggle("pending", !value);
-    compare.innerHTML = metrics.map(([label, key, fmt, lowerIsBetter]) => {
-      if (!value) {
-        return `<div class="metric"><div class="metric-head"><span>${label}</span><span></span></div>
-          <div class="bars">
-            <div class="bar-row"><span>without</span><div class="track"></div><b>—</b></div>
-            <div class="bar-row"><span>with Myrmo</span><div class="track"></div><b>—</b></div>
-          </div></div>`;
-      }
-      const a = value.without[key], b = value.with[key];
-      const max = Math.max(a, b) || 1;
-      let delta = "";
-      if (lowerIsBetter && a > 0) delta = `${Math.round((1 - b / a) * 100)}% less`;
-      if (!lowerIsBetter) delta = `${b >= a ? "+" : ""}${Math.round((b - a) * 100)} pts`;
-      return `<div class="metric"><div class="metric-head"><span>${label}</span><span>${delta}</span></div>
-        <div class="bars">
-          <div class="bar-row"><span>without</span><div class="track"><i class="without" style="width:${(a / max) * 100}%"></i></div><b>${fmt(a)}</b></div>
-          <div class="bar-row"><span>with Myrmo</span><div class="track"><i class="with" style="width:${(b / max) * 100}%"></i></div><b>${fmt(b)}</b></div>
-        </div></div>`;
-    }).join("") + (value
-      ? `<p class="bench-meta">Run ${M.esc(value.run_id)} · ${M.esc(value.date)} · agent ${M.esc(value.agent || "claude-code")} · pioneer ${M.esc(value.pioneer)} · followers ${M.esc(value.followers.join(", "))} · ${value.tasks} tasks × ${value.repetitions} repetitions</p>`
-      : `<div class="pending-note"><span class="pill warn">first public run pending</span><span>Bars fill in from the first published run.</span></div>`);
+    compare.innerHTML = !value
+      ? `<div class="pending-note"><span class="pill warn">first public run pending</span><span>Bars fill in from the first published run.</span></div>`
+      : metrics.map(([label, get, fmt]) => {
+          const max = Math.max(...conditions.map(([key]) => get(value[key]) ?? 0)) || 1;
+          return `<div class="metric"><div class="metric-head"><span>${label}</span><span></span></div>
+            <div class="bars">${conditions.map(([key, name, cls]) => {
+              const v = get(value[key]);
+              return `<div class="bar-row"><span>${name}</span><div class="track"><i class="${cls}" style="width:${((v ?? 0) / max) * 100}%"></i></div><b>${v == null ? "—" : M.esc(fmt(value[key]))}</b></div>`;
+            }).join("")}</div></div>`;
+        }).join("") +
+        `<p class="bench-meta">Run ${M.esc(value.run_id)} · ${M.esc(value.date)} · ${M.esc(({ antigravity: "Antigravity", "claude-code": "Claude Code", opencode: "OpenCode", gemini: "Gemini CLI" })[value.agent || "claude-code"] ?? value.agent)} agents · pioneer ${M.esc(value.pioneer)} · follower ${M.esc(value.followers.join(", "))} · ${Array.isArray(value.tasks) ? value.tasks.length : value.tasks} tasks × ${value.repetitions} runs per condition · empty colony at the start</p>`;
 
     const rows = document.getElementById("load-rows");
     const load = R?.load;

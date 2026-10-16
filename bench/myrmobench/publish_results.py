@@ -4,14 +4,15 @@
 
 Reads runs.jsonl and environment.json of the run, and fills the `value` section of web/assets/bench-results.js, keeping
 the load results already there. It refuses a run that has no follower runs with and without Myrmo: the website shows only
-numbers somebody measured. The `unseen` condition (Myrmo connected to a colony that does not know the task) is
-published too when the run has it.
+numbers somebody measured. The `unseen` (Myrmo connected to a colony that does not know the task) and `notes` (the same
+trails as Markdown notes) conditions are published too when the run has them.
 """
 
 from __future__ import annotations
 
 import json
 import re
+import statistics
 import sys
 from pathlib import Path
 
@@ -40,10 +41,20 @@ def value_section(run_dir: Path) -> dict:
         "colony_trails_at_start": (env.get("colony_at_start") or {}).get("trails"),
         "pioneers_published": sum(bool(r.get("published")) for r in runs if r["role"] == "pioneer"),
     }
-    for condition in ("without", "unseen", "with"):
+    for condition in ("without", "unseen", "notes", "with"):
         if condition in summary:
             section[condition] = {k: v for k, v in summary[condition].items() if k != "runs"}
+            section[condition].update(solved_counts(runs, condition))
     return section
+
+
+def solved_counts(runs: list[dict], condition: str) -> dict:
+    """How many follower runs solved the task, and the median turns of those that did (a failed run's turns say only
+    when it gave up)."""
+    rows = [r for r in runs if r["role"] == "follower" and r["condition"] == condition]
+    solved = [r for r in rows if r["success"]]
+    turns = [r["turns"] for r in solved if r.get("turns") is not None]  # runs before turns were recorded have none
+    return {"runs": len(rows), "solved": len(solved), "median_turns_solved": statistics.median(turns) if turns else None}
 
 
 def main() -> None:

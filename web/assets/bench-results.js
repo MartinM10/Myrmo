@@ -54,5 +54,52 @@ window.MYRMO_BENCH = {
       }
     ]
   },
-  "value": null
+  "value": {
+    "run_id": "myrmobench-20261012-1011",
+    "date": "2026-10-12",
+    "agent": "antigravity",
+    "pioneer": "gemini-3.1-pro-high",
+    "followers": [
+      "gpt-oss-120b-medium"
+    ],
+    "tasks": [
+      "acme-config-v3",
+      "acme-db-lock",
+      "acme-deploy-policy",
+      "acme-private-index"
+    ],
+    "repetitions": 10,
+    "colony_trails_at_start": 0,
+    "pioneers_published": 4,
+    "without": {
+      "success_rate": 0.125,
+      "median_tokens": 27029.5,
+      "median_failed_attempts": 1.0,
+      "median_seconds": 71.1,
+      "median_cost_usd": 0.0,
+      "runs": 40,
+      "solved": 5,
+      "median_turns_solved": 22
+    },
+    "notes": {
+      "success_rate": 0.575,
+      "median_tokens": 28720.5,
+      "median_failed_attempts": 2.0,
+      "median_seconds": 69.5,
+      "median_cost_usd": 0.0,
+      "runs": 40,
+      "solved": 23,
+      "median_turns_solved": 17
+    },
+    "with": {
+      "success_rate": 0.525,
+      "median_tokens": 25648.5,
+      "median_failed_attempts": 1.0,
+      "median_seconds": 48.9,
+      "median_cost_usd": 0.0,
+      "runs": 40,
+      "solved": 21,
+      "median_turns_solved": 9
+    }
+  }
 };
