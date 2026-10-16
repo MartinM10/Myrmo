@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.40.1](https://github.com/MartinM10/Myrmo/compare/platform-v0.40.0...platform-v0.40.1) (2026-10-16)
+
+
+### Bug fixes
+
+* **web:** version script and stylesheet addresses by their content ([#191](https://github.com/MartinM10/Myrmo/issues/191)) ([35e9467](https://github.com/MartinM10/Myrmo/commit/35e946709fa7644bf380954088827faf0c9f5b55))
+
 ## [0.40.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.39.0...platform-v0.40.0) (2026-10-16)
 
 
