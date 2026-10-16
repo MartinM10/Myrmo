@@ -114,9 +114,12 @@ export interface Hit {
   kind: "fix" | "procedure" | "fact";
   match: { via: "fingerprint" | "semantic" | "task"; score: number; environment_overlap: number | null };
   strength: number;
-  outcomes: { worked: number; partially_worked: number; failed: number; not_applicable?: number };
+  /** `confirmed`: times a person confirmed in the panel that it still holds. */
+  outcomes: { worked: number; partially_worked: number; failed: number; not_applicable?: number; confirmed?: number };
   risk: { level: "low" | "medium" | "high"; flags: RiskFlag[] };
   trail: Trail;
+  /** When it last proved itself (a success or a confirmation), or when it was published. Older colonies send none. */
+  lastConfirmedAt?: string;
   /** Newest first; older colonies send none. */
   caveats?: Caveat[];
   /** The trail this one was published to amend. */

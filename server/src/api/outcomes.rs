@@ -464,12 +464,19 @@ pub(super) async fn report_outcome(
             .and_then(|t| t.parse().ok())
             .unwrap_or(now)
     };
+    // A procedure or a fact is filed with its kind as its category.
+    let kind = meta
+        .get("category")
+        .map(String::as_str)
+        .filter(|k| matches!(*k, "procedure" | "fact"))
+        .unwrap_or("fix");
     let s = strength::strength(
-        outcomes.worked,
+        outcomes.worked + outcomes.confirmed,
         outcomes.partially_worked,
         outcomes.failed,
         quality,
         (now - since).max(0) as f64 / 86_400.0,
+        strength::half_life_days(kind),
     );
 
     let mut body = json!({ "trail_id": id, "counted": counted, "strength": round3(s) });

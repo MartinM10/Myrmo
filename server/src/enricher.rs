@@ -477,7 +477,7 @@ async fn enrich(st: &AppState, id: &str, mut trail: Value) -> Result<()> {
         "created_ts": now,
         "created_at": keys::iso(now),
         "environments_confirmed": 0,
-        "strength": strength::strength(0, 0, 0, judgement.quality, 0.0),
+        "strength": strength::strength(0, 0, 0, judgement.quality, 0.0, strength::half_life_days(kind.as_str())),
         "trail": trail,
     });
     if let Some((target, _)) = &amends {
@@ -608,8 +608,9 @@ async fn amended(
 
 /// Link a newly indexed trail to the one it amends. The older trail names its successors, and the new one is also
 /// kept under the older one's fingerprint: an agent that hits the original error finds both, and their strength,
-/// built from what happened to the agents that followed each, decides which comes first. Nothing about the older
-/// trail changes: an amendment cannot lower another trail, only reports can.
+/// built from what happened to the agents that followed each, decides which comes first. Someone else's amendment
+/// cannot lower a trail, only reports can; but an author who publishes the successor of their own trail is correcting
+/// it, so the older one is marked as replaced: kept and linked, no longer an answer.
 async fn link_successor(
     st: &AppState,
     con: &mut redis::aio::ConnectionManager,
@@ -618,11 +619,27 @@ async fn link_successor(
     target: &str,
     target_fp: &str,
 ) -> Result<()> {
+    let new_meta: HashMap<String, String> = con.hgetall(keys::trail(id)).await?;
+    let old_meta: HashMap<String, String> = con.hgetall(keys::trail(target)).await?;
+    let new_author = crate::api::trail_author(con, id, &new_meta)
+        .await
+        .map_err(|_| anyhow::anyhow!("cannot read the trail author"))?;
+    let old_author = crate::api::trail_author(con, target, &old_meta)
+        .await
+        .map_err(|_| anyhow::anyhow!("cannot read the trail author"))?;
+    let own = matches!((&new_author, &old_author), (Some(a), Some(b)) if a == b);
     let mut pipe = redis::pipe();
     pipe.cmd("SADD")
         .arg(keys::amended_by(target))
         .arg(id)
         .ignore();
+    if own {
+        pipe.cmd("HSET")
+            .arg(keys::outcomes(target))
+            .arg("superseded_by")
+            .arg(id)
+            .ignore();
+    }
     if !target_fp.is_empty() && target_fp != fp {
         keys::add_to_fingerprint(&mut pipe, target_fp, id, st.cfg.max_per_fingerprint);
         pipe.cmd("DEL")
@@ -630,7 +647,7 @@ async fn link_successor(
             .ignore();
     }
     let _: () = pipe.query_async(con).await?;
-    tracing::info!(trail = %id, amends = %target, "successor linked");
+    tracing::info!(trail = %id, amends = %target, replaced = own, "successor linked");
     Ok(())
 }
 
@@ -676,24 +693,29 @@ async fn flush_once(st: &AppState) -> Result<()> {
     let mut hashes = redis::pipe();
     let mut envs = redis::pipe();
     let mut quality = redis::pipe();
+    let mut categories = redis::pipe();
     for id in &ids {
         hashes.cmd("HGETALL").arg(keys::outcomes(id));
         envs.cmd("PFCOUNT").arg(keys::environments(id));
         quality.cmd("HGET").arg(keys::trail(id)).arg("quality");
+        categories.cmd("HGET").arg(keys::trail(id)).arg("category");
     }
     let hashes: Vec<HashMap<String, String>> = hashes.query_async(&mut con).await?;
     let envs: Vec<u64> = envs.query_async(&mut con).await?;
     let quality: Vec<Option<f64>> = quality.query_async(&mut con).await?;
+    let categories: Vec<Option<String>> = categories.query_async(&mut con).await?;
     let now = keys::now();
     let updates = ids
         .iter()
         .zip(hashes)
         .zip(envs)
         .zip(quality)
-        .map(|(((id, h), envs), q)| {
+        .zip(categories)
+        .map(|((((id, h), envs), q), category)| {
             let n = |k: &str| h.get(k).and_then(|v| v.parse::<u64>().ok()).unwrap_or(0);
             let last: i64 = h.get("last_success_ts").and_then(|v| v.parse().ok()).unwrap_or(now);
-            let s = strength::strength(n("worked"), n("partially_worked"), n("failed"), q.unwrap_or(0.5), (now - last).max(0) as f64 / 86_400.0);
+            let half_life = strength::half_life_days(category.as_deref().unwrap_or("fix"));
+            let s = strength::strength(n("worked") + n("confirmed"), n("partially_worked"), n("failed"), q.unwrap_or(0.5), (now - last).max(0) as f64 / 86_400.0, half_life);
             let payload = json!({
                 "outcomes": { "worked": n("worked"), "partially_worked": n("partially_worked"), "failed": n("failed"), "not_applicable": n("not_applicable") },
                 "last_success_ts": last,

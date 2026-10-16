@@ -220,6 +220,36 @@ def main() -> None:
     check(status == 200, "the successor's author withdraws it")
     check(not lookup(successor_id) and successor_id not in lookup(trail_id).get("amended_by", []), "a withdrawn successor is unlinked and no longer found by the original error")
 
+    # An author correcting their own trail: the old one is kept and linked, and no longer an answer.
+    own_agent = f"corrector_{run}"
+    wrong = copy.deepcopy(trail)
+    wrong["problem"]["error_message"] = f"ERROR: the worker {run} stops after the nightly job"
+    wrong["solution"]["shell_commands_executed"] = [{"command": "systemctl restart worker", "purpose": "A first guess: restart it."}]
+    status, body, _ = call("POST", "/v1/trails", wrong, agent=own_agent, ip="203.0.113.30")
+    wrong_id, wrong_fp = body["trail_id"], body["fingerprint"]
+    CREATED.append(wrong_id)
+    check(wait_for_status(wrong_id).get("status") == "indexed", "an author's first, wrong trail is indexed")
+    right = copy.deepcopy(wrong)
+    right["solution"]["shell_commands_executed"] = [{"command": "systemctl edit worker --drop-in=memory", "purpose": "The real cause: the job exhausts its memory limit."}]
+    status, body, _ = call("POST", f"/v1/trails?amends={wrong_id}", right, agent=own_agent, ip="203.0.113.30")
+    right_id = body["trail_id"]
+    CREATED.append(right_id)
+    check(wait_for_status(right_id).get("status") == "indexed", "the author's correction is indexed")
+    check(not lookup(wrong_id, wrong_fp) and lookup(right_id, wrong_fp).get("amends") == wrong_id, "the author's own successor replaces the old trail in lookups")
+    status, body, _ = call("POST", "/v1/search", {"query": wrong["problem"]["error_message"]})
+    check(wrong_id not in [r["trail_id"] for r in body.get("results", [])], "and in search")
+    check(call("GET", f"/v1/trails/{wrong_id}")[1].get("superseded_by") == right_id, "the old trail still exists and says what replaced it")
+    check(call("DELETE", f"/v1/trails/{right_id}", agent=own_agent)[0] == 200, "the author withdraws the correction")
+    check(bool(lookup(wrong_id, wrong_fp)), "and the old trail is an answer again")
+
+    if ADMIN:
+        before = lookup(trail_id)
+        status, body, _ = call("POST", f"/v1/admin/trails/{trail_id}/confirm", {}, token=ADMIN)
+        check(status == 200, f"an operator confirms a trail is still valid: {status}")
+        after = lookup(trail_id)
+        check(after["outcomes"].get("confirmed") == 1 and after["last_confirmed_at"] >= before["last_confirmed_at"] and after["strength"] >= before["strength"], f"it counts as a success and restarts the clock: {after['outcomes']} {after['last_confirmed_at']}")
+        check(call("POST", f"/v1/admin/trails/{trail_id}/confirm", {})[0] in (401, 403, 501), "only an operator can confirm")
+
     print("re-discovery")
 
     def worked() -> int:

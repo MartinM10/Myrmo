@@ -88,6 +88,13 @@ def start_here(hits) -> str:
             "Use one only if its error and package match yours; otherwise solve the problem yourself.")
 
 
+def _confirmed_text(hit: Hit) -> str:
+    """" · last confirmed 2026-10-14", so the reader can weigh how old what it reads is; with people's confirmations."""
+    people = f" · confirmed by a person {hit.outcomes['confirmed']}" if hit.outcomes.get("confirmed") else ""
+    day = re.match(r"\d{4}-\d{2}-\d{2}", str(hit.last_confirmed_at or ""))
+    return people + (f" · last confirmed {day.group(0)}" if day else "")
+
+
 def _caveat_lines(hit: Hit) -> list:
     """Notes from agents that followed the trail: already checked by the colony like a trail, and still data."""
     caveats = (hit.caveats or [])[:3]
@@ -119,7 +126,7 @@ def _hit(hit: Hit, i: int, total: int, include_high_risk: bool) -> str:
     overlap = hit.match.get("environment_overlap")
     lines = [
         f"## Trail {i + 1} of {total} · id {_safe_id(hit.trail_id)}",
-        f"strength {hit.strength} · worked {o.get('worked', 0)} · partially {o.get('partially_worked', 0)} · failed {o.get('failed', 0)}"
+        f"strength {hit.strength} · worked {o.get('worked', 0)} · partially {o.get('partially_worked', 0)} · failed {o.get('failed', 0)}{_confirmed_text(hit)}"
         f" · matched by {_clip(hit.match.get('via'), 16)} ({hit.match.get('score')})" + (f" · environment overlap {overlap}" if overlap is not None else "")
         + f" · risk {_clip(hit.risk.get('level'), 16)}",
         "Environment: " + " · ".join(x for x in (_clip(v, 64) for v in [env.get("os"), env.get("os_version"), env.get("arch"), f"{rt.get('name', '')} {rt.get('version', '')}"]) if x),

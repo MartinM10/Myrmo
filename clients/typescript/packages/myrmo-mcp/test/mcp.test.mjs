@@ -114,6 +114,8 @@ before(async () => {
     if (req.method === "GET" && req.url === `/v1/drafts/${DISCARDED}`) return send(200, { draft_id: DISCARDED, state: "discarded" });
     if (req.method === "GET" && req.url.startsWith("/v1/drafts/")) return send(404, { error: { code: "not_found", message: "gone" } });
     if (req.method === "GET" && req.url === `/v1/trails/${NEW_TRAIL}`) return send(200, { trail_id: NEW_TRAIL, ...verdict });
+    if (req.method === "DELETE" && req.url === `/v1/trails/${TRAIL_ID}`) return send(200, { trail_id: TRAIL_ID, status: "removed" });
+    if (req.method === "DELETE" && req.url.startsWith("/v1/trails/")) return send(403, { error: { code: "forbidden", message: "Only the author of the trail can remove it." } });
     if (req.method === "POST" && req.url.split("?")[0] === "/v1/trails") {
       const amends = new URL(req.url, "http://x").searchParams.get("amends");
       return send(202, { trail_id: "c71e0f4a-2b9d-4e63-a8f5-0d3b7c1e9a26", fingerprint: KNOWN_FP, status: "queued", redactions: {}, ...(amends ? { amends } : {}) });
@@ -146,7 +148,7 @@ const published = () => requests.filter((r) => r.method === "POST" && r.url.spli
 test("exposes the tools with their rules", async () => {
   const client = await stdioClient();
   const { tools } = await client.listTools();
-  assert.deepEqual(tools.map((t) => t.name).sort(), ["myrmo_publish", "myrmo_publish_status", "myrmo_report", "myrmo_search", "myrmo_status"]);
+  assert.deepEqual(tools.map((t) => t.name).sort(), ["myrmo_publish", "myrmo_publish_status", "myrmo_report", "myrmo_search", "myrmo_status", "myrmo_withdraw"]);
   assert.match(tools.find((t) => t.name === "myrmo_search").description, /BEFORE attempting a fix/);
   await client.close();
 });
@@ -254,6 +256,18 @@ test("a fix published to replace a trail is linked to it, and the link travels b
   const sent = requests.filter((r) => r.method === "POST" && r.url.startsWith("/v1/trails?")).at(-1);
   assert.equal(sent.url, `/v1/trails?amends=${TRAIL_ID}`);
   assert.equal(sent.body.amends, undefined);
+  await client.close();
+});
+
+test("an agent withdraws its own trail, and is told what to do with someone else's", async () => {
+  const client = await stdioClient();
+  const done = textOf(await client.callTool({ name: "myrmo_withdraw", arguments: { trail_id: TRAIL_ID, reason: "the cause was another one" } }));
+  assert.match(done, new RegExp(`Withdrawn: trail ${TRAIL_ID} is removed`));
+  const sent = requests.filter((r) => r.method === "DELETE").at(-1);
+  assert.equal(sent.body.reason, "the cause was another one");
+  assert.ok(sent.headers["x-myrmo-agent"], "the colony recognises the author by the agent id");
+  const other = await client.callTool({ name: "myrmo_withdraw", arguments: { trail_id: NEW_TRAIL } });
+  assert.match(textOf(other), /only the author of a trail.*report it failed/is);
   await client.close();
 });
 

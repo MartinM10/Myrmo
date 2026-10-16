@@ -12,8 +12,8 @@ mod search;
 mod trails;
 
 use admin::{
-    activity as admin_activity, add_person, audit_list, gaps as admin_gaps, get_settings,
-    knowledge as admin_knowledge, map as admin_map, page as admin_page, people,
+    activity as admin_activity, add_person, audit_list, confirm_trail, gaps as admin_gaps,
+    get_settings, knowledge as admin_knowledge, map as admin_map, page as admin_page, people,
     pilot_roi as admin_pilot_roi, put_settings, refused, revoke_person, trails as admin_trails,
     value as admin_value,
 };
@@ -84,6 +84,7 @@ pub fn router(state: AppState) -> Router {
         .route("/v1/admin/audit", get(audit_list))
         .route("/v1/admin/activity", get(admin_activity))
         .route("/v1/admin/trails", get(admin_trails))
+        .route("/v1/admin/trails/{id}/confirm", post(confirm_trail))
         .route("/v1/admin/gaps", get(admin_gaps))
         .route("/v1/admin/knowledge", get(admin_knowledge))
         .route("/v1/admin/map", get(admin_map))
@@ -533,6 +534,10 @@ struct Outcomes {
     failed: u64,
     not_applicable: u64,
     last_success_ts: i64,
+    /// Times an operator confirmed the trail is still valid (the panel's "Still valid"): each counts as a success.
+    confirmed: u64,
+    /// The trail its own author published to replace it: kept, linked, and out of search.
+    superseded_by: Option<String>,
 }
 
 impl Outcomes {
@@ -547,15 +552,21 @@ impl Outcomes {
                 .get("last_success_ts")
                 .and_then(|v| v.parse().ok())
                 .unwrap_or(0),
+            confirmed: n("confirmed"),
+            superseded_by: h.get("superseded_by").filter(|v| !v.is_empty()).cloned(),
         }
     }
     fn json(&self) -> Value {
-        json!({
+        let mut o = json!({
             "worked": self.worked,
             "partially_worked": self.partially_worked,
             "failed": self.failed,
             "not_applicable": self.not_applicable
-        })
+        });
+        if self.confirmed > 0 {
+            o["confirmed"] = json!(self.confirmed);
+        }
+        o
     }
 }
 
@@ -579,7 +590,32 @@ impl Candidate {
         };
         let days = (now - since).max(0) as f64 / 86_400.0;
         let o = &self.outcomes;
-        strength::strength(o.worked, o.partially_worked, o.failed, quality, days)
+        strength::strength(
+            o.worked + o.confirmed,
+            o.partially_worked,
+            o.failed,
+            quality,
+            days,
+            strength::half_life_days(self.kind()),
+        )
+    }
+
+    fn kind(&self) -> &str {
+        self.payload["kind"].as_str().unwrap_or("fix")
+    }
+
+    /// When the trail last proved itself: its last success, an operator's confirmation included, or its creation.
+    fn last_confirmed_ts(&self, now: i64) -> i64 {
+        if self.outcomes.last_success_ts > 0 {
+            self.outcomes.last_success_ts
+        } else {
+            self.payload["created_ts"].as_i64().unwrap_or(now)
+        }
+    }
+
+    /// Replaced by its own author: kept and linked, but no longer an answer.
+    fn superseded(&self) -> bool {
+        self.outcomes.superseded_by.is_some()
     }
 
     fn label(&self) -> String {
@@ -661,6 +697,7 @@ fn result_json(c: &Candidate, via: &str, score: f64, overlap: Option<f64>, now: 
         "outcomes": c.outcomes.json(),
         "risk": current_risk(&c.payload),
         "seed": crate::analytics::is_seed(&c.payload["trail"]["agent_info"]),
+        "last_confirmed_at": keys::iso(c.last_confirmed_ts(now)),
         "trail": c.payload["trail"],
     });
     // Present only when there is something to say, so a plain result stays as short as before.

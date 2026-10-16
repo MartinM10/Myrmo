@@ -82,3 +82,25 @@ def test_a_report_says_what_became_of_its_note_and_results_carry_caveats():
     assert colony.report(TRAIL_ID, "partially_worked", "needed an extra flag")["note"] == "shown_with_trail"
     hit = colony.search("ModuleNotFoundError: No module named 'distutils'")[0]
     assert hit.caveats[0]["note"] == "n" and hit.amended_by == [NEWER]
+
+
+def test_a_result_says_when_it_last_proved_itself_and_how_often_a_person_confirmed_it():
+    out = _render(_hit(last_confirmed_at="2025-08-14T09:00:00Z"))
+    assert "· last confirmed 2025-08-14" in out
+    h = _hit()
+    h.outcomes = {**h.outcomes, "confirmed": 2}
+    assert "· confirmed by a person 2" in _render(h)
+    assert "last confirmed" not in _render(_hit())
+
+
+def test_an_author_withdraws_a_trail_with_its_reason():
+    seen: list = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request)
+        return httpx.Response(200, json={"trail_id": TRAIL_ID, "status": "removed"})
+
+    colony = Colony(url="http://colony.test", transport=httpx.MockTransport(handler), publish="auto")
+    assert colony.withdraw(TRAIL_ID, "it was another cause")["status"] == "removed"
+    assert seen[-1].method == "DELETE" and seen[-1].url.path == f"/v1/trails/{TRAIL_ID}"
+    assert json.loads(seen[-1].content) == {"reason": "it was another cause"}

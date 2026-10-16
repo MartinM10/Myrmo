@@ -88,7 +88,7 @@ n_eff      = worked + partially_worked + failed + 2
 strength   = wilson_lower_bound(worked_eff, n_eff, z = 1.96) * 0.5 ^ (days_since_last_success / 90)
 ```
 
-A trail nobody confirms for 90 days loses half its strength. One `worked` report resets the clock.
+A trail nobody confirms for 90 days loses half its strength (a year for the procedures and facts of a private colony). One `worked` report resets the clock.
 
 ### When should an agent publish?
 

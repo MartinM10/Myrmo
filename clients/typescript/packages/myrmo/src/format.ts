@@ -133,6 +133,13 @@ function relationLines(hit: Hit): string[] {
   return lines;
 }
 
+/** " · last confirmed 2026-10-14", so the reader can weigh how old what it reads is; with people's confirmations. */
+function confirmedText(hit: Hit): string {
+  const people = hit.outcomes.confirmed ? ` · confirmed by a person ${hit.outcomes.confirmed}` : "";
+  const day = /^\d{4}-\d{2}-\d{2}/.exec(String(hit.lastConfirmedAt ?? ""))?.[0];
+  return `${people}${day ? ` · last confirmed ${day}` : ""}`;
+}
+
 const KIND_LABEL: Record<string, string> = { procedure: "Procedure", fact: "Fact", fix: "Fix" };
 
 function sourceLine(hit: Hit): string {
@@ -147,7 +154,7 @@ function formatKnowledge(hit: Hit, index: number, total: number, opts: FormatOpt
   const o = hit.outcomes;
   const lines = [
     `## ${index + 1} of ${total} · ${(KIND_LABEL[hit.kind] ?? "Entry").toLowerCase()} · id ${safeId(hit.trailId)}`,
-    `strength ${hit.strength} · worked ${o.worked} · partially ${o.partially_worked} · failed ${o.failed}`,
+    `strength ${hit.strength} · worked ${o.worked} · partially ${o.partially_worked} · failed ${o.failed}${confirmedText(hit)}`,
     `${KIND_LABEL[hit.kind] ?? "Entry"}: ${clip(t.problem?.summary, 400)}`,
   ];
   if (t.problem?.task_context) lines.push(`When it applies: ${clip(t.problem.task_context, 300)}`);
@@ -177,7 +184,7 @@ function formatHit(hit: Hit, index: number, total: number, opts: FormatOptions):
   const overlap = hit.match.environment_overlap === null ? "" : ` · environment overlap ${hit.match.environment_overlap}`;
   lines.push(
     `## Trail ${index + 1} of ${total} · id ${safeId(hit.trailId)}`,
-    `strength ${hit.strength} · worked ${o.worked} · partially ${o.partially_worked} · failed ${o.failed} · matched by ${clip(String(hit.match.via), 16)} (${hit.match.score})${overlap} · risk ${clip(String(hit.risk.level), 16)}`,
+    `strength ${hit.strength} · worked ${o.worked} · partially ${o.partially_worked} · failed ${o.failed}${confirmedText(hit)} · matched by ${clip(String(hit.match.via), 16)} (${hit.match.score})${overlap} · risk ${clip(String(hit.risk.level), 16)}`,
     `Environment: ${[t.environment.os, t.environment.os_version, t.environment.arch, t.environment.container && t.environment.container !== "none" ? `in ${t.environment.container}` : "", `${t.environment.runtime.name} ${t.environment.runtime.version}`].map((x) => clip(x, 64)).filter(Boolean).join(" · ")}`,
     `Error: ${errorLine(t.problem.error_type, t.problem.error_message)}`,
     `Do first: ${clip(t.solution.steps[0], 300)}`,
