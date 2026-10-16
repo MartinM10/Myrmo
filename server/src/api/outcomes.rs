@@ -58,6 +58,51 @@ fn hour_total_allows(used: u64, limit: u64) -> bool {
     limit == 0 || used <= limit
 }
 
+/// Whether one more confirmation of a trail from the address `client`, as `identity`, may count: the address still has
+/// a place on the trail today (`MYRMO_VOTES_PER_ADDRESS`, or `identity` already holds one) and has not used up its
+/// hourly total (`MYRMO_VOTES_PER_ADDRESS_HOUR`). One that counts takes its place and its share of the hour. Outcome
+/// reports and re-discoveries merged into a trail go through it alike, so neither is a way around the other.
+pub async fn address_vote(
+    con: &mut redis::aio::ConnectionManager,
+    cfg: &crate::config::Config,
+    trail_id: &str,
+    client: &str,
+    identity: &str,
+    hour: i64,
+) -> redis::RedisResult<bool> {
+    let vote_key = keys::vote_addr(trail_id, client);
+    let (known, distinct): (bool, u64) = redis::pipe()
+        .cmd("SISMEMBER")
+        .arg(&vote_key)
+        .arg(identity)
+        .cmd("SCARD")
+        .arg(&vote_key)
+        .query_async(con)
+        .await?;
+    if !address_admits(known, distinct, cfg.votes_per_address) {
+        return Ok(false);
+    }
+    let hour_key = keys::vote_hour(client, hour);
+    let (used,): (u64,) = redis::pipe()
+        .cmd("SADD")
+        .arg(&vote_key)
+        .arg(identity)
+        .ignore()
+        .cmd("EXPIRE")
+        .arg(&vote_key)
+        .arg(86_400)
+        .ignore()
+        .cmd("INCR")
+        .arg(&hour_key)
+        .cmd("EXPIRE")
+        .arg(&hour_key)
+        .arg(3_700)
+        .ignore()
+        .query_async(con)
+        .await?;
+    Ok(hour_total_allows(used, cfg.votes_per_address_hour))
+}
+
 /// What a trail's declared effort adds to the "tokens saved" figures.
 fn credited_tokens(declared: i64, max: i64) -> i64 {
     declared.clamp(0, max.max(0))
@@ -236,39 +281,16 @@ pub(super) async fn report_outcome(
             .query_async::<Option<String>>(&mut con)
             .await?
             .is_some();
-    let mut counted = false;
-    if first_today {
-        let vote_key = keys::vote_addr(&id, &caller.client);
-        let (known, distinct): (bool, u64) = redis::pipe()
-            .cmd("SISMEMBER")
-            .arg(&vote_key)
-            .arg(&dedup_identity)
-            .cmd("SCARD")
-            .arg(&vote_key)
-            .query_async(&mut con)
-            .await?;
-        if address_admits(known, distinct, st.cfg.votes_per_address) {
-            let hour_key = keys::vote_hour(&caller.client, hour);
-            let (used,): (u64,) = redis::pipe()
-                .cmd("SADD")
-                .arg(&vote_key)
-                .arg(&dedup_identity)
-                .ignore()
-                .cmd("EXPIRE")
-                .arg(&vote_key)
-                .arg(86_400)
-                .ignore()
-                .cmd("INCR")
-                .arg(&hour_key)
-                .cmd("EXPIRE")
-                .arg(&hour_key)
-                .arg(3_700)
-                .ignore()
-                .query_async(&mut con)
-                .await?;
-            counted = hour_total_allows(used, st.cfg.votes_per_address_hour);
-        }
-    }
+    let counted = first_today
+        && address_vote(
+            &mut con,
+            &st.cfg,
+            &id,
+            &caller.client,
+            &dedup_identity,
+            hour,
+        )
+        .await?;
     let mut analytics_outcome: Option<String> = None;
     // A trail that helped this person: what lets their client say, within two days, what solving the problem cost with
     // it (POST /v1/effort, role aided). An author cannot vouch for their own trail this way.

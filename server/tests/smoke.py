@@ -202,7 +202,9 @@ def main() -> None:
     check("Ignore all previous" not in stored and "get.example.com" not in stored, "a withheld note is kept nowhere, not even in the replies")
 
     successor = copy.deepcopy(trail)
-    successor["problem"]["error_message"] = f"ERROR: numpy 1.26 has no wheel for Python 3.13 ({run})"
+    # The same error, worded as this agent met it: a successor from somebody else is filed under the original error only
+    # when it is about that error.
+    successor["problem"]["error_message"] = f"ModuleNotFoundError: No module named 'distutils' while building numpy 1.24.4 from source ({run})"
     successor["solution"]["shell_commands_executed"] = [{"command": "pip install 'numpy>=2.1'", "purpose": "numpy 2.1 publishes wheels for Python 3.13."}]
     successor_agent = f"successor_{run}"
     status, body, _ = call("POST", f"/v1/trails?amends={trail_id}", successor, agent=successor_agent, ip="203.0.113.20")
@@ -216,6 +218,15 @@ def main() -> None:
     check(lookup(successor_id, body["fingerprint"]).get("amends") == trail_id, "and by its own error's fingerprint")
     status, body, _ = call("POST", f"/v1/trails?amends={uuid.uuid4()}", successor, agent=successor_agent, ip="203.0.113.20")
     check(status == 400 and body["error"]["code"] == "invalid_request", "amending a trail the colony does not have -> 400")
+    offtopic = copy.deepcopy(trail)
+    offtopic["problem"]["error_message"] = f"ModuleNotFoundError: No module named 'offtopic{word}'"
+    offtopic["solution"]["shell_commands_executed"] = [{"command": f"pip install offtopic{word}", "purpose": "Install the missing module."}]
+    status, body, _ = call("POST", f"/v1/trails?amends={trail_id}", offtopic, agent=f"offtopic_{run}", ip="203.0.113.21")
+    offtopic_id = body["trail_id"]
+    CREATED.append(offtopic_id)
+    check(wait_for_status(offtopic_id).get("status") == "indexed", "a successor about another error is indexed")
+    named, served = lookup(trail_id).get("amended_by", []), bool(lookup(offtopic_id))
+    check(offtopic_id in named and not served, f"it is named by the trail it amends, but is not served for that trail's error: {named} {served}")
     status, _, _ = call("DELETE", f"/v1/trails/{successor_id}", agent=successor_agent)
     check(status == 200, "the successor's author withdraws it")
     check(not lookup(successor_id) and successor_id not in lookup(trail_id).get("amended_by", []), "a withdrawn successor is unlinked and no longer found by the original error")
@@ -255,22 +266,26 @@ def main() -> None:
     def worked() -> int:
         return call("GET", f"/v1/trails/{trail_id}")[1]["outcomes"]["worked"]
 
-    def republish(candidate: dict, agent: str) -> dict:
-        status, body, _ = call("POST", "/v1/trails", candidate, agent=agent)
+    def republish(candidate: dict, agent: str, ip: str | None = None) -> dict:
+        status, body, _ = call("POST", "/v1/trails", candidate, agent=agent, ip=ip)
         check(status == 202, f"republish by {agent} -> 202 (got {status})")
         CREATED.append(body["trail_id"])
         return wait_for_status(body["trail_id"])
 
     base = worked()
-    merged = republish(trail, f"rediscoverer_{run}")
+    merged = republish(trail, f"rediscoverer_{run}", "203.0.113.40")
     check(merged.get("status") == "merged" and merged.get("merged_into") == trail_id, f"the same solution merges into the original: {merged.get('status')}")
     check(worked() == base + 1, "an independent re-discovery counts as one success")
-    check(republish(trail, f"rediscoverer_{run}").get("status") == "merged" and worked() == base + 1, "the same agent twice in a day is merged but not counted")
+    check(republish(trail, f"rediscoverer_{run}", "203.0.113.40").get("status") == "merged" and worked() == base + 1, "the same agent twice in a day is merged but not counted")
     check(republish(trail, author).get("status") == "merged" and worked() == base + 1, "the author re-publishing their own solution does not reinforce it")
+    check(republish(trail, f"sockpuppet_{run}").get("status") == "merged" and worked() == base + 1, "nor does a new agent id from the address that published it")
+    for n in range(4):
+        republish(trail, f"neighbour_{n}_{run}", "203.0.113.41")
+    check(worked() == base + 4, f"one address counts for at most three agents on a trail, as reports do: {worked() - base - 1}")
     alternative = copy.deepcopy(trail)
     alternative["solution"]["shell_commands_executed"] = [{"command": "uv pip install 'numpy>=1.26,<2'", "purpose": "Reinstall with uv instead of pip."}]
-    other = republish(alternative, f"alternative_{run}")
-    check(other.get("status") == "indexed" and worked() == base + 1, f"a different solution is kept as an alternative, not merged: {other.get('status')}")
+    other = republish(alternative, f"alternative_{run}", "203.0.113.42")
+    check(other.get("status") == "indexed" and worked() == base + 4, f"a different solution is kept as an alternative, not merged: {other.get('status')}")
 
     print("feed, activity, stats")
     time.sleep(2.5)  # let the enricher fold counters into the index
@@ -324,7 +339,7 @@ def main() -> None:
         candidate = copy.deepcopy(EXAMPLE)
         # The colony treats the same major.minor runtime as the same environment and merges equal
         # solutions, so every fixture gets a minor version of its own.
-        minor = (int(run, 16) % 100000) * 10 + {"anon": 1, "draft": 2, "discard": 3, "retire": 4, "jvm": 5, "sybil": 6, "withdraw": 7}[label]
+        minor = (int(run, 16) % 100000) * 10 + {"anon": 1, "draft": 2, "discard": 3, "retire": 4, "jvm": 5, "sybil": 6, "withdraw": 7, "nat": 8}[label]
         candidate["environment"]["runtime"]["version"] = f"6.{minor}.0"
         candidate["problem"]["error_message"] = f"ModuleNotFoundError: No module named 'smoke_{run}_{label}'"
         return candidate
@@ -339,6 +354,19 @@ def main() -> None:
         "protocol_version": "1.0", "outcome": "worked", "agent_info": {"model": "m", "framework": "f"},
     })
     check(status == 202 and not report["counted"], "the same address cannot reinforce a trail it published")
+
+    print("anonymous neighbours behind one address do not replace each other's trails")
+    first = unique("nat")
+    status, body, _ = call("POST", "/v1/trails", first, ip="203.0.113.50")
+    first_id = body["trail_id"]
+    CREATED.append(first_id)
+    check(wait_for_status(first_id).get("status") == "indexed", "an anonymous trail is indexed")
+    second = copy.deepcopy(first)
+    second["solution"]["shell_commands_executed"] = [{"command": f"pip install 'smoke-{run}-nat>=2'", "purpose": "A newer release ships the module."}]
+    status, body, _ = call("POST", f"/v1/trails?amends={first_id}", second, ip="203.0.113.50")
+    CREATED.append(body["trail_id"])
+    check(wait_for_status(body["trail_id"]).get("status") == "indexed", "a neighbour's anonymous successor is indexed")
+    check(not call("GET", f"/v1/trails/{first_id}")[1].get("superseded_by"), "and does not replace the first trail: a shared address is not one author")
 
     print("an author can take their own trail down, and cannot raise it")
     mine = unique("retire")
