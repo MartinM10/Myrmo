@@ -254,7 +254,12 @@ address can read or write without one:
 docker compose exec gateway myrmo-server keys add ana      # prints the key once: hand it over privately
 docker compose exec gateway myrmo-server keys list         # who holds a key, and since when
 docker compose exec gateway myrmo-server keys revoke ana   # stops working at once
+docker compose exec gateway myrmo-server keys add ana luis marta   # several at once: one line per person, name and key
+docker compose exec gateway myrmo-server keys generate 10 pilot    # pilot-01 to pilot-10, for a trial before names are known
+docker compose exec gateway myrmo-server keys erase ana    # revokes the key and erases what the colony counted for ana
 ```
+
+The panel's **People** tab does the same (`POST /v1/admin/people` takes `name`, `names` or `count` and `prefix`).
 
 Names are handles (2 to 32 lowercase letters, digits, `.`, `-`, `_`), not e-mail addresses. Only a digest of each key
 is stored. The person becomes the identity of all their agents: one report per person and trail per day, nobody can
@@ -369,3 +374,10 @@ what a shared colony is for. It keeps counts and those reuse records only, never
 ```bash
 docker compose exec gateway myrmo-server team-report 7
 ```
+
+**A pilot's summary.** `myrmo-server pilot-roi [days]` (default 14), the same in the panel's **Value** tab and at
+`GET /v1/admin/pilot-roi?days=14` (`&format=text` for the text), or from any machine with the operator token:
+`MYRMO_ADMIN_TOKEN=<token> MYRMO_URL=<colony> npx myrmo-mcp pilot-roi 14`. It shows how many people used the colony,
+how colleagues' entries they followed turned out, and what problems cost with and without it, from the same matched
+comparison as the Value tab (the randomised hold-out when it has data), always with the number of errors and problems
+each figure rests on. When too few errors were solved both ways, it says so instead of showing a saving.

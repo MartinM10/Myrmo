@@ -266,10 +266,17 @@ pub(super) async fn add_person(
             return Err(ApiError::bad_request("count must be between 1 and 500."));
         }
         let prefix = body["prefix"].as_str().unwrap_or("pilot").trim();
+        // The prefix is checked first, so an error here that names it is the caller's to fix.
         let created =
             crate::access::generate_n(&mut st.redis(), count as usize, prefix, keys::now())
                 .await
-                .map_err(|e| internal(&e))?;
+                .map_err(|e| {
+                    if e.to_string().contains("not a valid handle prefix") {
+                        ApiError::bad_request(e.to_string())
+                    } else {
+                        internal(&e)
+                    }
+                })?;
         let keys_json: Vec<Value> = created
             .iter()
             .map(|(p, k)| json!({ "name": p, "key": k }))
@@ -1101,10 +1108,18 @@ pub(super) async fn value(
 }
 
 /// GET /v1/admin/pilot-roi?days=14: clean Pilot ROI Summary for B2B enterprise pilots.
+#[derive(serde::Deserialize)]
+pub(super) struct PilotQuery {
+    days: Option<i64>,
+    /// `text`: the summary as plain text, the same `myrmo-server pilot-roi` prints.
+    format: Option<String>,
+}
+
+/// GET /v1/admin/pilot-roi?days=14[&format=text]: the pilot summary an operator shows a team.
 pub(super) async fn pilot_roi(
     State(st): State<AppState>,
     headers: HeaderMap,
-    Query(q): Query<Days>,
+    Query(q): Query<PilotQuery>,
 ) -> ApiResult<Response> {
     authorize_operator(&st, &headers)?;
     let days = q.days.unwrap_or(14).clamp(1, 90);
@@ -1112,6 +1127,12 @@ pub(super) async fn pilot_roi(
     let summary = crate::effort::pilot_roi(&mut con, &st, days, keys::now())
         .await
         .map_err(|e| internal(&e))?;
+    if q.format.as_deref() == Some("text") {
+        return Ok(private((
+            [(header::CONTENT_TYPE, "text/plain; charset=utf-8")],
+            crate::effort::pilot_text(&summary),
+        )));
+    }
     Ok(private(Json(summary)))
 }
 

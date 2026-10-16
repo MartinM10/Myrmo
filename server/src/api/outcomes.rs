@@ -63,6 +63,15 @@ fn credited_tokens(declared: i64, max: i64) -> i64 {
     declared.clamp(0, max.max(0))
 }
 
+/// Who a report counts as, for one-per-day and the places of an address: the access key it was sent with when there is
+/// one (the colony knows it, the caller cannot choose it), else the agent id.
+fn dedup_identity(caller: &Caller) -> String {
+    match &caller.key_hash {
+        Some(digest) => format!("key:{digest}"),
+        None => caller.agent.clone(),
+    }
+}
+
 /// Characters of a note served to agents with the trail: a caveat, not a second trail.
 const CAVEAT_CHARS: usize = 300;
 /// Caveats kept per trail; the newest few are served.
@@ -216,10 +225,7 @@ pub(super) async fn report_outcome(
     let is_author = author.as_deref() == Some(&caller.agent)
         || published_from.as_deref() == Some(&caller.client);
     let eligible = author_may_report(is_author, &outcome);
-    let dedup_identity = match &caller.key_hash {
-        Some(kh) => format!("key:{kh}"),
-        None => caller.agent.clone(),
-    };
+    let dedup_identity = dedup_identity(&caller);
     let first_today: bool = eligible
         && redis::cmd("SET")
             .arg(keys::seen(&id, &dedup_identity))
@@ -689,30 +695,20 @@ mod tests {
     }
 
     #[test]
-    fn outcome_dedup_identity_uses_key_hash_when_present() {
-        let caller = Caller {
-            agent: "person:martin".into(),
+    fn a_report_with_an_access_key_counts_as_that_key_and_otherwise_as_its_agent_id() {
+        let keyed = Caller {
+            agent: "person:ana".into(),
             declared: true,
-            client: "key:mock-client".into(),
-            key_hash: Some("mock-key-digest-hash".into()),
+            client: "key:test-client".into(),
+            key_hash: Some("test-digest".into()),
         };
-        let dedup = match &caller.key_hash {
-            Some(kh) => format!("key:{kh}"),
-            None => caller.agent.clone(),
-        };
-        assert_eq!(dedup, "key:mock-key-digest-hash");
-
-        // Without key_hash, it falls back to caller.agent
-        let anon_caller = Caller {
-            agent: "agent-custom-123".into(),
+        assert_eq!(dedup_identity(&keyed), "key:test-digest");
+        let unkeyed = Caller {
+            agent: "agent-example-123".into(),
             declared: true,
-            client: "client-addr".into(),
+            client: "address-hash".into(),
             key_hash: None,
         };
-        let anon_dedup = match &anon_caller.key_hash {
-            Some(kh) => format!("key:{kh}"),
-            None => anon_caller.agent.clone(),
-        };
-        assert_eq!(anon_dedup, "agent-custom-123");
+        assert_eq!(dedup_identity(&unkeyed), "agent-example-123");
     }
 }
