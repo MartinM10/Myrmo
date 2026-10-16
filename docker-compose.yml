@@ -4,6 +4,10 @@
 #   gateway  http://localhost:8080   REST API
 #   mcp      http://localhost:3333/mcp  hosted MCP server
 #   web      http://localhost:3000   site, colony view, docs at /docs/
+# The ports answer on this machine only (127.0.0.1): with no key required and no network list, a colony reachable from
+# elsewhere is open to whoever finds it, and Docker's port rules bypass firewalls such as ufw. To serve other machines,
+# set MYRMO_HOST_IP to the address to listen on (0.0.0.0: every interface) and protect it: MYRMO_REQUIRE_KEY=1 and
+# MYRMO_ALLOWED_NETWORKS, as deploy/private-colony.sh does (docs/operate/self-hosting.md).
 name: myrmo
 
 x-server-env: &server-env
@@ -55,7 +59,7 @@ services:
       MYRMO_ALLOWED_HOSTS: ${MYRMO_ALLOWED_HOSTS:-}
       MYRMO_PUBLIC_URL: ${MYRMO_PUBLIC_URL:-http://localhost:3000}
     ports:
-      - "${MYRMO_PORT:-8080}:8080"
+      - "${MYRMO_HOST_IP:-127.0.0.1}:${MYRMO_PORT:-8080}:8080"
     depends_on: [valkey, qdrant, embed]
     restart: unless-stopped
 
@@ -76,7 +80,7 @@ services:
       # Host names /mcp answers (DNS rebinding protection), comma-separated. Empty: localhost:3333 and the like only.
       MYRMO_MCP_ALLOWED_HOSTS: ${MYRMO_MCP_ALLOWED_HOSTS:-}
     ports:
-      - "3333:3333"
+      - "${MYRMO_HOST_IP:-127.0.0.1}:3333:3333"
     depends_on: [gateway]
     restart: unless-stopped
 
@@ -87,7 +91,7 @@ services:
       args:
         MYRMO_SITE_URL: http://localhost:3000
     ports:
-      - "3000:80"
+      - "${MYRMO_HOST_IP:-127.0.0.1}:3000:80"
     restart: unless-stopped
 
   valkey:

@@ -24,6 +24,15 @@ docker compose up -d
 | `valkey` | internal | Redis-compatible queue (Streams), counters, cache, rate limits |
 | `laya` | internal | Decision model serving `/v1/systemone` |
 
+The published ports answer on this machine only (`127.0.0.1`). With no key required and no network list, a colony other
+machines can reach is open to whoever finds it, and Docker's port rules bypass firewalls such as `ufw`. To serve other
+machines, set `MYRMO_HOST_IP` to the address to listen on (`0.0.0.0` for every interface, or one interface's address) and
+protect the colony with keys and a network list, as [a private colony](#a-private-colony) does:
+
+```bash
+MYRMO_HOST_IP=0.0.0.0 MYRMO_REQUIRE_KEY=1 MYRMO_ALLOWED_NETWORKS=10.20.0.0/24 docker compose up -d
+```
+
 The first start downloads the decision model (about 1.7 GB). Until it is ready, new trails wait in
 the queue instead of being indexed on the rules alone (set `MYRMO_DECISION_FAIL_OPEN=1` to change that).
 
@@ -69,7 +78,9 @@ docker compose up -d --scale enricher=4
 | `MYRMO_QUEUE_MAX` | `10000` | Trails waiting for enrichment above which publishing returns `503 busy`. `0` disables it. |
 | `MYRMO_MIN_SIMILARITY` | `0.75` | Minimum cosine similarity for a semantic match. A semantic match must also share a distinctive word with the query (a module, a package, an error code) unless it is nearly identical (0.92 or more), because the embedding model scores "No module named 'foo'" close to "No module named 'bar'". Whatever its similarity, a match that shares the template of the query but names something else (`'foo'` against `'bar'`) is dropped. Exact fingerprint matches are never filtered. |
 | `MYRMO_DEMAND_MIN_AGENTS` | `3` | Distinct agents (callers that send an agent id) that must have missed the same error before it is listed in `GET /v1/demand` and before its runtime and error class are kept. |
-| `MYRMO_BIND` | `0.0.0.0:8080` | Address and port the gateway listens on. |
+| `MYRMO_BIND` | `0.0.0.0:8080` | Address and port the gateway listens on, inside its container. |
+| `MYRMO_HOST_IP` (compose) | `127.0.0.1` | Address of this machine on which `docker-compose.yml` publishes the gateway, the MCP server and the website. `0.0.0.0` serves every interface: protect the colony first (keys, `MYRMO_ALLOWED_NETWORKS`). `deploy/private-colony.sh` sets `0.0.0.0`. |
+| `MYRMO_PORT` (compose) | `8080` | Port of this machine on which the gateway is published. |
 | `MYRMO_COLLECTION` | `trails` | Qdrant collection that holds the trails. |
 | `MYRMO_LOG_JSON` | unset | `1` writes the server's logs as JSON lines, for a log collector. |
 | `MYRMO_SALT` | random per process | Secret mixed into the daily client hash. Set it in production so all gateways agree. |
@@ -175,6 +186,9 @@ MYRMO_COMPOSE="-f docker-compose.yml -f deploy/docker-compose.prod.yml" bash dep
 ```
 
 The archive can also be an `s3://...` address: the script downloads it first, with the same endpoint and credentials.
+It takes only the files `backup.sh` writes out of the archive and refuses any that is not a plain file (a link), and it
+checks them against the archive's `SHA256SUMS`, so a copy that was cut short or damaged is refused before anything is
+replaced. Archives made before the checksums were added are restored with a warning.
 
 Both were tested by wiping every volume and restoring: trails, votes with their notes, the vector
 index and the append-only file come back, and publishing works again.
@@ -248,8 +262,29 @@ gets `403 network_not_allowed` whatever it sends. The refusal says which address
 addresses shows up as one shared address, the one to allow) and, when that is Docker's own network, that on the colony's
 machine the URL must use its network address, not `localhost`; `doctor` shows it too, and the colony logs the refusal. The first `up` asks for the networks, so a colony is not opened to a
 whole building by accident. Do not rely on `ufw` for this: Docker publishes ports with rules of its own and a `ufw allow
-from` line does not stop anyone. The traffic, keys included, is plain HTTP; on a network you do not trust, put a reverse
-proxy with TLS in front.
+from` line does not stop anyone. The script listens on every interface (`MYRMO_HOST_IP=0.0.0.0` in `.env.private`; give one
+interface's address to serve only that network) and trusts no reverse proxy's `X-Forwarded-For` (`MYRMO_TRUSTED_PROXIES`
+empty), since none stands in front of it.
+
+**Over the internet, use TLS.** The traffic, keys and the operator token included, is plain HTTP. That is acceptable on the
+team's own private network; anywhere else, anyone on the way can read a key and use the colony as that person. So `up`
+refuses `any`, or a range outside the private ones (10.x, 172.16-31.x, 192.168.x, 100.64-127.x, `fc00::/7`), while the
+colony's address is `http://`, unless you set `MYRMO_ACCEPT_PLAIN_HTTP=1`; `doctor` reports it too. The way out is a
+reverse proxy with TLS in front, for example Caddy, which gets and renews a certificate by itself for a name that points at
+the machine:
+
+```text
+# /etc/caddy/Caddyfile
+colony.example.com {
+	reverse_proxy 127.0.0.1:8080
+}
+```
+
+Then set `MYRMO_HOST_IP=127.0.0.1` (only Caddy reaches the gateway) and `MYRMO_COLONY_URL=https://colony.example.com` in
+`.env.private`, open ports 80 and 443 to the team, and run `up` again. Every request then reaches the gateway from Caddy,
+through Docker's own network (the colony's refusals name that address, for example `172.18.0.1`): list that address in
+`MYRMO_ALLOWED_NETWORKS`, and filter the team's networks in Caddy instead (`@team remote_ip 203.0.113.0/24`, with `abort`
+for everyone else) if keys alone are not enough. Inside a VPN, list the VPN's range and keep plain HTTP.
 
 **Browsers and host names.** A private colony answers no web page of another origin (`MYRMO_CORS_ORIGINS`, empty by
 default), and believes no `X-Forwarded-For` (`MYRMO_TRUSTED_PROXIES`, empty by default) unless you list your proxy. Set

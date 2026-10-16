@@ -80,8 +80,11 @@ large saving on a hit is worth little if the colony hits rarely and every miss c
 
 **How to run it.**
 
-1. **A local colony, never production.** `docker compose up -d` (or, without the decision model, as CI does:
-   `MYRMO_DECISION_URL= docker compose up -d --build --no-deps valkey qdrant embed gateway enricher`).
+1. **A local colony, never production.** `MYRMO_HOST_IP=172.17.0.1 docker compose up -d` (or, without the decision model,
+   as CI does: `MYRMO_HOST_IP=172.17.0.1 MYRMO_DECISION_URL= docker compose up -d --build --no-deps valkey qdrant embed
+   gateway enricher`), and `--colony http://172.17.0.1:8080` for `seed` and `run`. The agents' containers reach the colony
+   through Docker's bridge address (`docker network inspect bridge` shows it; `172.17.0.1` by default), which a colony
+   published on `127.0.0.1`, the default, does not answer; the bridge address is not reachable from other machines.
 2. **Fill it like the real one.** `python bench/myrmobench/run.py seed --from https://myrmo.dev` copies the public trails
    (the colony's feed, read only) into the empty local colony, or pass `--seed-from https://myrmo.dev` to `run`. Without
    it, `unseen` measures a colony that knows nothing: the pure cost of Myrmo when it cannot help.
