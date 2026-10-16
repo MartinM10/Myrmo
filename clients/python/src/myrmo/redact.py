@@ -40,6 +40,18 @@ def _assignment(m: "re.Match[str]") -> Optional[str]:
     return m.group(1) + m.group(2) + _full("secret")
 
 
+def _value_only(value_group: int) -> Replacer:
+    """Replaces the value group with `<redacted:secret>`, keeping every group before and after it."""
+
+    def replace(m: re.Match) -> Optional[str]:
+        if _is_reference(m.group(value_group)):
+            return None
+        groups = range(1, (m.re.groups or 0) + 1)
+        return "".join(_full("secret") if n == value_group else (m.group(n) or "") for n in groups)
+
+    return replace
+
+
 def _is_reference(value: str) -> bool:
     lower = value.lower()
     return (
@@ -106,6 +118,15 @@ _CLI_NAMES = (
     r"client[_-]?secret|private[_-]?key"
 )
 
+# A `.pgpass` line, `host:port:database:user:` before the password. The host has a letter or a dot (or is `*`) and
+# the port has four or five digits (or is `*`), so a timestamp, an IPv6 address or a log such as `a:b:c:d:e` is left
+# alone. A colon inside a field is escaped as `\:`.
+_PGPASS_FIELD = r"(?:\\.|[^:\s\\'\x22<>])+"
+_PGPASS = r"(?:\*|[0-9_\-]*[A-Za-z.][A-Za-z0-9_.\-]*):(?:[0-9]{4,5}|\*):" + _PGPASS_FIELD + ":" + _PGPASS_FIELD + ":"
+# The MySQL and MariaDB clients take the password glued to `-p`: `mysql -uroot -pSECRET`. `-p 3306`, `mkdir -p`
+# and `ssh -p 22` are other commands or have a space.
+_MYSQL = r"(?:mysql(?:dump|admin|import|check|show|pump|slap|binlog|sh)?|mariadb(?:-?dump|-admin|-import|-check|-show)?)"
+
 # Configuration values that name an organisation or a person: `edc.ui.organization=Acme`, `"owner": "Ana"`,
 # `LABEL maintainer=...`. The key decides, never the value, because a name looks like any other word. A key
 # matches only when its last part is one of these words, so `org.eclipse.edc:dcp-core` (a Maven coordinate) and
@@ -162,6 +183,8 @@ _RULES: List[Tuple[str, re.Pattern, Replacer]] = [
         # Private keys, whole or cut off by a truncated log.
         ("private_key", r"-----BEGIN [A-Z0-9 ]*PRIVATE KEY(?: BLOCK)?-----[\s\S]*?-----END [A-Z0-9 ]*PRIVATE KEY(?: BLOCK)?-----", 0, lambda m: _full("private_key")),
         ("private_key", r"-----BEGIN [A-Z0-9 ]*PRIVATE KEY(?: BLOCK)?-----(?:(?:\\n|\r?\n)[A-Za-z0-9+/=]{16,})*", 0, lambda m: _full("private_key")),
+        # An age secret key: `AGE-SECRET-KEY-1` and Bech32 in upper case.
+        ("private_key", r"\bAGE-SECRET-KEY-1[QPZRY9X8GF2TVDW0S3JN54KHCE6MUA7L]{40,}", 0, lambda m: _full("private_key")),
         # Password hashes: bcrypt, argon2, crypt(3).
         ("password_hash", r"\$(?:2[abxy]\$[0-9]{2}\$[./A-Za-z0-9]{53}|argon2(?:id|i|d)\$[^\s'\x22<>]{20,}|[156y]\$[./A-Za-z0-9]{1,16}\$[./A-Za-z0-9]{20,})", 0, lambda m: _full("password_hash")),
         # Provider tokens.
@@ -169,7 +192,7 @@ _RULES: List[Tuple[str, re.Pattern, Replacer]] = [
         ("api_key", r"\bsk-(?:proj-|svcacct-)?[A-Za-z0-9_\-]{20,}", 0, lambda m: _full("api_key")),
         ("api_key", r"\bgh[pousr]_[A-Za-z0-9]{30,}|\bgithub_pat_[A-Za-z0-9_]{22,}", 0, lambda m: _full("api_key")),
         ("api_key", r"\bglpat-[A-Za-z0-9_\-]{20,}", 0, lambda m: _full("api_key")),
-        ("api_key", r"\bxox[abprs]-[A-Za-z0-9\-]{10,}", 0, lambda m: _full("api_key")),
+        ("api_key", r"\bxox[abprs]-[A-Za-z0-9\-]{10,}|\bxapp-[A-Za-z0-9\-]{10,}", 0, lambda m: _full("api_key")),
         ("api_key", r"\bAIza[0-9A-Za-z_\-]{35}", 0, lambda m: _full("api_key")),
         ("api_key", r"\b[rs]k_(?:live|test)_[A-Za-z0-9]{20,}", 0, lambda m: _full("api_key")),
         ("api_key", r"\bmyk_[0-9a-f]{64}\b", 0, lambda m: _full("api_key")),
@@ -181,6 +204,11 @@ _RULES: List[Tuple[str, re.Pattern, Replacer]] = [
         ("api_key", r"\b(?:dckr_pat_|dop_v1_|gsk_|xai-|r8_|lin_api_|pplx-|shp(?:at|ca|pa|ss)_|whsec_|sq0(?:atp|csp)-|glptt-|glrt-|GOCSPX-)[A-Za-z0-9_\-]{16,}", 0, lambda m: _full("api_key")),
         ("api_key", r"\b(?:dapi|SK)[0-9a-f]{32}\b|\bkey-[0-9a-f]{32}\b", 0, lambda m: _full("api_key")),
         ("api_key", r"\b(?:secret_[A-Za-z0-9]{43}|ntn_[A-Za-z0-9]{36,})\b", 0, lambda m: _full("api_key")),
+        # HashiCorp Vault service, batch and recovery tokens; Doppler service, personal, service account and CLI
+        # tokens; Pulumi access tokens.
+        ("api_key", r"\bhv[sbr]\.[A-Za-z0-9_\-]{24,}", 0, lambda m: _full("api_key")),
+        ("api_key", r"\bdp\.(?:st|pt|sa|ct)\.(?:[A-Za-z0-9_\-]{1,64}\.)?[A-Za-z0-9]{30,}", 0, lambda m: _full("api_key")),
+        ("api_key", r"\bpul-[0-9a-f]{40}\b", 0, lambda m: _full("api_key")),
         ("api_key", r"\b((?:account|sharedaccess)key\s*=)[A-Za-z0-9+/=]{20,}", re.I, lambda m: m.group(1) + _full("api_key")),
         ("aws_access_key", r"\b(?:AKIA|ASIA)[0-9A-Z]{16}\b", 0, lambda m: _full("aws_access_key")),
         ("aws_access_key", r"(aws_secret_access_key\s*[=:]\s*['\x22]?)[A-Za-z0-9/+=]{40}", re.I, lambda m: m.group(1) + _full("aws_access_key")),
@@ -195,6 +223,16 @@ _RULES: List[Tuple[str, re.Pattern, Replacer]] = [
         ("connection_string", r"\b([a-z][a-z0-9+.\-]{0,30}://)[^:/\s@<>]+:[^@\s/<>]+@", re.I, lambda m: m.group(1) + _full("connection_string") + "@"),
         ("connection_string", r"\b([a-z][a-z0-9+.\-]{0,30}://)[A-Za-z0-9_\-.~%]{20,}@", re.I, lambda m: m.group(1) + _full("connection_string") + "@"),
         ("url_secret", r"([?&;](?:access_token|refresh_token|id_token|token|api[_-]?key|apikey|secret|client_secret|password|passwd|pwd|sig|signature|x-amz-signature|x-amz-security-token|x-amz-credential|private_token|sessionid|jwt)=)([^&\s'\x22<>#]{4,})", re.I, _keep_prefix("url_secret", 2)),
+        # Credentials files and commands whose password has no `name =` in front of it: Docker's `config.json`
+        # (`"auth"` is base64 of user:password), npm's legacy `_auth=`, `mysql -pSECRET`, `sshpass -p SECRET`, a
+        # `.netrc` entry, and a `.pgpass` line on its own or written to `.pgpass`.
+        ("password_assignment", r"(\\?\x22(?:auth|identitytoken|registrytoken)\\?\x22[ \t]*:[ \t]*\\?\x22)([A-Za-z0-9+/=_.\-]{8,})(\\?\x22)", re.I, _value_only(2)),
+        ("password_assignment", r"((?:^|[^A-Za-z0-9_])_auth[ \t]*=[ \t]*)(['\x22]?)([^\s'\x22,;<>]{4,})", 0, _assignment),
+        ("password_assignment", r"((?:^|[\s;&|(/])" + _MYSQL + r"(?:[ \t]+[^\s;&|]+)*?[ \t]+-p)(['\x22]?)([^\s'\x22<>]+)", 0, _assignment),
+        ("password_assignment", r"((?:^|[\s;&|(/])sshpass(?:[ \t]+-v)*[ \t]+-p[ \t]*)(['\x22]?)([^\s'\x22<>]+)", 0, _assignment),
+        ("password_assignment", r"((?:^|\s)(?:machine[ \t]+[^\s]+|default)(?:\s+(?:login|account)[ \t]+[^\s]+)+\s+password[ \t]+)(['\x22]?)([^\s'\x22<>]+)", 0, _assignment),
+        ("password_assignment", r"(^[ \t]*" + _PGPASS + r")(" + _PGPASS_FIELD + r")([ \t]*\r?$)", re.M, _value_only(2)),
+        ("password_assignment", r"((?:^|[\s'\x22])" + _PGPASS + r")(" + _PGPASS_FIELD + r")([ \t]*['\x22]?[ \t]*>{1,2}[ \t]*[^\s]*\.pgpass)", 0, _value_only(2)),
         # `name = value`, in code, config, JSON, env files and command lines.
         ("password_assignment", r"(\$?\b[\w.\-]{0,64}(?:" + _NAMES_STRONG + r")[\w.\-]{0,64}['\x22]?[ \t]*[=:][ \t]*)(['\x22]?)([^\s'\x22,;<>]{4,})", re.I, _assignment),
         ("password_assignment", r"(\$?\b[\w.\-]{0,64}(?:" + _NAMES_WEAK + r")[\w.\-]{0,64}['\x22]?[ \t]*[=:][ \t]*)(['\x22]?)([^\s'\x22,;<>]{12,})", re.I, _assignment),

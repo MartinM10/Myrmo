@@ -142,11 +142,27 @@ const CLI_NAMES =
 // `$TOKEN=value` is still redacted, since what follows the `=` may well be a secret.
 const expandsVariable = (name: string): boolean => name.startsWith("$") && name.trimEnd().endsWith(":");
 const assignment: Replacer = (m) => (expandsVariable(m[1]) || isReference(m[3]) ? null : m[1] + m[2] + full("secret"));
+/** Replaces the value group with `<redacted:secret>`, keeping every group before and after it. */
+const valueOnly = (valueGroup: number): Replacer => (m) =>
+  isReference(m[valueGroup])
+    ? null
+    : m.slice(1).map((group, i) => (i + 1 === valueGroup ? full("secret") : group)).join("");
+
+// A `.pgpass` line, `host:port:database:user:` before the password. The host has a letter or a dot (or is `*`) and
+// the port has four or five digits (or is `*`), so a timestamp, an IPv6 address or a log such as `a:b:c:d:e` is left
+// alone. A colon inside a field is escaped as `\:`.
+const PGPASS_FIELD = String.raw`(?:\\.|[^:\s\\'\x22<>])+`;
+const PGPASS = String.raw`(?:\*|[0-9_\-]*[A-Za-z.][A-Za-z0-9_.\-]*):(?:[0-9]{4,5}|\*):` + PGPASS_FIELD + ":" + PGPASS_FIELD + ":";
+// The MySQL and MariaDB clients take the password glued to `-p`: `mysql -uroot -pSECRET`. `-p 3306`, `mkdir -p`
+// and `ssh -p 22` are other commands or have a space.
+const MYSQL = String.raw`(?:mysql(?:dump|admin|import|check|show|pump|slap|binlog|sh)?|mariadb(?:-?dump|-admin|-import|-check|-show)?)`;
 
 const RULES: Rule[] = [
   // Private keys, whole or cut off by a truncated log.
   r("private_key", String.raw`-----BEGIN [A-Z0-9 ]*PRIVATE KEY(?: BLOCK)?-----[\s\S]*?-----END [A-Z0-9 ]*PRIVATE KEY(?: BLOCK)?-----`, "", fixed("private_key")),
   r("private_key", String.raw`-----BEGIN [A-Z0-9 ]*PRIVATE KEY(?: BLOCK)?-----(?:(?:\\n|\r?\n)[A-Za-z0-9+/=]{16,})*`, "", fixed("private_key")),
+  // An age secret key: `AGE-SECRET-KEY-1` and Bech32 in upper case.
+  r("private_key", String.raw`\bAGE-SECRET-KEY-1[QPZRY9X8GF2TVDW0S3JN54KHCE6MUA7L]{40,}`, "", fixed("private_key")),
   // Password hashes: bcrypt, argon2, crypt(3).
   r("password_hash", String.raw`\$(?:2[abxy]\$[0-9]{2}\$[./A-Za-z0-9]{53}|argon2(?:id|i|d)\$[^\s'\x22<>]{20,}|[156y]\$[./A-Za-z0-9]{1,16}\$[./A-Za-z0-9]{20,})`, "", fixed("password_hash")),
   // Provider tokens.
@@ -154,7 +170,7 @@ const RULES: Rule[] = [
   r("api_key", String.raw`\bsk-(?:proj-|svcacct-)?[A-Za-z0-9_\-]{20,}`, "", fixed("api_key")),
   r("api_key", String.raw`\bgh[pousr]_[A-Za-z0-9]{30,}|\bgithub_pat_[A-Za-z0-9_]{22,}`, "", fixed("api_key")),
   r("api_key", String.raw`\bglpat-[A-Za-z0-9_\-]{20,}`, "", fixed("api_key")),
-  r("api_key", String.raw`\bxox[abprs]-[A-Za-z0-9\-]{10,}`, "", fixed("api_key")),
+  r("api_key", String.raw`\bxox[abprs]-[A-Za-z0-9\-]{10,}|\bxapp-[A-Za-z0-9\-]{10,}`, "", fixed("api_key")),
   r("api_key", String.raw`\bAIza[0-9A-Za-z_\-]{35}`, "", fixed("api_key")),
   r("api_key", String.raw`\b[rs]k_(?:live|test)_[A-Za-z0-9]{20,}`, "", fixed("api_key")),
   r("api_key", String.raw`\bmyk_[0-9a-f]{64}\b`, "", fixed("api_key")),
@@ -166,6 +182,11 @@ const RULES: Rule[] = [
   r("api_key", String.raw`\b(?:dckr_pat_|dop_v1_|gsk_|xai-|r8_|lin_api_|pplx-|shp(?:at|ca|pa|ss)_|whsec_|sq0(?:atp|csp)-|glptt-|glrt-|GOCSPX-)[A-Za-z0-9_\-]{16,}`, "", fixed("api_key")),
   r("api_key", String.raw`\b(?:dapi|SK)[0-9a-f]{32}\b|\bkey-[0-9a-f]{32}\b`, "", fixed("api_key")),
   r("api_key", String.raw`\b(?:secret_[A-Za-z0-9]{43}|ntn_[A-Za-z0-9]{36,})\b`, "", fixed("api_key")),
+  // HashiCorp Vault service, batch and recovery tokens; Doppler service, personal, service account and CLI tokens;
+  // Pulumi access tokens.
+  r("api_key", String.raw`\bhv[sbr]\.[A-Za-z0-9_\-]{24,}`, "", fixed("api_key")),
+  r("api_key", String.raw`\bdp\.(?:st|pt|sa|ct)\.(?:[A-Za-z0-9_\-]{1,64}\.)?[A-Za-z0-9]{30,}`, "", fixed("api_key")),
+  r("api_key", String.raw`\bpul-[0-9a-f]{40}\b`, "", fixed("api_key")),
   r("api_key", String.raw`\b((?:account|sharedaccess)key\s*=)[A-Za-z0-9+/=]{20,}`, "i", (m) => m[1] + full("api_key")),
   r("aws_access_key", String.raw`\b(?:AKIA|ASIA)[0-9A-Z]{16}\b`, "", fixed("aws_access_key")),
   r("aws_access_key", String.raw`(aws_secret_access_key\s*[=:]\s*['\x22]?)[A-Za-z0-9/+=]{40}`, "i", (m) => m[1] + full("aws_access_key")),
@@ -180,6 +201,16 @@ const RULES: Rule[] = [
   r("connection_string", String.raw`\b([a-z][a-z0-9+.\-]{0,30}:\/\/)[^:/\s@<>]+:[^@\s/<>]+@`, "i", (m) => `${m[1]}${full("connection_string")}@`),
   r("connection_string", String.raw`\b([a-z][a-z0-9+.\-]{0,30}:\/\/)[A-Za-z0-9_\-.~%]{20,}@`, "i", (m) => `${m[1]}${full("connection_string")}@`),
   r("url_secret", String.raw`([?&;](?:access_token|refresh_token|id_token|token|api[_-]?key|apikey|secret|client_secret|password|passwd|pwd|sig|signature|x-amz-signature|x-amz-security-token|x-amz-credential|private_token|sessionid|jwt)=)([^&\s'\x22<>#]{4,})`, "i", keepPrefix("url_secret", 2)),
+  // Credentials files and commands whose password has no `name =` in front of it: Docker's `config.json` (`"auth"`
+  // is base64 of user:password), npm's legacy `_auth=`, `mysql -pSECRET`, `sshpass -p SECRET`, a `.netrc` entry, and
+  // a `.pgpass` line on its own or written to `.pgpass`.
+  r("password_assignment", String.raw`(\\?\x22(?:auth|identitytoken|registrytoken)\\?\x22[ \t]*:[ \t]*\\?\x22)([A-Za-z0-9+/=_.\-]{8,})(\\?\x22)`, "i", valueOnly(2)),
+  r("password_assignment", String.raw`((?:^|[^A-Za-z0-9_])_auth[ \t]*=[ \t]*)(['\x22]?)([^\s'\x22,;<>]{4,})`, "", assignment),
+  r("password_assignment", String.raw`((?:^|[\s;&|(/])` + MYSQL + String.raw`(?:[ \t]+[^\s;&|]+)*?[ \t]+-p)(['\x22]?)([^\s'\x22<>]+)`, "", assignment),
+  r("password_assignment", String.raw`((?:^|[\s;&|(/])sshpass(?:[ \t]+-v)*[ \t]+-p[ \t]*)(['\x22]?)([^\s'\x22<>]+)`, "", assignment),
+  r("password_assignment", String.raw`((?:^|\s)(?:machine[ \t]+[^\s]+|default)(?:\s+(?:login|account)[ \t]+[^\s]+)+\s+password[ \t]+)(['\x22]?)([^\s'\x22<>]+)`, "", assignment),
+  r("password_assignment", String.raw`(^[ \t]*` + PGPASS + ")(" + PGPASS_FIELD + String.raw`)([ \t]*\r?$)`, "m", valueOnly(2)),
+  r("password_assignment", String.raw`((?:^|[\s'\x22])` + PGPASS + ")(" + PGPASS_FIELD + String.raw`)([ \t]*['\x22]?[ \t]*>{1,2}[ \t]*[^\s]*\.pgpass)`, "", valueOnly(2)),
   // `name = value`, in code, config, JSON, env files and command lines.
   r("password_assignment", String.raw`(\$?\b[\w.\-]{0,64}(?:${NAMES_STRONG})[\w.\-]{0,64}['\x22]?[ \t]*[=:][ \t]*)(['\x22]?)([^\s'\x22,;<>]{4,})`, "i", assignment),
   r("password_assignment", String.raw`(\$?\b[\w.\-]{0,64}(?:${NAMES_WEAK})[\w.\-]{0,64}['\x22]?[ \t]*[=:][ \t]*)(['\x22]?)([^\s'\x22,;<>]{12,})`, "i", assignment),

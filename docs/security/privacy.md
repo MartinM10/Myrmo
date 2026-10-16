@@ -50,16 +50,16 @@ which also list what must be left alone.
 
 | Kind | Examples |
 |---|---|
-| `api_key` | `sk-…`, `sk-ant-…`, `AIza…`, `ghp_…`, `github_pat_…`, `xox[abprs]-…`, `glpat-…`, `npm_…`, `hf_…`, `SG.…`, `pypi-…`, `ya29.…`, `dckr_pat_…`, `dapi…`, `GOCSPX-…`, Azure `AccountKey=…` |
+| `api_key` | `sk-…`, `sk-ant-…`, `AIza…`, `ghp_…`, `github_pat_…`, `xox[abprs]-…`, `xapp-…`, `glpat-…`, `npm_…`, `hf_…`, `SG.…`, `pypi-…`, `ya29.…`, `dckr_pat_…`, `dapi…`, `GOCSPX-…`, Vault `hvs.…`, `hvb.…`, `hvr.…`, Doppler `dp.st.…`, `dp.pt.…`, `dp.sa.…`, Pulumi `pul-…`, Azure `AccountKey=…` |
 | `aws_access_key` | `AKIA…`, `ASIA…` and the matching secret |
-| `private_key` | `-----BEGIN … PRIVATE KEY-----` blocks, PGP blocks, and keys cut off by a truncated log |
+| `private_key` | `-----BEGIN … PRIVATE KEY-----` blocks, PGP blocks, keys cut off by a truncated log, and age secret keys (`AGE-SECRET-KEY-1…`) |
 | `password_hash` | bcrypt, argon2 and crypt(3) hashes |
 | `jwt`, `token` | Three base64url segments starting with `eyJ`; `Bearer …` |
 | `auth_header` | `Authorization: Basic …`, `X-Api-Key: …`, `X-Auth-Token: …` and similar headers, also inside JSON and dicts |
 | `cookie` | `Cookie:` and `Set-Cookie:` values |
 | `connection_string` | Credentials inside `postgres://`, `mysql://`, `mongodb+srv://`, `redis://`, `amqp://` URLs, and a token used as the user name |
 | `url_secret` | `?access_token=…`, `&sig=…`, `&api_key=…` and similar query parameters |
-| `password_assignment` | `password=…`, `"password": "…"`, `DB_PASSWORD=…`, `GITHUB_TOKEN=…`, `--password …`, `--token …` |
+| `password_assignment` | `password=…`, `"password": "…"`, `DB_PASSWORD=…`, `GITHUB_TOKEN=…`, `--password …`, `--token …`; credentials with no such name in front: `"auth"`, `"identitytoken"` and `"registrytoken"` in Docker's `config.json`, npm's `_auth=…`, `mysql -p…` (and `mysqldump`, `mariadb`...), `sshpass -p …`, a `.netrc` entry (`machine … login … password …`) and a `.pgpass` line (`host:port:database:user:password`, on its own line or written to `.pgpass`, with a port of four or five digits or `*`) |
 | `webhook` | Slack, Discord and Teams webhook URLs |
 | `email`, `phone`, `ip`, `ipv6`, `mac`, `card` | Personal contact data, addresses and Luhn-valid card numbers |
 | `hostname` | Internal host names: in URLs and `user@host` (`.internal`, `.corp`, `.intranet`, `.lan`, `.localdomain`, `home.arpa`, `.local`) and on their own in logs, for example `could not resolve db01.corp.acme.internal`. A bare `.local` is left alone (`.env.local`), and so are Java packages such as `jdk.internal.misc`. |

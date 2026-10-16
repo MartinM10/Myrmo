@@ -149,6 +149,39 @@ fn assignment(c: &Captures) -> Option<String> {
     Some(format!("{}{}{}", g(c, 1), g(c, 2), full("secret")))
 }
 
+/// Replaces the value group with `<redacted:secret>`, keeping every group before and after it.
+fn value_only(value_group: usize) -> Replacer {
+    Box::new(move |c| {
+        if is_reference(g(c, value_group)) {
+            return None;
+        }
+        Some(
+            (1..c.len())
+                .map(|n| {
+                    if n == value_group {
+                        full("secret")
+                    } else {
+                        g(c, n).to_string()
+                    }
+                })
+                .collect(),
+        )
+    })
+}
+
+// A `.pgpass` line, `host:port:database:user:` before the password. The host has a letter or a dot (or is `*`) and
+// the port has four or five digits (or is `*`), so a timestamp, an IPv6 address or a log such as `a:b:c:d:e` is left
+// alone. A colon inside a field is escaped as `\:`.
+const PGPASS_FIELD: &str = r"(?:\\.|[^:\s\\'\x22<>])+";
+fn pgpass() -> String {
+    format!(
+        r"(?:\*|[0-9_\-]*[A-Za-z.][A-Za-z0-9_.\-]*):(?:[0-9]{{4,5}}|\*):{PGPASS_FIELD}:{PGPASS_FIELD}:"
+    )
+}
+// The MySQL and MariaDB clients take the password glued to `-p`: `mysql -uroot -pSECRET`. `-p 3306`, `mkdir -p`
+// and `ssh -p 22` are other commands or have a space.
+const MYSQL: &str = r"(?:mysql(?:dump|admin|import|check|show|pump|slap|binlog|sh)?|mariadb(?:-?dump|-admin|-import|-check|-show)?)";
+
 // Configuration values that name an organisation or a person: `edc.ui.organization=Acme`, `"owner": "Ana"`,
 // `LABEL maintainer=...`. The key decides, never the value, because a name looks like any other word. A key
 // matches only when its last part is one of these words, so `org.eclipse.edc:dcp-core` (a Maven coordinate) and
@@ -261,6 +294,7 @@ static RULES: LazyLock<Vec<Rule>> = LazyLock::new(|| {
         }
     }
     let line_key = org_key_line();
+    let pgpass = pgpass();
     vec![
         rule(
             "private_key",
@@ -272,6 +306,13 @@ static RULES: LazyLock<Vec<Rule>> = LazyLock::new(|| {
             "private_key",
             false,
             r"-----BEGIN [A-Z0-9 ]*PRIVATE KEY(?: BLOCK)?-----(?:(?:\\n|\r?\n)[A-Za-z0-9+/=]{16,})*",
+            |_| Some(full("private_key")),
+        ),
+        // An age secret key: `AGE-SECRET-KEY-1` and Bech32 in upper case.
+        rule(
+            "private_key",
+            false,
+            r"\bAGE-SECRET-KEY-1[QPZRY9X8GF2TVDW0S3JN54KHCE6MUA7L]{40,}",
             |_| Some(full("private_key")),
         ),
         rule(
@@ -298,9 +339,12 @@ static RULES: LazyLock<Vec<Rule>> = LazyLock::new(|| {
         rule("api_key", false, r"\bglpat-[A-Za-z0-9_\-]{20,}", |_| {
             Some(full("api_key"))
         }),
-        rule("api_key", false, r"\bxox[abprs]-[A-Za-z0-9\-]{10,}", |_| {
-            Some(full("api_key"))
-        }),
+        rule(
+            "api_key",
+            false,
+            r"\bxox[abprs]-[A-Za-z0-9\-]{10,}|\bxapp-[A-Za-z0-9\-]{10,}",
+            |_| Some(full("api_key")),
+        ),
         rule("api_key", false, r"\bAIza[0-9A-Za-z_\-]{35}", |_| {
             Some(full("api_key"))
         }),
@@ -353,6 +397,20 @@ static RULES: LazyLock<Vec<Rule>> = LazyLock::new(|| {
             r"\b(?:secret_[A-Za-z0-9]{43}|ntn_[A-Za-z0-9]{36,})\b",
             |_| Some(full("api_key")),
         ),
+        // HashiCorp Vault service, batch and recovery tokens; Doppler service, personal, service account and CLI
+        // tokens; Pulumi access tokens.
+        rule("api_key", false, r"\bhv[sbr]\.[A-Za-z0-9_\-]{24,}", |_| {
+            Some(full("api_key"))
+        }),
+        rule(
+            "api_key",
+            false,
+            r"\bdp\.(?:st|pt|sa|ct)\.(?:[A-Za-z0-9_\-]{1,64}\.)?[A-Za-z0-9]{30,}",
+            |_| Some(full("api_key")),
+        ),
+        rule("api_key", false, r"\bpul-[0-9a-f]{40}\b", |_| {
+            Some(full("api_key"))
+        }),
         rule(
             "api_key",
             true,
@@ -424,6 +482,55 @@ static RULES: LazyLock<Vec<Rule>> = LazyLock::new(|| {
             true,
             r"([?&;](?:access_token|refresh_token|id_token|token|api[_-]?key|apikey|secret|client_secret|password|passwd|pwd|sig|signature|x-amz-signature|x-amz-security-token|x-amz-credential|private_token|sessionid|jwt)=)([^&\s'\x22<>#]{4,})",
             keep_prefix("url_secret", 2),
+        ),
+        // Credentials files and commands whose password has no `name =` in front of it: Docker's `config.json`
+        // (`"auth"` is base64 of user:password), npm's legacy `_auth=`, `mysql -pSECRET`, `sshpass -p SECRET`, a
+        // `.netrc` entry, and a `.pgpass` line on its own or written to `.pgpass`.
+        rule(
+            "password_assignment",
+            true,
+            r"(\\?\x22(?:auth|identitytoken|registrytoken)\\?\x22[ \t]*:[ \t]*\\?\x22)([A-Za-z0-9+/=_.\-]{8,})(\\?\x22)",
+            value_only(2),
+        ),
+        rule(
+            "password_assignment",
+            false,
+            r"((?:^|[^A-Za-z0-9_])_auth[ \t]*=[ \t]*)(['\x22]?)([^\s'\x22,;<>]{4,})",
+            assignment,
+        ),
+        rule(
+            "password_assignment",
+            false,
+            &format!(
+                r"((?:^|[\s;&|(/]){MYSQL}(?:[ \t]+[^\s;&|]+)*?[ \t]+-p)(['\x22]?)([^\s'\x22<>]+)"
+            ),
+            assignment,
+        ),
+        rule(
+            "password_assignment",
+            false,
+            r"((?:^|[\s;&|(/])sshpass(?:[ \t]+-v)*[ \t]+-p[ \t]*)(['\x22]?)([^\s'\x22<>]+)",
+            assignment,
+        ),
+        rule(
+            "password_assignment",
+            false,
+            r"((?:^|\s)(?:machine[ \t]+[^\s]+|default)(?:\s+(?:login|account)[ \t]+[^\s]+)+\s+password[ \t]+)(['\x22]?)([^\s'\x22<>]+)",
+            assignment,
+        ),
+        rule(
+            "password_assignment",
+            false,
+            &format!(r"(?m)(^[ \t]*{pgpass})({PGPASS_FIELD})([ \t]*\r?$)"),
+            value_only(2),
+        ),
+        rule(
+            "password_assignment",
+            false,
+            &format!(
+                r"((?:^|[\s'\x22]){pgpass})({PGPASS_FIELD})([ \t]*['\x22]?[ \t]*>{{1,2}}[ \t]*[^\s]*\.pgpass)"
+            ),
+            value_only(2),
         ),
         rule(
             "password_assignment",
