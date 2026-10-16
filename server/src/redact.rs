@@ -136,8 +136,14 @@ fn authorization(c: &Captures) -> Option<String> {
     Some(format!("{prefix}{scheme}{}", full("auth_header")))
 }
 
+/// `"$PWD:/src"` and `$PATH:/opt/bin` expand a shell variable and go on with more text: the name gives no value.
+/// `$TOKEN=value` is still redacted, since what follows the `=` may well be a secret.
+fn expands_variable(name: &str) -> bool {
+    name.starts_with('$') && name.trim_end().ends_with(':')
+}
+
 fn assignment(c: &Captures) -> Option<String> {
-    if is_reference(g(c, 3)) {
+    if expands_variable(g(c, 1)) || is_reference(g(c, 3)) {
         return None;
     }
     Some(format!("{}{}{}", g(c, 1), g(c, 2), full("secret")))
@@ -422,13 +428,13 @@ static RULES: LazyLock<Vec<Rule>> = LazyLock::new(|| {
         rule(
             "password_assignment",
             true,
-            r"\b([\w.\-]{0,64}(?:password|passwd|pwd|passphrase|secret|api[_-]?key|apikey|access[_-]?key|private[_-]?key|signing[_-]?key|encryption[_-]?key|access[_-]?token|auth[_-]?token)[\w.\-]{0,64}['\x22]?[ \t]*[=:][ \t]*)(['\x22]?)([^\s'\x22,;<>]{4,})",
+            r"(\$?\b[\w.\-]{0,64}(?:password|passwd|pwd|passphrase|secret|api[_-]?key|apikey|access[_-]?key|private[_-]?key|signing[_-]?key|encryption[_-]?key|access[_-]?token|auth[_-]?token)[\w.\-]{0,64}['\x22]?[ \t]*[=:][ \t]*)(['\x22]?)([^\s'\x22,;<>]{4,})",
             assignment,
         ),
         rule(
             "password_assignment",
             true,
-            r"\b([\w.\-]{0,64}(?:token|credentials?|session[_-]?id|sessionid|csrf|xsrf)[\w.\-]{0,64}['\x22]?[ \t]*[=:][ \t]*)(['\x22]?)([^\s'\x22,;<>]{12,})",
+            r"(\$?\b[\w.\-]{0,64}(?:token|credentials?|session[_-]?id|sessionid|csrf|xsrf)[\w.\-]{0,64}['\x22]?[ \t]*[=:][ \t]*)(['\x22]?)([^\s'\x22,;<>]{12,})",
             assignment,
         ),
         rule(

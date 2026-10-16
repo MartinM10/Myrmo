@@ -890,5 +890,29 @@
     "input": "kubectl get pods --namespace edc -o json",
     "output": "kubectl get pods --namespace edc -o json",
     "kinds": {}
+  },
+  {
+    "input": "docker run --rm -v \"$PWD:/src\" -w /src rust:1-bookworm cargo test",
+    "output": "docker run --rm -v \"$PWD:/src\" -w /src rust:1-bookworm cargo test",
+    "kinds": {}
+  },
+  {
+    "input": "export PATH=$PWD:$PATH",
+    "output": "export PATH=$PWD:$PATH",
+    "kinds": {}
+  },
+  {
+    "input": "echo $API_TOKEN=abcdef0123456789xyz",
+    "output": "echo $API_TOKEN=<redacted:secret>",
+    "kinds": {
+      "password_assignment": 1
+    }
+  },
+  {
+    "input": "DB_PWD=hunter2xyz",
+    "output": "DB_PWD=<redacted:secret>",
+    "kinds": {
+      "password_assignment": 1
+    }
   }
 ]

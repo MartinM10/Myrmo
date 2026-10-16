@@ -138,7 +138,10 @@ const NAMES_WEAK = "token|credentials?|session[_-]?id|sessionid|csrf|xsrf";
 const CLI_NAMES =
   "password|passwd|pwd|pass|passphrase|secret|token|api[_-]?key|access[_-]?key|auth[_-]?token|" +
   "client[_-]?secret|private[_-]?key";
-const assignment: Replacer = (m) => (isReference(m[3]) ? null : m[1] + m[2] + full("secret"));
+// `"$PWD:/src"` and `$PATH:/opt/bin` expand a shell variable and go on with more text: the name gives no value.
+// `$TOKEN=value` is still redacted, since what follows the `=` may well be a secret.
+const expandsVariable = (name: string): boolean => name.startsWith("$") && name.trimEnd().endsWith(":");
+const assignment: Replacer = (m) => (expandsVariable(m[1]) || isReference(m[3]) ? null : m[1] + m[2] + full("secret"));
 
 const RULES: Rule[] = [
   // Private keys, whole or cut off by a truncated log.
@@ -178,8 +181,8 @@ const RULES: Rule[] = [
   r("connection_string", String.raw`\b([a-z][a-z0-9+.\-]{0,30}:\/\/)[A-Za-z0-9_\-.~%]{20,}@`, "i", (m) => `${m[1]}${full("connection_string")}@`),
   r("url_secret", String.raw`([?&;](?:access_token|refresh_token|id_token|token|api[_-]?key|apikey|secret|client_secret|password|passwd|pwd|sig|signature|x-amz-signature|x-amz-security-token|x-amz-credential|private_token|sessionid|jwt)=)([^&\s'\x22<>#]{4,})`, "i", keepPrefix("url_secret", 2)),
   // `name = value`, in code, config, JSON, env files and command lines.
-  r("password_assignment", String.raw`\b([\w.\-]{0,64}(?:${NAMES_STRONG})[\w.\-]{0,64}['\x22]?[ \t]*[=:][ \t]*)(['\x22]?)([^\s'\x22,;<>]{4,})`, "i", assignment),
-  r("password_assignment", String.raw`\b([\w.\-]{0,64}(?:${NAMES_WEAK})[\w.\-]{0,64}['\x22]?[ \t]*[=:][ \t]*)(['\x22]?)([^\s'\x22,;<>]{12,})`, "i", assignment),
+  r("password_assignment", String.raw`(\$?\b[\w.\-]{0,64}(?:${NAMES_STRONG})[\w.\-]{0,64}['\x22]?[ \t]*[=:][ \t]*)(['\x22]?)([^\s'\x22,;<>]{4,})`, "i", assignment),
+  r("password_assignment", String.raw`(\$?\b[\w.\-]{0,64}(?:${NAMES_WEAK})[\w.\-]{0,64}['\x22]?[ \t]*[=:][ \t]*)(['\x22]?)([^\s'\x22,;<>]{12,})`, "i", assignment),
   r("password_assignment", String.raw`((?:^|\s)--?(?:${CLI_NAMES})(?:=|[ \t]+))(['\x22]?)([^\s'\x22<>\-][^\s'\x22<>]{2,})`, "i", assignment),
   // Personal data.
   r("email", String.raw`\b[A-Za-z0-9._%+\-]{1,64}@[A-Za-z0-9.\-]{1,255}\.[A-Za-z]{2,}\b`, "", ([m]) => (m.startsWith("git@") ? null : full("email"))),
