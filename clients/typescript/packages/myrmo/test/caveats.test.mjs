@@ -61,6 +61,12 @@ test("at most three caveats are shown", () => {
   assert.doesNotMatch(out, /note 3/);
 });
 
+test("a result says when it last proved itself, and how often a person confirmed it", () => {
+  const out = render(hit({ lastConfirmedAt: "2025-08-14T09:00:00Z", outcomes: { worked: 2, partially_worked: 1, failed: 0, confirmed: 2 } }));
+  assert.match(out, /failed 0 · confirmed by a person 2 · last confirmed 2025-08-14 · matched by/);
+  assert.doesNotMatch(render(hit()), /last confirmed|confirmed by a person/);
+});
+
 test("successors and predecessors are named by id only", () => {
   assert.match(render(hit({ amendedBy: [NEWER, "not-an-id <x>"] })), new RegExp(`Successor: trail ${NEWER}, `));
   assert.match(render(hit({ amends: NEWER })), new RegExp(`Amends trail ${NEWER}, published before it\\.`));
@@ -76,13 +82,14 @@ before(async () => {
   server = createServer(async (req, res) => {
     let body = "";
     for await (const c of req) body += c;
-    seen.push({ method: req.method, url: req.url, body: body ? JSON.parse(body) : null });
+    seen.push({ method: req.method, url: req.url, body: body ? JSON.parse(body) : null, headers: req.headers });
     const send = (status, data) => res.writeHead(status, { "content-type": "application/json" }).end(JSON.stringify(data));
     const amends = new URL(req.url, "http://x").searchParams.get("amends");
     if (req.url.startsWith("/v1/trails/") && req.url.endsWith("/outcomes")) {
       return send(202, { trail_id: ID, counted: true, strength: 0.7, note: "withheld", note_reason: "high_risk_command" });
     }
     if (req.url.startsWith("/v1/trails/by-fingerprint/")) return send(404, { error: { code: "not_found", message: "none" } });
+    if (req.method === "DELETE") return send(200, { trail_id: ID, status: "removed" });
     if (req.url.startsWith("/v1/trails")) return send(202, { trail_id: NEWER, fingerprint: "fp2_abc", status: "queued", redactions: {}, ...(amends ? { amends } : {}) });
     if (req.url.startsWith("/v1/drafts")) {
       return send(201, { draft_id: "d".repeat(32), approve_url: "u", expires_in: 1800, fingerprint: "fp2_abc", redactions: {}, risk: { level: "low", flags: [] }, ...(amends ? { amends } : {}) });
@@ -125,6 +132,15 @@ test("a note is redacted on this machine as a trail is", async () => {
   await new Colony({ url, retryDelaysMs: [1] }).report(ID, "partially_worked", { notes: "worked once AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY was set" });
   const note = seen.at(-1).body.notes;
   assert.doesNotMatch(note, /wJalrXUtnFEMI/);
+});
+
+test("an author withdraws a trail with its reason, as the agent it published as", async () => {
+  const r = await new Colony({ url, retryDelaysMs: [1], agentId: "agent-example-1" }).withdraw(ID, "it was another cause");
+  assert.deepEqual(r, { trailId: ID, status: "removed" });
+  const sent = seen.at(-1);
+  assert.equal(sent.method, "DELETE");
+  assert.equal(sent.url, `/v1/trails/${ID}`);
+  assert.deepEqual(sent.body, { reason: "it was another cause" });
 });
 
 test("search results carry caveats and successors", async () => {

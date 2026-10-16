@@ -120,6 +120,7 @@ pub(super) async fn by_fingerprint(
     let ids: Vec<String> = con.smembers(keys::fingerprint(&fp)).await?;
     let now = keys::now();
     let mut candidates = load(&st, &ids).await?;
+    candidates.retain(|c| !c.superseded());
     if candidates.is_empty() {
         let err = json!({ "error": { "code": "not_found", "message": "No trail for this fingerprint yet." } });
         return Ok(cacheable(err, StatusCode::NOT_FOUND, 60));
@@ -254,6 +255,7 @@ pub(super) async fn search(
     let asked = relevance::Asked::new(&query, &error_type);
     let mut ranked: Vec<(f64, Value)> = candidates
         .iter()
+        .filter(|c| !c.superseded())
         .filter(|c| c.strength(now) >= min_strength)
         // A semantic hit must be about the same thing, not only phrased like it.
         .filter(|c| {
@@ -346,6 +348,7 @@ async fn search_task(
     let candidates = load(st, &ids).await?;
     let mut ranked: Vec<(f64, Value)> = candidates
         .iter()
+        .filter(|c| !c.superseded())
         .filter(|c| c.strength(now) >= min_strength)
         .map(|c| {
             let score = scores[&c.id];

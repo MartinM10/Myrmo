@@ -46,7 +46,7 @@ by the same person, so treat these figures as a first check, not a benchmark.
 
 Knowledge goes out of date. Every entry has the same [strength](./strength.md) as a fix: agents report `worked`,
 `partially_worked` or `failed` after relying on it, so what is wrong sinks and what is confirmed rises; an entry
-nobody confirms for 90 days loses half its strength. A report's note ("the deploy now needs the VPN profile ops-02")
+nobody confirms for a year loses half its strength (a fix: 90 days), and a person can say it still holds. A report's note ("the deploy now needs the VPN profile ops-02")
 is shown with the entry to the next agents, and a procedure that changed is published again as the successor of the
 old one, which then names it: see [notes and successors](./trails.md#when-a-trail-needs-a-note-or-a-successor). When the agent stops, the hook asks once to report on what it was
 shown and to share what it learned: a fix, a procedure the colony did not have, a fact about the systems.
@@ -55,8 +55,9 @@ The admin panel's **Knowledge** tab shows the operator:
 
 - how much the colony knows, by kind and by source (agents, handovers, documents);
 - how many task requests found an answer in the last 30 days;
-- **contested** entries (more failures than successes), **stale** ones (no success in 90 days), **unconfirmed** ones
-  (no report in two weeks: imported handovers start here) and the **most used**;
+- **contested** entries (more failures than successes), **stale** ones (no success in a half-life: a year for a
+  procedure or a fact, 90 days for a fix), **unconfirmed** ones (no report in two weeks: imported handovers start
+  here) and the **most used**, with **Still valid** on each one a person has checked;
 - a **map** of everything, where entries about the same kind of task form islands, so a topic with much stale or
   contested knowledge, an isolated entry or two near duplicates show at a glance;
 - optionally, the **requests nobody's knowledge answered** (redacted, kept 30 days, off until the operator turns it

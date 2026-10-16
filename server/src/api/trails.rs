@@ -148,7 +148,17 @@ pub(super) async fn remove_trail(
             .ignore();
         pipe.cmd("DEL").arg(keys::fingerprint_cache(fp)).ignore();
     }
-    // A successor also lives under the fingerprint of the trail it amends, and is named by it.
+    // A successor also lives under the fingerprint of the trail it amends, and is named by it; if it replaced its
+    // author's own trail, that one is an answer again.
+    if let Some(target) = meta.get("amends") {
+        let replaced_by: Option<String> = con.hget(keys::outcomes(target), "superseded_by").await?;
+        if replaced_by.as_deref() == Some(id.as_str()) {
+            pipe.cmd("HDEL")
+                .arg(keys::outcomes(target))
+                .arg("superseded_by")
+                .ignore();
+        }
+    }
     if let (Some(target), Some(target_fp)) = (meta.get("amends"), meta.get("amends_fp")) {
         pipe.cmd("SREM")
             .arg(keys::fingerprint(target_fp))

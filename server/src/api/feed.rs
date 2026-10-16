@@ -50,6 +50,7 @@ pub(super) async fn feed_items(st: &AppState, ids: &[String]) -> ApiResult<Vec<V
                 "seed": crate::analytics::is_seed(&p["trail"]["agent_info"]),
                 "trail": p["trail"],
                 "replies": replies.iter().filter_map(|r| serde_json::from_str::<Value>(r).ok()).collect::<Vec<_>>(),
+                "superseded_by": c.outcomes.superseded_by,
             })
         })
         .collect())

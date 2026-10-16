@@ -855,6 +855,13 @@ pub(super) async fn gaps(State(st): State<AppState>, headers: HeaderMap) -> ApiR
 }
 
 /// One line about a trail for the health report.
+/// Seconds without a success after which a trail of this kind counts as stale: one half-life (its strength has halved),
+/// so 90 days for a fix and a year for a procedure or a fact by default. `None`: it never goes stale.
+fn stale_after(c: &super::Candidate) -> Option<i64> {
+    let days = crate::strength::half_life_days(c.kind());
+    (days > 0.0).then_some((days * 86_400.0) as i64)
+}
+
 fn health_item(c: &super::Candidate, now: i64) -> Value {
     let p = &c.payload;
     let last = if c.outcomes.last_success_ts > 0 {
@@ -874,8 +881,54 @@ fn health_item(c: &super::Candidate, now: i64) -> Value {
     })
 }
 
-/// GET /v1/admin/knowledge: what the colony holds and how much of it can still be trusted. Stale: no success for 90
-/// days (its strength has halved). Contested: more failures than successes. Unconfirmed: nobody reported on it after
+/// POST /v1/admin/trails/{id}/confirm: a person vouches that the entry is still valid ("Still valid" in the panel).
+/// It counts as one success and restarts its clock, so knowledge a small team relies on without anyone reporting on
+/// it does not fade: in a team of three, an author cannot raise their own entry and nobody else may have needed it.
+pub(super) async fn confirm_trail(
+    State(st): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+) -> ApiResult<Response> {
+    authorize_operator(&st, &headers)?;
+    if !super::valid_uuid(&id) {
+        return Err(ApiError::not_found("No trail with that id."));
+    }
+    let mut con = st.redis();
+    let meta: HashMap<String, String> = con.hgetall(keys::trail(&id)).await?;
+    if meta.get("status").map(String::as_str) != Some("indexed") {
+        return Err(ApiError::not_found("No indexed trail with that id."));
+    }
+    let now = keys::now();
+    let mut pipe = redis::pipe();
+    pipe.cmd("HINCRBY")
+        .arg(keys::outcomes(&id))
+        .arg("confirmed")
+        .arg(1)
+        .ignore()
+        .cmd("HSET")
+        .arg(keys::outcomes(&id))
+        .arg("last_success_ts")
+        .arg(now)
+        .ignore()
+        .cmd("SADD")
+        .arg(keys::DIRTY)
+        .arg(&id)
+        .ignore();
+    for fp in [meta.get("fingerprint"), meta.get("amends_fp")]
+        .into_iter()
+        .flatten()
+    {
+        pipe.cmd("DEL").arg(keys::fingerprint_cache(fp)).ignore();
+    }
+    let _: () = pipe.query_async(&mut con).await?;
+    audit(&st, &format!("trail {id} confirmed as still valid")).await;
+    Ok(private(Json(
+        json!({ "trail_id": id, "last_success_at": keys::iso(now) }),
+    )))
+}
+
+/// GET /v1/admin/knowledge: what the colony holds and how much of it can still be trusted. Stale: no success for one
+/// half-life (its strength has halved: 90 days for a fix, a year for a procedure or a fact by default). Contested: more failures than successes. Unconfirmed: nobody reported on it after
 /// two weeks (an imported handover often is). Most used: the most confirmed. Plus how often a task found an answer.
 pub(super) async fn knowledge(
     State(st): State<AppState>,
@@ -917,16 +970,26 @@ pub(super) async fn knowledge(
         rows.sort_by_key(|c| std::cmp::Reverse(key(c)));
         json!({ "count": count, "items": rows.iter().take(15).map(|c| health_item(c, now)).collect::<Vec<_>>() })
     };
-    let stale = pick(&|c| since_success(c) > 90 * 86_400, &since_success);
+    // An entry its author replaced is no longer an answer: nothing to maintain.
+    let stale = pick(
+        &|c| !c.superseded() && stale_after(c).is_some_and(|after| since_success(c) > after),
+        &since_success,
+    );
     let contested = pick(
         &|c| {
-            c.outcomes.failed >= 2
-                && c.outcomes.failed > c.outcomes.worked + c.outcomes.partially_worked
+            !c.superseded()
+                && c.outcomes.failed >= 2
+                && c.outcomes.failed
+                    > c.outcomes.worked + c.outcomes.confirmed + c.outcomes.partially_worked
         },
         &|c| c.outcomes.failed as i64,
     );
     let unconfirmed = pick(
-        &|c| reports(c) == 0 && now - c.payload["created_ts"].as_i64().unwrap_or(now) > 14 * 86_400,
+        &|c| {
+            !c.superseded()
+                && reports(c) + c.outcomes.confirmed == 0
+                && now - c.payload["created_ts"].as_i64().unwrap_or(now) > 14 * 86_400
+        },
         &|c| now - c.payload["created_ts"].as_i64().unwrap_or(now),
     );
     let most_used = pick(&|c| c.outcomes.worked > 0, &|c| c.outcomes.worked as i64);
@@ -961,11 +1024,15 @@ fn health(c: &super::Candidate, now: i64) -> &'static str {
     } else {
         created
     };
-    if o.failed >= 2 && o.failed > o.worked + o.partially_worked {
+    if c.superseded() {
+        "replaced"
+    } else if o.failed >= 2 && o.failed > o.worked + o.confirmed + o.partially_worked {
         "contested"
-    } else if now - last > 90 * 86_400 {
+    } else if stale_after(c).is_some_and(|after| now - last > after) {
         "stale"
-    } else if o.worked + o.partially_worked + o.failed == 0 && now - created > 14 * 86_400 {
+    } else if o.worked + o.partially_worked + o.failed + o.confirmed == 0
+        && now - created > 14 * 86_400
+    {
         "unconfirmed"
     } else {
         "ok"

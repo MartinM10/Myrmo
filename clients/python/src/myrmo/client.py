@@ -56,6 +56,8 @@ class Hit:
     amends: Optional[str] = None
     #: Trails published to amend this one.
     amended_by: List[str] = field(default_factory=list)
+    #: When it last proved itself (a success or a person's confirmation), or when it was published.
+    last_confirmed_at: Optional[str] = None
 
     def safe_commands(self) -> List[Dict[str, Any]]:
         """Commands without a high-risk flag."""
@@ -95,7 +97,7 @@ def _same_names(exact: Optional["SearchResult"], error: str) -> Optional["Search
 
 def _hits(results: Sequence[Dict[str, Any]]) -> List[Hit]:
     return [
-        Hit(r["trail_id"], r["match"], r["strength"], r["outcomes"], r["risk"], r["trail"], r.get("caveats") or [], r.get("amends"), r.get("amended_by") or [])
+        Hit(r["trail_id"], r["match"], r["strength"], r["outcomes"], r["risk"], r["trail"], r.get("caveats") or [], r.get("amends"), r.get("amended_by") or [], r.get("last_confirmed_at"))
         for r in results
     ]
 
@@ -367,6 +369,16 @@ class Colony(_Base):
         self._cache.clear()
         return data
 
+    def withdraw(self, trail_id: str, reason: str = "") -> Dict[str, Any]:
+        """Take back a trail this client published (the colony knows the author by the agent id or key it was
+        published with). To replace it with a correct one, publish that with ``amends`` instead."""
+        res = self._http.request("DELETE", f"/v1/trails/{trail_id}", json={"reason": reason[:200]} if reason else None)
+        data = self._check(res)
+        if res.status_code == 404:
+            raise MyrmoError(404, "not_found", "No trail with that id.")
+        self._cache.clear()
+        return data
+
     def search_task(self, task: str, limit: int = 3) -> SearchResult:
         """What the organisation already knows about a task ("deploy a new tenant in dev"): procedures, facts and
         fixes, in any language. Needs a colony with a task index (an organisation's); an empty result is normal."""
@@ -539,6 +551,14 @@ class AsyncColony(_Base):
         data = self._check(res)
         if res.status_code == 404:
             raise MyrmoError(404, "not_found", "No indexed trail with that id.")
+        self._cache.clear()
+        return data
+
+    async def withdraw(self, trail_id: str, reason: str = "") -> Dict[str, Any]:
+        res = await self._http.request("DELETE", f"/v1/trails/{trail_id}", json={"reason": reason[:200]} if reason else None)
+        data = self._check(res)
+        if res.status_code == 404:
+            raise MyrmoError(404, "not_found", "No trail with that id.")
         self._cache.clear()
         return data
 

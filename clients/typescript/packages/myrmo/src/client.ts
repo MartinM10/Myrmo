@@ -75,6 +75,7 @@ interface RawHit {
   caveats?: Caveat[];
   amends?: string;
   amended_by?: string[];
+  last_confirmed_at?: string;
 }
 
 const toHit = (h: RawHit): Hit => ({
@@ -88,6 +89,7 @@ const toHit = (h: RawHit): Hit => ({
   ...(h.caveats?.length ? { caveats: h.caveats } : {}),
   ...(h.amends ? { amends: h.amends } : {}),
   ...(h.amended_by?.length ? { amendedBy: h.amended_by } : {}),
+  ...(h.last_confirmed_at ? { lastConfirmedAt: h.last_confirmed_at } : {}),
 });
 
 /** `?amends=<id>`: the link travels beside the trail, never in it, so the trail stays valid for any colony. */
@@ -352,6 +354,22 @@ export class Colony {
       }
       return { valid: null, reason: err instanceof Error ? err.message : String(err) };
     }
+  }
+
+  /**
+   * Take back a trail this client published (the colony recognises the author by the agent id or the access key it was
+   * published with). It leaves search and lookups at once. To replace it with a correct one, publish that with
+   * `amends` instead: the old one is then kept and linked, and no longer an answer.
+   */
+  async withdraw(trailId: string, reason = ""): Promise<{ trailId: string; status: string }> {
+    const { status, data } = await this.request<{ trail_id: string; status: string; error?: { code: string; message: string } }>(
+      "DELETE",
+      `/v1/trails/${encodeURIComponent(trailId)}`,
+      reason ? { reason: reason.slice(0, 200) } : undefined,
+    );
+    if (status === 404) throw new MyrmoError(404, "not_found", "No trail with that id.");
+    this.cache.clear();
+    return { trailId: data.trail_id, status: data.status };
   }
 
   /**

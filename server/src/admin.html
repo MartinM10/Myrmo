@@ -1361,7 +1361,8 @@ async function map(view) {
     ok: color("--moss") || "#10b981",
     contested: color("--ember") || "#ef4444",
     stale: color("--ochre") || "#eab308",
-    unconfirmed: color("--cyan") || "#06b6d4"
+    unconfirmed: color("--cyan") || "#06b6d4",
+    replaced: color("--dust") || "#94a3b8"
   };
 
   const PALETTE = ["#f59e0b", "#10b981", "#3b82f6", "#a855f7", "#ec4899", "#06b6d4", "#f97316", "#84cc16", "#6366f1", "#14b8a6", "#e11d48", "#64748b"];
@@ -2212,22 +2213,36 @@ async function knowledge(view) {
   const onMap = (focus) => el("button", { className: "btn btn-quiet btn-sm", onclick: () => { mapFocus = focus; show("map"); } }, "Show on Map ↗");
   const kindPill = (kind) => el("span", { className: "pill " + (kind === "fix" ? "amber" : "ok") }, kind);
 
-  const rows = (block) => (block.items || []).map((i) => [
+  // A person vouches that an entry still holds: one success, and its clock starts again.
+  const stillValid = (i) => {
+    const btn = el("button", { className: "btn btn-quiet btn-sm", title: "You checked it and it still holds: counts as a success and restarts its clock.", onclick: async () => {
+      btn.disabled = true;
+      try {
+        await api(`/v1/admin/trails/${encodeURIComponent(i.trail_id)}/confirm`, { method: "POST" });
+        showToast("Confirmed as still valid.");
+        show("knowledge");
+      } catch (err) { btn.disabled = false; showToast(err.message); }
+    } }, "Still valid");
+    return btn;
+  };
+
+  const rows = (block, confirmable) => (block.items || []).map((i) => [
     kindPill(i.kind),
     cut(i.label, 90),
     meter(i.strength),
-    num(i.outcomes?.worked),
+    num((i.outcomes?.worked || 0) + (i.outcomes?.confirmed || 0)),
     num(i.outcomes?.failed),
     i.source?.type ? el("span", { className: "hint" }, i.source.type + (i.source.ref ? ": " + cut(i.source.ref, 40) : "")) : "agent",
-    el("code", {}, i.trail_id.slice(0, 8))
+    el("code", {}, i.trail_id.slice(0, 8)),
+    confirmable ? stillValid(i) : ""
   ]);
 
-  const blockCard = (title, b, help, focus) => el("div", { className: "stat-card", style: "margin-bottom:16px" },
+  const blockCard = (title, b, help, focus, confirmable = false) => el("div", { className: "stat-card", style: "margin-bottom:16px" },
     el("div", { style: "display:flex;justify-content:space-between;align-items:center;margin-bottom:8px" },
       el("h2", { style: "margin:0;font:600 1.05rem var(--f-display)" }, `${title} (${num(b.count)})`),
       b.count ? onMap(focus) : null),
     el("p", { className: "hint", style: "margin:0 0 14px" }, help),
-    (b.items || []).length ? table(["Kind", "About", "Strength", "Worked", "Failed", "Source", "ID"], rows(b), [3, 4])
+    (b.items || []).length ? table(["Kind", "About", "Strength", "Worked", "Failed", "Source", "ID", ""], rows(b, confirmable), [3, 4])
       : el("p", { className: "hint" }, "None. All clear!"));
 
   const note = el("p", { style: "font-size:.86rem;margin-top:8px" });
@@ -2266,7 +2281,7 @@ async function knowledge(view) {
       el("div", { className: "stat-card " + (k.stale?.count ? "warn" : "") },
         el("div", { className: "val" }, num(k.stale?.count)),
         el("div", { className: "lbl" }, "Stale Entries"),
-        el("div", { className: "sub" }, "no confirmation in 90 days")),
+        el("div", { className: "sub" }, "no success in a half-life")),
       el("div", { className: "stat-card " + (k.contested?.count ? "bad" : "") },
         el("div", { className: "val" }, num(k.contested?.count)),
         el("div", { className: "lbl" }, "Contested Entries"),
@@ -2291,9 +2306,9 @@ async function knowledge(view) {
         el("span", { style: "font-family:var(--f-display);font-size:.84rem" }, g.text)
       ])) : el("p", { className: "hint" }, "No unanswered gaps logged.")),
 
-    blockCard("Contested Entries", k.contested || {}, "Entries with more failures than successes. Likely outdated or misleading.", "contested"),
-    blockCard("Stale Entries", k.stale || {}, "Entries untouched for 90 days with reduced decay strength.", "stale"),
-    blockCard("Unconfirmed Entries", k.unconfirmed || {}, "Recently imported handovers awaiting confirmation from agents.", "unconfirmed"),
+    blockCard("Contested Entries", k.contested || {}, "Entries with more failures than successes. Likely outdated or misleading: check them, then confirm, correct or remove.", "contested", true),
+    blockCard("Stale Entries", k.stale || {}, "No success for a half-life, so their strength has halved: 90 days for a fix, a year for a procedure or a fact. If one still holds, say so.", "stale", true),
+    blockCard("Unconfirmed Entries", k.unconfirmed || {}, "Nobody reported on them after two weeks (imported handovers start here). If one is right, say so.", "unconfirmed", true),
     blockCard("Most Used Entries", k.most_used || {}, "Top high-impact knowledge saving developer hours across the team.", "used")));
 }
 

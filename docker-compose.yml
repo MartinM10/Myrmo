@@ -18,6 +18,8 @@ x-server-env: &server-env
   MYRMO_PEOPLE_DETAIL: ${MYRMO_PEOPLE_DETAIL:-aggregate}
   # A private colony: share of error lookups answered with nothing, to measure what it saves (0 to 20).
   MYRMO_HOLDOUT_PERCENT: ${MYRMO_HOLDOUT_PERCENT:-0}
+  # Half-life in days of procedures and facts (fixes keep 90). 0: they never fade.
+  MYRMO_KNOWLEDGE_HALF_LIFE_DAYS: ${MYRMO_KNOWLEDGE_HALF_LIFE_DAYS:-365}
   MYRMO_DECISION_URL: ${MYRMO_DECISION_URL-http://laya:8000/v1/systemone}
   MYRMO_DECISION_API_KEY: ${MYRMO_DECISION_API_KEY:-}
   MYRMO_DECISION_MODEL: ${MYRMO_DECISION_MODEL:-}
