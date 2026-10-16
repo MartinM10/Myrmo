@@ -2,9 +2,12 @@
 # Deploys the colony on the production server. It runs as the forced command of the deploy key
 # (see docs/operate/deployment.md): the key cannot open a shell, it can only run this script.
 #
-# Input:   a tar archive of the repository on stdin (`git archive HEAD`), and the commit id as the
-#          SSH command argument (it arrives in $SSH_ORIGINAL_COMMAND).
-# Safety:  1. back up the data first, and abort if that fails
+# Input:   the commit id as the SSH command argument (it arrives in $SSH_ORIGINAL_COMMAND), nothing else.
+#          Anything sent on stdin is read and thrown away (older workflows sent an archive there).
+# Source:  the server fetches main from the public repository itself (REPO_URL below, never taken from the
+#          caller) into a bare clone, and deploys the commit only if it is already part of main. Whoever holds
+#          the key can redeploy a commit of main, and nothing else: no code, archive or compose file of their own.
+# Safety:  1. back up the data first, with the backup script of the verified commit, and abort if that fails
 #          2. build the new images BEFORE touching what is running: a failed build changes nothing
 #          3. swap the directory, recreate only the services whose image changed
 #          4. wait for the gateway, the hosted MCP server and the website to answer
@@ -12,6 +15,12 @@
 # State:   .env stays on the server and is carried over; volumes are never removed.
 set -euo pipefail
 
+# The only place code comes from. MYRMO_DEPLOY_REPO exists for tests (a local repository): it can be set only in the
+# server's own environment, since an SSH client cannot set variables for a forced command unless sshd's AcceptEnv
+# lists them (it does not, by default) and authorized_keys is not the caller's to edit.
+REPO_URL="https://github.com/MartinM10/Myrmo.git"
+REPO_URL="${MYRMO_DEPLOY_REPO:-$REPO_URL}"
+SRC="${MYRMO_DEPLOY_SRC:-$HOME/myrmo-src.git}"
 APP="${MYRMO_APP_DIR:-$HOME/myrmo}"
 NEW="$APP.incoming"
 PREV="$APP.prev"
@@ -20,28 +29,51 @@ LOG="${MYRMO_DEPLOY_LOG:-$HOME/myrmo-deploys.log}"
 SHA="${SSH_ORIGINAL_COMMAND:-}"
 WAIT_SECONDS="${MYRMO_DEPLOY_WAIT:-240}"
 
+# Whatever arrives on stdin is drained in the background, so a client that still sends an archive is not cut off
+# halfway (its `git archive | ssh` would fail on a broken pipe). Nothing in this script reads it. The explicit <&0
+# matters: without it, bash gives a background command /dev/null as its input.
+cat <&0 >/dev/null 2>&1 &
+exec </dev/null
+
 log() { echo "$(date -u +%FT%TZ) $*" | tee -a "$LOG" >&2; }
 compose() { docker compose -f docker-compose.yml -f deploy/docker-compose.prod.yml "$@"; }
+src_git() { GIT_TERMINAL_PROMPT=0 git -C "$SRC" "$@"; }
 
 if ! [[ "$SHA" =~ ^[0-9a-f]{40}$ ]]; then
-  echo "usage: ssh deploy@host <40-character commit id>   (archive on stdin)" >&2
+  echo "usage: ssh deploy@host <40-character commit id of main>" >&2
   exit 2
 fi
 
-log "deploy $SHA: receiving"
+# One deploy at a time, whoever started it.
+exec 9>>"$HOME/.myrmo-deploy.lock"
+flock -n 9 || { echo "another deploy is running" >&2; exit 1; }
+
+log "deploy $SHA: fetching main from $REPO_URL"
+[ -d "$SRC" ] || git init --quiet --bare "$SRC"
+src_git fetch --quiet --prune --no-tags "$REPO_URL" "+refs/heads/main:refs/heads/main" >> "$LOG" 2>&1 \
+  || { log "deploy $SHA: could not fetch main, nothing changed"; exit 1; }
+src_git cat-file -e "$SHA^{commit}" 2>/dev/null \
+  || { log "deploy $SHA: no such commit in the repository, refusing"; exit 1; }
+src_git merge-base --is-ancestor "$SHA" refs/heads/main \
+  || { log "deploy $SHA: not on main, refusing"; exit 1; }
+
+log "deploy $SHA: extracting"
 rm -rf "$NEW" "$FAILED"
 mkdir -p "$NEW"
-# Cap the size and never restore ownership or absolute paths from the archive.
-head -c 300M | tar -x --no-same-owner --no-same-permissions -C "$NEW"
-[ -f "$NEW/docker-compose.yml" ] && [ -f "$NEW/deploy/docker-compose.prod.yml" ] \
-  || { log "deploy $SHA: not a Myrmo archive"; rm -rf "$NEW"; exit 1; }
+# Never restore ownership or permissions from the archive.
+src_git archive --format=tar "$SHA" | tar -x --no-same-owner --no-same-permissions -C "$NEW" \
+  || { log "deploy $SHA: could not extract the commit"; rm -rf "$NEW"; exit 1; }
+[ -f "$NEW/docker-compose.yml" ] && [ -f "$NEW/deploy/docker-compose.prod.yml" ] && [ -f "$NEW/deploy/backup.sh" ] \
+  || { log "deploy $SHA: not a Myrmo commit"; rm -rf "$NEW"; exit 1; }
 [ -f "$APP/.env" ] || { log "deploy $SHA: $APP/.env is missing"; rm -rf "$NEW"; exit 1; }
 cp "$APP/.env" "$NEW/.env"
 chmod 600 "$NEW/.env"
 echo "$SHA" > "$NEW/.deployed-sha"
 
+# The backup script of the commit just verified, not the one in the running tree: whatever was deployed before has
+# no say in what runs now.
 log "deploy $SHA: backing up data"
-(cd "$APP" && bash deploy/backup.sh) >> "$LOG" 2>&1 \
+(cd "$APP" && bash "$NEW/deploy/backup.sh") >> "$LOG" 2>&1 \
   || { log "deploy $SHA: backup failed, nothing changed"; rm -rf "$NEW"; exit 1; }
 
 log "deploy $SHA: building"
