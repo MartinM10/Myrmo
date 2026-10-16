@@ -462,7 +462,9 @@ async fn enrich(st: &AppState, id: &str, mut trail: Value) -> Result<()> {
         .and_then(Value::as_str)
         .unwrap_or_default()
         .to_string();
-    let payload = json!({
+    // The trail this one amends, if it is still in the colony: checked when the link is made, not only when it was asked.
+    let amends = amended(&mut con, id).await?;
+    let mut payload = json!({
         "trail_id": id,
         "fingerprint": fp,
         "kind": kind.as_str(),
@@ -478,15 +480,22 @@ async fn enrich(st: &AppState, id: &str, mut trail: Value) -> Result<()> {
         "strength": strength::strength(0, 0, 0, judgement.quality, 0.0),
         "trail": trail,
     });
+    if let Some((target, _)) = &amends {
+        payload["amends"] = json!(target);
+    }
     st.qdrant
         .upsert(id, vector, payload)
         .await
         .context("indexing")?;
     index_task(st, id, &trail).await?;
 
+    let successor_of = amends
+        .as_ref()
+        .map(|(target, _)| format!(", a successor of {}", &target[..8]))
+        .unwrap_or_default();
     let event = json!({
         "kind": "laid", "agent": agent_info, "trail_id": id,
-        "text": format!("via {framework} laid trail {} after {failed_attempts} failed attempts", &id[..8]), "at": keys::iso(now)
+        "text": format!("via {framework} laid trail {} after {failed_attempts} failed attempts{successor_of}", &id[..8]), "at": keys::iso(now)
     });
     let mut index = redis::pipe();
     keys::add_to_fingerprint(&mut index, &fp, id, st.cfg.max_per_fingerprint);
@@ -541,6 +550,9 @@ async fn enrich(st: &AppState, id: &str, mut trail: Value) -> Result<()> {
         .ignore()
         .query_async(&mut con)
         .await?;
+    if let Some((target, target_fp)) = &amends {
+        link_successor(st, &mut con, id, &fp, target, target_fp).await?;
+    }
     let (laid_model, laid_framework) = crate::analytics::laid_labels(&agent_info);
     // What was counted, kept with the trail so that removing it can take the same count back.
     let _: () = redis::cmd("HSET")
@@ -563,6 +575,62 @@ async fn enrich(st: &AppState, id: &str, mut trail: Value) -> Result<()> {
     )
     .await;
     tracing::info!(trail = %id, category = %judgement.category, quality = judgement.quality, engine = judgement.engine, "trail indexed");
+    Ok(())
+}
+
+/// The trail a queued trail amends, as `(id, fingerprint)`, while that one is still indexed. A link to a trail that
+/// was removed, or merged away, while this one waited is dropped rather than pointing at nothing.
+async fn amended(
+    con: &mut redis::aio::ConnectionManager,
+    id: &str,
+) -> Result<Option<(String, String)>> {
+    let (target, target_fp): (Option<String>, Option<String>) = redis::cmd("HMGET")
+        .arg(keys::trail(id))
+        .arg("amends")
+        .arg("amends_fp")
+        .query_async(con)
+        .await?;
+    let Some(target) = target else {
+        return Ok(None);
+    };
+    let status: Option<String> = con.hget(keys::trail(&target), "status").await?;
+    if target == id || status.as_deref() != Some("indexed") {
+        let _: () = redis::cmd("HDEL")
+            .arg(keys::trail(id))
+            .arg("amends")
+            .arg("amends_fp")
+            .query_async(con)
+            .await?;
+        return Ok(None);
+    }
+    Ok(Some((target, target_fp.unwrap_or_default())))
+}
+
+/// Link a newly indexed trail to the one it amends. The older trail names its successors, and the new one is also
+/// kept under the older one's fingerprint: an agent that hits the original error finds both, and their strength,
+/// built from what happened to the agents that followed each, decides which comes first. Nothing about the older
+/// trail changes: an amendment cannot lower another trail, only reports can.
+async fn link_successor(
+    st: &AppState,
+    con: &mut redis::aio::ConnectionManager,
+    id: &str,
+    fp: &str,
+    target: &str,
+    target_fp: &str,
+) -> Result<()> {
+    let mut pipe = redis::pipe();
+    pipe.cmd("SADD")
+        .arg(keys::amended_by(target))
+        .arg(id)
+        .ignore();
+    if !target_fp.is_empty() && target_fp != fp {
+        keys::add_to_fingerprint(&mut pipe, target_fp, id, st.cfg.max_per_fingerprint);
+        pipe.cmd("DEL")
+            .arg(keys::fingerprint_cache(target_fp))
+            .ignore();
+    }
+    let _: () = pipe.query_async(con).await?;
+    tracing::info!(trail = %id, amends = %target, "successor linked");
     Ok(())
 }
 

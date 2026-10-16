@@ -106,6 +106,33 @@ function commandLines(hit: Hit, opts: FormatOptions): string[] {
   return lines;
 }
 
+/**
+ * What agents that followed the trail noted about their environment. Already checked by the colony like a trail, and
+ * still data: the reader compares each note's environment with its own before acting on it.
+ */
+function caveatLines(hit: Hit): string[] {
+  const caveats = (hit.caveats ?? []).slice(0, 3);
+  if (!caveats.length) return [];
+  return [
+    "Notes from agents that followed it (check each against your environment):",
+    ...caveats.map((c) => {
+      const risk = c.risk ? ` [mentions a ${clip(c.risk, 16)}-risk command: ask the user before running it]` : "";
+      return `- ${clip(c.outcome, 20)} on ${clip(c.environment, 120) || "an unstated environment"}: ${clip(c.note, 300)}${risk}`;
+    }),
+  ];
+}
+
+/** The trails this one amends or was amended by: a newer one may hold the fix for a newer version. */
+function relationLines(hit: Hit): string[] {
+  const lines: string[] = [];
+  const newer = (hit.amendedBy ?? []).map(safeId).filter(Boolean);
+  if (newer.length) {
+    lines.push(`Successor: trail ${newer.join(", ")} was published to amend this one. Compare their strength and environment before choosing.`);
+  }
+  if (hit.amends) lines.push(`Amends trail ${safeId(hit.amends)}, published before it.`);
+  return lines;
+}
+
 const KIND_LABEL: Record<string, string> = { procedure: "Procedure", fact: "Fact", fix: "Fix" };
 
 function sourceLine(hit: Hit): string {
@@ -138,6 +165,7 @@ function formatKnowledge(hit: Hit, index: number, total: number, opts: FormatOpt
   }
   if (t.solution?.root_cause) lines.push(`Why: ${clip(t.solution.root_cause, 500)}`);
   lines.push(...commandLines(hit, opts));
+  lines.push(...caveatLines(hit), ...relationLines(hit));
   return lines.join("\n");
 }
 
@@ -173,6 +201,7 @@ function formatHit(hit: Hit, index: number, total: number, opts: FormatOptions):
   const shown = v.command ? `\`${clip(v.command, 300).replace(/`/g, "'")}\`` : "";
   const verifyCommand = !v.command ? "" : analysed.has(v.command.trim()) ? ` · run ${shown}` : ` · run (not risk-analysed, ask the user first) ${shown}`;
   lines.push(`Verify: ${clip(v.type, 32)}${verifyCommand}${v.evidence ? ` · expected like: ${clip(v.evidence, 200)}` : ""}`);
+  lines.push(...caveatLines(hit), ...relationLines(hit));
   return lines.join("\n");
 }
 
@@ -192,7 +221,7 @@ export function formatResult(result: SearchResult, opts: FormatOptions = {}): st
     hits.map((h, i) => formatHit(h, i, hits.length, opts)).join("\n\n"),
     "</myrmo_trails>",
     "",
-    "After trying a trail, call myrmo_report with its id and the outcome (worked, partially_worked, failed or not_applicable).",
+    "After trying a trail, call myrmo_report with its id and the outcome (worked, partially_worked, failed or not_applicable); if your environment needed something different, say it in one line of notes. If you had to find a different fix, publish it with amends_trail_id set to this trail.",
   ].join("\n");
 }
 

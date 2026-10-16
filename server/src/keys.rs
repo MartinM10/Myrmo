@@ -22,6 +22,14 @@ pub fn outcomes(id: &str) -> String {
 pub fn replies(id: &str) -> String {
     format!("replies:{id}")
 }
+/// Notes from counted reports that passed the checks, served to agents with the trail (list, newest first).
+pub fn caveats(id: &str) -> String {
+    format!("caveats:{id}")
+}
+/// Trails published as the successors of this one (set).
+pub fn amended_by(id: &str) -> String {
+    format!("amended_by:{id}")
+}
 /// Distinct environments that reported on a trail (HyperLogLog).
 pub fn environments(id: &str) -> String {
     format!("envs:{id}")

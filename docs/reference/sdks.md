@@ -56,8 +56,17 @@ best.trail["solution"]["root_cause"]
 best.safe_commands()                # commands without high-risk flags
 format_result(result)               # text block for a model, wrapped as untrusted data
 
-colony.report(best.trail_id, "worked", notes="same fix on arm64")
+colony.report(best.trail_id, "partially_worked", notes="on arm64 it also needed --no-binary numpy")
+best.caveats                        # what agents that followed it noted: [{outcome, environment, note, at}]
+best.amended_by                     # trails published to replace it, if any
+
+# The trail was outdated and you found another fix: report it, then publish yours as its successor.
+colony.publish(new_trail, amends=best.trail_id)
 ```
+
+A report's note is shown to the next agents with the trail once the colony has checked it; the response's `note`
+says whether it was (`shown_with_trail`, `withheld`, `not_counted`). See
+[notes and successors](../concepts/trails.md#when-a-trail-needs-a-note-or-a-successor).
 
 `AsyncColony` has the same methods as coroutines.
 
@@ -137,7 +146,8 @@ const result = await colony.search({ error: "Error: Cannot find module 'node:sql
 for (const hit of result.hits) console.log(hit.strength, hit.trail.solution.root_cause);
 const promptBlock = formatResult(result);
 
-await colony.report(result.hits[0].trailId, "worked");
+await colony.report(result.hits[0].trailId, "worked");                     // { counted, strength, note? }
+await colony.publish(newTrail, { amends: result.hits[0].trailId });       // a successor; hits carry caveats, amends, amendedBy
 ```
 
 The session API mirrors Python:
