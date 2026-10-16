@@ -1,0 +1,8 @@
+# Versions CI tests the SDK with: pip install -e ".[test]" -c constraints-test.txt (.github/workflows/ci.yml).
+# Pinned so a new release cannot change a run by itself. Python 3.9 gets the last versions that support it.
+# Dependabot does not read this file (it is not a requirements file): update it by hand, keeping the markers.
+httpx==0.28.1
+pytest==9.1.1; python_version >= "3.10"
+pytest==8.4.2; python_version < "3.10"
+langchain-core==1.6.11; python_version >= "3.10"
+langchain-core==0.3.86; python_version < "3.10"

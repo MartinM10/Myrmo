@@ -59,9 +59,11 @@ done
 [ -s "$work/valkey.rdb" ] && [ -s "$work/qdrant.snapshot" ] || { echo "a backup file is empty" >&2; exit 1; }
 printf 'created=%s\nproject=%s\ncollection=%s\ntrails=%s\nqdrant_snapshot=%s\n' \
   "$stamp" "$PROJECT" "$COLLECTION" "${trails:-0}" "$name" > "$work/manifest.txt"
+# Checksums, which restore.sh verifies: a copy cut short or damaged on the way is refused before it replaces anything.
+(cd "$work" && sha256sum manifest.txt valkey.rdb qdrant.snapshot > SHA256SUMS)
 
 archive="$DIR/myrmo-$stamp.tar.gz"
-tar czf "$archive.partial" -C "$work" manifest.txt valkey.rdb qdrant.snapshot
+tar czf "$archive.partial" -C "$work" manifest.txt valkey.rdb qdrant.snapshot SHA256SUMS
 tar tzf "$archive.partial" >/dev/null          # the archive must be readable before it counts
 mv "$archive.partial" "$archive"
 

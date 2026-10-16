@@ -19,10 +19,13 @@
 # operator token and the salt are random, keys are required, the colony is in organisation mode (it keeps your
 # network's addresses and host names, accepts procedures and facts as well as fixes, and never rejects a trail for
 # "sensitive content"), its task index answers "what do we know about this task?", and no decision model is used, so
-# nothing is sent to any outside service. MYRMO_PORT changes the port (default 8080). Only the networks in
-# MYRMO_ALLOWED_NETWORKS may connect (the first `up` asks for them; `any` opens it). MYRMO_COLONY_URL is the address
-# people use (default http://<this machine's first address>:<port>). Each person then sets up their machine with the
-# message `keys add` prints. Most settings can also be changed from the admin panel while the colony runs.
+# nothing is sent to any outside service. MYRMO_PORT changes the port (default 8080), MYRMO_HOST_IP the address it
+# listens on (default 0.0.0.0, every interface; give one interface's address to serve only that network). Only the
+# networks in MYRMO_ALLOWED_NETWORKS may connect (the first `up` asks for them; `any` opens it). MYRMO_COLONY_URL is the
+# address people use (default http://<this machine's first address>:<port>). Over plain HTTP, `up` refuses networks
+# beyond the private ranges (or `any`) unless MYRMO_ACCEPT_PLAIN_HTTP=1 says you know keys would cross them in clear:
+# put a reverse proxy with TLS in front instead (docs/operate/self-hosting.md). Each person then sets up their machine
+# with the message `keys add` prints. Most settings can also be changed from the admin panel while the colony runs.
 set -euo pipefail
 
 PROJECT="${MYRMO_PROJECT:-myrmo-private}"
@@ -71,7 +74,50 @@ ensure_settings() {
   add MYRMO_PEOPLE_DETAIL aggregate
   # A share of error lookups answered with nothing, to measure what the colony saves (Value tab). 0: off.
   add MYRMO_HOLDOUT_PERCENT 0
+  # The compose file listens on 127.0.0.1 only unless told otherwise; a private colony serves its team's network.
+  add MYRMO_HOST_IP 0.0.0.0
+  # No reverse proxy stands in front of a private colony: written empty, so the file says so (an empty value leaves the
+  # choice to the server). With a proxy in front, list its address here.
+  add MYRMO_TRUSTED_PROXIES ""
   [ -z "$added" ] || echo "Added to $ENV_FILE:$added"
+}
+
+# True when every range in the comma-separated list is inside a private, loopback, link-local or shared (CGNAT, as
+# Tailscale uses) range, and no broader than it. Anything else, an empty list (everyone) included, is not private.
+private_ranges() {
+  local list="$1" entry entries addr prefix a b
+  [ -n "$list" ] || return 1
+  IFS=',' read -ra entries <<< "$list"
+  for entry in "${entries[@]}"; do
+    entry="${entry//[[:space:]]/}"
+    [ -n "$entry" ] || continue
+    addr="${entry%%/*}"
+    if [[ "$entry" == */* ]]; then prefix="${entry#*/}"; else prefix=128; [[ "$addr" == *:* ]] || prefix=32; fi
+    [[ "$prefix" =~ ^[0-9]+$ ]] || return 1
+    if [[ "$addr" =~ ^([0-9]+)\.([0-9]+)\.[0-9]+\.[0-9]+$ ]]; then
+      a="${BASH_REMATCH[1]}"; b="${BASH_REMATCH[2]}"
+      if [ "$a" = 10 ] && [ "$prefix" -ge 8 ]; then continue; fi
+      if [ "$a" = 127 ] && [ "$prefix" -ge 8 ]; then continue; fi
+      if [ "$a" = 172 ] && [ "$b" -ge 16 ] && [ "$b" -le 31 ] && [ "$prefix" -ge 12 ]; then continue; fi
+      if [ "$a" = 192 ] && [ "$b" = 168 ] && [ "$prefix" -ge 16 ]; then continue; fi
+      if [ "$a" = 169 ] && [ "$b" = 254 ] && [ "$prefix" -ge 16 ]; then continue; fi
+      if [ "$a" = 100 ] && [ "$b" -ge 64 ] && [ "$b" -le 127 ] && [ "$prefix" -ge 10 ]; then continue; fi
+      return 1
+    fi
+    addr="${addr,,}"
+    if [ "$addr" = ::1 ]; then continue; fi
+    if [[ "$addr" =~ ^f[cd][0-9a-f]{0,2}: ]] && [ "$prefix" -ge 7 ]; then continue; fi
+    if [[ "$addr" =~ ^fe[89ab][0-9a-f]?: ]] && [ "$prefix" -ge 10 ]; then continue; fi
+    return 1
+  done
+}
+
+# Keys and the operator token travel with every request. Over plain HTTP they must not cross networks you do not
+# control, so the colony must either be limited to private ranges or be served over HTTPS (a reverse proxy with TLS).
+in_clear_beyond_private() {
+  local url
+  url=$(colony_url)
+  [[ "$url" != https://* ]] && ! private_ranges "$(setting MYRMO_ALLOWED_NETWORKS)"
 }
 
 # What the colony counts about each person, in words for the invitation.
@@ -180,12 +226,31 @@ MYRMO_REQUIRE_KEY=1
 MYRMO_DECISION_URL=
 MYRMO_ALLOWED_NETWORKS=$allowed
 MYRMO_COLONY_URL=${MYRMO_COLONY_URL:-}
+MYRMO_HOST_IP=${MYRMO_HOST_IP:-0.0.0.0}
 MYRMO_ADMIN_TOKEN=$(head -c 24 /dev/urandom | od -An -tx1 | tr -d ' \n')
 MYRMO_SALT=$(head -c 24 /dev/urandom | od -An -tx1 | tr -d ' \n')
 EOF
       echo "Created $ENV_FILE (keys required, no external decision service)."
     fi
     ensure_settings
+    if in_clear_beyond_private; then
+      networks=$(setting MYRMO_ALLOWED_NETWORKS)
+      {
+        echo
+        echo "WARNING: this colony is served over plain HTTP ($(colony_url)) and accepts connections from ${networks:-any network}."
+        echo "Every request carries a person's key, and the admin panel the operator token, in clear: anyone on the way"
+        echo "(a public Wi-Fi, a provider, the internet) can read them and use the colony as that person or as you."
+        echo "Either limit MYRMO_ALLOWED_NETWORKS in $ENV_FILE to your private networks (10.x, 172.16-31.x, 192.168.x, a VPN),"
+        echo "or put a reverse proxy with TLS in front and set MYRMO_COLONY_URL=https://... (docs/operate/self-hosting.md)."
+      } >&2
+      if [ "${MYRMO_ACCEPT_PLAIN_HTTP:-}" = 1 ] || [ "$(setting MYRMO_ACCEPT_PLAIN_HTTP)" = 1 ]; then
+        grep -q '^MYRMO_ACCEPT_PLAIN_HTTP=1$' "$ENV_FILE" || echo "MYRMO_ACCEPT_PLAIN_HTTP=1" >> "$ENV_FILE"
+        echo "Going on: MYRMO_ACCEPT_PLAIN_HTTP=1 (kept in $ENV_FILE; remove that line to be asked again)." >&2
+      else
+        echo "To go on anyway, knowing this: MYRMO_ACCEPT_PLAIN_HTTP=1 bash deploy/private-colony.sh up" >&2
+        exit 2
+      fi
+    fi
     # --build: the server image must be this checkout's, never an older one left on the machine.
     compose up -d --build --no-deps valkey qdrant embed gateway enricher
     wait_ready || echo "Not ready yet: see bash deploy/private-colony.sh logs" >&2
@@ -213,20 +278,38 @@ EOF
     ;;
   doctor)
     fail=0
-    check() { if eval "$2" >/dev/null 2>&1; then echo "ok    $1"; else echo "FAIL  $1  -> $3"; fail=1; fi; }
-    check "settings file $ENV_FILE exists and only you can read it" "[ -f '$ENV_FILE' ] && [ \"\$(stat -c %a '$ENV_FILE')\" = 600 ]" "chmod 600 $ENV_FILE (or run up)"
-    for svc in gateway enricher embed qdrant valkey; do
-      check "$svc is running" "[ -n \"\$(compose ps -q --status running $svc)\" ]" "bash deploy/private-colony.sh up; then logs $svc"
-    done
-    check "the colony is ready" "[ \"\$(inside /readyz -o /dev/null -w '%{http_code}')\" = 200 ]" "bash deploy/private-colony.sh logs gateway"
-    check "a request without a key is refused" "[ \"\$(inside /v1/search -o /dev/null -w '%{http_code}' -X POST -H 'content-type: application/json' -d '{\"query\":\"x\"}')\" = 401 ]" "set MYRMO_REQUIRE_KEY=1 in $ENV_FILE and run up"
+    # check <what> <what to do if it fails> <command> [args...]: the command runs as given, never through eval, so
+    # nothing the colony answers (the settings can be edited in the admin panel) or a file name can become shell code.
+    check() {
+      local what="$1" fix="$2"; shift 2
+      if "$@" >/dev/null 2>&1; then echo "ok    $what"; else echo "FAIL  $what  -> $fix"; fail=1; fi
+    }
+    private_file() { [ -f "$ENV_FILE" ] && [ "$(stat -c %a "$ENV_FILE")" = 600 ]; }
+    running() { [ -n "$(compose ps -q --status running "$1")" ]; }
+    ready() { [ "$(inside /readyz -o /dev/null -w '%{http_code}')" = 200 ]; }
+    refuses_without_key() {
+      [ "$(inside /v1/search -o /dev/null -w '%{http_code}' -X POST -H 'content-type: application/json' -d '{"query":"x"}')" = 401 ]
+    }
     settings=$(admin /v1/admin/settings 2>/dev/null || true)
-    check "organisation mode is on" "echo '$settings' | grep -q '\"private\":true'" "set MYRMO_PRIVATE=1 in $ENV_FILE and run up"
-    check "the task index is on" "echo '$settings' | grep -q '\"task_index\":true'" "run up (it adds MYRMO_TASK_EMBED_URL and EMBED_TASK_MODEL)"
-    check "a daily backup is scheduled" "crontab -l | grep -q 'private-colony.sh backup'" "bash deploy/private-colony.sh backup schedule"
+    setting_on() { printf '%s' "$settings" | grep -qF -- "\"$1\":true"; }
+    backup_scheduled() { crontab -l 2>/dev/null | grep -q 'private-colony.sh backup'; }
     newest=$(ls -t "${MYRMO_BACKUP_DIR:-$HOME/myrmo-backups}"/*.tar.gz 2>/dev/null | head -n 1 || true)
-    check "the newest backup is less than 2 days old" "[ -n '$newest' ] && [ \$(( \$(date +%s) - \$(stat -c %Y '$newest') )) -lt 172800 ]" "bash deploy/private-colony.sh backup"
-    check "more than 2 GB free for Docker" "[ \$(df -Pk /var/lib/docker 2>/dev/null | awk 'NR==2{print \$4}') -gt 2000000 ]" "free some disk space"
+    backup_recent() { [ -n "$newest" ] && [ $(( $(date +%s) - $(stat -c %Y "$newest") )) -lt 172800 ]; }
+    disk_free() { [ "$(df -Pk /var/lib/docker 2>/dev/null | awk 'NR==2{print $4}')" -gt 2000000 ]; }
+    not_in_clear() { ! in_clear_beyond_private; }
+    check "settings file $ENV_FILE exists and only you can read it" "chmod 600 $ENV_FILE (or run up)" private_file
+    for svc in gateway enricher embed qdrant valkey; do
+      check "$svc is running" "bash deploy/private-colony.sh up; then logs $svc" running "$svc"
+    done
+    check "the colony is ready" "bash deploy/private-colony.sh logs gateway" ready
+    check "a request without a key is refused" "set MYRMO_REQUIRE_KEY=1 in $ENV_FILE and run up" refuses_without_key
+    check "organisation mode is on" "set MYRMO_PRIVATE=1 in $ENV_FILE and run up" setting_on private
+    check "the task index is on" "run up (it adds MYRMO_TASK_EMBED_URL and EMBED_TASK_MODEL)" setting_on task_index
+    check "keys do not cross other networks in clear" \
+      "limit MYRMO_ALLOWED_NETWORKS to private ranges, or serve it over HTTPS (docs/operate/self-hosting.md)" not_in_clear
+    check "a daily backup is scheduled" "bash deploy/private-colony.sh backup schedule" backup_scheduled
+    check "the newest backup is less than 2 days old" "bash deploy/private-colony.sh backup" backup_recent
+    check "more than 2 GB free for Docker" "free some disk space" disk_free
     exit $fail
     ;;
   keys)
@@ -254,7 +337,9 @@ EOF
     ;;
   backup)
     if [ "${2:-}" = schedule ]; then
-      line="17 3 * * * cd $(pwd) && MYRMO_PROJECT=$PROJECT bash deploy/backup.sh >> \$HOME/myrmo-backups/backup.log 2>&1"
+      # Quoted for the shell cron runs, and with % escaped, which cron would otherwise turn into a new line.
+      dir=$(printf '%q' "$PWD"); project=$(printf '%q' "$PROJECT")
+      line="17 3 * * * cd ${dir//%/\\%} && MYRMO_PROJECT=${project//%/\\%} bash deploy/backup.sh >> \$HOME/myrmo-backups/backup.log 2>&1"
       mkdir -p "$HOME/myrmo-backups"
       (crontab -l 2>/dev/null | grep -v "deploy/backup.sh" | grep -v "private-colony.sh backup"; echo "$line # private-colony.sh backup") | crontab -
       echo "Scheduled: a backup every day at 03:17, two weeks kept in ~/myrmo-backups, readable by you only. Keep a copy on another machine too: deploy/pull-backups.sh (or .ps1), or an S3-compatible store (see deploy/backup.sh)."

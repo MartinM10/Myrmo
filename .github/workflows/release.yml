@@ -88,36 +88,34 @@ jobs:
             ${{ steps.image.outputs.name }}:${{ needs.release-please.outputs.server_version || inputs.version }}
             ${{ steps.image.outputs.name }}:latest
 
-  npm:
-    name: npm packages
+  # Building runs the packages' dependencies (npm ci, the build, the tests): it gets no secret and no id-token. It packs
+  # the tarballs to publish; the publishing job below only uploads them.
+  npm-build:
+    name: npm packages (build)
     needs: release-please
     if: needs.release-please.outputs.sdk_js == 'true' || needs.release-please.outputs.mcp == 'true' || (github.event_name == 'workflow_dispatch' && inputs.npm_tag != '')
     runs-on: ubuntu-latest
-    # id-token lets npm sign a provenance statement: the package says which commit and workflow built it.
     permissions:
       contents: read
-      id-token: write
     defaults:
       run:
         working-directory: clients/typescript
-    env:
-      NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           # A manual run publishes the tagged release, not whatever main is now.
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.npm_tag != '' && inputs.npm_tag || needs.release-please.outputs.release_sha || github.sha }}
+          persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
-          registry-url: https://registry.npmjs.org
       - run: npm ci && npm run build && npm test
-      - name: Publish (skipped until the NPM_TOKEN secret exists)
-        if: env.NODE_AUTH_TOKEN != ''
+      - name: Pack the released packages
         env:
           NPM_TAG: ${{ inputs.npm_tag }}
           SDK_JS: ${{ needs.release-please.outputs.sdk_js }}
           MCP: ${{ needs.release-please.outputs.mcp }}
+          OUT: ${{ runner.temp }}/npm-packages
         run: |
           case "$NPM_TAG" in
             sdk-js-v*) SDK_JS=true ;;
@@ -125,17 +123,55 @@ jobs:
             "") ;;
             *) echo "npm_tag must start with sdk-js-v or mcp-v, got: $NPM_TAG"; exit 1 ;;
           esac
-          if [ "$SDK_JS" = "true" ]; then npm publish -w packages/myrmo --access public --provenance; fi
-          if [ "$MCP" = "true" ]; then npm publish -w packages/myrmo-mcp --access public --provenance; fi
+          mkdir -p "$OUT"
+          if [ "$SDK_JS" = "true" ]; then npm pack -w packages/myrmo --pack-destination "$OUT"; fi
+          if [ "$MCP" = "true" ]; then npm pack -w packages/myrmo-mcp --pack-destination "$OUT"; fi
+          ls -l "$OUT"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: npm-packages
+          path: ${{ runner.temp }}/npm-packages/*.tgz
+          if-no-files-found: error
+          retention-days: 7
 
-  pypi:
-    name: PyPI package
+  # Publishing: the npm token and the id-token (npm signs a provenance statement: the package says which commit and
+  # workflow built it) exist only here, in the npm environment, and nothing from the packages runs.
+  npm:
+    name: npm packages
+    needs: npm-build
+    runs-on: ubuntu-latest
+    environment: npm
+    permissions:
+      id-token: write
+    env:
+      HAS_NPM_TOKEN: ${{ secrets.NPM_TOKEN != '' }}
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: npm-packages
+          path: npm-packages
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+      - name: Publish (skipped until the NPM_TOKEN secret exists)
+        if: env.HAS_NPM_TOKEN == 'true'
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        # The ./ matters: npm reads "dir/file.tgz" as a GitHub repository. The SDK (myrmo-0...) sorts before the MCP
+        # server (myrmo-mcp-...), which depends on it.
+        run: |
+          for package in ./npm-packages/*.tgz; do
+            npm publish "$package" --access public --provenance
+          done
+
+  pypi-build:
+    name: PyPI package (build)
     needs: release-please
     if: (needs.release-please.outputs.sdk_python == 'true' || (github.event_name == 'workflow_dispatch' && inputs.pypi_tag != '')) && vars.PUBLISH_PYPI == 'true'
     runs-on: ubuntu-latest
-    environment: pypi
     permissions:
-      id-token: write
+      contents: read
     defaults:
       run:
         working-directory: clients/python
@@ -143,10 +179,32 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.pypi_tag != '' && inputs.pypi_tag || needs.release-please.outputs.release_sha || github.sha }}
+          persist-credentials: false
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.12"
-      - run: pip install build && python -m build
+      # Pinned here, not in a requirements file: a manual run builds an older tag, which may not have that file.
+      - run: pip install build==1.6.1 && python -m build
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: pypi-dist
+          path: clients/python/dist/
+          if-no-files-found: error
+          retention-days: 7
+
+  # Trusted publishing: the id-token exists only here, in the pypi environment, and nothing from the package runs.
+  pypi:
+    name: PyPI package
+    needs: pypi-build
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: pypi-dist
+          path: dist
       - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # release/v1
         with:
-          packages-dir: clients/python/dist
+          packages-dir: dist

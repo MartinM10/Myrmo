@@ -1,8 +1,9 @@
 name: Deploy
 
 # Deploys to production when CI has passed on main. The server runs deploy/server-deploy.sh as
-# the forced command of a dedicated key, so this job can do nothing else on the server.
-# One-time setup and rollback: docs/operate/deployment.md.
+# the forced command of a dedicated key: this job sends only a commit id, and the server fetches main
+# from GitHub itself and deploys that commit only if it is already part of main. The key cannot send
+# code, open a shell or run anything else. One-time setup and rollback: docs/operate/deployment.md.
 #
 # This workflow runs WITH secrets, whatever triggered the CI run behind it, so it must never deploy
 # code that did not come from a push to main of this repository. A pull request from a fork can make
@@ -33,6 +34,10 @@ jobs:
        github.event.workflow_run.head_branch == 'main' &&
        github.event.workflow_run.head_repository.full_name == github.repository)
     runs-on: ubuntu-latest
+    # The DEPLOY_* secrets belong to this environment, which only main may use (Settings, Environments).
+    environment:
+      name: production
+      url: https://myrmo.dev
     timeout-minutes: 45
     env:
       SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
@@ -60,14 +65,15 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
 
-      - name: Send the code and deploy
+      # Only the commit id goes over: the server fetches the code from GitHub and checks it is on main.
+      # Nothing is sent on stdin, so ssh does not wait for it.
+      - name: Deploy the commit
         env:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
         run: |
-          git archive --format=tar "$SHA" | ssh -i ~/.ssh/deploy_key \
-            -o StrictHostKeyChecking=yes -o ServerAliveInterval=30 \
-            "$DEPLOY_USER@$DEPLOY_HOST" "$SHA"
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes -o ServerAliveInterval=30 \
+            "$DEPLOY_USER@$DEPLOY_HOST" "$SHA" </dev/null
 
       - name: Check production from outside
         run: |

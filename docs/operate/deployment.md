@@ -9,23 +9,29 @@ Every push to `main` that passes CI is deployed to production by GitHub Actions
 (`.github/workflows/deploy.yml`). Nobody has to log in to the server.
 
 ```text
-push to main ─► CI passes ─► Deploy workflow ─► ssh (restricted key) ─► deploy/server-deploy.sh
+push to main ─► CI passes ─► Deploy workflow ─► ssh (restricted key, commit id only) ─► deploy/server-deploy.sh
                                                   │
-                  back up data ─► build new images ─► swap ─► health check ─┬─► done
-                  (abort if it fails)  (abort if it fails)                    └─► roll back, job fails
+         fetch main from GitHub ─► commit on main? ─► back up data ─► build new images ─► swap ─► health check ─┬─► done
+         (abort if it fails)       (refuse if not)    (abort if it fails)  (abort if it fails)                    └─► roll back, job fails
 ```
 
 ## What the server script guarantees
 
 `deploy/server-deploy.sh` runs on the server and does these things in order:
 
-1. **Backs up the data** with `deploy/backup.sh`. If the backup fails, nothing changes.
-2. **Builds the new images before touching anything that runs.** A failed build changes nothing.
-3. **Swaps the code and recreates only the services whose image changed.** `.env` stays on the
+1. **Fetches the code itself.** It fetches `main` from `https://github.com/MartinM10/Myrmo.git` (an address written in
+   the script, never taken from the caller) into a bare clone, `~/myrmo-src.git`, and refuses the commit unless it is
+   already part of `main`. Nothing the caller sends is used but the commit id.
+2. **Backs up the data** with the `deploy/backup.sh` of that commit (not the one of the running tree). If the backup
+   fails, nothing changes.
+3. **Builds the new images before touching anything that runs.** A failed build changes nothing.
+4. **Swaps the code and recreates only the services whose image changed.** `.env` stays on the
    server and carries over; volumes are never removed.
-4. **Waits up to 4 minutes** for the gateway (`/readyz`), the hosted MCP server and the website to
+5. **Waits up to 4 minutes** for the gateway (`/readyz`), the hosted MCP server and the website to
    answer.
-5. **Rolls back** to the previous version if they do not, and the workflow fails.
+6. **Rolls back** to the previous version if they do not, and the workflow fails.
+
+It runs one deploy at a time: a second one started meanwhile is refused.
 
 The workflow then checks production from outside: `/healthz`, `/readyz`, the site, the colony view,
 the docs, `/v1/stats` and the hosted MCP tool list.
@@ -44,13 +50,18 @@ command, so it can run `deploy/server-deploy.sh` and nothing else: no shell, no 
 other files.
 
 ```text
-command="/home/<user>/bin/myrmo-deploy",no-port-forwarding,no-X11-forwarding,no-agent-forwarding,no-pty ssh-ed25519 AAAA… myrmo-github-deploy
+command="/home/<user>/bin/myrmo-deploy",restrict ssh-ed25519 AAAA… myrmo-github-deploy
 ```
 
-The script accepts only a 40-character commit id and a tar archive of the repository, which it
-caps at 300 MB. Anyone who can push to `main` can still run code on the server through the
-repository's own build, which is the normal trust model for continuous deployment. Protect `main`
-accordingly.
+(`restrict` turns off port, agent and X11 forwarding, the terminal and `~/.ssh/rc`; on an OpenSSH older than 7.2, write
+`no-port-forwarding,no-X11-forwarding,no-agent-forwarding,no-pty` instead.)
+
+The script accepts only a 40-character commit id, and it deploys that commit only if it is already part of `main` on
+GitHub, fetched by the server itself. Whoever holds the key can therefore redeploy a commit of `main`, an older one
+included, and nothing else: they cannot send code, an archive or a compose file of their own. Anyone who can push to
+`main` can still run code on the server through the repository's own build, which is the normal trust model for
+continuous deployment. Protect `main` accordingly. The script's environment comes from the server, never from the SSH
+client, as long as sshd's `AcceptEnv` does not list `MYRMO_*` (it does not by default).
 
 ## Safe in a public repository
 
@@ -63,18 +74,23 @@ this repository can reach the server:
   each condition is checked separately.
 - Pull requests from forks never see the secrets, and the repository requires approval before
   running workflows for any outside contributor.
+- The secrets belong to the `production` environment, which only `main` may use: a workflow run on any other branch,
+  even of this repository, cannot read them.
 - The repository keeps the server's address, user and key out of the code: they are secrets, and
   the examples here use placeholders.
 
 ## One-time setup
 
-On the server, as the deploy user:
+On the server, as the deploy user (it needs `git`, and `flock` from util-linux):
 
 ```bash
 mkdir -p ~/bin
-cp ~/myrmo/deploy/server-deploy.sh ~/bin/myrmo-deploy
+curl -fsSL https://raw.githubusercontent.com/MartinM10/Myrmo/main/deploy/server-deploy.sh -o ~/bin/myrmo-deploy
+less ~/bin/myrmo-deploy            # read what you install
 chmod 755 ~/bin/myrmo-deploy
 ```
+
+The deploy user must be able to run `docker`, and nobody else may write to `~/bin/myrmo-deploy` or `~/myrmo-src.git`.
 
 Create a key pair on any machine and authorise it on the server with the restriction above:
 
@@ -83,7 +99,9 @@ ssh-keygen -t ed25519 -N '' -C myrmo-github-deploy -f deploy_key
 # append to ~/.ssh/authorized_keys on the server, prefixed with the restriction line shown above
 ```
 
-Add four repository secrets (Settings, Secrets and variables, Actions):
+Create an environment named `production` (Settings, Environments) whose deployment branches are limited to `main`
+(Deployment branches and tags, Selected branches and tags, add `main`), and add four secrets to it, not to the
+repository:
 
 | Secret | Value |
 |---|---|
@@ -94,22 +112,26 @@ Add four repository secrets (Settings, Secrets and variables, Actions):
 
 `~/myrmo/.env` on the server needs `MYRMO_SALT`, `MYRMO_SITE_URL` and `EDGE_NETWORK`, plus
 `MYRMO_ADMIN_TOKEN` for the operator endpoints. A change to `deploy/server-deploy.sh` itself does
-not apply by itself: copy it to `~/bin/myrmo-deploy` again.
+not apply by itself: install it in `~/bin/myrmo-deploy` again, as above. When the change is in what the workflow sends
+(the commit id alone since this version, an archive before), install the server script first, then merge the workflow:
+the new script ignores an archive on stdin, but an older script given only a commit id refuses to deploy.
 
 ## Running it by hand
 
-Deploy any commit on demand from the Actions tab (**Deploy**, **Run workflow**), or from a shell
-with the key:
+Deploy the head of `main` on demand from the Actions tab (**Deploy**, **Run workflow**), or any commit of `main` from a
+shell with the key:
 
 ```bash
-git archive --format=tar HEAD | ssh -i deploy_key <user>@<host> "$(git rev-parse HEAD)"
+ssh -i deploy_key <user>@<host> "$(git rev-parse origin/main)" </dev/null
 ```
+
+To go back to an earlier version, give the id of an earlier commit of `main`.
 
 ## When something goes wrong
 
 | Symptom | What to do |
 |---|---|
-| The workflow fails at "Send the code and deploy" | Read the job log: the script prints why (backup failed, build failed, unhealthy). On the server, `~/myrmo-deploys.log` has the full history. |
+| The workflow fails at "Deploy the commit" | Read the job log: the script prints why (fetch failed, not on main, backup failed, build failed, unhealthy). On the server, `~/myrmo-deploys.log` has the full history. |
 | It says it rolled back | The previous version is running and healthy. The failed code is in `~/myrmo.failed`. Fix the cause and push again. |
 | It says the rollback is also unhealthy | A person is needed. Look at `docker compose logs`, then restore data with `deploy/restore.sh` if needed. Backups are in `~/myrmo-backups` (daily, and one before every deploy). |
 | You need to stop deploys | Disable the **Deploy** workflow in the Actions tab, or remove the key's line from `authorized_keys`. |
@@ -176,5 +198,5 @@ URL (Caching, Configuration, Custom Purge).
 
 ## Rotating the key
 
-Generate a new key pair, replace the line in `authorized_keys`, update `DEPLOY_SSH_KEY`, and delete
-the old private key.
+Generate a new key pair, replace the line in `authorized_keys`, update `DEPLOY_SSH_KEY` in the `production`
+environment, and delete the old private key.

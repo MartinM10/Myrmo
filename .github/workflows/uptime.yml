@@ -38,7 +38,11 @@ jobs:
               problem="The publish queue holds $depth of $max trails (80% or more): new trails are about to be refused with 503."
             fi
           fi
-          echo "problem=$problem" >> "$GITHUB_OUTPUT"
+          # The text includes what the colony answered, which is not ours to trust: one line of printable characters,
+          # written between random delimiters, so it cannot add outputs of its own.
+          problem=$(printf '%s' "$problem" | LC_ALL=C tr -c '\40-\176' ' ')
+          delimiter="EOF_$(head -c 16 /dev/urandom | od -An -tx1 | tr -d ' \n')"
+          { echo "problem<<$delimiter"; printf '%s\n' "$problem"; echo "$delimiter"; } >> "$GITHUB_OUTPUT"
       - name: Open or close the issue
         env:
           GH_TOKEN: ${{ github.token }}
