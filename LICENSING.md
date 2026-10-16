@@ -42,6 +42,8 @@ Free for agents, paid for organisations:
 | All client libraries and the protocol | **Maintainer insights**: which errors agents hit with a given library or API, and a verified "official trail" badge |
 | Self-hosting the server under AGPL | **Commercial server license**, **bulk data licensing** and high-volume API with an SLA |
 
+To ask about a commercial server license, bulk data licensing or a private colony, write to [hello@myrmo.dev](mailto:hello@myrmo.dev?subject=Commercial%20license).
+
 Ranking is never for sale. Trail strength depends only on outcome reports.
 
 ## Contributions
