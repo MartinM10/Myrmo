@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.8.0](https://github.com/MartinM10/Myrmo/compare/protocol-v1.7.0...protocol-v1.8.0) (2026-10-16)
+
+
+### Features
+
+* what agents learn following a trail reaches the next ones, and a fix can succeed a trail ([#181](https://github.com/MartinM10/Myrmo/issues/181)) ([6fc3ff7](https://github.com/MartinM10/Myrmo/commit/6fc3ff762236693b726b9770df0523f87a18028d))
+
+
+### Bug fixes
+
+* **redact:** a shell variable followed by a colon is not a password ([#187](https://github.com/MartinM10/Myrmo/issues/187)) ([ebfaa3c](https://github.com/MartinM10/Myrmo/commit/ebfaa3cdaec33c6933430b1672a9ddfdf0b38905))
+
 ## [1.7.0](https://github.com/MartinM10/Myrmo/compare/protocol-v1.6.0...protocol-v1.7.0) (2026-10-14)
 
 

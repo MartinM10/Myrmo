@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.18.0](https://github.com/MartinM10/Myrmo/compare/sdk-js-v0.17.0...sdk-js-v0.18.0) (2026-10-16)
+
+
+### Features
+
+* knowledge that lasts, corrections by the author, and a person's "still valid" ([#185](https://github.com/MartinM10/Myrmo/issues/185)) ([6a0570b](https://github.com/MartinM10/Myrmo/commit/6a0570b9b2fccf1780ea54eaacb2ecc936e62848))
+* what agents learn following a trail reaches the next ones, and a fix can succeed a trail ([#181](https://github.com/MartinM10/Myrmo/issues/181)) ([6fc3ff7](https://github.com/MartinM10/Myrmo/commit/6fc3ff762236693b726b9770df0523f87a18028d))
+
+
+### Bug fixes
+
+* **redact:** a shell variable followed by a colon is not a password ([#187](https://github.com/MartinM10/Myrmo/issues/187)) ([ebfaa3c](https://github.com/MartinM10/Myrmo/commit/ebfaa3cdaec33c6933430b1672a9ddfdf0b38905))
+
 ## [0.17.0](https://github.com/MartinM10/Myrmo/compare/sdk-js-v0.16.0...sdk-js-v0.17.0) (2026-10-14)
 
 
