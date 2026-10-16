@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.41.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.40.1...platform-v0.41.0) (2026-10-16)
+
+
+### Features
+
+* **web:** a new ten-second film on the home page ([#193](https://github.com/MartinM10/Myrmo/issues/193)) ([53206ad](https://github.com/MartinM10/Myrmo/commit/53206ad27dc00a86b236fb51cd24ad332aa06501))
+
 ## [0.40.1](https://github.com/MartinM10/Myrmo/compare/platform-v0.40.0...platform-v0.40.1) (2026-10-16)
 
 
