@@ -56,6 +56,20 @@ command (a downloader, a decoder, an interpreter, `rm`, a package manager, `sudo
 found there has `command_index: -1` (no client mistakes it for a listed command) and a `field` with the protocol path
 where it was found, such as `solution.steps[0]`; flags of listed commands have their `field` too.
 
+Prose mentions far more than it asks to run, so a flag found there is weighed by where it is and by what it is:
+
+- **What to do** (the steps, each command's purpose, the verification, the lines a patch adds) keeps a high level only
+  for code that runs as soon as it is followed and cannot be checked or undone: `pipe_to_shell`, `download_and_execute`,
+  `obfuscated_payload`, `recursive_delete`, `destructive_disk` and `persistent_remote_code`. Every other high flag is
+  medium there: `credential_access` fires on a mere path (`~/.ssh/known_hosts`, `~/.kube/config`) or on `env | grep PG`
+  to list variables, `network_exfiltration` on a copy with `scp`, `privileged_container` on a container option.
+- **What happened** (the root cause, each dead end and why it failed) is flagged medium at most, whatever it names: a
+  dead end often quotes the command that failed and the error it printed.
+- `unchecked_prose` stays high in any field: what was not read may be anywhere.
+
+Measured on the 228 trails of the public colony when this was introduced: one would no longer be served (a step that
+pipes an install script into `bash`), and 16 gained a medium flag from their prose.
+
 | Found in prose | What the colony does |
 |---|---|
 | high | A new trail is **rejected** with the reason `risky_command_in_prose`, the fields where the command is and a hint: list commands in `shell_commands_executed`, where they are flagged and clients withhold the dangerous ones. A trail stored before the colony read prose is **not served** (search, lookups by fingerprint, the feed and `GET /v1/trails/{id}` leave it out); an operator removes it with `DELETE /v1/trails/{id}`. |
