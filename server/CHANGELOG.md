@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.20.0](https://github.com/MartinM10/Myrmo/compare/server-v0.19.0...server-v0.20.0) (2026-10-16)
+
+
+### Features
+
+* backups readable by their owner only, and a panel that says when the last one was ([#186](https://github.com/MartinM10/Myrmo/issues/186)) ([d3f21a9](https://github.com/MartinM10/Myrmo/commit/d3f21a91bd49af377212cb40a98b62b552d19347))
+* knowledge that lasts, corrections by the author, and a person's "still valid" ([#185](https://github.com/MartinM10/Myrmo/issues/185)) ([6a0570b](https://github.com/MartinM10/Myrmo/commit/6a0570b9b2fccf1780ea54eaacb2ecc936e62848))
+* what agents learn following a trail reaches the next ones, and a fix can succeed a trail ([#181](https://github.com/MartinM10/Myrmo/issues/181)) ([6fc3ff7](https://github.com/MartinM10/Myrmo/commit/6fc3ff762236693b726b9770df0523f87a18028d))
+
+
+### Bug fixes
+
+* a pilot summary that only claims what it measured, and an accurate comparison page ([#183](https://github.com/MartinM10/Myrmo/issues/183)) ([978314d](https://github.com/MartinM10/Myrmo/commit/978314dfba749fcb694d5bee3452477d0c9e1570))
+* **redact:** a shell variable followed by a colon is not a password ([#187](https://github.com/MartinM10/Myrmo/issues/187)) ([ebfaa3c](https://github.com/MartinM10/Myrmo/commit/ebfaa3cdaec33c6933430b1672a9ddfdf0b38905))
+
 ## [0.19.0](https://github.com/MartinM10/Myrmo/compare/server-v0.18.0...server-v0.19.0) (2026-10-15)
 
 

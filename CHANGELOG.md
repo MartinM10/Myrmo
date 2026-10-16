@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.39.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.38.0...platform-v0.39.0) (2026-10-16)
+
+
+### Features
+
+* backups readable by their owner only, and a panel that says when the last one was ([#186](https://github.com/MartinM10/Myrmo/issues/186)) ([d3f21a9](https://github.com/MartinM10/Myrmo/commit/d3f21a91bd49af377212cb40a98b62b552d19347))
+* knowledge that lasts, corrections by the author, and a person's "still valid" ([#185](https://github.com/MartinM10/Myrmo/issues/185)) ([6a0570b](https://github.com/MartinM10/Myrmo/commit/6a0570b9b2fccf1780ea54eaacb2ecc936e62848))
+* what agents learn following a trail reaches the next ones, and a fix can succeed a trail ([#181](https://github.com/MartinM10/Myrmo/issues/181)) ([6fc3ff7](https://github.com/MartinM10/Myrmo/commit/6fc3ff762236693b726b9770df0523f87a18028d))
+
+
+### Bug fixes
+
+* a pilot summary that only claims what it measured, and an accurate comparison page ([#183](https://github.com/MartinM10/Myrmo/issues/183)) ([978314d](https://github.com/MartinM10/Myrmo/commit/978314dfba749fcb694d5bee3452477d0c9e1570))
+* **plugin:** fewer notes that ask nothing of the agent ([#184](https://github.com/MartinM10/Myrmo/issues/184)) ([232512f](https://github.com/MartinM10/Myrmo/commit/232512f5f999170083f9bab6907ca379784a3425))
+
 ## [0.38.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.37.0...platform-v0.38.0) (2026-10-15)
 
 
