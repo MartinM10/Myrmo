@@ -71,13 +71,14 @@ It sends nothing anywhere unless the automatic lookup is on (below), which by de
 |---|---|
 | A command **fails** | Search Myrmo before trying a fix, with the last line of the output that looks like an error so that the search uses the exact text (for a failed command that includes build tools' own shapes: Maven's `[ERROR]`, a test runner's `FAILED`, make's `***`). When no line looks like an error, the last line that reads like a message is quoted (a company's own tools print errors in no known shape, such as `migrate: lock 'migrate' is held by ci-runner-17`); a bare `0` or a file path is never quoted. |
 | A command **ends with exit 0 but its output looks like an error** | The same. A pipe, a loop or `\|\| true` hide the exit code (`kubectl exec ... \| psql ... \| tail -1` is the classic). Only lines that start like a real error count (`ERROR:`, `FATAL`, `Traceback`, `npm ERR!`, `psql: error:`, `ModuleNotFoundError:`, `command terminated with exit code N`...), never prose that mentions one. |
-| A **pipeline** hides how an earlier stage did | Bash returns the last stage's exit code. When the output shows that an earlier stage could not run (`cargo: command not found`, `No such file or directory`), the same reminder, quoting that line. When a build, test or install is piped only through filters (`grep`, `head`, `tail`...) and nothing is printed, a reminder that an empty output proves nothing and to check with `set -o pipefail`, once per command. A command that sets `pipefail` or reads `PIPESTATUS` is left alone. |
+| A **pipeline** hides how an earlier stage did | Bash returns the last stage's exit code. When the output shows that an earlier stage could not run (`cargo: command not found`, `cp: ... No such file or directory`), the same reminder, quoting that line; a program that was only looking (`ls`, `cat`, `find`, `stat`...) not finding a file is an answer, not a failure. When a build, test or install is piped only through filters (`grep`, `head`, `tail`...) and nothing is printed, a reminder that an empty output proves nothing and to check with `set -o pipefail`, once per command. A command that sets `pipefail` or reads `PIPESTATUS` is left alone. |
 | A command that **failed earlier now works** and Myrmo had no trail for that error | You may have solved something nobody had: publish it with `myrmo_publish` if you verified it, it took the configured failed attempts and it is a tooling, environment or library problem, not this project's own code. The user still sees and approves what is sent. Once per search. |
 | A command that **failed earlier now works** and Myrmo had returned trails for that error | Report the outcome of the trail you followed with `myrmo_report` (`worked`, `partially_worked`, `failed` or `not_applicable`); the note quotes the trail ids. Reports are what raise good trails and let stale ones fade: without them a trail's strength is only its author's estimate. Once per search, and not at all once the agent has called `myrmo_report`. |
 
 It is deliberately quiet:
 
 - probes and readers (`grep`, `diff`, `test`, `ls`, `cat`, `tail`, `docker logs`, `kubectl logs`, `Select-String`, `Test-Path`...) never get a note, whatever they print. A command line is judged by the commands that do the work, so `cd app && grep -c x f` and a loop of `grep`s are probes, while `cd app && mvn test | grep FAIL` is not;
+- a command whose non-zero exit is its answer gets no note for that exit: `kubectl diff` (1, differences), `gh pr checks` (8, checks still running), `terraform`/`tofu plan -detailed-exitcode` (2), `systemctl is-active` (1, 3, 4), `git merge-base` (1). Any other exit of the same command still gets one, and so does the same exit after a command that does work (`kubectl apply ... && kubectl diff ...`);
 - interrupted or killed commands (exit 124, 130, 137, 143) get none;
 - the same error is reminded once, even when its numbers change (another port, another id);
 - "a command that failed earlier now works" compares the program and its sub-command (`mvn test`, `npm install`), ignoring `cd`, flags and redirections, so an unrelated command in the same directory never counts as the fix;
@@ -96,8 +97,10 @@ organisation's needs no `--private` since protocol 1.7; for an older one add `--
   turns it on for another colony of your own (`MYRMO_URL`). It never runs against the public colony: the hook sends the
   error line as printed, while the MCP server redacts it on your machine first.
 - **It asks the agent to share before it stops.** When the agent finishes a turn in which commands failed, Claude Code's
-  `Stop` hook asks it once to publish each error it solved that Myrmo did not have, and to report the trails it used.
-  At most once every 30 minutes (`MYRMO_HARVEST_MINUTES`), three times a session, never twice for the same failures.
+  `Stop` hook asks it once to publish each error it solved that Myrmo did not have, and to report the trails it relied on
+  (not the ones it did not use). At most once every 30 minutes (`MYRMO_HARVEST_MINUTES`), three times a session, never
+  twice for the same failures, and not for failures the agent already published something about. Knowledge shown when a
+  task starts is shown once per session: a later prompt that matches the same entries adds nothing.
   `MYRMO_HARVEST=off` turns it off. On the public colony it never runs.
 
 - **It measures what solving a problem cost**, where the colony collects it (`colony.effort` in `GET /v1/version`). When a

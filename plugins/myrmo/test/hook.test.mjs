@@ -258,12 +258,13 @@ test("a later command in the same directory is not taken for the one that failed
 test("the manifest registers the hook for failures, for successful commands and for Myrmo searches", () => {
   const hooks = JSON.parse(readFileJson(join(root, "hooks", "hooks.json"))).hooks;
   assert.equal(hooks.PostToolUseFailure[0].matcher, "Bash|PowerShell");
-  assert.deepEqual(hooks.PostToolUse.map((h) => h.matcher), ["Bash|PowerShell", "mcp__.*myrmo_(search|report)"]);
+  assert.deepEqual(hooks.PostToolUse.map((h) => h.matcher), ["Bash|PowerShell", "mcp__.*myrmo_(search|report|publish)"]);
   const myrmo = new RegExp(`^(?:${hooks.PostToolUse[1].matcher})$`);
   assert.ok(myrmo.test("mcp__plugin_myrmo_myrmo__myrmo_search"), "the plugin's own tool name");
   assert.ok(myrmo.test("mcp__myrmo__myrmo_search"), "and a server added by hand");
   assert.ok(myrmo.test("mcp__plugin_myrmo_myrmo__myrmo_report"), "a report clears the reminder to report");
-  assert.ok(!myrmo.test("mcp__plugin_myrmo_myrmo__myrmo_publish"), "not the other tools");
+  assert.ok(myrmo.test("mcp__plugin_myrmo_myrmo__myrmo_publish"), "a publication means the agent already shared");
+  assert.ok(!myrmo.test("mcp__plugin_myrmo_myrmo__myrmo_status"), "not the other tools");
 });
 
 test("run as Claude Code runs it, across separate processes: failure, empty search, then the fix", () => {

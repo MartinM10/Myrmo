@@ -49,10 +49,37 @@ const PS_PROBES = /^\s*(?:select-string|sls|get-childitem|gci|dir|get-content|gc
 const SHELLS = new Set(["Bash", "PowerShell"]);
 const SEARCH_TOOL = /^mcp__.*myrmo_search$/;
 const REPORT_TOOL = /^mcp__.*myrmo_report$/;
+const PUBLISH_TOOL = /^mcp__.*myrmo_publish$/;
 // The id each trail is listed under in a search reply (`## Trail 1 of 2 · id <uuid>`).
 const TRAIL_ID = /^## Trail \d+ of \d+ · id ([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/gim;
 // Exit codes that mean a person or the system stopped the command: interrupt, timeout, kill, terminate.
 const STOPPED = new Set([124, 130, 137, 143]);
+/**
+ * Commands whose non-zero exit is an answer, not a failure: differences found, checks still running, a service that is
+ * not active. Only those codes are let through; any other exit of the same command is still a failure.
+ */
+const ANSWERS = [
+  [/^kubectl\s+diff\b/, [1]],
+  [/^gh\s+pr\s+checks\b/, [8]],
+  [/^(?:terraform|tofu)\s+plan\b.*-detailed-exitcode/, [2]],
+  [/^systemctl\s+is-(?:active|enabled|failed)\b/, [1, 3, 4]],
+  [/^git\s+merge-base\b/, [1]],
+];
+/**
+ * Whether the exit code is the answer of the command that gave it: bash reports the last command, so only when the
+ * last one is such a command and everything before it only looked around (`cd x && kubectl diff -f y`). After a real
+ * command (`kubectl apply ... && kubectl diff ...`) the code may be that command's failure.
+ */
+export function answered(command, code) {
+  const steps = work(command);
+  const last = steps.at(-1);
+  if (!last || !Number.isFinite(code)) return false;
+  const text = last.join(" ");
+  const before = steps.slice(0, -1).every((words) => PROBES.test(words.join(" ")));
+  return before && ANSWERS.some(([re, codes]) => re.test(text) && codes.includes(code));
+}
+/** The programs whose "No such file or directory" is an answer while looking around, not a stage that could not run. */
+const LOOKING = /^(?:ls|cat|head|tail|stat|file|find|grep|egrep|fgrep|rg|wc|readlink|realpath|du|test|which|type|diff|cmp)\b/;
 
 // A line that is an error and not merely a line that mentions one: anchored at the start, in the shapes real tools
 // print. Case matters (an uppercase ERROR: or a class name ending in Error), which keeps ordinary prose out.
@@ -283,6 +310,10 @@ export function decide(input, { now = Date.now(), state = {}, env = process.env,
     const next = state.found || state.brief || helped ? { ...state, found: null, brief, ...(helped ? { problem: null } : {}) } : state;
     return { note: null, state: next, effort };
   }
+  // The agent shared what it learned: the failures so far need no further asking when it stops.
+  if (PUBLISH_TOOL.test(String(tool))) {
+    return quiet({ ...state, harvestedAt: Math.max(Number(state.harvestedAt ?? 0), Number(state.failures ?? 0)), publishedTs: now });
+  }
   if (!SHELLS.has(tool)) return quiet(state);
 
   const command = String(input.tool_input?.command ?? "");
@@ -301,7 +332,7 @@ export function decide(input, { now = Date.now(), state = {}, env = process.env,
 
   // 1. A command failed.
   if (failed) {
-    if (input.is_interrupt === true || STOPPED.has(code) || isProbe(command)) return quiet(state);
+    if (input.is_interrupt === true || STOPPED.has(code) || isProbe(command) || answered(command, code)) return quiet(state);
     const output = errorText.replace(/^Exit code \d+\r?\n?/, "");
     // A company's own tools print errors in no known shape (`migrate: lock 'migrate' is held by ci-runner-17`), and those
     // are what a private colony is for: for a command that failed, its last line is the best guess.
@@ -361,7 +392,10 @@ export function decide(input, { now = Date.now(), state = {}, env = process.env,
     // 2b. A pipeline: bash reports its last stage, so an earlier one may have failed out of sight.
     if (!String(command).includes("|")) return quiet(state);
     const shellFailure = SHELL_FAILURE.exec(tail)?.[0]?.trim() ?? "";
-    if (shellFailure) {
+    // `ls missing.txt: No such file or directory` while looking around is an answer, not a stage that could not run.
+    // A missing command is always worth saying; a missing file only when the program was not just looking.
+    const lookedAround = !/not found\s*$/.test(shellFailure) && LOOKING.test(shellFailure);
+    if (shellFailure && !lookedAround) {
       const failed = lastLine(shellFailure) || shellFailure.slice(0, 240);
       const sig = signature(failed);
       if (spent || tooSoon || seen.includes(sig)) return quiet(state);
@@ -408,7 +442,7 @@ export function decideStop(input, { now = Date.now(), state = {}, env = process.
   const minMs = Number(env.MYRMO_HARVEST_MINUTES ?? 30) * 60_000;
   if ((state.harvests ?? 0) >= 3 || (state.harvestedTs && now - state.harvestedTs < minMs)) return none;
   const reportShown = shown
-    ? `Myrmo showed you knowledge for this task (${shown.ids.join(", ")}): call myrmo_report once for each entry you relied on (worked, partially_worked, failed if it was wrong or out of date, saying what changed) and not_applicable for the others. `
+    ? `Myrmo showed you knowledge for this task (${shown.ids.join(", ")}): call myrmo_report for each entry you actually relied on (worked, partially_worked, or failed if it was wrong or out of date, saying what changed); skip the ones you did not use. `
     : "For a trail Myrmo gave you, call myrmo_report if you have not. ";
   const reason =
     "Myrmo (your organisation's private colony): before you finish, share what the next person's agent would need, because what you " +
