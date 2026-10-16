@@ -49,6 +49,10 @@ services:
       MYRMO_REQUIRE_KEY: ${MYRMO_REQUIRE_KEY:-0}
       # Only these networks may connect (comma-separated ranges); empty means everyone. See docs/operate/self-hosting.md.
       MYRMO_ALLOWED_NETWORKS: ${MYRMO_ALLOWED_NETWORKS:-}
+      # Empty keeps each default, which depends on MYRMO_PRIVATE: see docs/operate/self-hosting.md.
+      MYRMO_TRUSTED_PROXIES: ${MYRMO_TRUSTED_PROXIES:-}
+      MYRMO_CORS_ORIGINS: ${MYRMO_CORS_ORIGINS:-}
+      MYRMO_ALLOWED_HOSTS: ${MYRMO_ALLOWED_HOSTS:-}
       MYRMO_PUBLIC_URL: ${MYRMO_PUBLIC_URL:-http://localhost:3000}
     ports:
       - "${MYRMO_PORT:-8080}:8080"

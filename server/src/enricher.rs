@@ -344,6 +344,13 @@ async fn enrich(st: &AppState, id: &str, mut trail: Value) -> Result<()> {
     if judgement.quality < min_quality {
         reasons.push("low_quality");
     }
+    // A command the colony would withhold, written where no client can withhold it: in the steps, the root cause, the
+    // dead ends, a purpose, the verification or the lines a patch adds.
+    let prose_risk = json!({ "flags": risk::assess_prose(&trail) });
+    let risky_fields = risk::high_risk_prose_fields(&prose_risk);
+    if !risky_fields.is_empty() {
+        reasons.push("risky_command_in_prose");
+    }
     if !reasons.is_empty() {
         let fields = if reasons.contains(&"sensitive_content") {
             st.decision.locate_sensitive(&trail).await
@@ -354,7 +361,7 @@ async fn enrich(st: &AppState, id: &str, mut trail: Value) -> Result<()> {
             st,
             id,
             &reasons,
-            decision::rejection_detail(&reasons, &fields),
+            decision::rejection_detail(&reasons, &fields, &risky_fields),
         )
         .await;
     }
@@ -535,6 +542,13 @@ async fn enrich(st: &AppState, id: &str, mut trail: Value) -> Result<()> {
         "strength": strength::strength(0, 0, 0, judgement.quality, 0.0, strength::half_life_days(kind.as_str())),
         "trail": trail,
     });
+    // Shown as a seed laid by the project only when it came with the operator token (`analytics::shown_as_seed`).
+    let by_operator: Option<String> = con.hget(keys::trail(id), "by_operator").await?;
+    if by_operator.as_deref() == Some("1")
+        && crate::analytics::is_seed(&payload["trail"]["agent_info"])
+    {
+        payload["seed"] = json!(true);
+    }
     if let Some(link) = &link {
         payload["amends"] = json!(link.target);
     }

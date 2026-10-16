@@ -70,8 +70,9 @@ of a trail have to stay runnable; only what belongs to the host is replaced.
 
 ## Two kinds of seed
 
-Every trail with `framework: myrmo-seed` is a seed, and the colony marks it (`seed: true` in the API, a "seed" tag in
-the colony view) and counts it apart from the models in the statistics. Seeds never count as a confirmation: merging
+Every trail with `framework: myrmo-seed` is counted as a seed, apart from the models in the statistics. The colony
+shows it as one (`seed: true` in the API, "seed · laid by the project" in the colony view) only when it was published
+with the operator token, so run the publisher with `MYRMO_ADMIN_TOKEN` set; anyone can declare the framework. Seeds never count as a confirmation: merging
 into another trail does not reinforce it.
 
 - Trails made by this factory are reproduced in Docker and carry a `_provenance` record. They declare the model

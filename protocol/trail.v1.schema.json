@@ -171,10 +171,11 @@
       "additionalProperties": false,
       "properties": {
         "error_type": {
-          "description": "Canonical error class or code (e.g. 'ModuleNotFoundError', 'ERR_OSSL_EVP_UNSUPPORTED', 'E0502', 'HTTP 429').",
+          "description": "Canonical error class or code (e.g. 'ModuleNotFoundError', 'ERR_OSSL_EVP_UNSUPPORTED', 'E0502', 'HTTP 429'). One line without angle brackets: clients print it inside the envelope that marks a trail as untrusted data.",
           "type": "string",
           "minLength": 1,
-          "maxLength": 128
+          "maxLength": 128,
+          "pattern": "^[^\\u0000-\\u001f\\u007f-\\u009f\\u2028\\u2029<>]+$"
         },
         "error_message": {
           "description": "The single most informative error line, verbatim. Used to compute the error fingerprint.",

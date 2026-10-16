@@ -137,6 +137,14 @@ async fn queue_trail(
         .arg("EX")
         .arg(86_400)
         .ignore();
+    // Published with the operator token: what lets a trail that declares the seed framework be shown as one.
+    if caller.operator {
+        pipe.cmd("HSET")
+            .arg(keys::trail(&id))
+            .arg("by_operator")
+            .arg(1)
+            .ignore();
+    }
     // A declared agent id is pseudonymous by design and stays with the trail. An address hash
     // is kept for a day only: enough to stop the publisher confirming their own trail.
     if caller.declared {
@@ -468,6 +476,8 @@ pub(super) async fn publish_draft(
         declared: draft.get("declared").is_some_and(|d| d == "1"),
         client: draft.get("client").cloned().unwrap_or_default(),
         key_hash: draft.get("key_hash").filter(|h| !h.is_empty()).cloned(),
+        // A draft is approved by whoever holds its link, never with the operator's token.
+        operator: false,
     };
     let result = async {
         // The creator's quota applies, not the approver's: the person approving is not the agent.

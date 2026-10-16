@@ -104,6 +104,12 @@ try:
         row = next((line for line in report.splitlines() if line.startswith("(team)")), "")
         check(row.split()[1:2] != ["0"], f"and counts the team's searches ({row.strip()})")
 
+    print("withdrawing")
+    status, _ = call("DELETE", f"/v1/trails/{tid}", key=key_b)
+    check(status == 403, f"luis cannot withdraw ana's trail with his key ({status})")
+    status, body = call("DELETE", f"/v1/trails/{tid}", key=key_a)
+    check(status == 200 and body["status"] == "removed", f"ana withdraws her own trail with her key, which is no operator token ({status})")
+
     print("revoking")
     keys("revoke", luis)
     check(call("POST", "/v1/search", {"query": "x failed here"}, key=key_b)[0] == 401, "a revoked key stops working at once")

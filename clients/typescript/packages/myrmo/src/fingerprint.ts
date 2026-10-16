@@ -9,6 +9,8 @@ import { createHash } from "node:crypto";
 export const PREFIX = "fp1_";
 export const PREFIX_2 = "fp2_";
 const MAX_NORMALIZED_CHARS = 300;
+/** Characters of a message fp2 reads: as many as problem.error_message may hold (protocol/fingerprint_v2.py). */
+const MAX_MESSAGE_CHARS = 1000;
 const SEPARATOR = "\u001f";
 
 const rule = (pattern: string, replacement: string): [RegExp, string] => [new RegExp(pattern, "g"), replacement];
@@ -64,7 +66,8 @@ export function stripLabels(message: string): string {
 
 /** fp2: strip everything that varies between machines or between wrappers, but not between errors. */
 export function normalizeMessage2(message: string): string {
-  let text = stripLabels(message.normalize("NFKC").trim()).toLowerCase();
+  const head = Array.from(message).slice(0, MAX_MESSAGE_CHARS).join("");
+  let text = stripLabels(head.normalize("NFKC").trim()).toLowerCase();
   for (const [pattern, replacement] of RULES) text = text.replace(pattern, replacement);
   return Array.from(text.replace(/\s+/g, " ").trim()).slice(0, MAX_NORMALIZED_CHARS).join("");
 }

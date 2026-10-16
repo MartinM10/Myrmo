@@ -28,8 +28,18 @@ pub struct Config {
     pub decision_fail_open: bool,
     /// Peers whose `X-Forwarded-For` is believed: the reverse proxy and the hosted MCP server. A request from any other
     /// address is counted under that address, whatever header it sends, so a caller that reaches the gateway directly
-    /// cannot pick the address its quotas are counted against.
+    /// cannot pick the address its quotas are counted against. By default the private networks for the public colony,
+    /// which runs behind a proxy, and none for an organisation's, which is usually served straight to its network,
+    /// where any machine could otherwise write the header (see [`trusted_proxies_default`]).
     pub trusted_proxies: Vec<Cidr>,
+    /// Pages in a browser may call the API from any origin (`MYRMO_CORS_ORIGINS=*`, the public colony's default).
+    pub cors_any: bool,
+    /// Origins whose pages may call the API from a browser (`MYRMO_CORS_ORIGINS`, comma-separated). A private colony
+    /// lists none by default: a page an employee opens must not read the colony through their browser.
+    pub cors_origins: Vec<String>,
+    /// Host names the gateway answers to (`MYRMO_ALLOWED_HOSTS`, comma-separated, with or without a port); empty answers
+    /// any. Against DNS rebinding, for a colony that is only protected by the network it serves.
+    pub allowed_hosts: Vec<String>,
     /// Networks allowed to connect at all (`MYRMO_ALLOWED_NETWORKS`); empty means everyone. See `net::allows`.
     pub allowed_networks: Vec<Cidr>,
     /// Requests per minute per hashed client. 0 disables rate limiting.
@@ -112,6 +122,39 @@ impl PeopleDetail {
 /// The largest share of lookups a colony may hold out: beyond it, the people it serves lose too much help.
 pub const HOLDOUT_MAX: u64 = 20;
 
+/// Who may write `X-Forwarded-For` when `MYRMO_TRUSTED_PROXIES` is unset.
+pub fn trusted_proxies_default(private: bool) -> &'static str {
+    if private {
+        ""
+    } else {
+        crate::net::PRIVATE_NETWORKS
+    }
+}
+
+/// `MYRMO_CORS_ORIGINS` as (any origin, the origins listed). Unset: any for the public colony, none for a private one.
+pub fn cors_origins(value: Option<&str>, private: bool) -> (bool, Vec<String>) {
+    let Some(value) = value else {
+        return (!private, Vec::new());
+    };
+    let listed: Vec<String> = value
+        .split(',')
+        .map(|o| o.trim().trim_end_matches('/').to_ascii_lowercase())
+        .filter(|o| !o.is_empty())
+        .collect();
+    let any = listed.iter().any(|o| o == "*");
+    (any, listed.into_iter().filter(|o| o != "*").collect())
+}
+
+/// `MYRMO_ALLOWED_HOSTS`: lowercase host names, each with or without its port.
+pub fn allowed_hosts(value: Option<&str>) -> Vec<String> {
+    value
+        .unwrap_or_default()
+        .split(',')
+        .map(|h| h.trim().to_ascii_lowercase())
+        .filter(|h| !h.is_empty())
+        .collect()
+}
+
 fn var(key: &str) -> Option<String> {
     env::var(key)
         .ok()
@@ -125,6 +168,7 @@ impl Config {
         let require_key = get("MYRMO_REQUIRE_KEY", "0") == "1";
         let private = var("MYRMO_PRIVATE").map_or(require_key, |v| v == "1");
         let collection = get("MYRMO_COLLECTION", "trails");
+        let (cors_any, cors_origins) = cors_origins(var("MYRMO_CORS_ORIGINS").as_deref(), private);
         Self {
             bind: get("MYRMO_BIND", "0.0.0.0:8080"),
             redis_url: get("REDIS_URL", "redis://127.0.0.1:6379"),
@@ -159,8 +203,11 @@ impl Config {
             decision_fail_open: var("MYRMO_DECISION_FAIL_OPEN").is_some_and(|v| v == "1"),
             trusted_proxies: Cidr::parse_list(&get(
                 "MYRMO_TRUSTED_PROXIES",
-                crate::net::PRIVATE_NETWORKS,
+                trusted_proxies_default(private),
             )),
+            cors_any,
+            cors_origins,
+            allowed_hosts: allowed_hosts(var("MYRMO_ALLOWED_HOSTS").as_deref()),
             allowed_networks: Cidr::parse_list(&get("MYRMO_ALLOWED_NETWORKS", "")),
             rate_limit_per_minute: get("MYRMO_RATE_LIMIT", "120").parse().unwrap_or(120),
             publish_limit_per_hour: get("MYRMO_PUBLISH_LIMIT", "30").parse().unwrap_or(30),
@@ -216,6 +263,48 @@ mod tests {
         assert_eq!(
             PeopleDetail::parse(Some("everyone")),
             PeopleDetail::Aggregate
+        );
+    }
+
+    #[test]
+    fn a_private_colony_believes_no_forwarded_address_unless_told_whose() {
+        assert!(trusted_proxies_default(true).is_empty());
+        let public = Cidr::parse_list(trusted_proxies_default(false));
+        assert!(
+            public
+                .iter()
+                .any(|c| c.contains("172.18.0.5".parse().unwrap()))
+        );
+    }
+
+    #[test]
+    fn browsers_reach_a_private_colony_only_from_the_origins_listed() {
+        assert_eq!(cors_origins(None, false), (true, vec![]));
+        assert_eq!(cors_origins(None, true), (false, vec![]));
+        assert_eq!(
+            cors_origins(
+                Some("https://Wiki.Example.com/, http://localhost:3000"),
+                true
+            ),
+            (
+                false,
+                vec![
+                    "https://wiki.example.com".to_string(),
+                    "http://localhost:3000".to_string()
+                ]
+            )
+        );
+        assert_eq!(cors_origins(Some("*"), true), (true, vec![]));
+    }
+
+    #[test]
+    fn allowed_hosts_are_read_as_lowercase_names() {
+        assert!(allowed_hosts(None).is_empty());
+        assert_eq!(
+            allowed_hosts(Some(
+                " Colony.Example.internal , colony.example.internal:8080"
+            )),
+            ["colony.example.internal", "colony.example.internal:8080"]
         );
     }
 }

@@ -42,7 +42,13 @@ def request(base: str, method: str, path: str, body=None):
     if path != "/v1/trails" and not path.startswith("/v1/trails/"):
         raise RuntimeError("publisher permits only trail publish and verdict endpoints")
     data = json.dumps(body).encode() if body is not None else None
-    req = urllib.request.Request(base.rstrip("/") + path, data=data, method=method, headers={"content-type": "application/json", "accept": "application/json", "x-myrmo-agent": AGENT, "user-agent": UA})
+    headers = {"content-type": "application/json", "accept": "application/json", "x-myrmo-agent": AGENT, "user-agent": UA}
+    # The colony shows a trail as a seed only when it comes with the operator token. Read from the environment, sent
+    # only in this header, never written anywhere.
+    token = os.environ.get("MYRMO_ADMIN_TOKEN", "")
+    if token and method == "POST":
+        headers["authorization"] = f"Bearer {token}"
+    req = urllib.request.Request(base.rstrip("/") + path, data=data, method=method, headers=headers)
     with urllib.request.urlopen(req, timeout=30) as response:
         return response.status, json.loads(response.read() or b"{}")
 

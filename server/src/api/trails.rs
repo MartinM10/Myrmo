@@ -64,8 +64,19 @@ fn author_may_remove(declared: bool, caller_agent: &str, author: Option<&str>) -
     declared && author == Some(caller_agent)
 }
 
+/// Who is asking to remove a trail: the operator, by their token; or someone who may be its author, by the access key
+/// the colony knows them by or the `X-Myrmo-Agent` they declared. A bearer that is neither the operator token nor a
+/// valid access key is refused rather than tried as an author.
+fn remover(presents_bearer: bool, operator: bool, keyed: bool) -> Result<bool, ()> {
+    match (operator, presents_bearer && !keyed) {
+        (true, _) => Ok(true),
+        (false, true) => Err(()),
+        (false, false) => Ok(false),
+    }
+}
+
 /// Take a trail out of the colony: search, fingerprint lookups, the feed and its outcome data.
-/// An operator (bearer token) may remove any trail; the author may remove their own, by sending the
+/// An operator (bearer token) may remove any trail; the author may remove their own, by sending the access key or the
 /// `X-Myrmo-Agent` they published with. A tombstone stays for 90 days so that a trail still queued is not
 /// indexed afterwards and the id answers `removed` instead of `not found`. Removing twice is fine.
 pub(super) async fn remove_trail(
@@ -75,11 +86,18 @@ pub(super) async fn remove_trail(
     Path(id): Path<String>,
     body: Result<Bytes, BytesRejection>,
 ) -> ApiResult<Json<Value>> {
-    // A bearer token means an operator, and a wrong one is refused rather than tried as an author.
-    let by_operator = headers.contains_key(header::AUTHORIZATION);
-    if by_operator {
-        authorize_operator(&st, &headers)?;
-    }
+    let by_operator = match remover(
+        headers.contains_key(header::AUTHORIZATION),
+        caller.operator,
+        caller.key_hash.is_some(),
+    ) {
+        Ok(by_operator) => by_operator,
+        // Answers why it is refused (no operator endpoints here, or a wrong token).
+        Err(()) => {
+            authorize_operator(&st, &headers)?;
+            true
+        }
+    };
     if !valid_uuid(&id) {
         return Err(ApiError::not_found("No trail with that id."));
     }
@@ -105,7 +123,7 @@ pub(super) async fn remove_trail(
             return Err(ApiError::new(
                 StatusCode::FORBIDDEN,
                 "forbidden",
-                "Only the author of the trail, with the X-Myrmo-Agent id it was published with, or an operator can remove it.",
+                "Only the author of the trail, with the access key or X-Myrmo-Agent id it was published with, or an operator can remove it.",
             ));
         }
     }
@@ -250,5 +268,17 @@ mod tests {
             "0123456789abcdef",
             Some("0123456789abcdef")
         ));
+    }
+
+    #[test]
+    fn an_access_key_is_its_holder_asking_and_not_a_wrong_operator_token() {
+        // The operator token: any trail.
+        assert_eq!(remover(true, true, false), Ok(true));
+        // A member's key on a colony with keys: tried as the author (the id the key stands for).
+        assert_eq!(remover(true, false, true), Ok(false));
+        // No bearer: tried as the author by the declared id.
+        assert_eq!(remover(false, false, false), Ok(false));
+        // A bearer that is neither: refused, and counted as a wrong guess.
+        assert_eq!(remover(true, false, false), Err(()));
     }
 }

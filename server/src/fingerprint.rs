@@ -16,6 +16,11 @@ pub const PREFIX_V1: &str = "fp1_";
 /// Prefix of [`solution_fingerprint`]. Server-side only: it is not part of the wire protocol.
 pub const SOLUTION_PREFIX: &str = "sf1_";
 const MAX_NORMALIZED_CHARS: usize = 300;
+/// Characters of a message read at most, as in `protocol/fingerprint_v2.py`: as many as `problem.error_message` may
+/// hold, so a message of any length the protocol allows keeps its fingerprint. A longer line (the first line of
+/// `raw_logs` stands in for a missing message) is cut there: the volatile-token rules backtrack, and on some lines of
+/// thousands of characters (a run of dots) they cost time that grows with the square of the length.
+const MAX_MESSAGE_CHARS: usize = 1000;
 const SEPARATOR: &str = "\u{1f}";
 
 /// Applied in order, exactly as in the reference implementation.
@@ -110,22 +115,30 @@ fn strip_labels(message: &str) -> String {
     text
 }
 
+/// The part of a message the fingerprint reads: its first [`MAX_MESSAGE_CHARS`] characters.
+fn head(message: &str) -> &str {
+    message
+        .char_indices()
+        .nth(MAX_MESSAGE_CHARS)
+        .map_or(message, |(at, _)| &message[..at])
+}
+
 /// A message as the fingerprint reads it, without dropping its labels: lowercase, with the paths, addresses, ids and
 /// long numbers that vary between machines replaced by placeholders. Used to compare what two messages are about.
 pub fn volatile_free(message: &str) -> String {
-    let nfkc: String = message.nfkc().collect();
+    let nfkc: String = head(message).nfkc().collect();
     apply_rules(nfkc.trim().to_lowercase())
 }
 
 /// The same, after dropping the leading exception classes, severity words and tool codes.
 pub fn label_free(message: &str) -> String {
-    let nfkc: String = message.nfkc().collect();
+    let nfkc: String = head(message).nfkc().collect();
     apply_rules(strip_labels(nfkc.trim()).to_lowercase())
 }
 
 /// fp2: strip what varies between machines or between wrappers, but not between errors.
 pub fn normalize_message_v2(message: &str) -> String {
-    let nfkc: String = message.nfkc().collect();
+    let nfkc: String = head(message).nfkc().collect();
     apply_rules(strip_labels(nfkc.trim()).to_lowercase())
 }
 
@@ -371,6 +384,34 @@ mod tests {
         assert_eq!(
             message_for_problem(&problem),
             "ModuleNotFoundError: No module named 'distutils'"
+        );
+    }
+
+    #[test]
+    fn a_line_of_thousands_of_characters_costs_what_its_first_thousand_cost() {
+        // Measured before the cut, in a release build: 16,000 dots took 0.25 s (the path rules backtrack over every
+        // start), 1,000 took about 1 ms. Such a line reaches the fingerprint as the first line of `raw_logs`, also on
+        // /v1/validate.
+        for line in [".".repeat(16_000), "a.".repeat(8_000), "-".repeat(16_000)] {
+            let started = std::time::Instant::now();
+            let long = fingerprint2(&line);
+            assert!(
+                started.elapsed() < std::time::Duration::from_millis(500),
+                "{:?}",
+                started.elapsed()
+            );
+            let first: String = line.chars().take(MAX_MESSAGE_CHARS).collect();
+            assert_eq!(long, fingerprint2(&first));
+        }
+        // A message the protocol allows (up to 1,000 characters) is read whole.
+        let full = format!(
+            "failed to fetch https://example.com/{} after 3 retries",
+            "a".repeat(900)
+        );
+        assert!(full.chars().count() <= MAX_MESSAGE_CHARS);
+        assert_ne!(
+            fingerprint2(&full),
+            fingerprint2(&full.replace("3 retries", "5 retries"))
         );
     }
 }

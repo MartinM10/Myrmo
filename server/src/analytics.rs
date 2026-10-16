@@ -50,10 +50,27 @@ pub const SEED_FRAMEWORK: &str = "myrmo-seed";
 /// Labels under which seed trails are counted. `seed-factory` is what trails laid before seeds had their own label.
 pub const SEED_LABELS: [&str; 2] = ["seed", "seed-factory"];
 
+/// Whether a trail declares the seed framework. Anyone can declare it: it decides how the trail is counted, never
+/// whether the colony vouches for it (see [`shown_as_seed`]).
 pub fn is_seed(agent_info: &Value) -> bool {
     agent_info["framework"]
         .as_str()
         .is_some_and(|f| f.eq_ignore_ascii_case(SEED_FRAMEWORK))
+}
+
+/// Until this moment (2026-10-17T00:00:00Z) the colony believed the declaration, and every trail that made it was laid
+/// by the project; since then a seed is published with the operator token.
+pub const SEEDS_BY_DECLARATION_UNTIL: i64 = 1_792_195_200;
+
+/// Whether the colony shows a stored trail as a seed laid by the project: it declared the seed framework and was
+/// published with the operator token (`seed` in its stored payload, set when it was indexed), or was laid before that
+/// was required.
+pub fn shown_as_seed(payload: &Value) -> bool {
+    payload["seed"].as_bool() == Some(true)
+        || (is_seed(&payload["trail"]["agent_info"])
+            && payload["created_ts"]
+                .as_i64()
+                .is_some_and(|ts| ts < SEEDS_BY_DECLARATION_UNTIL))
 }
 
 /// The model and framework labels a laid trail is counted under.
@@ -454,10 +471,11 @@ pub fn public_leaderboard(rows: &[Value], limit: usize) -> Vec<Value> {
 }
 
 /// Why a trail was rejected after it was queued: the judgement's verdicts, and the two failures that leave it unjudged. Counted per day, never with any text.
-pub const REJECTION_REASONS: [&str; 5] = [
+pub const REJECTION_REASONS: [&str; 6] = [
     "prompt_injection",
     "sensitive_content",
     "low_quality",
+    "risky_command_in_prose",
     "enrichment_failed",
     "invalid_trail",
 ];
@@ -687,6 +705,24 @@ mod tests {
         let field = json!({"model": "claude-opus-5-5", "framework": "claude-code"});
         assert!(!is_seed(&field));
         assert_eq!(laid_labels(&field).0.as_deref(), Some("claude-opus-5-5"));
+    }
+
+    #[test]
+    fn only_the_project_lays_a_trail_shown_as_a_seed() {
+        let declared = json!({"model": "seed-factory", "framework": "myrmo-seed"});
+        let after = SEEDS_BY_DECLARATION_UNTIL + 60;
+        // Declaring the framework is not enough any more...
+        let spoofed = json!({ "created_ts": after, "trail": { "agent_info": declared } });
+        assert!(!shown_as_seed(&spoofed));
+        // ...it takes the operator token, which marks the payload when the trail is indexed.
+        let marked =
+            json!({ "created_ts": after, "seed": true, "trail": { "agent_info": declared } });
+        assert!(shown_as_seed(&marked));
+        // The seeds laid before stay seeds.
+        let laid_before = json!({ "created_ts": SEEDS_BY_DECLARATION_UNTIL - 86_400, "trail": { "agent_info": declared } });
+        assert!(shown_as_seed(&laid_before));
+        let field = json!({ "created_ts": 1, "trail": { "agent_info": {"model": "gpt-5", "framework": "codex"} } });
+        assert!(!shown_as_seed(&field));
     }
 
     #[test]
