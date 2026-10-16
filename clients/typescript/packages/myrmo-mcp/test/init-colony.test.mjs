@@ -8,7 +8,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { AGENTS_BLOCK_PRIVATE, mergeHooks, parseInitArgs, runInit } from "../dist/init.js";
+import { AGENTS_BLOCK_PRIVATE, HOOK_SCRIPTS, keyWarnings, mergeHooks, parseInitArgs, runInit } from "../dist/init.js";
 
 const KEY = `myk_${"c".repeat(64)}`;
 const HOOKS = fileURLToPath(new URL("../dist/hooks", import.meta.url));
@@ -49,7 +49,7 @@ test("init saves the colony, writes the private rules and installs the Antigravi
   assert.deepEqual(config.colony, { url: "https://myrmo.example.internal", api_key: KEY, private: true, publish: "auto" });
   assert.equal(config.publish, undefined, "the public colony's choice is untouched");
   assert.ok(readFileSync(join(m.home, ".gemini", "GEMINI.md"), "utf8").includes(AGENTS_BLOCK_PRIVATE.split("\n")[1]));
-  for (const f of ["antigravity-hook.mjs", "on-failure.mjs", "lookup.mjs", "effort.mjs"]) assert.ok(existsSync(join(m.home, ".myrmo", "hooks", f)), f);
+  for (const f of HOOK_SCRIPTS) assert.ok(existsSync(join(m.home, ".myrmo", "hooks", f)), f);
   const hooks = JSON.parse(readFileSync(join(m.home, ".gemini", "config", "hooks.json"), "utf8"));
   assert.match(hooks.myrmo.PreInvocation[0].command, /^node ".*antigravity-hook\.mjs"$/);
   assert.ok(!m.out.join("\n").includes(KEY), "the key is never printed");
@@ -76,4 +76,38 @@ test("the hook entry keeps the user's other hooks, and a damaged hooks.json is l
   runInit({ clients: ["antigravity"], dryRun: false, home: m.home, log: m.log, url: "https://myrmo.example.internal", private: true, hooksSource: HOOKS });
   assert.equal(readFileSync(join(m.home, ".gemini", "config", "hooks.json"), "utf8"), "{ broken");
   assert.match(m.out.join("\n"), /not valid JSON, left untouched/);
+});
+
+test("a key can come from standard input, and a key on the command line or over plain http gets a warning", () => {
+  const piped = parseInitArgs(["--url", "https://myrmo.example.internal", "--key", "-"], () => `Your key: ${KEY}\n`);
+  assert.equal(piped.key, KEY);
+  assert.equal(piped.keySource, "stdin");
+  assert.deepEqual(keyWarnings(piped), []);
+  assert.match(parseInitArgs(["--url", "https://myrmo.example.internal", "--key", "-"], () => ""), /found no key/);
+
+  const typed = parseInitArgs(["--url", "https://myrmo.example.internal", "--key", KEY]);
+  assert.equal(typed.keySource, "argument");
+  assert.match(keyWarnings(typed).join("\n"), /shell.s history.*--key-file <file> or --key -/);
+
+  const plain = (url) => keyWarnings({ url, key: KEY, keySource: "file" }).join("\n");
+  assert.match(plain("http://colony.example.com"), /plain http .* unencrypted/);
+  for (const url of ["http://localhost:8080", "http://127.0.0.1:8080", "http://10.40.2.17", "http://192.168.1.20", "http://[::1]:8080", "https://colony.example.com"]) {
+    assert.equal(plain(url), "", url);
+  }
+
+  const m = machine();
+  runInit({ clients: ["antigravity"], dryRun: true, home: m.home, log: m.log, url: "http://colony.example.com", key: KEY, keySource: "argument", hooksSource: HOOKS });
+  assert.match(m.out.join("\n"), /shell.s history/);
+  assert.match(m.out.join("\n"), /unencrypted/);
+  assert.ok(!m.out.join("\n").includes(KEY), "the key is never printed");
+});
+
+test("every hook script the hooks are made of ships in the package", () => {
+  for (const name of HOOK_SCRIPTS) {
+    assert.ok(existsSync(join(HOOKS, name)), name);
+    // Every script one of them imports is copied with them, or the installed hook fails to start.
+    for (const [, imported] of readFileSync(join(HOOKS, name), "utf8").matchAll(/from "\.\/([\w.-]+\.mjs)"/g)) {
+      assert.ok(HOOK_SCRIPTS.includes(imported), `${name} imports ${imported}`);
+    }
+  }
 });

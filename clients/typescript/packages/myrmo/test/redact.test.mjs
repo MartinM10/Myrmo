@@ -69,3 +69,11 @@ test("possibleNames lists runs of capitalised words that were not redacted, and 
   assert.deepEqual(possibleNames({ a: "Install Python and run it", b: "no names here" }), []);
   assert.deepEqual(possibleNames({ a: "x" }), []);
 });
+
+test("the Claude Code plugin's hooks redact with this very code (scripts/sync-plugin-redact.mjs)", async () => {
+  const { pluginCopy } = await import("../../../scripts/sync-plugin-redact.mjs");
+  const lf = (s) => s.replace(/\r\n/g, "\n");
+  const built = readFileSync(new URL("../dist/redact.js", import.meta.url), "utf8");
+  const copy = readFileSync(new URL("../../../../../plugins/myrmo/scripts/redact.mjs", import.meta.url), "utf8");
+  assert.equal(lf(copy), lf(pluginCopy(built)), "out of date: run npm run build && node scripts/sync-plugin-redact.mjs in clients/typescript");
+});

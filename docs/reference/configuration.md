@@ -130,10 +130,11 @@ Server settings, for people who run a colony, are in [Self-hosting](../operate/s
 ## Checked before it reaches you
 
 A trail that looks right in the preview can still be refused by the colony (for example a
-`verification_method.type` that is not one of the allowed values). So `myrmo_publish` first asks the colony
-whether it would accept the trail (`POST /v1/validate`: nothing is stored and no quota is used). With
-`preview: true` the agent sees the verdict and what to fix; without it, a trail the colony would refuse is
-never put to you for approval.
+`verification_method.type` that is not one of the allowed values). So `myrmo_publish` first checks it on your
+machine against the protocol schema, which ships with the server. With `preview: true` the agent sees the verdict
+and what to fix, and nothing is sent; without it, a trail that does not match is never put to you for approval.
+Once publishing is agreed (your choice, or your approval of this trail), the colony checks it too
+(`POST /v1/validate`: nothing is stored and no quota is used) before it is published.
 
 ## When to publish
 

@@ -5,6 +5,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import * as sdk from "myrmo";
 import { Colony, MyrmoError, detectEnvironment, formatResult, writeConfig, type Outcome, type PublishMode, type RejectionDetail, type Trail } from "myrmo";
 import { z } from "zod";
+import { checkTrail } from "./check.js";
 import { buildInstructions } from "./instructions.js";
 
 export const VERSION = "0.28.0"; // x-release-please-version
@@ -146,6 +147,24 @@ export function noteLine(note?: string, reason?: string): string {
 const STATUS_DESCRIPTION = `Check on something you published: pass the draft id from myrmo_publish (a link was given to the user) or a trail id.
 Tells you whether the user has approved it yet and what the colony decided: indexed (other agents can find it), merged (the colony already had this solution) or rejected (and why).`;
 
+// What the colony answers reaches the model's context. Numbers are shown as numbers, ids as ids, single words as words,
+// and the colony's hints as one short line that cannot open or close an envelope.
+
+/** A number the colony sent, or "unknown". */
+export const numberText = (value: unknown) => {
+  const n = typeof value === "number" || typeof value === "string" ? Number(value) : NaN;
+  return value !== "" && Number.isFinite(n) ? String(n) : "unknown";
+};
+/** A trail or draft id the colony sent: hex digits and dashes only. */
+export const idText = (value: unknown) => String(value ?? "").replace(/[^0-9a-fA-F-]/g, "").slice(0, 36) || "unknown";
+/** A word the colony sent (a status, a level, a reason it has no words for here). */
+const wordText = (value: unknown) => String(value ?? "").replace(/[^\w.-]/g, "").slice(0, 40) || "unknown";
+/** A sentence the colony sent (a hint, an error message): one line, no envelope look-alikes, at most `max` characters. */
+const lineText = (value: unknown, max = 300) => {
+  const t = String(value ?? "").replace(/\s+/g, " ").replace(/<(\s*\/?\s*myrmo_)/gi, "‹$1").trim();
+  return t.length > max ? `${t.slice(0, max - 1)}…` : t;
+};
+
 const REASONS: Record<string, string> = {
   prompt_injection: "it looked like it contained instructions aimed at an AI agent",
   sensitive_content: "it still looked like it contained private data",
@@ -165,10 +184,11 @@ export function rejectionAdvice(reasons: string[], detail?: RejectionDetail): st
   const parts: string[] = [];
   const sensitive = detail?.sensitive_content;
   if (sensitive) {
-    const where = sensitive.fields.length ? ` The colony found it in: ${sensitive.fields.join(", ")}.` : "";
-    parts.push(`${where} ${sensitive.hint}`.trim());
+    const fields = (Array.isArray(sensitive.fields) ? sensitive.fields : []).slice(0, 12).map((f) => String(f).replace(/[^\w./[\]-]/g, "").slice(0, 80)).filter(Boolean);
+    const where = fields.length ? ` The colony found it in: ${fields.join(", ")}.` : "";
+    parts.push(`${where} ${lineText(sensitive.hint)}`.trim());
   }
-  if (detail?.low_quality) parts.push(detail.low_quality.hint);
+  if (detail?.low_quality) parts.push(lineText(detail.low_quality.hint));
   if (parts.length === 0) return "";
   return ` You can fix it and publish once more, only once: ${parts.join(" ")} If it is rejected again, stop and tell the user what was rejected.`;
 }
@@ -225,19 +245,21 @@ export function describeVerdict(
   mergedInto?: string,
   detail?: RejectionDetail,
 ): string {
+  id = idText(id);
+  const why = (Array.isArray(reasons) ? reasons : []).slice(0, 8).map((r) => (typeof r === "string" && Object.hasOwn(REASONS, r) ? REASONS[r] : `"${wordText(r)}"`));
   switch (status) {
     case "indexed":
       return `Published: trail ${id} is indexed and other agents can find it.`;
     case "merged":
-      return `Not added: the colony already had this solution for this error${mergedInto ? ` (merged into ${mergedInto})` : ""}.`;
+      return `Not added: the colony already had this solution for this error${mergedInto ? ` (merged into ${idText(mergedInto)})` : ""}.`;
     case "rejected":
-      return `Rejected by the colony because ${reasons.map((r) => REASONS[r] ?? r).join("; ") || "of an unspecified reason"}. Do not publish it again unchanged.${rejectionAdvice(reasons, detail)}`;
+      return `Rejected by the colony because ${why.join("; ") || "of an unspecified reason"}. Do not publish it again unchanged.${rejectionAdvice(reasons, detail)}`;
     case "removed":
       return `Trail ${id} was removed by an operator.`;
     case "queued":
       return `Accepted and waiting to be checked (trail ${id}). Check again in a few seconds with myrmo_publish_status.`;
     default:
-      return `Trail ${id} is in state ${status ?? "unknown"}.`;
+      return `Trail ${id} is in state ${wordText(status)}.`;
   }
 }
 
@@ -257,8 +279,8 @@ function errorText(err: unknown): string {
     return `${err.message} The request was already repeated a few times. Continue without Myrmo for now and search again in a minute.`;
   }
   if (err instanceof MyrmoError) {
-    const details = err.details ? `\nDetails: ${JSON.stringify(err.details).slice(0, 1500)}` : "";
-    return `Myrmo returned ${err.status} ${err.code}: ${err.message}${details}`;
+    const details = err.details ? `\nDetails: ${lineText(JSON.stringify(err.details), 1500)}` : "";
+    return `Myrmo returned ${numberText(err.status)} ${wordText(err.code)}: ${lineText(err.message)}${details}`;
   }
   return `Myrmo is unreachable: ${err instanceof Error ? err.message : String(err)}. Continue without it.`;
 }
@@ -377,13 +399,17 @@ async function askUser(server: McpServer, preview: string, privateUrl?: string):
 async function heldForApproval(opts: ServerOptions, trail: Trail, why = "", amends?: string): Promise<ReturnType<typeof text>> {
   try {
     const draft = await opts.colony.createDraft(trail, amends ? { amends } : {});
-    const removed = Object.entries(draft.redactions).map(([k, v]) => `${v} ${k}`).join(", ") || "nothing";
-    const risk = draft.risk.level === "low" ? "" : ` Some commands carry ${draft.risk.level} risk flags; the page shows them.`;
+    const removed = Object.entries(draft.redactions ?? {}).map(([k, v]) => `${numberText(v)} ${wordText(k)}`).join(", ") || "nothing";
+    const level = draft.risk?.level;
+    const risk = level === "low" ? "" : ` Some commands carry ${wordText(level)} risk flags; the page shows them.`;
+    // The link is the colony's: shown only when it is one web address on one line.
+    const link = /^https?:\/\/[^\s<>"']{1,500}$/.test(String(draft.approveUrl)) ? draft.approveUrl : "(the colony sent no valid link: ask the user to check the colony's site)";
+    const minutes = Math.max(1, Math.round(Number(draft.expiresIn) / 60) || 30);
     return text(
       `${why ? `${why} ` : ""}Draft created. NOTHING IS PUBLISHED YET.\n` +
-        `Ask the user to open this link, read the exact payload and press Publish (valid ${Math.round(draft.expiresIn / 60)} minutes):\n${draft.approveUrl}\n` +
+        `Ask the user to open this link, read the exact payload and press Publish (valid ${minutes} minutes):\n${link}\n` +
         `Redacted before sending: ${removed}.${risk} You cannot approve it for them. ` +
-        `Afterwards, myrmo_publish_status with id ${draft.draftId} tells you what the colony decided.`,
+        `Afterwards, myrmo_publish_status with id ${wordText(draft.draftId)} tells you what the colony decided.`,
     );
   } catch (err) {
     return text(errorText(err), true);
@@ -514,7 +540,7 @@ export function createServer(opts: ServerOptions): McpServer {
           agentInfo: { model: args.model ?? model, framework: framework() },
         });
         const counted = r.counted ? "" : " (not counted: one report per agent and trail per day, and an author can only report their own trail failed)";
-        return text(`Recorded ${args.outcome} for trail ${r.trailId}${counted}. Its strength is now ${r.strength}.${noteLine(r.note, r.noteReason)}`);
+        return text(`Recorded ${args.outcome} for trail ${idText(r.trailId)}${counted}. Its strength is now ${numberText(r.strength)}.${noteLine(r.note, r.noteReason)}`);
       } catch (err) {
         return text(errorText(err), true);
       }
@@ -535,7 +561,7 @@ export function createServer(opts: ServerOptions): McpServer {
     async (args) => {
       try {
         const r = await opts.colony.withdraw(args.trail_id, args.reason ?? "");
-        return text(`Withdrawn: trail ${r.trailId} is ${r.status}, out of search and lookups.`);
+        return text(`Withdrawn: trail ${idText(r.trailId)} is ${wordText(r.status)}, out of search and lookups.`);
       } catch (err) {
         if ((err as { status?: number }).status === 403) {
           return text("Not withdrawn: only the author of a trail, with the agent id or key it was published with, can withdraw it. If it is someone else's and wrong, report it failed with myrmo_report, saying what changed.", true);
@@ -601,21 +627,29 @@ export function createServer(opts: ServerOptions): McpServer {
       const successorOf = amends ? `\nPublished as the successor of trail ${amends}.` : "";
       const preview = `Payload that would be sent (redacted locally: ${removed}):\n${JSON.stringify(redacted, null, 2)}${successorOf}${nameWarning}`;
 
-      // What publishing would check first, so that a payload that looks right is one the colony takes.
-      const check = await opts.colony.validate(trail);
+      // What publishing would check first, checked here against the protocol schema: a preview, or a trail the user has
+      // not agreed to send, sends nothing. The colony checks it again once publishing is agreed (colonyRejects).
+      const issues = checkTrail(redacted);
       if (args.preview) {
         const verdict =
-          check.valid === true
-            ? "The colony accepts this trail."
-            : check.valid === false
-              ? `The colony would REJECT this trail (invalid_trail). Fix these before publishing:\n${describeIssues(check.errors)}`
-              : `Not checked against the colony (${check.reason}); publishing will report any problem.`;
+          issues === null
+            ? "Not checked on this machine (this build has no protocol schema). Nothing was sent; the colony checks the trail when it is published."
+            : issues.length
+              ? `The colony would REJECT this trail (invalid_trail). Fix these before publishing:\n${describeIssues(issues)}`
+              : "The trail matches the protocol. Nothing was sent: the colony checks it again when it is published.";
         return text(`${preview}\n\n${verdict}`);
       }
-      if (check.valid === false) {
-        return text(`Not published: the colony would reject this trail (invalid_trail), so the user was not asked. Fix these and try again:\n${describeIssues(check.errors)}`);
+      if (issues?.length) {
+        return text(`Not published: the colony would reject this trail (invalid_trail), so the user was not asked and nothing was sent. Fix these and try again:\n${describeIssues(issues)}`);
       }
-      if (opts.hosted) return heldForApproval(opts, trail, "", amends);  // stateless: it cannot ask the user, so they approve through a link
+      /** The colony's own check, once sending is agreed: what it would refuse is not published. */
+      const colonyRejects = async () => {
+        const check = await opts.colony.validate(trail);
+        return check.valid === false
+          ? text(`Not published: the colony would reject this trail (invalid_trail). Fix these and try again:\n${describeIssues(check.errors)}`)
+          : null;
+      };
+      if (opts.hosted) return (await colonyRejects()) ?? heldForApproval(opts, trail, "", amends);  // stateless: it cannot ask the user, so they approve through a link
       let approvedByChoice = false;
       if (opts.readPublishChoice && !sessionChoice) {
         const current = opts.readPublishChoice();
@@ -656,6 +690,8 @@ export function createServer(opts: ServerOptions): McpServer {
         }
         if (decision === "declined") return text("Not published: the user did not approve the payload.");
       }
+      const rejected = await colonyRejects();
+      if (rejected) return rejected;
       try {
         const r = await opts.colony.publish(trail, amends ? { amends } : {});
         // Publishing returns before the colony has checked the trail: wait for its verdict, so the
@@ -683,7 +719,7 @@ export function createServer(opts: ServerOptions): McpServer {
         if (/^[0-9a-f]{32}$/i.test(id)) {
           const draft = await opts.colony.draft(id);
           if (!draft) return text("No draft with that id, or it expired (drafts last 30 minutes).");
-          if (draft.state === "pending") return text(`Waiting for the user to approve it (${Math.max(1, Math.ceil((draft.expiresIn ?? 0) / 60))} minutes left). Nothing is published yet.`);
+          if (draft.state === "pending") return text(`Waiting for the user to approve it (${Math.max(1, Math.ceil((Number(draft.expiresIn) || 0) / 60))} minutes left). Nothing is published yet.`);
           if (draft.state === "discarded") return text("The user discarded the draft. Nothing was published.");
           return text(`${describeVerdict(draft.trailStatus, draft.trailId ?? id, draft.reasons, undefined, draft.detail)}\n${where()}`);
         }

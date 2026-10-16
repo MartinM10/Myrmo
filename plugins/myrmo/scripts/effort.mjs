@@ -11,7 +11,7 @@
 // turns it off for a session, `"effort": "off"` in the settings file for good.
 
 import { closeSync, fstatSync, openSync, readSync } from "node:fs";
-import { clientHeader, colonyOf } from "./lookup.mjs";
+import { clientHeader, colonyOf, redactFor } from "./lookup.mjs";
 
 /** Whether this machine sends effort records to its colony. */
 export function effortEnabled(env = process.env, settings = {}) {
@@ -87,8 +87,10 @@ export async function sendEffort(record, { env = process.env, settings = {}, fet
   const headers = { "content-type": "application/json", "user-agent": "myrmo-claude-code-hook/1", ...clientHeader() };
   if (env.MYRMO_AGENT_ID) headers["x-myrmo-agent"] = env.MYRMO_AGENT_ID;
   if (colony.apiKey) headers.authorization = `Bearer ${colony.apiKey}`;
+  // The error line is redacted on this machine, as the SDK does before it sends one.
+  const body = { ...record, error: redactFor(colony, record.error).slice(0, 2000) };
   try {
-    const res = await fetcher(`${colony.url}/v1/effort`, { method: "POST", headers, body: JSON.stringify(record), signal: AbortSignal.timeout(timeoutMs) });
+    const res = await fetcher(`${colony.url}/v1/effort`, { method: "POST", headers, body: JSON.stringify(body), signal: AbortSignal.timeout(timeoutMs) });
     return res.ok;
   } catch {
     return false;

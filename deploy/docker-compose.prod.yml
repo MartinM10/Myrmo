@@ -32,6 +32,9 @@ services:
 
   mcp:
     ports: !reset []
+    environment:
+      # Caddy passes the caller's Host through: https://myrmo.dev/mcp arrives as myrmo.dev.
+      MYRMO_MCP_ALLOWED_HOSTS: ${MYRMO_MCP_ALLOWED_HOSTS:-myrmo.dev}
     networks:
       default: {}
       edge:

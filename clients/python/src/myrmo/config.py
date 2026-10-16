@@ -114,11 +114,16 @@ def write_config(**patch: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     merged = {**read_config(), **patch}
     merged = {k: v for k, v in merged.items() if v is not None}
-    path.write_text(json.dumps(merged, indent=2) + "\n", encoding="utf-8")
+    data = (json.dumps(merged, indent=2) + "\n").encode("utf-8")
+    # The file can hold a colony's access key: created readable by its owner only, never briefly readable by others, and
+    # an existing file is brought down to that too.
+    fd = os.open(str(path), os.O_WRONLY | os.O_CREAT | os.O_TRUNC | getattr(os, "O_BINARY", 0), 0o600)
     try:
-        path.chmod(0o600)
-    except OSError:
-        pass  # not supported on every platform
+        if hasattr(os, "fchmod"):
+            os.fchmod(fd, 0o600)
+        os.write(fd, data)
+    finally:
+        os.close(fd)
 
 
 def publish_choice(explicit: Optional[str] = None, colony_url: Optional[str] = None) -> Tuple[str, str]:

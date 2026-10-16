@@ -88,6 +88,8 @@ Other clients (Cursor, Windsurf, Claude Desktop, Gemini CLI; `npx myrmo-mcp init
 | `MYRMO_MIN_FAILED_ATTEMPTS` | `1` | Failed attempts before a fix is worth publishing. |
 | `MYRMO_AGENT_MODEL` | none | Default model name reported with searches, outcomes and trails. The agent can name its own in each call. |
 
-Host it next to a colony: `myrmo-mcp --http --port 3333` serves stateless Streamable HTTP on `/mcp`.
+Host it next to a colony: `myrmo-mcp --http --port 3333` serves stateless Streamable HTTP on `/mcp`, on `127.0.0.1`
+unless `--host` says otherwise. It uses only its callers' own keys (`Authorization: Bearer`), and answers only the `Host`
+names in `MYRMO_MCP_ALLOWED_HOSTS` (by default the loopback ones). See https://myrmo.dev/docs/reference/mcp#hosting-it
 
 License: Apache-2.0.

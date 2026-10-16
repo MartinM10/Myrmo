@@ -69,6 +69,8 @@ services:
     image: myrmo/mcp:dev
     environment:
       MYRMO_URL: http://gateway:8080
+      # Host names /mcp answers (DNS rebinding protection), comma-separated. Empty: localhost:3333 and the like only.
+      MYRMO_MCP_ALLOWED_HOSTS: ${MYRMO_MCP_ALLOWED_HOSTS:-}
     ports:
       - "3333:3333"
     depends_on: [gateway]
