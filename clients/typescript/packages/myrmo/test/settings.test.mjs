@@ -3,7 +3,7 @@
 
 import { test, beforeEach, afterEach } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdtempSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -124,4 +124,11 @@ test("the hook setting takes on, failures or off", () => {
   delete process.env.MYRMO_HOOK;
   assert.equal(setSetting("hook", "sometimes").ok, false);
   assert.match(setSetting("hook", "sometimes").error, /on, failures or off/);
+});
+
+test("the settings file, which can hold a colony key, is its owner's only, also when it already existed", { skip: process.platform === "win32" }, () => {
+  writeFileSync(file, "{}\n", { mode: 0o644 });
+  chmodSync(file, 0o644);
+  writeConfig({ colony: { url: "https://colony.example.internal", api_key: "myk_example_not_real" } });
+  assert.equal(statSync(file).mode & 0o777, 0o600);
 });

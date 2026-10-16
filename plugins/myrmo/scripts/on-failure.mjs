@@ -36,11 +36,12 @@
 // `config hook failures`; MYRMO_HOOK=off|failures does the same for one session. Tunables: MYRMO_HOOK_MIN_SECONDS
 // (default 20) between two reminders, MYRMO_HOOK_MAX (default 30) per session.
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { homedir, tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { readFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
 import { measureAndSend } from "./effort.mjs";
 import { briefEnabled, briefNote, lookup, lookupEnabled, lookupNote, lookupTask, privateColony, taskOf, updateNotice } from "./lookup.mjs";
+import { readState, stateFile, writeState } from "./state.mjs";
 
 // Commands that fail or print errors as part of normal work: a probe that found nothing, a diff that differs, a log
 // being read. Their output is not a problem of the user's.
@@ -51,7 +52,30 @@ const SEARCH_TOOL = /^mcp__.*myrmo_search$/;
 const REPORT_TOOL = /^mcp__.*myrmo_report$/;
 const PUBLISH_TOOL = /^mcp__.*myrmo_publish$/;
 // The id each trail is listed under in a search reply (`## Trail 1 of 2 · id <uuid>`).
-const TRAIL_ID = /^## Trail \d+ of \d+ · id ([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/gim;
+const TRAIL_ID = /^## Trail \d+ of \d+ · id ([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i;
+
+/**
+ * The ids of the trails in a search reply, from their header lines only. A patch is shown in a code fence and can hold
+ * any line a stranger wrote, a forged header included, so nothing inside a fence counts.
+ */
+export function trailIds(reply) {
+  const ids = [];
+  let fence = null;
+  for (const line of String(reply).split(/\r?\n/)) {
+    const opening = /^(`{3,})/.exec(line);
+    if (fence) {
+      if (line === fence) fence = null;
+      continue;
+    }
+    if (opening) {
+      fence = opening[1];
+      continue;
+    }
+    const id = TRAIL_ID.exec(line)?.[1]?.toLowerCase();
+    if (id && !ids.includes(id)) ids.push(id);
+  }
+  return ids.slice(0, 5);
+}
 // Exit codes that mean a person or the system stopped the command: interrupt, timeout, kill, terminate.
 const STOPPED = new Set([124, 130, 137, 143]);
 /**
@@ -294,7 +318,7 @@ export function decide(input, { now = Date.now(), state = {}, env = process.env,
       return quiet({ ...state, nomatch: { at: now, line: String(input.tool_input?.error ?? "").slice(0, 240) } });
     }
     if (/<myrmo_trails/.test(reply)) {
-      const ids = [...new Set([...reply.matchAll(TRAIL_ID)].map((m) => m[1].toLowerCase()))].slice(0, 5);
+      const ids = trailIds(reply);
       return quiet({ ...state, nomatch: null, found: ids.length ? { at: now, ids } : null });
     }
     return quiet(state);
@@ -457,19 +481,10 @@ export function decideStop(input, { now = Date.now(), state = {}, env = process.
   return { reason, state: { ...state, brief, harvestedAt: failures, harvestedTs: now, harvests: (state.harvests ?? 0) + 1 } };
 }
 
-function stateFile(session) {
-  const safe = String(session ?? "default").replace(/[^A-Za-z0-9_-]/g, "").slice(0, 64) || "default";
-  return join(process.env.MYRMO_HOOK_STATE_DIR || join(tmpdir(), "myrmo-hook"), `${safe}.json`);
-}
-
+/** Without the file (a folder that cannot be trusted, a full disk) the notes are simply not throttled. */
 function save(file, before, after) {
   if (JSON.stringify(after) === JSON.stringify(before)) return;
-  try {
-    mkdirSync(dirname(file), { recursive: true });
-    writeFileSync(file, JSON.stringify(after));
-  } catch {
-    /* without the file the notes are simply not throttled */
-  }
+  writeState(file, after);
 }
 
 async function main() {
@@ -477,12 +492,7 @@ async function main() {
   for await (const chunk of process.stdin) raw += chunk;
   const input = JSON.parse(raw);
   const file = stateFile(input.session_id);
-  let state = {};
-  try {
-    if (existsSync(file)) state = JSON.parse(readFileSync(file, "utf8"));
-  } catch {
-    state = {};
-  }
+  const state = readState(file);
   const settings = readSettings();
   // 8. A session starts: is this plugin older than what the colony was released with? Said to the person, not the agent.
   if (input.hook_event_name === "SessionStart") {

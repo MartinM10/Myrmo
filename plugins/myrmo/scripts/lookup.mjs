@@ -10,6 +10,7 @@
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
+import { redactText } from "./redact.mjs";
 
 const PUBLIC_HOSTS = new Set(["myrmo.dev", "www.myrmo.dev"]);
 const trim = (url) => String(url ?? "").trim().replace(/\/+$/, "");
@@ -92,8 +93,9 @@ export function privateColony(env = process.env, settings = {}) {
 }
 
 /**
- * Never against the public colony: the hook sends the error line as printed, while the MCP server and the SDKs redact it
- * on this machine first. For one's own colony that is fine (it redacts again on arrival, and nothing leaves).
+ * Never against the public colony: the agent did not choose to search, and the error line is sent without anyone looking
+ * at it (redacted here first, with the SDK's rules, and again by the colony on arrival). One's own colony keeps it inside
+ * the organisation.
  */
 export function lookupEnabled(env = process.env, settings = {}) {
   const colony = colonyOf(env, settings);
@@ -102,9 +104,25 @@ export function lookupEnabled(env = process.env, settings = {}) {
 }
 
 export const clip = (text, max) => {
-  const t = String(text ?? "").replace(/\s+/g, " ").replace(/<(\/?\s*myrmo_)/gi, "‹$1").trim();
+  const t = String(text ?? "").replace(/\s+/g, " ").replace(/<(\s*\/?\s*myrmo_)/gi, "‹$1").trim();
   return t.length > max ? `${t.slice(0, max - 1)}…` : t;
 };
+
+/** A number the colony sent, as a number ("?" when it is not one): never words the colony chose. */
+export const num = (value, missing = "?") => {
+  if (value === undefined || value === null || value === "") return missing;
+  const n = typeof value === "number" || typeof value === "string" ? Number(value) : NaN;
+  return Number.isFinite(n) ? String(n) : "?";
+};
+
+/**
+ * What the hooks send to a colony, redacted on this machine first with the SDK's rules (redact.mjs): credentials and
+ * personal data never leave it, even for the organisation's own colony, which redacts again on arrival. A private
+ * colony keeps its network's addresses and host names, as the MCP server does.
+ */
+export function redactFor(colony, text) {
+  return redactText(String(text ?? ""), {}, { keepNetwork: colony?.private === true });
+}
 
 /** Search the colony for an error line; null when it cannot be reached. */
 export async function lookup(line, { env = process.env, settings = {}, fetcher = fetch, timeoutMs = 6000, agent = "myrmo-hook/1" } = {}) {
@@ -117,7 +135,7 @@ export async function lookup(line, { env = process.env, settings = {}, fetcher =
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
-    const res = await fetcher(url, { method: "POST", headers, body: JSON.stringify({ query: line.slice(0, 2000), limit: 3 }), signal: ctrl.signal });
+    const res = await fetcher(url, { method: "POST", headers, body: JSON.stringify({ query: redactFor(colony, line).slice(0, 2000), limit: 3 }), signal: ctrl.signal });
     return res.ok ? await res.json() : null;
   } catch {
     return null;
@@ -125,6 +143,9 @@ export async function lookup(line, { env = process.env, settings = {}, fetcher =
     clearTimeout(timer);
   }
 }
+
+/** The colony's risk analysis covers the listed commands, not commands written in prose. */
+const STEPS_NOT_COVERED = "This covers the listed commands only: check a command written in the steps the same way before running it, and ask the user if it could do harm.";
 
 /** A strong match: found by the exact error message, or a close semantic match. */
 const strong = (hit) => hit?.match?.via === "fingerprint" || Number(hit?.match?.score) >= 0.85;
@@ -152,8 +173,10 @@ export function lookupNote(line, body, state, now = Date.now(), how = "") {
   }
   const t = best.trail ?? {};
   const env = t.environment ?? {};
+  // Without a risk analysis nothing is known about the commands: said so, never "flagged none".
+  const analysed = Array.isArray(best.risk?.flags);
   const flags = new Map();
-  for (const f of best.risk?.flags ?? []) {
+  for (const f of analysed ? best.risk.flags : []) {
     const seen = flags.get(f.command_index);
     const rank = { low: 1, medium: 2, high: 3 };
     if (!seen || (rank[f.level] ?? 3) > (rank[seen.level] ?? 3)) flags.set(f.command_index, f);
@@ -176,8 +199,14 @@ export function lookupNote(line, body, state, now = Date.now(), how = "") {
     "Steps:", ...steps,
     ...(commands.length ? ["Commands:", ...commands] : []),
     // Said outright: a careful model that is not told otherwise treats every command from a trail as risky and stops to
-    // ask, which an agent working alone cannot do (measured in MyrmoBench).
-    ...(commands.length && flags.size === 0 ? ["Risk: the colony flagged none of these commands. Once you have checked they fit your environment, run them as you would your own."] : []),
+    // ask, which an agent working alone cannot do (measured in MyrmoBench). The analysis covers the listed commands only.
+    ...(!commands.length
+      ? []
+      : !analysed
+        ? ["Risk: unknown, the colony sent no risk analysis. Show each command, including any written in the steps, to the user and wait for approval before running it."]
+        : flags.size === 0
+          ? [`Risk: the colony flagged none of these commands. Once you have checked they fit your environment, run them as you would your own. ${STEPS_NOT_COVERED}`]
+          : [`Risk: ${STEPS_NOT_COVERED}`]),
     "</myrmo_trail>",
     `After trying it, report the outcome with myrmo_report (trail_id ${id}: worked, partially_worked, failed or not_applicable).${how}`,
   ].join("\n");
@@ -220,7 +249,7 @@ export async function lookupTask(task, { env = process.env, settings = {}, fetch
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
-    const res = await fetcher(`${colony.url}/v1/search`, { method: "POST", headers, body: JSON.stringify({ query: task, mode: "task", limit: 3 }), signal: ctrl.signal });
+    const res = await fetcher(`${colony.url}/v1/search`, { method: "POST", headers, body: JSON.stringify({ query: redactFor(colony, task).slice(0, 2000), mode: "task", limit: 3 }), signal: ctrl.signal });
     return res.ok ? await res.json() : null;
   } catch {
     return null;
@@ -247,10 +276,12 @@ export function briefNote(task, body, state = {}, now = Date.now(), how = "") {
     const t = hit.trail ?? {};
     const id = String(hit.trail_id ?? "").replace(/[^0-9a-fA-F-]/g, "").slice(0, 36);
     ids.push(id);
-    const kind = KINDS[hit.kind ?? t.kind ?? "fix"] ?? "entry";
+    const named = hit.kind ?? t.kind ?? "fix";
+    const kind = typeof named === "string" && Object.hasOwn(KINDS, named) ? KINDS[named] : "entry";
     const about = clip(t.problem?.summary || t.problem?.error_message || t.problem?.error_type, 160);
     const o = hit.outcomes ?? {};
-    return `${i + 1}. [${kind}] ${about} (strength ${Number(hit.strength ?? 0).toFixed(2)}, worked ${o.worked ?? 0}, failed ${o.failed ?? 0}) id ${id}`;
+    const strength = Number(hit.strength ?? 0);
+    return `${i + 1}. [${kind}] ${about} (strength ${Number.isFinite(strength) ? strength.toFixed(2) : "?"}, worked ${num(o.worked, "0")}, failed ${num(o.failed, "0")}) id ${id}`;
   });
   const note = [
     "Myrmo (your organisation's private colony) already has knowledge that may help with this task:",

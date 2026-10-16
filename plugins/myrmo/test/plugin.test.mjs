@@ -64,7 +64,7 @@ test("the user can switch it off", () => {
 test("the script speaks the hook protocol and exits 0 whatever it receives", () => {
   // Its own settings file: the machine's may point at a private colony, where the hook would look the error up itself.
   const config = join(mkdtempSync(join(tmpdir(), "myrmo-plugin-")), "config.json");
-  const run = (input) => spawnSync(process.execPath, [join(root, "scripts", "on-failure.mjs")], { input, encoding: "utf8", env: { ...process.env, MYRMO_HOOK: "", MYRMO_CONFIG: config } });
+  const run = (input) => spawnSync(process.execPath, [join(root, "scripts", "on-failure.mjs")], { input, encoding: "utf8", env: { ...process.env, MYRMO_HOOK: "", MYRMO_CONFIG: config, MYRMO_HOOK_STATE_DIR: dirname(config) } });
   const ok = run(JSON.stringify({ ...fail("cargo build"), session_id: `test-${Date.now()}` }));
   assert.equal(ok.status, 0);
   const body = JSON.parse(ok.stdout);
@@ -129,7 +129,7 @@ test("the hook script, run like Claude Code runs it, honours the settings file",
   const dir = mkdtempSync(join(tmpdir(), "myrmo-hook-run-"));
   const file = join(dir, "config.json");
   const input = JSON.stringify({ session_id: "settings-test-" + Date.now(), ...fail("npm test") });
-  const run = () => spawnSync(process.execPath, [join(root, "scripts", "on-failure.mjs")], { input, encoding: "utf8", env: { ...process.env, MYRMO_CONFIG: file, MYRMO_HOOK: "" } });
+  const run = () => spawnSync(process.execPath, [join(root, "scripts", "on-failure.mjs")], { input, encoding: "utf8", env: { ...process.env, MYRMO_CONFIG: file, MYRMO_HOOK: "", MYRMO_HOOK_STATE_DIR: dir } });
   writeFileSync(file, JSON.stringify({ hook: "off" }));
   assert.equal(run().stdout, "");
   writeFileSync(file, JSON.stringify({ hook: "on" }));

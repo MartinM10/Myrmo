@@ -21,7 +21,7 @@
 // writes it.
 
 import { randomUUID } from "node:crypto";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import type { PublishMode } from "./types.js";
@@ -118,6 +118,13 @@ export function writeConfig(patch: { [K in keyof MyrmoConfig]?: MyrmoConfig[K] |
   const path = configPath();
   mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, JSON.stringify({ ...readConfig(), ...patch }, null, 2) + "\n", { mode: 0o600 });
+  // `mode` applies only to a file that is created: an existing one (an older client's, or made by hand) can hold a
+  // colony's access key too, so it is brought down to its owner only.
+  try {
+    chmodSync(path, 0o600);
+  } catch {
+    // Not every file system has modes.
+  }
 }
 
 /**

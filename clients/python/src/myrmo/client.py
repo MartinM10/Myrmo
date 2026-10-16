@@ -60,8 +60,11 @@ class Hit:
     last_confirmed_at: Optional[str] = None
 
     def safe_commands(self) -> List[Dict[str, Any]]:
-        """Commands without a high-risk flag."""
-        high = {f["command_index"] for f in self.risk.get("flags", []) if f.get("level") == "high"}
+        """Commands without a high-risk flag. Without a risk analysis none is known to be safe; an unknown level counts as high."""
+        flags = self.risk.get("flags") if isinstance(self.risk, dict) else None
+        if not isinstance(flags, list):
+            return []
+        high = {f.get("command_index") for f in flags if f.get("level") not in ("low", "medium")}
         commands = self.trail.get("solution", {}).get("shell_commands_executed", [])
         return [c for i, c in enumerate(commands) if i not in high]
 
@@ -97,7 +100,7 @@ def _same_names(exact: Optional["SearchResult"], error: str) -> Optional["Search
 
 def _hits(results: Sequence[Dict[str, Any]]) -> List[Hit]:
     return [
-        Hit(r["trail_id"], r["match"], r["strength"], r["outcomes"], r["risk"], r["trail"], r.get("caveats") or [], r.get("amends"), r.get("amended_by") or [], r.get("last_confirmed_at"))
+        Hit(r["trail_id"], r["match"], r["strength"], r["outcomes"], r.get("risk") or {}, r["trail"], r.get("caveats") or [], r.get("amends"), r.get("amended_by") or [], r.get("last_confirmed_at"))
         for r in results
     ]
 

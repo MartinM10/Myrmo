@@ -2,6 +2,7 @@
 Order for each one: explicit argument, environment variable, settings file, default."""
 
 import json
+import os
 
 import httpx
 import pytest
@@ -110,3 +111,14 @@ def test_the_hook_setting_takes_on_failures_or_off(monkeypatch):
     monkeypatch.delenv("MYRMO_HOOK")
     ok, message = set_setting("hook", "sometimes")
     assert ok is False and "on, failures or off" in message
+
+
+@pytest.mark.skipif(os.name == "nt", reason="no POSIX modes")
+def test_the_settings_file_which_can_hold_a_colony_key_is_its_owners_only_also_when_it_already_existed(isolated):
+    isolated.write_text("{}\n")
+    isolated.chmod(0o644)
+    write_config(colony={"url": "https://colony.example.internal", "api_key": "myk_example_not_real"})
+    assert isolated.stat().st_mode & 0o777 == 0o600
+    isolated.unlink()
+    write_config(publish="ask")
+    assert isolated.stat().st_mode & 0o777 == 0o600

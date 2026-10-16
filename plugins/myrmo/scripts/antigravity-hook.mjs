@@ -15,11 +15,10 @@
 // the error line of a failed command to the colony when the automatic lookup is on (lookup.mjs: by default only for a
 // private colony).
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { existsSync, readFileSync } from "node:fs";
 import { decide, readSettings } from "./on-failure.mjs";
 import { briefEnabled, briefNote as sharedBriefNote, lookup, lookupEnabled, lookupNote as sharedLookupNote, lookupTask, taskOf } from "./lookup.mjs";
+import { readState, stateFile, writeState } from "./state.mjs";
 
 const EXIT = /The command exited with code (-?\d+)\./;
 // What Antigravity prints around a command's output.
@@ -145,22 +144,12 @@ export function lookupNote(line, body, state, now = Date.now()) {
   return sharedLookupNote(line, body, state, now, HOW);
 }
 
-function stateFile(conversation) {
-  const safe = String(conversation ?? "default").replace(/[^A-Za-z0-9_-]/g, "").slice(0, 64) || "default";
-  return join(process.env.MYRMO_HOOK_STATE_DIR || join(tmpdir(), "myrmo-hook"), `agy-${safe}.json`);
-}
-
 async function main() {
   let raw = "";
   for await (const chunk of process.stdin) raw += chunk;
   const input = JSON.parse(raw);
-  const file = stateFile(input.conversationId);
-  let state = {};
-  try {
-    if (existsSync(file)) state = JSON.parse(readFileSync(file, "utf8"));
-  } catch {
-    state = {};
-  }
+  const file = stateFile(input.conversationId, { prefix: "agy-" });
+  const state = readState(file);
   const transcript = input.transcriptPath && existsSync(input.transcriptPath) ? readFileSync(input.transcriptPath, "utf8") : "";
   const out = step(input, state, { settings: readSettings(), transcript });
   const settings = readSettings();
@@ -177,12 +166,8 @@ async function main() {
       out.state = brief.state;
     }
   }
-  try {
-    mkdirSync(dirname(file), { recursive: true });
-    writeFileSync(file, JSON.stringify(out.state));
-  } catch {
-    /* without the file the notes are simply not throttled */
-  }
+  // Without the file the notes are simply not throttled.
+  writeState(file, out.state);
   process.stdout.write(JSON.stringify(out.note ? { injectSteps: [{ ephemeralMessage: out.note }] } : {}));
 }
 

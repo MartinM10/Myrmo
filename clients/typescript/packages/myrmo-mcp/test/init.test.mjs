@@ -7,6 +7,9 @@ import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, existsSync } from 
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { AGENTS_BLOCK, AGENTS_BLOCK_PRIVATE, AGENTS_BLOCK_READ_ONLY, SHAPES, claudeCodeSetUp, mergeCodex, mergeServer, parseInitArgs, runInit, serverEntry, targets, upsertBlock } from "../dist/init.js";
+import { VERSION } from "../dist/server.js";
+
+const PKG = `myrmo-mcp@${VERSION}`;
 
 const entry = serverEntry("linux");
 const quiet = () => {};
@@ -36,7 +39,7 @@ test("a file that is not a JSON object is refused, never overwritten", () => {
 });
 
 test("Windows clients start npx through cmd", () => {
-  assert.deepEqual(serverEntry("win32"), { command: "cmd", args: ["/c", "npx", "-y", "myrmo-mcp@latest"] });
+  assert.deepEqual(serverEntry("win32"), { command: "cmd", args: ["/c", "npx", "-y", PKG] });
 });
 
 test("init configures only the clients that are installed, and leaves the rest of their files alone", () => {
@@ -160,7 +163,7 @@ test("VS Code (GitHub Copilot) takes a `servers` object with an explicit stdio t
   const before = JSON.stringify({ inputs: [], servers: { other: { type: "stdio", command: "x" } } });
   const out = mergeServer(before, entry, SHAPES.vscode);
   const doc = JSON.parse(out.text);
-  assert.deepEqual(doc.servers.myrmo, { type: "stdio", command: "npx", args: ["-y", "myrmo-mcp@latest"] });
+  assert.deepEqual(doc.servers.myrmo, { type: "stdio", command: "npx", args: ["-y", PKG] });
   assert.ok(doc.servers.other && Array.isArray(doc.inputs));
   assert.equal(mergeServer(out.text, entry, SHAPES.vscode).changed, false);
 });
@@ -168,7 +171,7 @@ test("VS Code (GitHub Copilot) takes a `servers` object with an explicit stdio t
 test("OpenCode takes a `mcp` object with the command as one array", () => {
   const out = mergeServer(JSON.stringify({ theme: "x", mcp: { other: { type: "remote", url: "https://x.test" } } }), entry, SHAPES.opencode);
   const doc = JSON.parse(out.text);
-  assert.deepEqual(doc.mcp.myrmo, { type: "local", command: ["npx", "-y", "myrmo-mcp@latest"], enabled: true });
+  assert.deepEqual(doc.mcp.myrmo, { type: "local", command: ["npx", "-y", PKG], enabled: true });
   assert.ok(doc.mcp.other && doc.theme === "x");
   assert.equal(mergeServer(out.text, entry, SHAPES.opencode).changed, false);
 });
@@ -178,10 +181,30 @@ test("Codex gets a [mcp_servers.myrmo] table appended to config.toml, once, and 
   const out = mergeCodex(before, entry);
   assert.equal(out.changed, true);
   assert.ok(out.text.startsWith(before.trimEnd()), "what was there is untouched");
-  assert.match(out.text, /\n\[mcp_servers\.myrmo\]\ncommand = "npx"\nargs = \["-y","myrmo-mcp@latest"\]\n$/);
+  assert.ok(out.text.endsWith(`\n[mcp_servers.myrmo]\ncommand = "npx"\nargs = ["-y","${PKG}"]\n`), out.text);
   assert.equal(mergeCodex(out.text, entry).changed, false, "a second run changes nothing");
   assert.equal(mergeCodex(undefined, entry).text.includes("[mcp_servers.myrmo]"), true, "a missing file is created");
   assert.equal(mergeCodex("   \n", entry).changed, true);
+});
+
+test("every client runs the exact version of the init that set it up, and a later init moves it", () => {
+  assert.match(VERSION, /^\d+\.\d+\.\d+$/);
+  assert.deepEqual(serverEntry("linux").args, ["-y", PKG]);
+  assert.ok(!JSON.stringify(serverEntry("linux")).includes("@latest"));
+
+  const older = JSON.stringify({ mcpServers: { myrmo: { command: "npx", args: ["-y", "myrmo-mcp@latest"] }, keep: { command: "k" } } });
+  const moved = mergeServer(older, entry);
+  assert.equal(moved.changed, true);
+  assert.deepEqual(JSON.parse(moved.text).mcpServers.myrmo.args, ["-y", PKG]);
+  assert.ok(JSON.parse(moved.text).mcpServers.keep);
+
+  const toml = 'model = "gpt-5"\n\n# Added by `npx myrmo-mcp init`\n[mcp_servers.myrmo]\ncommand = "npx"\nargs = ["-y","myrmo-mcp@latest"]\n\n[other]\nx = 1\n';
+  const codex = mergeCodex(toml, entry);
+  assert.equal(codex.changed, true);
+  assert.equal(codex.text, toml.replace('"myrmo-mcp@latest"', `"${PKG}"`), "only the version changes");
+  assert.equal(mergeCodex(codex.text, serverEntry("linux", "9.9.9")).text, toml.replace('"myrmo-mcp@latest"', '"myrmo-mcp@9.9.9"'));
+  const windows = 'x = 1\n[mcp_servers.myrmo]\ncommand = "cmd"\nargs = ["/c","npx","-y","myrmo-mcp@0.1.0"]\n';
+  assert.ok(mergeCodex(windows, serverEntry("win32")).text.endsWith(`args = ["/c","npx","-y","${PKG}"]\n`));
 });
 
 test("Codex's file is left alone when appending a table could make it invalid", () => {

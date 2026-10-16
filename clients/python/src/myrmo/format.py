@@ -3,6 +3,7 @@ wrapped as untrusted data. Mirrors clients/typescript/packages/myrmo/src/format.
 
 from __future__ import annotations
 
+import math
 import re
 from typing import Optional
 
@@ -14,12 +15,12 @@ from .config import min_failed_attempts as _min_failed_attempts
 # look-alike of our own envelope tags, and code fences longer than anything they contain.
 # Mirrors clients/typescript/packages/myrmo/src/format.ts.
 
-_ENVELOPE = re.compile(r"<(/?\s*myrmo_)", re.I)
+_ENVELOPE = re.compile(r"<(\s*/?\s*myrmo_)", re.I)
 _RANK = {"low": 1, "medium": 2, "high": 3}
 
 
 def _defuse(text: str) -> str:
-    """Defuse `<myrmo_…>` / `</myrmo_…>` so content cannot close or fake the envelope."""
+    """Defuse `<myrmo_…>` / `</myrmo_…>`, in any case and with any spacing (`< /MYRMO_`), so content cannot close or fake the envelope."""
     return _ENVELOPE.sub(r"‹\1", text)
 
 
@@ -57,12 +58,41 @@ def _safe_id(value) -> str:
     return re.sub(r"[^0-9a-fA-F-]", "", str(value))[:36]
 
 
+def _num(value, missing: str = "?") -> str:
+    """A number the colony sent, rendered as a number: anything else (words, a huge string) would be text the colony chose."""
+    if value is None or value == "":
+        return missing
+    if isinstance(value, bool) or not isinstance(value, (int, float, str)):
+        return "?"
+    try:
+        n = float(value)
+    except (ValueError, OverflowError):
+        return "?"
+    if not math.isfinite(n):
+        return "?"
+    return str(value) if isinstance(value, (int, float)) else str(n)
+
+
+def _as_float(value) -> float:
+    """A number the colony sent, for a comparison; 0 when it is not one."""
+    text = _num(value, "0")
+    return 0.0 if text == "?" else float(text)
+
+
+def _outcome_counts(hit: Hit) -> str:
+    """"worked 3 · partially 0 · failed 1", every count coerced to a number."""
+    o = hit.outcomes if isinstance(hit.outcomes, dict) else {}
+    return f"worked {_num(o.get('worked'), '0')} · partially {_num(o.get('partially_worked'), '0')} · failed {_num(o.get('failed'), '0')}"
+
+
 def _safe_fingerprint(fp) -> str:
     return fp if re.fullmatch(r"fp\d+_[0-9a-f]{16}", str(fp)) else "invalid"
 
 
-def _error_line(error_type: str, message) -> str:
+def _error_line(error_type, message) -> str:
     """`Type: message`, without repeating the type when the message already starts with it."""
+    # The error type is text from the trail like any other: one line, defused, short.
+    error_type = _clip(error_type, 120)
     msg = _clip(message, 300)
     if not msg:
         return error_type
@@ -75,14 +105,13 @@ def start_here(hits) -> str:
     if not hits:
         return ""
     best = hits[0]
-    overlap = best.match.get("environment_overlap")
-    if best.match.get("via") == "fingerprint":
-        return "START HERE: trail 1 was found by your exact error message. Check that its environment is close to yours, then follow its steps."
-    try:
-        score = float(best.match.get("score") or 0)
-    except (TypeError, ValueError):
-        score = 0.0
-    if score >= 0.9 and (overlap is None or overlap >= 0.6):
+    match = best.match if isinstance(best.match, dict) else {}
+    overlap = match.get("environment_overlap")
+    if match.get("via") == "fingerprint":
+        return ("START HERE: trail 1 was found by your exact error message. Check that its environment is close to yours, "
+                "then follow its steps, checking each command as its Risk line says.")
+    score = _as_float(match.get("score"))
+    if score >= 0.9 and (overlap is None or _as_float(overlap) >= 0.6):
         return "START HERE: trail 1 is the closest match. Check that its error and package are the ones you have before following it."
     return ("CAUTION: no trail matches your error exactly. These are about similar errors, possibly in another package or tool. "
             "Use one only if its error and package match yours; otherwise solve the problem yourself.")
@@ -90,7 +119,8 @@ def start_here(hits) -> str:
 
 def _confirmed_text(hit: Hit) -> str:
     """" · last confirmed 2026-10-14", so the reader can weigh how old what it reads is; with people's confirmations."""
-    people = f" · confirmed by a person {hit.outcomes['confirmed']}" if hit.outcomes.get("confirmed") else ""
+    o = hit.outcomes if isinstance(hit.outcomes, dict) else {}
+    people = f" · confirmed by a person {_num(o['confirmed'])}" if o.get("confirmed") else ""
     day = re.match(r"\d{4}-\d{2}-\d{2}", str(hit.last_confirmed_at or ""))
     return people + (f" · last confirmed {day.group(0)}" if day else "")
 
@@ -119,16 +149,24 @@ def _relation_lines(hit: Hit) -> list:
     return lines
 
 
+# The colony's risk analysis covers the listed commands, not commands written in prose.
+_STEPS_NOT_COVERED = "This covers the listed commands only: check a command written in the steps the same way before running it, and ask the user if it could do harm."
+
+
 def _hit(hit: Hit, i: int, total: int, include_high_risk: bool) -> str:
-    t, o = hit.trail, hit.outcomes
+    t = hit.trail
     env = t.get("environment", {})
     rt = env.get("runtime", {})
-    overlap = hit.match.get("environment_overlap")
+    match = hit.match if isinstance(hit.match, dict) else {}
+    overlap = match.get("environment_overlap")
+    # A response without a risk analysis fails closed: the risk is unknown, never "nothing flagged".
+    risk = hit.risk if isinstance(hit.risk, dict) else {}
+    analysed = isinstance(risk.get("flags"), list)
     lines = [
         f"## Trail {i + 1} of {total} · id {_safe_id(hit.trail_id)}",
-        f"strength {hit.strength} · worked {o.get('worked', 0)} · partially {o.get('partially_worked', 0)} · failed {o.get('failed', 0)}{_confirmed_text(hit)}"
-        f" · matched by {_clip(hit.match.get('via'), 16)} ({hit.match.get('score')})" + (f" · environment overlap {overlap}" if overlap is not None else "")
-        + f" · risk {_clip(hit.risk.get('level'), 16)}",
+        f"strength {_num(hit.strength)} · {_outcome_counts(hit)}{_confirmed_text(hit)}"
+        f" · matched by {_clip(match.get('via'), 16)} ({_num(match.get('score'))})" + (f" · environment overlap {_num(overlap)}" if overlap is not None else "")
+        + f" · risk {_clip(risk.get('level') or 'unknown', 16) if analysed else 'unknown'}",
         "Environment: " + " · ".join(x for x in (_clip(v, 64) for v in [env.get("os"), env.get("os_version"), env.get("arch"), f"{rt.get('name', '')} {rt.get('version', '')}"]) if x),
         f"Error: {_error_line(t['problem']['error_type'], t['problem'].get('error_message'))}",
         f"Do first: {_clip((t['solution'].get('steps') or [''])[0], 300)}",
@@ -140,7 +178,7 @@ def _hit(hit: Hit, i: int, total: int, include_high_risk: bool) -> str:
         lines += [f"- {_clip(d['approach'], 200)} (failed because: {_clip(d['why_it_failed'], 200)})" for d in dead]
     lines.append("Steps:")
     lines += [f"{n}. {_clip(s, 400)}" for n, s in enumerate(t["solution"]["steps"], 1)]
-    flags = _strongest_flags(hit.risk.get("flags", []))
+    flags = _strongest_flags(risk["flags"] if analysed else [])
     commands = t["solution"].get("shell_commands_executed", [])
     if commands:
         lines.append("Commands:")
@@ -152,10 +190,14 @@ def _hit(hit: Hit, i: int, total: int, include_high_risk: bool) -> str:
                 lines.append(f"- [{_clip(f['flag'], 40)}, {_clip(f['level'], 16)} risk: ask the user before running] $ {_clip(c['command'], 500)}  # {_clip(c['purpose'], 200)}")
             else:
                 lines.append(f"- $ {_clip(c['command'], 500)}  # {_clip(c['purpose'], 200)}")
-        if not flags:
+        if not analysed:
+            lines.append("Risk: unknown, the colony sent no risk analysis. Show each command, including any written in the steps, to the user and wait for approval before running it.")
+        elif not flags:
             # Said outright: a careful model that is not told otherwise treats every command from a trail as risky and
             # stops to ask, which an agent working alone cannot do (measured in MyrmoBench).
-            lines.append("Risk: the colony flagged none of these commands. Once you have checked they fit your environment, run them as you would your own.")
+            lines.append("Risk: the colony flagged none of these commands. Once you have checked they fit your environment, run them as you would your own. " + _STEPS_NOT_COVERED)
+        else:
+            lines.append("Risk: " + _STEPS_NOT_COVERED)
     for p in t["solution"].get("code_patches", []):
         lines += [f"Patch {_clip(p['file_path'], 200)}:", *_fenced(p["diff"], 3000, "diff")]
     v = t["solution"]["verification_method"]

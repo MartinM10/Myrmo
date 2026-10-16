@@ -19,6 +19,7 @@ import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { writeConfig, type PublishMode } from "myrmo";
+import { VERSION } from "./server.js";
 
 export const AGENTS_BLOCK = `<!-- myrmo:start -->
 ## Myrmo: shared memory of solved errors
@@ -119,10 +120,13 @@ export interface Entry {
   args: string[];
 }
 
-export function serverEntry(platform: NodeJS.Platform = process.platform): Entry {
+export function serverEntry(platform: NodeJS.Platform = process.platform, version: string = VERSION): Entry {
   // Windows clients start commands without a shell, and npx is a .cmd file there.
-  // @latest, because a bare name reuses whatever version the npx cache already holds, however old.
-  return platform === "win32" ? { command: "cmd", args: ["/c", "npx", "-y", "myrmo-mcp@latest"] } : { command: "npx", args: ["-y", "myrmo-mcp@latest"] };
+  // The exact version of this init, as the Claude Code plugin's launcher does: a bare name reuses whatever the npx cache
+  // holds, however old, and @latest runs whatever was published last, at every start, without anyone choosing it.
+  // `npx myrmo-mcp@latest init` again moves every client to the new version (the updates line says so).
+  const pkg = `myrmo-mcp@${version}`;
+  return platform === "win32" ? { command: "cmd", args: ["/c", "npx", "-y", pkg] } : { command: "npx", args: ["-y", pkg] };
 }
 
 /** How a client writes one MCP server in its JSON settings: under which key, and in which shape. */
@@ -165,14 +169,17 @@ export function mergeServer(text: string | undefined, entry: Entry, shape: Shape
  * next to either would make the file invalid, and Codex would stop reading it.
  */
 export function mergeCodex(text: string | undefined, entry: Entry): { text: string; changed: boolean } | null {
+  const table = `[mcp_servers.myrmo]\ncommand = ${JSON.stringify(entry.command)}\nargs = ${JSON.stringify(entry.args)}\n`;
   if (text !== undefined) {
     if (/^\s*\[?\s*mcp_servers\s*\.\s*["']?myrmo["']?\s*[\].=]/m.test(text)) {
       const exact = /^\s*\[mcp_servers\.myrmo\]/m.test(text) && text.includes(JSON.stringify(entry.command)) && text.includes(JSON.stringify(entry.args));
-      return exact ? { text, changed: false } : null;
+      if (exact) return { text, changed: false };
+      // The table an earlier init wrote, for another version (or @latest): moved to this one, nothing else touched.
+      const ours = /^\[mcp_servers\.myrmo\]\ncommand = "(?:npx|cmd)"\nargs = \[(?:"\/c","npx",)?"-y","myrmo-mcp@[0-9A-Za-z.-]+"\]\n/m;
+      return ours.test(text) ? { text: text.replace(ours, table), changed: true } : null;
     }
     if (/^\s*mcp_servers\s*=/m.test(text)) return null;
   }
-  const table = `[mcp_servers.myrmo]\ncommand = ${JSON.stringify(entry.command)}\nargs = ${JSON.stringify(entry.args)}\n`;
   const base = text && text.trim() !== "" ? text.replace(/\s*$/, "") + "\n\n" : "";
   return { text: `${base}# Added by \`npx myrmo-mcp init\`\n${table}`, changed: true };
 }
@@ -237,6 +244,7 @@ export interface InitOptions {
   private?: boolean; // the rules and hooks for an organisation's private colony
   url?: string; // another colony to use, saved in the settings file with what goes with it
   key?: string; // that colony's access key
+  keySource?: "argument" | "file" | "stdin"; // where the key came from: on the command line it is in the shell's history
   publish?: PublishMode; // how publishing works for that colony only
   hooksSource?: string; // where the hook scripts to install come from (default: dist/hooks of this package)
   env?: NodeJS.ProcessEnv; // where to look for the claude command (default: the process environment)
@@ -354,8 +362,39 @@ export function mergeHooks(current: string | undefined, command: string): { text
  * Point this machine at another colony: saves it in the settings file (with its key, private mode and publish choice,
  * which apply only to that colony), and for Antigravity installs the hook that looks errors up there.
  */
+/** The scripts the hooks are made of, copied together (scripts/copy-hooks.mjs puts them in dist/hooks). */
+export const HOOK_SCRIPTS = ["antigravity-hook.mjs", "on-failure.mjs", "lookup.mjs", "effort.mjs", "state.mjs", "redact.mjs"];
+
+/** This machine or a private network: where plain http does not carry a key across the internet. */
+export function nearbyHost(hostname: string): boolean {
+  const h = hostname.toLowerCase().replace(/^\[|\]$/g, "");
+  return (
+    h === "localhost" || h.endsWith(".localhost") || h === "::1" || /^127\./.test(h) || /^10\./.test(h) || /^192\.168\./.test(h) ||
+    /^172\.(1[6-9]|2\d|3[01])\./.test(h) || /^f[cd][0-9a-f]{2}:/.test(h)
+  );
+}
+
+/** What to tell the person about how their key is handled, one line each. */
+export function keyWarnings(opts: Pick<InitOptions, "url" | "key" | "keySource">): string[] {
+  if (!opts.key || !opts.url) return [];
+  const lines: string[] = [];
+  if (opts.keySource === "argument") {
+    lines.push("Note: a key given with --key stays in your shell's history and shows in the process list. Next time use --key-file <file> or --key - (reads it from standard input).");
+  }
+  try {
+    const u = new URL(opts.url);
+    if (u.protocol === "http:" && !nearbyHost(u.hostname)) {
+      lines.push(`Warning: ${u.origin} is plain http and not on this machine or a private network: the key would travel unencrypted. Use the colony's https address.`);
+    }
+  } catch {
+    // parseInitArgs already refused an address that does not parse.
+  }
+  return lines;
+}
+
 function setUpColony(opts: InitOptions, home: string, log: (l: string) => void, wanted: (id: string) => boolean): void {
   const verb = opts.dryRun ? "would" : "did";
+  for (const line of keyWarnings(opts)) log(line);
   const url = opts.url!.trim().replace(/\/+$/, "");
   const colony = { url, ...(opts.key ? { api_key: opts.key } : {}), ...(opts.private ? { private: true } : {}), ...(opts.publish ? { publish: opts.publish } : {}) };
   if (!opts.dryRun) writeConfig({ colony });
@@ -378,7 +417,7 @@ function setUpColony(opts: InitOptions, home: string, log: (l: string) => void, 
   }
   if (!opts.dryRun) {
     mkdirSync(dir, { recursive: true });
-    for (const name of ["antigravity-hook.mjs", "on-failure.mjs", "lookup.mjs", "effort.mjs"]) copyFileSync(join(source, name), join(dir, name));
+    for (const name of HOOK_SCRIPTS) copyFileSync(join(source, name), join(dir, name));
     if (merged.changed) {
       mkdirSync(dirname(file), { recursive: true });
       writeFileSync(file, merged.text);
@@ -496,7 +535,7 @@ export function runInit(opts: InitOptions): { configured: string[]; skipped: str
   return { configured, skipped };
 }
 
-export function parseInitArgs(args: string[]): InitOptions | string {
+export function parseInitArgs(args: string[], readStdin: () => string = () => readFileSync(0, "utf8")): InitOptions | string {
   const opts: InitOptions = { clients: [], dryRun: false };
   for (let i = 0; i < args.length; i++) {
     const a = args[i];
@@ -520,17 +559,34 @@ export function parseInitArgs(args: string[]): InitOptions | string {
         const found = keyIn(readFileSync(file, "utf8"));
         if (!found) return `${file} holds no key`;
         opts.key = found;
+        opts.keySource = "file";
       } catch {
         return `cannot read ${file}`;
       }
+    } else if (a === "--key" && args[i + 1] === "-") {
+      // `--key -`: the key from standard input (a pipe, or typed and ended with Ctrl-D), out of the history.
+      i++;
+      let input = "";
+      try {
+        input = readStdin();
+      } catch {
+        return "--key - reads the key from standard input, and there was none";
+      }
+      const found = keyIn(input);
+      if (!found) return "--key - found no key on standard input";
+      opts.key = found;
+      opts.keySource = "stdin";
     } else if (a === "--url" || a === "--key" || a === "--publish") {
       const value = args[++i];
       if (!value || value.startsWith("--")) return `${a} needs a value`;
       if (a === "--url") opts.url = value;
-      else if (a === "--key") opts.key = value;
+      else if (a === "--key") {
+        opts.key = value;
+        opts.keySource = "argument";
+      }
       else if (value === "auto" || value === "ask" || value === "off") opts.publish = value;
       else return "--publish takes auto, ask or off";
-    } else return `Unknown option ${a}. Usage: myrmo-mcp init [--client <id>]... [--agents-md [file] [--read-only]] [--url <colony> [--key <key> | --key-file <file>] [--private] [--publish auto|ask|off]] [--no-rules] [--dry-run]`;
+    } else return `Unknown option ${a}. Usage: myrmo-mcp init [--client <id>]... [--agents-md [file] [--read-only]] [--url <colony> [--key <key> | --key - | --key-file <file>] [--private] [--publish auto|ask|off]] [--no-rules] [--dry-run]`;
   }
   if ((opts.key || opts.publish) && !opts.url) return "--key and --publish go with --url: they belong to one colony";
   if (opts.url) {

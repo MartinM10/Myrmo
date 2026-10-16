@@ -21,8 +21,8 @@ export function attemptsPhrase(n: number): string {
 // rendered so that it cannot forge structure: no line breaks inside a single-line field, no
 // look-alike of our own envelope tags, and code fences longer than anything they contain.
 
-/** Defuse `<myrmo_…>` / `</myrmo_…>` so content cannot close or fake the envelope. */
-const defuse = (text: string) => text.replace(/<(\/?\s*myrmo_)/gi, "‹$1");
+/** Defuse `<myrmo_…>` / `</myrmo_…>`, in any case and with any spacing (`< /MYRMO_`), so content cannot close or fake the envelope. */
+const defuse = (text: string) => text.replace(/<(\s*\/?\s*myrmo_)/gi, "‹$1");
 
 /** One line, whitespace collapsed, envelope look-alikes defused, at most `max` characters. */
 const clip = (text: string | undefined, max: number) => {
@@ -53,11 +53,19 @@ function strongestFlags(flags: RiskFlag[]): Map<number, RiskFlag> {
   return strongest;
 }
 
-const safeId = (id: string) => id.replace(/[^0-9a-fA-F-]/g, "").slice(0, 36);
+const safeId = (id: string) => String(id ?? "").replace(/[^0-9a-fA-F-]/g, "").slice(0, 36);
+/** A number the colony sent, rendered as a number: anything else (words, a huge string) would be text the colony chose. */
+const num = (value: unknown, missing = "?"): string => {
+  if (value === undefined || value === null || value === "") return missing;
+  const n = typeof value === "number" || typeof value === "string" ? Number(value) : NaN;
+  return Number.isFinite(n) ? String(n) : "?";
+};
 const safeFingerprint = (fp: string) => (/^fp\d+_[0-9a-f]{16}$/.test(fp) ? fp : "invalid");
 
 /** `Type: message`, without repeating the type when the message already starts with it. */
-function errorLine(type: string, message: string | undefined): string {
+function errorLine(errorType: string | undefined, message: string | undefined): string {
+  // The error type is text from the trail like any other: one line, defused, short.
+  const type = clip(errorType, 120);
   const msg = clip(message, 300);
   if (!msg) return type;
   return msg.startsWith(`${type}:`) ? msg : `${type}: ${msg}`;
@@ -71,21 +79,28 @@ function errorLine(type: string, message: string | undefined): string {
 export function startHere(hits: Hit[]): string {
   const best = hits[0];
   if (!best) return "";
-  const overlap = best.match.environment_overlap;
-  if (best.match.via === "fingerprint") {
-    return "START HERE: trail 1 was found by your exact error message. Check that its environment is close to yours, then follow its steps.";
+  const overlap = best.match?.environment_overlap;
+  if (best.match?.via === "fingerprint") {
+    return "START HERE: trail 1 was found by your exact error message. Check that its environment is close to yours, then follow its steps, checking each command as its Risk line says.";
   }
-  if (Number(best.match.score) >= 0.9 && (overlap === null || overlap >= 0.6)) {
+  if (Number(best.match?.score) >= 0.9 && (overlap == null || Number(overlap) >= 0.6)) {
     return "START HERE: trail 1 is the closest match. Check that its error and package are the ones you have before following it.";
   }
   return "CAUTION: no trail matches your error exactly. These are about similar errors, possibly in another package or tool. Use one only if its error and package match yours; otherwise solve the problem yourself.";
 }
 
-/** The commands of a trail, each with its risk flag; high risk withheld unless the user allowed it. */
+/** The colony's risk analysis covers the listed commands, not commands written in prose. */
+const STEPS_NOT_COVERED = "This covers the listed commands only: check a command written in the steps the same way before running it, and ask the user if it could do harm.";
+
+/**
+ * The commands of a trail, each with its risk flag; high risk withheld unless the user allowed it. A response without a
+ * risk analysis fails closed: the reader is told the risk is unknown, never that nothing was flagged.
+ */
 function commandLines(hit: Hit, opts: FormatOptions): string[] {
   const lines: string[] = [];
   const commands = hit.trail.solution?.shell_commands_executed ?? [];
-  const flags = strongestFlags(hit.risk?.flags ?? []);
+  const analysed = Array.isArray(hit.risk?.flags);
+  const flags = strongestFlags(analysed ? hit.risk.flags : []);
   if (!commands.length) return lines;
   lines.push("Commands:");
   commands.forEach((c, i) => {
@@ -98,10 +113,14 @@ function commandLines(hit: Hit, opts: FormatOptions): string[] {
       lines.push(`- $ ${clip(c.command, 500)}  # ${clip(c.purpose, 200)}`);
     }
   });
-  if (flags.size === 0) {
+  if (!analysed) {
+    lines.push("Risk: unknown, the colony sent no risk analysis. Show each command, including any written in the steps, to the user and wait for approval before running it.");
+  } else if (flags.size === 0) {
     // Said outright: a careful model that is not told otherwise treats every command from a trail as risky and stops
     // to ask, which an agent working alone cannot do (measured in MyrmoBench).
-    lines.push("Risk: the colony flagged none of these commands. Once you have checked they fit your environment, run them as you would your own.");
+    lines.push(`Risk: the colony flagged none of these commands. Once you have checked they fit your environment, run them as you would your own. ${STEPS_NOT_COVERED}`);
+  } else {
+    lines.push(`Risk: ${STEPS_NOT_COVERED}`);
   }
   return lines;
 }
@@ -135,12 +154,20 @@ function relationLines(hit: Hit): string[] {
 
 /** " · last confirmed 2026-10-14", so the reader can weigh how old what it reads is; with people's confirmations. */
 function confirmedText(hit: Hit): string {
-  const people = hit.outcomes.confirmed ? ` · confirmed by a person ${hit.outcomes.confirmed}` : "";
+  const people = hit.outcomes?.confirmed ? ` · confirmed by a person ${num(hit.outcomes.confirmed)}` : "";
   const day = /^\d{4}-\d{2}-\d{2}/.exec(String(hit.lastConfirmedAt ?? ""))?.[0];
   return `${people}${day ? ` · last confirmed ${day}` : ""}`;
 }
 
-const KIND_LABEL: Record<string, string> = { procedure: "Procedure", fact: "Fact", fix: "Fix" };
+/** "worked 3 · partially 0 · failed 1", every count coerced to a number. */
+const outcomeCounts = (hit: Hit) => {
+  const o = hit.outcomes ?? ({} as Hit["outcomes"]);
+  return `worked ${num(o.worked, "0")} · partially ${num(o.partially_worked, "0")} · failed ${num(o.failed, "0")}`;
+};
+
+const KIND_LABELS: Record<string, string> = { procedure: "Procedure", fact: "Fact", fix: "Fix" };
+/** Own keys only: a kind such as "constructor" must not print an inherited function. */
+const kindLabel = (kind: unknown) => (typeof kind === "string" && Object.hasOwn(KIND_LABELS, kind) ? KIND_LABELS[kind] : "Entry");
 
 function sourceLine(hit: Hit): string {
   const src = hit.trail.source;
@@ -151,11 +178,10 @@ function sourceLine(hit: Hit): string {
 /** A procedure or a fact: what it is about, when it applies, its pitfalls and its steps. */
 function formatKnowledge(hit: Hit, index: number, total: number, opts: FormatOptions): string {
   const t = hit.trail;
-  const o = hit.outcomes;
   const lines = [
-    `## ${index + 1} of ${total} · ${(KIND_LABEL[hit.kind] ?? "Entry").toLowerCase()} · id ${safeId(hit.trailId)}`,
-    `strength ${hit.strength} · worked ${o.worked} · partially ${o.partially_worked} · failed ${o.failed}${confirmedText(hit)}`,
-    `${KIND_LABEL[hit.kind] ?? "Entry"}: ${clip(t.problem?.summary, 400)}`,
+    `## ${index + 1} of ${total} · ${kindLabel(hit.kind).toLowerCase()} · id ${safeId(hit.trailId)}`,
+    `strength ${num(hit.strength)} · ${outcomeCounts(hit)}${confirmedText(hit)}`,
+    `${kindLabel(hit.kind)}: ${clip(t.problem?.summary, 400)}`,
   ];
   if (t.problem?.task_context) lines.push(`When it applies: ${clip(t.problem.task_context, 300)}`);
   const source = sourceLine(hit);
@@ -179,12 +205,13 @@ function formatKnowledge(hit: Hit, index: number, total: number, opts: FormatOpt
 function formatHit(hit: Hit, index: number, total: number, opts: FormatOptions): string {
   if (hit.kind && hit.kind !== "fix") return formatKnowledge(hit, index, total, opts);
   const t = hit.trail;
-  const o = hit.outcomes;
   const lines: string[] = [];
-  const overlap = hit.match.environment_overlap === null ? "" : ` · environment overlap ${hit.match.environment_overlap}`;
+  const match = hit.match ?? ({} as Hit["match"]);
+  const overlap = match.environment_overlap == null ? "" : ` · environment overlap ${num(match.environment_overlap)}`;
+  const risk = Array.isArray(hit.risk?.flags) ? clip(String(hit.risk.level ?? "unknown"), 16) : "unknown";
   lines.push(
     `## Trail ${index + 1} of ${total} · id ${safeId(hit.trailId)}`,
-    `strength ${hit.strength} · worked ${o.worked} · partially ${o.partially_worked} · failed ${o.failed}${confirmedText(hit)} · matched by ${clip(String(hit.match.via), 16)} (${hit.match.score})${overlap} · risk ${clip(String(hit.risk.level), 16)}`,
+    `strength ${num(hit.strength)} · ${outcomeCounts(hit)}${confirmedText(hit)} · matched by ${clip(String(match.via), 16)} (${num(match.score)})${overlap} · risk ${risk}`,
     `Environment: ${[t.environment.os, t.environment.os_version, t.environment.arch, t.environment.container && t.environment.container !== "none" ? `in ${t.environment.container}` : "", `${t.environment.runtime.name} ${t.environment.runtime.version}`].map((x) => clip(x, 64)).filter(Boolean).join(" · ")}`,
     `Error: ${errorLine(t.problem.error_type, t.problem.error_message)}`,
     `Do first: ${clip(t.solution.steps[0], 300)}`,

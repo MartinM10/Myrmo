@@ -276,7 +276,7 @@ test("run as Claude Code runs it, across separate processes: failure, empty sear
     const r = spawnSync(process.execPath, [join(root, "scripts", "on-failure.mjs")], {
       input: JSON.stringify({ session_id: session, ...event }),
       encoding: "utf8",
-      env: { ...process.env, MYRMO_CONFIG: config, MYRMO_HOOK: "", MYRMO_HOOK_MIN_SECONDS: "0" },
+      env: { ...process.env, MYRMO_CONFIG: config, MYRMO_HOOK: "", MYRMO_HOOK_MIN_SECONDS: "0", MYRMO_HOOK_STATE_DIR: dir },
     });
     return r.stdout ? JSON.parse(r.stdout).hookSpecificOutput : null;
   };

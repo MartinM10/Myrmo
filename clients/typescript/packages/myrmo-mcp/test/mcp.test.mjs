@@ -5,6 +5,7 @@ import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import { spawn, spawnSync } from "node:child_process";
+import { request as httpRequest } from "node:http";
 import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -144,6 +145,8 @@ async function stdioClient(publish = "ask", { answer, env = {} } = {}) {
 }
 
 const published = () => requests.filter((r) => r.method === "POST" && r.url.split("?")[0] === "/v1/trails").length;
+/** Requests that carried a trail to the colony: a check, a draft or a publication. */
+const sentTrails = () => requests.filter((r) => r.method === "POST" && ["/v1/validate", "/v1/drafts", "/v1/trails"].includes(r.url.split("?")[0])).length;
 
 test("exposes the tools with their rules", async () => {
   const client = await stdioClient();
@@ -395,9 +398,41 @@ test("the model cannot switch on high-risk commands; the user can", async () => 
 
 test("publishing stays off unless enabled", async () => {
   const client = await stdioClient("off");
+  const before = sentTrails();
   const out = textOf(await client.callTool({ name: "myrmo_publish", arguments: { trail } }));
   assert.match(out, /chosen not to publish/);
+  assert.equal(sentTrails(), before, "with publishing off the trail never leaves the machine, not even to be checked");
   await client.close();
+});
+
+test("a preview sends nothing, whatever the publishing choice", async () => {
+  for (const publish of ["off", "ask", "auto", ""]) {
+    const client = await stdioClient(publish, { env: { MYRMO_CONFIG: freshConfig() } });
+    const before = sentTrails();
+    const out = textOf(await client.callTool({ name: "myrmo_publish", arguments: { trail, preview: true } }));
+    assert.match(out, /Payload that would be sent/);
+    assert.match(out, /The trail matches the protocol\. Nothing was sent/);
+    assert.equal(sentTrails(), before, `preview with publish=${publish || "unchosen"}`);
+    await client.close();
+  }
+});
+
+test("the colony checks a trail only once the user agreed to send it", async () => {
+  const validations = () => requests.filter((r) => r.url === "/v1/validate").length;
+  let asked = 0;
+  const declining = await stdioClient("ask", { answer: async () => (asked++, { action: "accept", content: { publish: false } }) });
+  const before = validations();
+  assert.match(textOf(await declining.callTool({ name: "myrmo_publish", arguments: { trail } })), /did not approve/);
+  assert.equal(asked, 1);
+  assert.equal(validations(), before, "declined: nothing was sent, not even to be checked");
+  await declining.close();
+
+  const approving = await stdioClient("ask", { answer: async () => ({ action: "accept", content: { publish: true } }) });
+  const published0 = published();
+  await approving.callTool({ name: "myrmo_publish", arguments: { trail } });
+  assert.equal(validations(), before + 1, "approved: the colony checks it, then it is published");
+  assert.equal(published(), published0 + 1);
+  await approving.close();
 });
 
 // ---- First-use consent: nobody has chosen yet, so the first publish asks the user once ----
@@ -420,7 +455,7 @@ test("with no choice made and a client that cannot ask, the trail is held for ap
   await client.close();
 });
 
-test("a preview says whether the colony would accept the trail, and an invalid one is never put to the user", async () => {
+test("a preview says whether the colony would accept the trail, checked on this machine, and an invalid one is never put to the user", async () => {
   let asked = 0;
   const client = await stdioClient("ask", { answer: async () => (asked++, { action: "accept", content: { publish: true } }) });
   const bad = structuredClone(trail);
@@ -437,7 +472,7 @@ test("a preview says whether the colony would accept the trail, and an invalid o
   assert.match(withNames, /Check before approving: these look like names and were NOT removed: "Acme Data Systems"/);
 
   const good = textOf(await client.callTool({ name: "myrmo_publish", arguments: { trail, preview: true } }));
-  assert.match(good, /The colony accepts this trail/);
+  assert.match(good, /The trail matches the protocol/);
   assert.doesNotMatch(good, /REJECT/);
 
   const before = published();
@@ -672,10 +707,11 @@ test("the model the agent names reaches the colony on searches and in the instru
   await client.close();
 });
 
-test("the hosted HTTP transport serves the same tools statelessly", async () => {
+/** Start the hosted server on a free port; resolves once it answers. */
+async function hosted(env = {}, extraArgs = ["--host", "127.0.0.1"]) {
   const port = 30000 + Math.floor(Math.random() * 20000);
-  const proc = spawn(process.execPath, [ENTRY, "--http", "--port", String(port), "--host", "127.0.0.1"], {
-    env: { ...process.env, MYRMO_URL: colonyUrl },
+  const proc = spawn(process.execPath, [ENTRY, "--http", "--port", String(port), ...extraArgs], {
+    env: { ...process.env, MYRMO_URL: colonyUrl, MYRMO_CONFIG: freshConfig(), MYRMO_API_KEY: "", MYRMO_MCP_ALLOWED_HOSTS: "", ...env },
     stdio: ["ignore", "ignore", "pipe"],
   });
   // The first line on stderr can come before the port accepts connections (slower runners, Windows): wait until it
@@ -683,10 +719,69 @@ test("the hosted HTTP transport serves the same tools statelessly", async () => 
   let exited = false;
   proc.once("exit", () => { exited = true; });
   for (let i = 0; i < 100 && !exited; i++) {
-    const up = await fetch(`http://127.0.0.1:${port}/mcp`, { method: "GET", signal: AbortSignal.timeout(1000) }).then(() => true, () => false);
+    const up = await fetch(`http://127.0.0.1:${port}/healthz`, { method: "GET", signal: AbortSignal.timeout(1000) }).then(() => true, () => false);
     if (up) break;
     await new Promise((r) => setTimeout(r, 100));
   }
+  return { port, proc };
+}
+
+/** POST an MCP initialize to the hosted server with a chosen Host header (fetch does not let a caller set one). */
+function postWithHost(port, host) {
+  const body = JSON.stringify({ jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "2025-03-26", capabilities: {}, clientInfo: { name: "t", version: "1" } } });
+  return new Promise((resolve, reject) => {
+    const req = httpRequest({ host: "127.0.0.1", port, path: "/mcp", method: "POST", headers: { host, "content-type": "application/json", accept: "application/json, text/event-stream" } }, (res) => {
+      res.resume();
+      res.on("end", () => resolve(res.statusCode));
+    });
+    req.on("error", reject);
+    req.end(body);
+  });
+}
+
+test("the hosted server answers only the Host names it is meant for, which an operator can set", async () => {
+  const local = await hosted();
+  try {
+    assert.equal(await postWithHost(local.port, `127.0.0.1:${local.port}`), 200);
+    assert.equal(await postWithHost(local.port, `localhost:${local.port}`), 200);
+    assert.equal(await postWithHost(local.port, `rebound.example:${local.port}`), 403, "a page under another name cannot reach it (DNS rebinding)");
+  } finally {
+    local.proc.kill();
+  }
+  const proxied = await hosted({ MYRMO_MCP_ALLOWED_HOSTS: "colony.example" });
+  try {
+    assert.equal(await postWithHost(proxied.port, "colony.example"), 200);
+    assert.equal(await postWithHost(proxied.port, `127.0.0.1:${proxied.port}`), 403);
+  } finally {
+    proxied.proc.kill();
+  }
+});
+
+test("the hosted server uses only the caller's own key, never one from its environment or settings file", async () => {
+  const config = freshConfig();
+  writeFileSync(config, JSON.stringify({ colony: { url: colonyUrl, api_key: "myk_savedkey_0000000000" } }));
+  const server = await hosted({ MYRMO_API_KEY: "myk_ambientkey_000000000", MYRMO_CONFIG: config });
+  const lastAuth = () => requests.filter((r) => r.url.startsWith("/v1/trails/by-fingerprint/")).at(-1).headers.authorization;
+  const search = { name: "myrmo_search", arguments: { error: "ModuleNotFoundError: No module named 'distutils'", runtime: "python" } };
+  try {
+    const anonymous = new Client({ name: "http-client", version: "1.0.0" });
+    await anonymous.connect(new StreamableHTTPClientTransport(new URL(`http://127.0.0.1:${server.port}/mcp`)));
+    await anonymous.callTool(search);
+    assert.equal(lastAuth(), undefined, "a caller without a key gets no key");
+    await anonymous.close();
+
+    const keyed = new Client({ name: "http-client", version: "1.0.0" });
+    await keyed.connect(new StreamableHTTPClientTransport(new URL(`http://127.0.0.1:${server.port}/mcp`), { requestInit: { headers: { authorization: "Bearer myk_callerkey_0000000000" } } }));
+    await keyed.callTool(search);
+    assert.equal(lastAuth(), "Bearer myk_callerkey_0000000000");
+    await keyed.close();
+  } finally {
+    server.proc.kill();
+  }
+});
+
+test("the hosted HTTP transport serves the same tools statelessly", async () => {
+  const { port, proc } = await hosted();
   try {
     const client = new Client({ name: "http-client", version: "1.0.0" });
     await client.connect(new StreamableHTTPClientTransport(new URL(`http://127.0.0.1:${port}/mcp`)));

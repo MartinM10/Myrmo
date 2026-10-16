@@ -2,7 +2,7 @@
 // myrmo-mcp: run the Myrmo MCP server.
 //
 //   npx -y myrmo-mcp                    stdio, for one developer (redaction happens on this machine)
-//   myrmo-mcp --http --port 3333        Streamable HTTP, stateless, for hosting next to a colony
+//   myrmo-mcp --http --port 3333        Streamable HTTP, stateless, for hosting next to a colony (loopback unless --host)
 
 import { createHash } from "node:crypto";
 import { createServer as createHttpServer, type IncomingMessage, type ServerResponse } from "node:http";
@@ -12,6 +12,7 @@ import { Colony, configPath, minFailedAttempts as resolveMinFailedAttempts, publ
 import * as sdk from "myrmo";
 import { parseInitArgs, runInit } from "./init.js";
 import { createServer, privateMode, VERSION } from "./server.js";
+import { allowedHosts, callerKey, DEFAULT_HTTP_HOST, hostedColonyUrl } from "./hosting.js";
 import { clean, readDeclared, rememberDeclared, type ColonyDescription } from "./profile.js";
 
 const args = process.argv.slice(2);
@@ -41,7 +42,7 @@ if (flag("--version")) {
 const USAGE = `myrmo-mcp ${VERSION}: the Myrmo MCP server and its commands.
 
   myrmo-mcp                          run the MCP server on stdio (what an agent's client launches)
-  myrmo-mcp --http [--port N]        run it over Streamable HTTP, stateless
+  myrmo-mcp --http [--port N] [--host H]  run it over Streamable HTTP, stateless (default host 127.0.0.1)
   myrmo-mcp init [options]           set this machine's agents up (add --url, --key or --key-file, --private for a team colony)
   myrmo-mcp doctor                   check that this machine can use the colony, and say what to fix
   myrmo-mcp config [setting value]   show or change a setting (publish, hook, ...)
@@ -58,7 +59,8 @@ const INIT_USAGE = `myrmo-mcp init [options]: set up the agents on this machine 
   --client <id>[,<id>]         only these: claude-code, cursor, windsurf, gemini, antigravity, claude-desktop,
                                vscode, opencode, codex
   --url <colony>               your organisation's colony instead of the public one
-  --key <key> | --key-file <f> its access key (the file may be the invitation message)
+  --key-file <f> | --key -      its access key, from a file (the invitation message works) or standard input;
+                               --key <key> works too, but stays in the shell's history
   --publish auto|ask|off       how agents publish to that colony (otherwise you are asked the first time)
   --private                    only for a colony older than protocol 1.7 (newer ones say what they are)
   --agents-md [file]           also write the usage rules into this repository's AGENTS.md
@@ -273,7 +275,7 @@ if (args[0] === "init") {
 }
 
 if (flag("--http")) {
-  await serveHttp(Number(option("--port", process.env.PORT ?? "3333")), option("--host", "0.0.0.0"));
+  await serveHttp(Number(option("--port", process.env.PORT ?? "3333")), option("--host", DEFAULT_HTTP_HOST));
 } else {
   // What the colony says it is decides private mode (protocol 1.7). Known from an earlier start, it is used at once and
   // refreshed in the background; the first time, the server waits up to two seconds for the colony to say it.
@@ -349,6 +351,8 @@ function sendJson(res: ServerResponse, status: number, body: unknown) {
 }
 
 async function serveHttp(port: number, host: string) {
+  const hosts = allowedHosts(port);
+  const url = hostedColonyUrl();
   const http = createHttpServer(async (req, res) => {
     const path = (req.url ?? "/").split("?")[0];
     if (path === "/healthz") return sendJson(res, 200, { status: "ok", version: VERSION });
@@ -366,17 +370,25 @@ async function serveHttp(port: number, host: string) {
     if (forwarded) headers["x-forwarded-for"] = forwarded;
     const agent = req.headers["x-myrmo-agent"];
     if (typeof agent === "string") headers["x-myrmo-agent"] = agent;
-    const auth = req.headers.authorization;
     const colony = new Colony({
+      url,
       headers,
-      apiKey: auth?.startsWith("Bearer ") ? auth.slice(7) : undefined,
+      // The caller's own key or none: never MYRMO_API_KEY or a key saved on this machine, which anyone who can reach
+      // this port would otherwise use.
+      apiKey: callerKey(req.headers.authorization),
       publish: "off",
       cacheTtlMs: 0,
       // The hosted server has no identity of its own: it forwards the header of whoever is calling.
       agentId: false,
     });
     const server = createServer({ colony, publishMode: "off", minFailedAttempts, fillLocalEnvironment: false, hosted: true });
-    const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
+    // A web page can make a browser send requests to this port under a name it controls (DNS rebinding): only the
+    // Host names this server is meant for are answered (MYRMO_MCP_ALLOWED_HOSTS).
+    const transport = new StreamableHTTPServerTransport({
+      sessionIdGenerator: undefined,
+      enableJsonResponse: true,
+      ...(hosts ? { enableDnsRebindingProtection: true, allowedHosts: hosts } : {}),
+    });
     res.on("close", () => {
       void transport.close();
       void server.close();
@@ -391,5 +403,7 @@ async function serveHttp(port: number, host: string) {
     }
   });
   http.keepAliveTimeout = 65_000;
-  http.listen(port, host, () => console.error(`myrmo-mcp ${VERSION} listening on http://${host}:${port}/mcp`));
+  http.listen(port, host, () =>
+    console.error(`myrmo-mcp ${VERSION} listening on http://${host}:${port}/mcp for ${url}; Host names answered: ${hosts ? hosts.join(", ") : "any (MYRMO_MCP_ALLOWED_HOSTS=*)"}`),
+  );
 }

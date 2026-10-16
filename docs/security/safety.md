@@ -60,11 +60,14 @@ recognise is treated as high. Verification commands (`verification_method.comman
 risk-analysed, so clients tell the model to ask the user before running them, unless the same command is one of the
 trail's commands, which were. When the colony flagged none of a trail's commands, clients say so outright: told
 nothing, a careful model treats every command from a trail as risky and stops to ask, which an agent working alone
-cannot do (measured in MyrmoBench).
+cannot do (measured in MyrmoBench). They also say that the analysis covers the listed commands only, so that a
+command written inside a step is checked the same way before it runs. A response without a risk analysis fails
+closed: clients say the risk is unknown and that every command must be shown to the user first.
 
-Clients also render trail text so that it cannot forge structure: fields are collapsed to one line,
-anything that looks like the `<myrmo_trails>` envelope is defused, and code fences are longer than
-any backtick run inside a diff.
+Clients also render trail text so that it cannot forge structure: every field, the error type included, is collapsed
+to one line, anything that looks like the `<myrmo_trails>` envelope is defused (in any case and spacing, such as
+`< /MYRMO_TRAILS>`), code fences are longer than any backtick run inside a diff, and numbers the colony sends
+(strength, scores, counts) are shown only as numbers.
 
 ## Prompt injection
 
