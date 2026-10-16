@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.28.2](https://github.com/MartinM10/Myrmo/compare/mcp-v0.28.1...mcp-v0.28.2) (2026-10-16)
+
+
+### Bug fixes
+
+* **mcp:** init --client takes a comma-separated list, as its help says ([#207](https://github.com/MartinM10/Myrmo/issues/207)) ([5df9df8](https://github.com/MartinM10/Myrmo/commit/5df9df8637df96c2e9029c44ccad90f66d095285))
+
 ## [0.28.1](https://github.com/MartinM10/Myrmo/compare/mcp-v0.28.0...mcp-v0.28.1) (2026-10-16)
 
 
