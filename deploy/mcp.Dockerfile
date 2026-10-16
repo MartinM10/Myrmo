@@ -1,5 +1,5 @@
 # Hosted MCP server (Streamable HTTP, stateless). Build context: repository root.
-FROM node:22-alpine AS build
+FROM node:25-alpine AS build
 WORKDIR /src
 COPY clients/typescript/package.json clients/typescript/package-lock.json ./
 COPY clients/typescript/packages/myrmo/package.json packages/myrmo/
@@ -12,7 +12,7 @@ COPY plugins/myrmo/scripts plugins/myrmo/scripts
 COPY protocol/trail.v1.schema.json protocol/trail.v1.schema.json
 RUN npm run build && npm prune --omit=dev
 
-FROM node:22-alpine
+FROM node:25-alpine
 WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=build /src /app
