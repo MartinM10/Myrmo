@@ -1,0 +1,4 @@
+# What CI installs to validate the protocol, the plugin's example trail and the seed factory (.github/workflows/ci.yml).
+# Pinned so a new release cannot change a run by itself; Dependabot proposes the updates (.github/dependabot.yml).
+jsonschema==4.26.0
+pytest==9.1.1
