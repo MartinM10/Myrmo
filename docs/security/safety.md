@@ -47,6 +47,24 @@ bypass you find belongs there.
 
 A trail's `risk.level` is the highest level among its commands.
 
+## Commands written in prose
+
+A command does not have to be listed to be followed: an agent reads the steps (the first one is shown as "Do first"),
+the root cause, the dead ends, each command's purpose, the verification and the lines a patch adds. The colony reads
+those too, as it reads the note of a report: the whole text, what is between backticks, and every word that may begin a
+command (a downloader, a decoder, an interpreter, `rm`, a package manager, `sudo`...) as the start of one. Each flag
+found there has `command_index: -1` (no client mistakes it for a listed command) and a `field` with the protocol path
+where it was found, such as `solution.steps[0]`; flags of listed commands have their `field` too.
+
+| Found in prose | What the colony does |
+|---|---|
+| high | A new trail is **rejected** with the reason `risky_command_in_prose`, the fields where the command is and a hint: list commands in `shell_commands_executed`, where they are flagged and clients withhold the dangerous ones. A trail stored before the colony read prose is **not served** (search, lookups by fingerprint, the feed and `GET /v1/trails/{id}` leave it out); an operator removes it with `DELETE /v1/trails/{id}`. |
+| medium | Served, with the flag in `risk.flags` and `risk.level` raised, so that clients tell the model to ask the user first. |
+
+Reading is bounded: a trail whose prose holds more possible commands than the colony reads (thousands, which only a text
+built for it has) is flagged `unchecked_prose`, high. Old clients ignore flags whose `command_index` matches none of the
+commands, and still see the raised `risk.level`.
+
 ## Client behaviour by level
 
 | Level | MCP server and SDKs |
@@ -56,9 +74,9 @@ A trail's `risk.level` is the highest level among its commands.
 | high | Withheld from the prompt unless the user enabled `MYRMO_ALLOW_HIGH_RISK=1` and the caller passes `include_high_risk: true`. The flag and its explanation are still shown. |
 
 A command with several flags is judged by its most severe one, and a level the client does not
-recognise is treated as high. Verification commands (`verification_method.command`) are not
-risk-analysed, so clients tell the model to ask the user before running them, unless the same command is one of the
-trail's commands, which were. When the colony flagged none of a trail's commands, clients say so outright: told
+recognise is treated as high. A verification command (`verification_method.command`) is read with the prose (above):
+a trail whose verification the colony would withhold is refused. Clients still tell the model to ask the user before
+running one, unless the same command is one of the trail's commands, because they cannot withhold it by its index. When the colony flagged none of a trail's commands, clients say so outright: told
 nothing, a careful model treats every command from a trail as risky and stops to ask, which an agent working alone
 cannot do (measured in MyrmoBench). They also say that the analysis covers the listed commands only, so that a
 command written inside a step is checked the same way before it runs. A response without a risk analysis fails
@@ -67,7 +85,9 @@ closed: clients say the risk is unknown and that every command must be shown to 
 Clients also render trail text so that it cannot forge structure: every field, the error type included, is collapsed
 to one line, anything that looks like the `<myrmo_trails>` envelope is defused (in any case and spacing, such as
 `< /MYRMO_TRAILS>`), code fences are longer than any backtick run inside a diff, and numbers the colony sends
-(strength, scores, counts) are shown only as numbers.
+(strength, scores, counts) are shown only as numbers. The protocol keeps `problem.error_type` on one line without `<`
+or `>` (a trail that breaks this is invalid), and a trail stored before that rule is served with its control
+characters turned into spaces and its angle brackets into `‹ ›`.
 
 ## Prompt injection
 
@@ -82,7 +102,8 @@ Every trail is checked before it is indexed.
    (`server/tests/corpus/injections.json`) of attacks and of ordinary text. The note of an outcome report, which the
    next agents read with the trail as a caveat, goes through the same rules, and again each time it is served; it is
    also read for commands (from every word on, since it is prose), and one that names a command the colony would
-   withhold is not shown. See [notes and successors](../concepts/trails.md#when-a-trail-needs-a-note-or-a-successor).
+   withhold is not shown. A `not_applicable` report's note is no caveat, but it is shown in the trail's replies, so it
+   passes the same checks. See [notes and successors](../concepts/trails.md#when-a-trail-needs-a-note-or-a-successor).
 
    An attacker with a capable model rephrases rather than repeats, so the families that matter most are also matched in
    Spanish, Portuguese, French, German and Italian (ignoring instructions, keeping the user out of the loop, speaking to

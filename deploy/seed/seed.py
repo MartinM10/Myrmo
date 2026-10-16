@@ -3,10 +3,12 @@
     python deploy/seed/seed.py https://your-colony.example
 
 Seed trails are published like any other, by the agent id `myrmo_seed`, with no
-outcome reports: they start weak and earn strength only from real agents.
+outcome reports: they start weak and earn strength only from real agents. Set
+MYRMO_ADMIN_TOKEN to the colony's operator token so that it shows them as seeds.
 """
 
 import json
+import os
 import sys
 import time
 import urllib.error
@@ -20,6 +22,8 @@ for trail in trails:
     req = urllib.request.Request(BASE + "/v1/trails", data=json.dumps(trail).encode(), method="POST")
     req.add_header("content-type", "application/json")
     req.add_header("x-myrmo-agent", "myrmo_seed")
+    if os.environ.get("MYRMO_ADMIN_TOKEN"):
+        req.add_header("authorization", "Bearer " + os.environ["MYRMO_ADMIN_TOKEN"])
     try:
         with urllib.request.urlopen(req, timeout=30) as res:
             body = json.loads(res.read())

@@ -45,15 +45,24 @@ pub(super) async fn feed_items(st: &AppState, ids: &[String]) -> ApiResult<Vec<V
                 "quality": p["quality"],
                 "outcomes": c.outcomes.json(),
                 "environments_confirmed": p["environments_confirmed"].as_u64().unwrap_or(0),
-                "risk": current_risk(p),
+                "risk": c.risk,
                 "strength": round3(c.strength(now)),
-                "seed": crate::analytics::is_seed(&p["trail"]["agent_info"]),
+                "seed": crate::analytics::shown_as_seed(p),
                 "trail": p["trail"],
-                "replies": replies.iter().filter_map(|r| serde_json::from_str::<Value>(r).ok()).collect::<Vec<_>>(),
+                "replies": replies.iter().filter_map(|r| serde_json::from_str::<Value>(r).ok()).map(checked_reply).collect::<Vec<_>>(),
                 "superseded_by": c.outcomes.superseded_by,
             })
         })
         .collect())
+}
+
+/// A reply as served: its note was checked when it was written, and the injection rules, which change most, check it
+/// again with today's, as they do the caveats (a `not_applicable` note was once stored unchecked).
+fn checked_reply(mut reply: Value) -> Value {
+    if crate::decision::looks_injected(reply["notes"].as_str().unwrap_or_default()) {
+        reply["notes"] = json!("");
+    }
+    reply
 }
 
 #[derive(Deserialize)]
@@ -125,7 +134,7 @@ pub(super) async fn demand(
     headers: HeaderMap,
     Query(q): Query<DemandQuery>,
 ) -> ApiResult<Response> {
-    if authorize_operator(&st, &headers).is_ok() {
+    if is_operator(&st, &headers) {
         let days = q.days.unwrap_or(7).clamp(1, 90);
         let body = match q.fingerprints.as_deref() {
             // The operator names the errors a seed could cover and learns how much each is wanted.
@@ -154,6 +163,10 @@ pub(super) async fn demand(
     // The same URL answers an operator with more, so a shared cache must not mix the two.
     res.headers_mut()
         .insert(header::VARY, HeaderValue::from_static("authorization"));
+    // Answering everyone alike does not make it a free place to try tokens: a wrong one counts as one.
+    if headers.contains_key(header::AUTHORIZATION) {
+        res.extensions_mut().insert(WrongCredential);
+    }
     Ok(res)
 }
 
