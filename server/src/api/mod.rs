@@ -19,6 +19,7 @@ use admin::{
 };
 use effort::report_effort;
 use feed::{activity, analytics, demand, feed, stats};
+pub use outcomes::address_vote;
 use outcomes::report_outcome;
 use publish::{create_draft, discard_draft, get_draft, publish, publish_draft, validate};
 use search::{by_fingerprint, search};
@@ -337,6 +338,7 @@ fn valid_agent_id(id: &str) -> bool {
         && id
             .chars()
             .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
+        && !keys::is_address_id(id)
 }
 
 /// A colony that serves a network (`MYRMO_ALLOWED_NETWORKS`) answers `403` to everyone else, before anything is read.
@@ -650,13 +652,14 @@ async fn load(st: &AppState, ids: &[String]) -> ApiResult<Vec<Candidate>> {
     }
     let mut lists: Vec<Vec<String>> = pipe.query_async(&mut st.redis()).await?;
     let successors = lists.split_off(ids.len());
+    let successor_info = successor_info(st, &successors).await?;
+    let now = keys::now();
     Ok(ids
         .iter()
         .zip(hashes)
         .zip(lists.into_iter().zip(successors))
         .filter_map(|((id, hash), (caveats, mut amended_by))| {
-            amended_by.sort();
-            amended_by.truncate(MAX_SUCCESSORS_SERVED);
+            order_successors(&mut amended_by, |s| successor_info.get(s).cloned(), now);
             payloads.get(id).map(|payload| Candidate {
                 id: id.clone(),
                 payload: payload.clone(),
@@ -678,6 +681,74 @@ async fn load(st: &AppState, ids: &[String]) -> ApiResult<Vec<Candidate>> {
 /// Caveats served with a trail, and successors named: enough to warn, few enough to keep a result short.
 const CAVEATS_SERVED: usize = 3;
 const MAX_SUCCESSORS_SERVED: usize = 3;
+
+/// A successor's outcome counters and status hash, by id.
+type SuccessorInfo = HashMap<String, (HashMap<String, String>, HashMap<String, String>)>;
+
+/// The counters and status of every successor named by the trails being loaded, in one round trip; none when no trail
+/// has a successor, which is nearly always.
+async fn successor_info(st: &AppState, successors: &[Vec<String>]) -> ApiResult<SuccessorInfo> {
+    let mut ids: Vec<&String> = successors.iter().flatten().collect();
+    ids.sort();
+    ids.dedup();
+    if ids.is_empty() {
+        return Ok(HashMap::new());
+    }
+    let mut pipe = redis::pipe();
+    for id in &ids {
+        pipe.cmd("HGETALL").arg(keys::outcomes(id));
+        pipe.cmd("HGETALL").arg(keys::trail(id));
+    }
+    let hashes: Vec<HashMap<String, String>> = pipe.query_async(&mut st.redis()).await?;
+    let mut hashes = hashes.into_iter();
+    Ok(ids
+        .into_iter()
+        .filter_map(|id| Some((id.clone(), (hashes.next()?, hashes.next()?))))
+        .collect())
+}
+
+/// The successors named with a trail: those still indexed, the strongest first and then the newest, at most
+/// [`MAX_SUCCESSORS_SERVED`]. Never by id: an id is random, and whoever published the most successors would be named
+/// most often. `info` gives a successor's outcome counters and status hash.
+fn order_successors(
+    ids: &mut Vec<String>,
+    info: impl Fn(&str) -> Option<(HashMap<String, String>, HashMap<String, String>)>,
+    now: i64,
+) {
+    let mut ranked: Vec<(f64, i64, String)> = ids
+        .drain(..)
+        .filter_map(|id| {
+            let (outcomes, meta) = info(&id)?;
+            if meta.get("status").map(String::as_str) != Some("indexed") {
+                return None;
+            }
+            let o = Outcomes::from_hash(&outcomes);
+            let number = |k: &str| meta.get(k).and_then(|v| v.parse::<f64>().ok());
+            let laid = number("laid_ts").unwrap_or(0.0) as i64;
+            let since = if o.last_success_ts > 0 {
+                o.last_success_ts
+            } else {
+                laid
+            };
+            let strength = strength::strength(
+                o.worked + o.confirmed,
+                o.partially_worked,
+                o.failed,
+                number("quality").unwrap_or(0.5),
+                (now - since).max(0) as f64 / 86_400.0,
+                strength::half_life_days(meta.get("category").map_or("fix", String::as_str)),
+            );
+            Some((strength, laid, id))
+        })
+        .collect();
+    ranked.sort_by(|a, b| b.0.total_cmp(&a.0).then(b.1.cmp(&a.1)).then(a.2.cmp(&b.2)));
+    ids.extend(
+        ranked
+            .into_iter()
+            .take(MAX_SUCCESSORS_SERVED)
+            .map(|(_, _, id)| id),
+    );
+}
 
 /// The risk of a stored trail, assessed with today's rules. The analysis is cheap, and serving it
 /// fresh means a rule added tomorrow also covers every trail indexed yesterday. If the stored
@@ -1007,5 +1078,59 @@ mod tests {
     fn checks_agent_ids() {
         assert!(valid_agent_id("agent_1234"));
         assert!(!valid_agent_id("bad id!"));
+        // What the clients generate: 32 hex digits.
+        assert!(valid_agent_id("3f9c0a1b2c3d4e5f60718293a4b5c6d7"));
+    }
+
+    #[test]
+    fn the_anonymous_id_format_cannot_be_declared() {
+        let anonymous = keys::client_key("salt", "198.51.100.4");
+        assert!(keys::is_address_id(&anonymous));
+        assert!(
+            !valid_agent_id(&anonymous),
+            "an X-Myrmo-Agent equal to an address hash would claim an anonymous publisher's trails"
+        );
+        assert!(!valid_agent_id("0123456789ABCDEF"));
+        assert!(valid_agent_id("0123456789abcdeg"));
+    }
+
+    #[test]
+    fn successors_are_served_strongest_first_then_newest() {
+        let now = 1_800_000_000;
+        let ranked = |rows: &[(&str, u64, u64, i64)]| {
+            let mut ids: Vec<String> = rows.iter().map(|r| r.0.to_string()).collect();
+            let info: SuccessorInfo = rows
+                .iter()
+                .map(|(id, worked, failed, laid)| {
+                    let outcomes = HashMap::from([
+                        ("worked".to_string(), worked.to_string()),
+                        ("failed".to_string(), failed.to_string()),
+                        ("last_success_ts".to_string(), laid.to_string()),
+                    ]);
+                    let meta = HashMap::from([
+                        ("status".to_string(), "indexed".to_string()),
+                        ("quality".to_string(), "0.7".to_string()),
+                        ("laid_ts".to_string(), laid.to_string()),
+                    ]);
+                    (id.to_string(), (outcomes, meta))
+                })
+                .collect();
+            order_successors(&mut ids, |id| info.get(id).cloned(), now);
+            ids
+        };
+        // UUIDs sort the attacker's first; strength and recency do not.
+        let ids = ranked(&[
+            ("00000000-spam-1", 0, 3, now - 60),
+            ("00000000-spam-2", 0, 0, now - 120),
+            ("ffffffff-good", 6, 0, now - 86_400),
+            ("eeeeeeee-newer", 0, 0, now - 30),
+        ]);
+        assert_eq!(ids[0], "ffffffff-good", "{ids:?}");
+        assert_eq!(&ids[1..3], ["eeeeeeee-newer", "00000000-spam-2"], "{ids:?}");
+        assert_eq!(ids.len(), MAX_SUCCESSORS_SERVED);
+        // A successor no longer indexed is not named.
+        let mut gone = vec!["a".to_string()];
+        order_successors(&mut gone, |_| None, now);
+        assert!(gone.is_empty());
     }
 }

@@ -514,34 +514,62 @@ const REFUSED: &str = "admin:refused";
 const REFUSED_LAST: &str = "admin:refused:last";
 const REFUSED_KEEP: isize = 100;
 const REFUSED_TTL: i64 = 30 * 86_400;
+/// Addresses not on the list yet that may be added in one minute. Every refused connection is noted before any quota
+/// applies, so without it a caller rotating addresses would rewrite the list as fast as it can connect.
+const REFUSED_NEW_PER_MINUTE: u32 = 20;
+
+/// New addresses noted in one minute (counter).
+fn refused_new(minute: i64) -> String {
+    format!("admin:refused:new:{minute}")
+}
+
+/// One script, so that the counts, the last times and the cut always agree: an address cut from the counts leaves the
+/// times too, and the times never outgrow the counts (Valkey runs without eviction, and a key that only grows fills
+/// it). A times hash left larger by an earlier version is rebuilt from the counts the first time it is written.
+const NOTE_REFUSED: &str = r"
+if not redis.call('ZSCORE', KEYS[1], ARGV[1]) then
+  local fresh = redis.call('INCR', KEYS[3])
+  if fresh == 1 then redis.call('EXPIRE', KEYS[3], 120) end
+  if fresh > tonumber(ARGV[5]) then return 0 end
+end
+redis.call('ZINCRBY', KEYS[1], 1, ARGV[1])
+redis.call('HSET', KEYS[2], ARGV[1], ARGV[2])
+redis.call('EXPIRE', KEYS[1], ARGV[3])
+redis.call('EXPIRE', KEYS[2], ARGV[3])
+local keep = tonumber(ARGV[4])
+local extra = redis.call('ZCARD', KEYS[1]) - keep
+if extra > 0 then
+  local gone = redis.call('ZRANGE', KEYS[1], 0, extra - 1)
+  redis.call('ZREMRANGEBYRANK', KEYS[1], 0, extra - 1)
+  redis.call('HDEL', KEYS[2], unpack(gone))
+end
+if redis.call('HLEN', KEYS[2]) > keep then
+  local names = redis.call('ZRANGE', KEYS[1], 0, -1)
+  local times = redis.call('HMGET', KEYS[2], unpack(names))
+  redis.call('UNLINK', KEYS[2])
+  for i, name in ipairs(names) do
+    if times[i] then redis.call('HSET', KEYS[2], name, times[i]) end
+  end
+  redis.call('EXPIRE', KEYS[2], ARGV[3])
+end
+return 1
+";
 
 /// A connection refused because its network is not allowed: the address, a count and the last time. The operator's
-/// own network, kept 30 days at most and cut to the 100 addresses seen most.
+/// own network, kept 30 days at most and cut to the 100 addresses seen most. At most 20 addresses not on the list are
+/// added a minute; past that, connections from new addresses are refused without being noted.
 pub async fn note_refused_network(con: &mut ConnectionManager, address: &str, now: i64) {
-    let result: redis::RedisResult<()> = redis::pipe()
-        .cmd("ZINCRBY")
+    let result: redis::RedisResult<i64> = redis::cmd("EVAL")
+        .arg(NOTE_REFUSED)
+        .arg(3)
         .arg(REFUSED)
-        .arg(1)
-        .arg(address)
-        .ignore()
-        .cmd("HSET")
         .arg(REFUSED_LAST)
+        .arg(refused_new(now / 60))
         .arg(address)
         .arg(now)
-        .ignore()
-        .cmd("EXPIRE")
-        .arg(REFUSED)
         .arg(REFUSED_TTL)
-        .ignore()
-        .cmd("EXPIRE")
-        .arg(REFUSED_LAST)
-        .arg(REFUSED_TTL)
-        .ignore()
-        .cmd("ZREMRANGEBYRANK")
-        .arg(REFUSED)
-        .arg(0)
-        .arg(-(REFUSED_KEEP + 1))
-        .ignore()
+        .arg(REFUSED_KEEP)
+        .arg(REFUSED_NEW_PER_MINUTE)
         .query_async(con)
         .await;
     if let Err(err) = result {

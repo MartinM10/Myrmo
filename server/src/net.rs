@@ -106,7 +106,9 @@ pub fn refusal(peer: IpAddr) -> String {
 }
 
 /// The address quotas are counted against: the first `X-Forwarded-For` entry when the peer is a trusted proxy (the
-/// proxy writes the real client there), otherwise the peer itself, whatever the header says.
+/// proxy writes the real client there), otherwise the peer itself, whatever the header says. It is the
+/// [`quota_address`] of that address, so every quota (requests, publishing, reports, drafts, operator tokens) counts one
+/// IPv6 network as one client. Which networks may connect is decided on the peer itself (`allows`), never on this.
 pub fn client_address(peer: IpAddr, forwarded_for: Option<&str>, trusted: &[Cidr]) -> String {
     if trusted.iter().any(|c| c.contains(peer))
         && let Some(first) = forwarded_for
@@ -114,9 +116,32 @@ pub fn client_address(peer: IpAddr, forwarded_for: Option<&str>, trusted: &[Cidr
             .map(str::trim)
             .filter(|v| !v.is_empty())
     {
-        return first.to_string();
+        return quota_address(first);
     }
-    peer.to_string()
+    quota_address(&peer.to_string())
+}
+
+/// What a quota counts for an address: an IPv4 address as it is (also when a dual-stack socket shows it as
+/// `::ffff:a.b.c.d`), and an IPv6 address as its /64, the block a single subscriber is given. Counting each address of
+/// a /64 apart would give one machine 2^64 quotas. A port after the address is dropped; text that is not an address is
+/// kept as it is.
+pub fn quota_address(text: &str) -> String {
+    let text = text.trim();
+    let ip = text
+        .parse::<IpAddr>()
+        .ok()
+        .or_else(|| text.parse::<std::net::SocketAddr>().ok().map(|s| s.ip()));
+    match ip {
+        Some(IpAddr::V6(v6)) => match v6.to_ipv4_mapped() {
+            Some(v4) => v4.to_string(),
+            None => {
+                let network = u128::from(v6) & (u128::MAX << 64);
+                format!("{}/64", std::net::Ipv6Addr::from(network))
+            }
+        },
+        Some(v4) => v4.to_string(),
+        None => text.to_string(),
+    }
 }
 
 #[cfg(test)]
@@ -214,5 +239,32 @@ mod tests {
             "10.0.0.2",
             "an empty list trusts nobody"
         );
+    }
+
+    #[test]
+    fn one_ipv6_network_is_one_client() {
+        let trusted = Cidr::parse_list(PRIVATE_NETWORKS);
+        let a = client_address(ip("2001:db8:1:2::1"), None, &[]);
+        let b = client_address(ip("2001:db8:1:2:ffff:ee:dd:cc"), None, &[]);
+        assert_eq!(a, "2001:db8:1:2::/64");
+        assert_eq!(a, b, "every address of a /64 counts as one");
+        assert_ne!(a, client_address(ip("2001:db8:1:3::1"), None, &[]));
+        assert_eq!(
+            client_address(
+                ip("172.18.0.3"),
+                Some("2001:db8:7:8::42, 10.0.0.1"),
+                &trusted
+            ),
+            "2001:db8:7:8::/64",
+            "the forwarded address too"
+        );
+        assert_eq!(
+            client_address(ip("::ffff:198.51.100.4"), None, &[]),
+            "198.51.100.4",
+            "an IPv4 client on a dual-stack socket is its IPv4 address"
+        );
+        assert_eq!(quota_address("198.51.100.4:51000"), "198.51.100.4");
+        assert_eq!(quota_address("[2001:db8:1:2::9]:443"), "2001:db8:1:2::/64");
+        assert_eq!(quota_address("unknown"), "unknown");
     }
 }

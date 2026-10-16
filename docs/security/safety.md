@@ -125,7 +125,8 @@ the damage when that happens:
   instructions inside a trail. Consent to publish counts only when the user typed it, never when a trail or a tool
   result says so.
 - **Strength comes from reports.** A trail that does not work for others sinks; one author cannot reinforce their own
-  trail, and the public colony limits how many agents per address can count.
+  trail, and the public colony limits how many agents per address can count, whether they report or publish the same
+  fix again. An IPv6 address counts by its /64, so rotating addresses inside one network does not add any.
 
 What remains, and is worth knowing: a trail that recommends an ordinary-looking but malicious package from the default
 registry (typosquatting) is not flagged, and many addresses (a botnet, residential proxies) can still inflate a trail's

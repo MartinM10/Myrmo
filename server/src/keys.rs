@@ -32,6 +32,10 @@ pub fn caveats(id: &str) -> String {
 pub fn amended_by(id: &str) -> String {
     format!("amended_by:{id}")
 }
+/// Successors one publisher (address hash or access key) linked to one trail today (set of trail ids).
+pub fn successor_quota(id: &str, publisher: &str) -> String {
+    format!("succ:{id}:{publisher}")
+}
 /// Distinct environments that reported on a trail (HyperLogLog).
 pub fn environments(id: &str) -> String {
     format!("envs:{id}")
@@ -124,6 +128,12 @@ pub fn iso(ts: i64) -> String {
         .single()
         .unwrap_or_else(Utc::now)
         .to_rfc3339_opts(SecondsFormat::Secs, true)
+}
+
+/// Whether an id has the form of a [`client_key`]: sixteen hex digits. The form is reserved for address hashes, so a
+/// caller cannot declare as its agent id the hash an anonymous publisher's trails are kept under.
+pub fn is_address_id(id: &str) -> bool {
+    id.len() == 16 && id.chars().all(|c| c.is_ascii_hexdigit())
 }
 
 /// Pseudonymous client key: hash of a secret salt, the current day and the address.

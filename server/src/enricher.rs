@@ -181,16 +181,47 @@ async fn reject(st: &AppState, id: &str, reasons: &[&str], detail: Value) -> Res
     Ok(())
 }
 
-/// Whether a trail merged into an existing one counts as a `worked` report for it. Authors cannot
-/// confirm their own trails, and an agent counts once a day (`first_today`). Trails without a
-/// recorded author (published before authors were kept) cannot be told apart, so they count.
-fn counts_as_reinforcement(
+/// Whether a trail merged into an existing one may count as a `worked` report for it: it comes from somebody else.
+/// Authors cannot confirm their own trails, and the author is also whoever publishes from the address the existing
+/// trail was published from today, because an agent id is the caller's own choice. Trails without a recorded author
+/// (published before authors were kept) cannot be told apart by author. Once a day per agent and the places of the
+/// address (`crate::api::address_vote`) are checked after this.
+fn independent_rediscovery(
     new_author: Option<&str>,
     existing_author: Option<&str>,
-    first_today: bool,
+    new_address: Option<&str>,
+    existing_address: Option<&str>,
 ) -> bool {
-    let same_author = matches!((new_author, existing_author), (Some(a), Some(b)) if a == b);
-    first_today && !same_author
+    let same = |a: Option<&str>, b: Option<&str>| matches!((a, b), (Some(a), Some(b)) if a == b);
+    !same(new_author, existing_author) && !same(new_address, existing_address)
+}
+
+/// Successors one publisher (one address, or one access key) may link to one trail in a day. Linking costs nothing but
+/// a publication, and each successor is named with the trail it amends.
+const SUCCESSORS_PER_PUBLISHER: u64 = 2;
+
+/// Whether two trails come from one author who declared who they are: the same agent id or access key, kept with each
+/// trail. An anonymous publisher is known only by a daily hash of their address, which everyone behind one router
+/// shares, so it never makes two trails one author's.
+fn same_declared_author(a: &HashMap<String, String>, b: &HashMap<String, String>) -> bool {
+    match (a.get("author"), b.get("author")) {
+        (Some(a), Some(b)) => a == b && !keys::is_address_id(a),
+        _ => false,
+    }
+}
+
+/// Whether a successor from somebody else is about the error of the trail it amends, by the check search applies to a
+/// semantic hit: `message` and `error_type` are the amended trail's, `similarity` how close the successor is to that
+/// error line. Only then is it kept under the amended trail's fingerprint, where a lookup serves it as an exact match.
+fn about_the_same_error(
+    message: &str,
+    error_type: &str,
+    successor: &Value,
+    similarity: f64,
+    min_similarity: f64,
+) -> bool {
+    similarity >= min_similarity
+        && crate::relevance::Asked::new(message, error_type).is_relevant(successor, similarity)
 }
 
 fn same_environment(a: &Value, b: &Value) -> bool {
@@ -347,7 +378,7 @@ async fn enrich(st: &AppState, id: &str, mut trail: Value) -> Result<()> {
                 && fingerprint::solution_fingerprint(&p["trail"]) == solution
         }) {
             // A re-discovery is an independent confirmation only when it comes from somebody
-            // else, once a day: the same rules as an outcome report.
+            // else, once a day, within the places of its address: the same rules as an outcome report.
             let new_meta: std::collections::HashMap<String, String> =
                 con.hgetall(keys::trail(id)).await?;
             let existing_meta: std::collections::HashMap<String, String> =
@@ -358,24 +389,43 @@ async fn enrich(st: &AppState, id: &str, mut trail: Value) -> Result<()> {
             let existing_author = crate::api::trail_author(&mut con, existing_id, &existing_meta)
                 .await
                 .map_err(|_| anyhow::anyhow!("cannot read the trail author"))?;
-            let first_today = match &new_author {
-                Some(author) => redis::cmd("SET")
-                    .arg(keys::seen(existing_id, author))
+            let (new_address, existing_address): (Option<String>, Option<String>) =
+                redis::cmd("MGET")
+                    .arg(keys::pub_addr(id))
+                    .arg(keys::pub_addr(existing_id))
+                    .query_async(&mut con)
+                    .await?;
+            // A seed is not an independent confirmation: it only merges. Nor is a trail whose address is no longer
+            // known (it waited in the queue for over a day): its places cannot be counted.
+            let independent = independent_rediscovery(
+                new_author.as_deref(),
+                existing_author.as_deref(),
+                new_address.as_deref(),
+                existing_address.as_deref(),
+            ) && !crate::analytics::is_seed(&agent_info);
+            let mut counted = false;
+            if let (true, Some(address)) = (independent, new_address.as_deref()) {
+                let identity = new_author.as_deref().unwrap_or(address);
+                let first_today = redis::cmd("SET")
+                    .arg(keys::seen(existing_id, identity))
                     .arg(1)
                     .arg("NX")
                     .arg("EX")
                     .arg(86_400)
                     .query_async::<Option<String>>(&mut con)
                     .await?
-                    .is_some(),
-                None => true,
-            };
-            // A seed is not an independent confirmation: it only merges.
-            let counted = counts_as_reinforcement(
-                new_author.as_deref(),
-                existing_author.as_deref(),
-                first_today,
-            ) && !crate::analytics::is_seed(&agent_info);
+                    .is_some();
+                counted = first_today
+                    && crate::api::address_vote(
+                        &mut con,
+                        &st.cfg,
+                        existing_id,
+                        address,
+                        identity,
+                        keys::hour(now),
+                    )
+                    .await?;
+            }
 
             let mut pipe = redis::pipe();
             pipe.cmd("HSET")
@@ -463,7 +513,12 @@ async fn enrich(st: &AppState, id: &str, mut trail: Value) -> Result<()> {
         .unwrap_or_default()
         .to_string();
     // The trail this one amends, if it is still in the colony: checked when the link is made, not only when it was asked.
-    let amends = amended(&mut con, id).await?;
+    let link = match amended(&mut con, id).await? {
+        Some((target, target_fp)) => {
+            plan_successor(st, &mut con, id, &trail, &vector, target, target_fp).await?
+        }
+        None => None,
+    };
     let mut payload = json!({
         "trail_id": id,
         "fingerprint": fp,
@@ -480,8 +535,8 @@ async fn enrich(st: &AppState, id: &str, mut trail: Value) -> Result<()> {
         "strength": strength::strength(0, 0, 0, judgement.quality, 0.0, strength::half_life_days(kind.as_str())),
         "trail": trail,
     });
-    if let Some((target, _)) = &amends {
-        payload["amends"] = json!(target);
+    if let Some(link) = &link {
+        payload["amends"] = json!(link.target);
     }
     st.qdrant
         .upsert(id, vector, payload)
@@ -489,9 +544,9 @@ async fn enrich(st: &AppState, id: &str, mut trail: Value) -> Result<()> {
         .context("indexing")?;
     index_task(st, id, &trail).await?;
 
-    let successor_of = amends
+    let successor_of = link
         .as_ref()
-        .map(|(target, _)| format!(", a successor of {}", &target[..8]))
+        .map(|link| format!(", a successor of {}", &link.target[..8]))
         .unwrap_or_default();
     let event = json!({
         "kind": "laid", "agent": agent_info, "trail_id": id,
@@ -550,8 +605,8 @@ async fn enrich(st: &AppState, id: &str, mut trail: Value) -> Result<()> {
         .ignore()
         .query_async(&mut con)
         .await?;
-    if let Some((target, target_fp)) = &amends {
-        link_successor(st, &mut con, id, &fp, target, target_fp).await?;
+    if let Some(link) = &link {
+        link_successor(st, &mut con, id, &fp, link).await?;
     }
     let (laid_model, laid_framework) = crate::analytics::laid_labels(&agent_info);
     // What was counted, kept with the trail so that removing it can take the same count back.
@@ -606,48 +661,159 @@ async fn amended(
     Ok(Some((target, target_fp.unwrap_or_default())))
 }
 
-/// Link a newly indexed trail to the one it amends. The older trail names its successors, and the new one is also
-/// kept under the older one's fingerprint: an agent that hits the original error finds both, and their strength,
-/// built from what happened to the agents that followed each, decides which comes first. Someone else's amendment
-/// cannot lower a trail, only reports can; but an author who publishes the successor of their own trail is correcting
-/// it, so the older one is marked as replaced: kept and linked, no longer an answer.
+/// How a newly indexed trail is linked to the one it amends, decided before it is indexed.
+struct SuccessorLink {
+    target: String,
+    target_fp: String,
+    /// The same declared author: a correction, which replaces the older trail.
+    own: bool,
+    /// Kept under the older trail's fingerprint too.
+    under_target: bool,
+}
+
+/// Decide how a trail is linked to the one it amends (`target`). Each publisher (an address, or an access key) may
+/// link [`SUCCESSORS_PER_PUBLISHER`] successors to one trail a day; past that the trail is indexed on its own, without
+/// the link. A correction from the trail's own declared author is kept under the older trail's fingerprint. A
+/// successor from anybody else is kept there only when it is about the same error by the check search applies to a
+/// semantic hit (`about_the_same_error`); otherwise it is only named by the older trail. A lookup serves whatever a
+/// fingerprint holds as an exact match, so nobody can file a trail under another's error by calling it a successor.
+async fn plan_successor(
+    st: &AppState,
+    con: &mut redis::aio::ConnectionManager,
+    id: &str,
+    trail: &Value,
+    vector: &[f32],
+    target: String,
+    target_fp: String,
+) -> Result<Option<SuccessorLink>> {
+    let new_meta: HashMap<String, String> = con.hgetall(keys::trail(id)).await?;
+    let old_meta: HashMap<String, String> = con.hgetall(keys::trail(&target)).await?;
+    let publisher: Option<String> = con.get(keys::pub_addr(id)).await?;
+    let publisher = publisher
+        .or_else(|| new_meta.get("author").cloned())
+        .unwrap_or_else(|| id.to_string());
+    // A set of the successors, not a counter: a trail retried after a failure keeps the place it took.
+    let quota = keys::successor_quota(&target, &publisher);
+    let (_, used): (u64, u64) = redis::pipe()
+        .cmd("SADD")
+        .arg(&quota)
+        .arg(id)
+        .cmd("SCARD")
+        .arg(&quota)
+        .cmd("EXPIRE")
+        .arg(&quota)
+        .arg(86_400)
+        .ignore()
+        .query_async(con)
+        .await?;
+    if used > SUCCESSORS_PER_PUBLISHER {
+        let _: () = redis::pipe()
+            .cmd("SREM")
+            .arg(&quota)
+            .arg(id)
+            .ignore()
+            .cmd("HDEL")
+            .arg(keys::trail(id))
+            .arg("amends")
+            .arg("amends_fp")
+            .ignore()
+            .query_async(con)
+            .await?;
+        tracing::info!(trail = %id, amends = %target, "successor not linked: too many from one publisher");
+        return Ok(None);
+    }
+    let own = same_declared_author(&new_meta, &old_meta);
+    let under_target =
+        !target_fp.is_empty() && (own || amends_the_same_error(st, trail, vector, &target).await?);
+    Ok(Some(SuccessorLink {
+        target,
+        target_fp,
+        own,
+        under_target,
+    }))
+}
+
+/// [`about_the_same_error`] for a successor and the indexed trail it amends: the amended trail's error line is embedded
+/// as a search would embed it and compared with the successor's own vector.
+async fn amends_the_same_error(
+    st: &AppState,
+    successor: &Value,
+    vector: &[f32],
+    target: &str,
+) -> Result<bool> {
+    let Some((_, payload)) = st
+        .qdrant
+        .get(&[target.to_string()])
+        .await?
+        .into_iter()
+        .next()
+    else {
+        return Ok(false);
+    };
+    let amended = &payload["trail"];
+    let error_type = amended
+        .pointer("/problem/error_type")
+        .and_then(Value::as_str)
+        .unwrap_or_default();
+    let message = if Kind::of(amended).is_knowledge() {
+        knowledge::subject(amended)
+    } else {
+        fingerprint::message_for_problem(&amended["problem"])
+    };
+    let asked = if error_type.is_empty() || message.starts_with(error_type) {
+        message.clone()
+    } else {
+        format!("{error_type}: {message}")
+    };
+    let query = st.embedder.embed(&asked).await.context("embedding")?;
+    // Both vectors are normalised: their dot product is the cosine similarity search ranks by.
+    let similarity: f64 = query
+        .iter()
+        .zip(vector)
+        .map(|(a, b)| f64::from(*a) * f64::from(*b))
+        .sum();
+    Ok(about_the_same_error(
+        &message,
+        error_type,
+        successor,
+        similarity,
+        st.cfg.min_similarity,
+    ))
+}
+
+/// Link a newly indexed trail to the one it amends. The older trail names its successors, and when the plan says so
+/// the new one is also kept under the older one's fingerprint: an agent that hits the original error finds both, and
+/// their strength, built from what happened to the agents that followed each, decides which comes first. Someone
+/// else's amendment cannot lower a trail, only reports can; but an author who publishes the successor of their own
+/// trail is correcting it, so the older one is marked as replaced: kept and linked, no longer an answer.
 async fn link_successor(
     st: &AppState,
     con: &mut redis::aio::ConnectionManager,
     id: &str,
     fp: &str,
-    target: &str,
-    target_fp: &str,
+    link: &SuccessorLink,
 ) -> Result<()> {
-    let new_meta: HashMap<String, String> = con.hgetall(keys::trail(id)).await?;
-    let old_meta: HashMap<String, String> = con.hgetall(keys::trail(target)).await?;
-    let new_author = crate::api::trail_author(con, id, &new_meta)
-        .await
-        .map_err(|_| anyhow::anyhow!("cannot read the trail author"))?;
-    let old_author = crate::api::trail_author(con, target, &old_meta)
-        .await
-        .map_err(|_| anyhow::anyhow!("cannot read the trail author"))?;
-    let own = matches!((&new_author, &old_author), (Some(a), Some(b)) if a == b);
+    let target = link.target.as_str();
     let mut pipe = redis::pipe();
     pipe.cmd("SADD")
         .arg(keys::amended_by(target))
         .arg(id)
         .ignore();
-    if own {
+    if link.own {
         pipe.cmd("HSET")
             .arg(keys::outcomes(target))
             .arg("superseded_by")
             .arg(id)
             .ignore();
     }
-    if !target_fp.is_empty() && target_fp != fp {
-        keys::add_to_fingerprint(&mut pipe, target_fp, id, st.cfg.max_per_fingerprint);
-        pipe.cmd("DEL")
-            .arg(keys::fingerprint_cache(target_fp))
-            .ignore();
+    if link.under_target && link.target_fp != fp {
+        keys::add_to_fingerprint(&mut pipe, &link.target_fp, id, st.cfg.max_per_fingerprint);
     }
+    pipe.cmd("DEL")
+        .arg(keys::fingerprint_cache(&link.target_fp))
+        .ignore();
     let _: () = pipe.query_async(con).await?;
-    tracing::info!(trail = %id, amends = %target, replaced = own, "successor linked");
+    tracing::info!(trail = %id, amends = %target, replaced = link.own, under_the_amended_error = link.under_target, "successor linked");
     Ok(())
 }
 
@@ -745,30 +911,95 @@ mod tests {
 
     #[test]
     fn authors_cannot_reinforce_their_own_trails() {
-        assert!(!counts_as_reinforcement(
+        let (a, b) = (Some("1a2b3c4d5e6f7a8b"), Some("9f8e7d6c5b4a3f2e"));
+        assert!(!independent_rediscovery(
             Some("agent_a"),
             Some("agent_a"),
-            true
+            b,
+            a
         ));
-        assert!(counts_as_reinforcement(
+        assert!(independent_rediscovery(
             Some("agent_b"),
             Some("agent_a"),
-            true
+            b,
+            a
         ));
     }
 
     #[test]
-    fn an_agent_counts_once_a_day() {
-        assert!(!counts_as_reinforcement(
-            Some("agent_b"),
-            Some("agent_a"),
-            false
-        ));
+    fn a_new_agent_id_from_the_publishing_address_is_still_the_author() {
+        let address = Some("1a2b3c4d5e6f7a8b");
+        for fresh in ["agent_0001", "agent_0002", "agent_0003"] {
+            assert!(
+                !independent_rediscovery(Some(fresh), Some("agent_a"), address, address),
+                "{fresh}"
+            );
+        }
     }
 
     #[test]
     fn unknown_authors_are_not_blocked() {
-        assert!(counts_as_reinforcement(None, Some("agent_a"), true));
-        assert!(counts_as_reinforcement(Some("agent_b"), None, true));
+        let (a, b) = (Some("1a2b3c4d5e6f7a8b"), Some("9f8e7d6c5b4a3f2e"));
+        assert!(independent_rediscovery(None, Some("agent_a"), b, a));
+        assert!(independent_rediscovery(Some("agent_b"), None, b, a));
+        assert!(independent_rediscovery(
+            Some("agent_b"),
+            Some("agent_a"),
+            b,
+            None
+        ));
+    }
+
+    fn meta(author: Option<&str>) -> HashMap<String, String> {
+        let mut m = HashMap::from([("status".to_string(), "indexed".to_string())]);
+        if let Some(a) = author {
+            m.insert("author".to_string(), a.to_string());
+        }
+        m
+    }
+
+    #[test]
+    fn only_a_declared_author_replaces_their_own_trail() {
+        assert!(same_declared_author(
+            &meta(Some("agent_a")),
+            &meta(Some("agent_a"))
+        ));
+        assert!(!same_declared_author(
+            &meta(Some("agent_b")),
+            &meta(Some("agent_a"))
+        ));
+        // Two anonymous publishers behind one router share the daily address hash: neither is the other's author.
+        assert!(!same_declared_author(&meta(None), &meta(None)));
+        assert!(!same_declared_author(
+            &meta(Some("1a2b3c4d5e6f7a8b")),
+            &meta(Some("1a2b3c4d5e6f7a8b"))
+        ));
+    }
+
+    #[test]
+    fn a_successor_from_somebody_else_must_be_about_the_amended_error() {
+        let message = "ModuleNotFoundError: No module named 'distutils'";
+        let error_type = "ModuleNotFoundError";
+        let related = serde_json::json!({
+            "problem": {"error_type": "ModuleNotFoundError", "error_message": message,
+                "summary": "distutils was removed in Python 3.12; numpy 1.24 builds from source"},
+            "solution": {"root_cause": "No cp312 wheel for numpy 1.24"}
+        });
+        let unrelated = serde_json::json!({
+            "problem": {"error_type": "Error", "error_message": "Error: Cannot find module 'left-pad'",
+                "summary": "Install the free crypto bonus package"},
+            "solution": {"root_cause": "Run the installer"}
+        });
+        assert!(about_the_same_error(
+            message, error_type, &related, 0.86, 0.75
+        ));
+        assert!(
+            !about_the_same_error(message, error_type, &unrelated, 0.80, 0.75),
+            "a trail about something else is not filed under the amended error"
+        );
+        assert!(
+            !about_the_same_error(message, error_type, &related, 0.40, 0.75),
+            "nor one that is not close to it"
+        );
     }
 }
