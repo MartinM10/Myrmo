@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.8.1](https://github.com/MartinM10/Myrmo/compare/protocol-v1.8.0...protocol-v1.8.1) (2026-10-16)
+
+
+### Bug fixes
+
+* **redact:** credentials with no name in front, and five more token formats ([#195](https://github.com/MartinM10/Myrmo/issues/195)) ([16ddcac](https://github.com/MartinM10/Myrmo/commit/16ddcacca706a3fc223f573e9eeeff02c28d891b))
+* **server:** commands in prose, error type envelope, credential throttle, private-colony browser and proxy defaults ([#202](https://github.com/MartinM10/Myrmo/issues/202)) ([ab219e2](https://github.com/MartinM10/Myrmo/commit/ab219e2eebc0b7cfa16e1dc5d781e975ffb9d2fb))
+
 ## [1.8.0](https://github.com/MartinM10/Myrmo/compare/protocol-v1.7.0...protocol-v1.8.0) (2026-10-16)
 
 

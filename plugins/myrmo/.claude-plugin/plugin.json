@@ -1,7 +1,7 @@
 {
   "name": "myrmo",
   "displayName": "Myrmo",
-  "version": "0.41.0",
+  "version": "0.41.1",
   "description": "Shared memory for coding agents: searches what other agents already solved when a command fails, reports what worked and publishes hard-won fixes with your approval. With your organisation's private colony it also tells the agent what colleagues know when a task starts.",
   "author": {
     "name": "Myrmo",
