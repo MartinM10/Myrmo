@@ -28,9 +28,39 @@ case "$ARCHIVE" in
     ;;
 esac
 [ -f "$ARCHIVE" ] || { echo "no such file: $ARCHIVE" >&2; exit 1; }
-tar xzf "$ARCHIVE" -C "$work"
-[ -s "$work/valkey.rdb" ] && [ -s "$work/qdrant.snapshot" ] || { echo "the archive is incomplete" >&2; exit 1; }
-cat "$work/manifest.txt"
+
+# Only the files backup.sh writes are taken out of the archive, into an empty directory, and each must be a plain file:
+# a link in a crafted archive would otherwise make this script read another file of this machine (its .env, say) and
+# send it to Qdrant or Valkey.
+data="$work/data"
+mkdir "$data"
+members="manifest.txt valkey.rdb qdrant.snapshot"
+listing="$(tar tzf "$ARCHIVE")" || { echo "not a readable archive: $ARCHIVE" >&2; exit 1; }
+grep -qx 'SHA256SUMS' <<< "$listing" && members="$members SHA256SUMS"
+for name in $members; do
+  grep -qxF "$name" <<< "$listing" || { echo "the archive is incomplete: no $name" >&2; exit 1; }
+done
+# shellcheck disable=SC2086 # the member names are the fixed words above
+tar xzf "$ARCHIVE" -C "$data" --no-same-owner --no-same-permissions $members
+for name in $members; do
+  [ -f "$data/$name" ] && [ ! -L "$data/$name" ] || { echo "the archive's $name is not a plain file: refusing it" >&2; exit 1; }
+done
+[ -s "$data/valkey.rdb" ] && [ -s "$data/qdrant.snapshot" ] || { echo "the archive is incomplete" >&2; exit 1; }
+
+# The checksums written by backup.sh detect a copy that was cut short or damaged (they do not prove who made it).
+if [ -f "$data/SHA256SUMS" ]; then
+  for name in manifest.txt valkey.rdb qdrant.snapshot; do
+    want="$(awk -v n="$name" '$2 == n || $2 == "*" n { print $1; exit }' "$data/SHA256SUMS")"
+    have="$(sha256sum < "$data/$name" | cut -d' ' -f1)"
+    [ -n "$want" ] && [ "$want" = "$have" ] || { echo "$name does not match its checksum: the archive is damaged" >&2; exit 1; }
+  done
+  echo "checksums match"
+else
+  echo "WARNING: this archive has no checksums (made before they were added): it cannot be checked for damage" >&2
+fi
+
+# Printed without control characters, so the manifest cannot rewrite the terminal.
+LC_ALL=C tr -cd '\11\12\40-\176' < "$data/manifest.txt" | head -n 20
 echo "This replaces the data of project '$PROJECT'. Continue? [y/N]"
 read -r answer
 [ "$answer" = "y" ] || { echo "cancelled"; exit 1; }
@@ -46,7 +76,7 @@ image="$(compose config --images | grep -i valkey | head -1)"
 # RDB in a temporary server with it off, then switch the AOF on and let it write itself from memory.
 tmp="${PROJECT}-restore-valkey"
 docker rm -f "$tmp" >/dev/null 2>&1 || true
-docker run -d --name "$tmp" -v "$volume:/data" -v "$work:/in:ro" --entrypoint sh "$image" -c \
+docker run -d --name "$tmp" -v "$volume:/data" -v "$data:/in:ro" --entrypoint sh "$image" -c \
   'rm -rf /data/appendonlydir && cp /in/valkey.rdb /data/dump.rdb && exec valkey-server --dir /data --dbfilename dump.rdb --appendonly no --save ""' >/dev/null
 for _ in $(seq 1 30); do docker exec "$tmp" valkey-cli ping >/dev/null 2>&1 && break; sleep 1; done
 docker exec "$tmp" valkey-cli config set appendonly yes >/dev/null
@@ -67,7 +97,7 @@ compose up -d --no-deps qdrant gateway
 for _ in $(seq 1 60); do docker exec "$GATEWAY" curl -fsS http://qdrant:6333/readyz >/dev/null 2>&1 && break; sleep 1; done
 # Uploaded through stdin: nothing is left behind in the container.
 docker exec -i "$GATEWAY" curl -fsS -X POST "$QDRANT/upload?priority=snapshot" \
-  -F "snapshot=@-;filename=restore.snapshot" < "$work/qdrant.snapshot" >/dev/null
+  -F "snapshot=@-;filename=restore.snapshot" < "$data/qdrant.snapshot" >/dev/null
 
 echo "starting the colony"
 compose up -d --no-deps gateway enricher
