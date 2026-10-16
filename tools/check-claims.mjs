@@ -8,6 +8,8 @@ const files = [
   "SECURITY.md",
   "web/index.html",
   "web/colony.html",
+  "web/assets/home.js",
+  "web/assets/colony.js",
   "web/llms.txt",
   "docs/operate/licensing.md",
   "docs/reference/mcp.md",

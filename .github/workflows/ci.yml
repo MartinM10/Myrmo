@@ -78,6 +78,9 @@ jobs:
       - name: The website and the docs make no claim the code does not back
         working-directory: .
         run: node tools/check-claims.mjs
+      - name: The website runs only script files (its Content-Security-Policy forbids inline code)
+        working-directory: .
+        run: node tools/check-web-csp.mjs
 
   typescript:
     name: SDK and MCP (TypeScript)
