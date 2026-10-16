@@ -219,6 +219,24 @@ def test_the_unseen_condition_is_summarised_and_published(tmp_path):
     assert section["repetitions"] == 1 and section["colony_trails_at_start"] == 119 and section["pioneers_published"] == 1
 
 
+def test_notes_and_solved_runs_are_published(tmp_path):
+    import publish_results
+
+    def r(condition, success, turns):
+        return {"task": "acme-x", "role": "follower", "condition": condition, "success": success, "tokens": 1,
+                "failed_attempts": 0, "seconds": 1, "cost_usd": 0, "turns": turns}
+    rows = [r("without", False, 40), r("without", True, 22), r("notes", True, 17), r("notes", True, 19),
+            r("with", True, 9), r("with", False, 30)]
+    run_dir = tmp_path / "myrmobench-20261012-1011"
+    run_dir.mkdir()
+    env = {"pioneer": "p", "followers": ["f"], "plan": {"tasks": 1, "conditions": ["without", "with", "notes"], "by_role": {"followers": {"f": 6}}}}
+    (run_dir / "environment.json").write_text(json.dumps(env))
+    (run_dir / "runs.jsonl").write_text("".join(json.dumps(x) + "\n" for x in rows))
+    section = publish_results.value_section(run_dir)
+    assert section["notes"]["solved"] == 2 and section["notes"]["median_turns_solved"] == 18
+    assert section["with"] == {**section["with"], "runs": 2, "solved": 1, "median_turns_solved": 9}, "a failed run's turns do not count"
+
+
 def test_gemini_gets_myrmo_only_when_the_run_has_it_and_no_web():
     mcp = run.mcp_config("http://colony", "off", "bench-1")
     without = run.gemini_settings(False, mcp, api_key=False)
