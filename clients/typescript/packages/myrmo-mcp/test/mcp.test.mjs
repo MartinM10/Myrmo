@@ -709,21 +709,26 @@ test("the model the agent names reaches the colony on searches and in the instru
 
 /** Start the hosted server on a free port; resolves once it answers. */
 async function hosted(env = {}, extraArgs = ["--host", "127.0.0.1"]) {
-  const port = 30000 + Math.floor(Math.random() * 20000);
-  const proc = spawn(process.execPath, [ENTRY, "--http", "--port", String(port), ...extraArgs], {
-    env: { ...process.env, MYRMO_URL: colonyUrl, MYRMO_CONFIG: freshConfig(), MYRMO_API_KEY: "", MYRMO_MCP_ALLOWED_HOSTS: "", ...env },
-    stdio: ["ignore", "ignore", "pipe"],
-  });
-  // The first line on stderr can come before the port accepts connections (slower runners, Windows): wait until it
-  // answers, or the process ends.
-  let exited = false;
-  proc.once("exit", () => { exited = true; });
-  for (let i = 0; i < 100 && !exited; i++) {
-    const up = await fetch(`http://127.0.0.1:${port}/healthz`, { method: "GET", signal: AbortSignal.timeout(1000) }).then(() => true, () => false);
-    if (up) break;
-    await new Promise((r) => setTimeout(r, 100));
+  // A random port can already be taken (another test, a service on the runner): the server then exits at once, so try
+  // another port instead of failing a test that has nothing to do with it.
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const port = 30000 + Math.floor(Math.random() * 20000);
+    const proc = spawn(process.execPath, [ENTRY, "--http", "--port", String(port), ...extraArgs], {
+      env: { ...process.env, MYRMO_URL: colonyUrl, MYRMO_CONFIG: freshConfig(), MYRMO_API_KEY: "", MYRMO_MCP_ALLOWED_HOSTS: "", ...env },
+      stdio: ["ignore", "ignore", "pipe"],
+    });
+    // The first line on stderr can come before the port accepts connections (slower runners, Windows): wait until it
+    // answers, or the process ends.
+    let exited = false;
+    proc.once("exit", () => { exited = true; });
+    let up = false;
+    for (let i = 0; i < 100 && !exited && !up; i++) {
+      up = await fetch(`http://127.0.0.1:${port}/healthz`, { method: "GET", signal: AbortSignal.timeout(1000) }).then(() => true, () => false);
+      if (!up) await new Promise((r) => setTimeout(r, 100));
+    }
+    if (up || attempt === 4) return { port, proc };
+    proc.kill();
   }
-  return { port, proc };
 }
 
 /** POST an MCP initialize to the hosted server with a chosen Host header (fetch does not let a caller set one). */
