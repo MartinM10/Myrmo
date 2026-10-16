@@ -23,6 +23,8 @@ import unicodedata
 VERSION_PREFIX = "fp1_"
 VERSION_PREFIX_2 = "fp2_"
 MAX_NORMALIZED_LENGTH = 300
+#: Characters of a message fp2 reads: as many as problem.error_message may hold (protocol/fingerprint_v2.py).
+MAX_MESSAGE_LENGTH = 1000
 SEPARATOR = "\x1f"  # ASCII unit separator; cannot appear in normalized text
 
 # Applied in order. Order matters: URLs before paths, UUIDs before generic hex.
@@ -78,7 +80,7 @@ def strip_labels(message: str) -> str:
 
 def normalize_message2(message: str) -> str:
     """Strip everything that varies between machines or between wrappers, but not between errors."""
-    text = strip_labels(unicodedata.normalize("NFKC", message).strip()).lower()
+    text = strip_labels(unicodedata.normalize("NFKC", message[:MAX_MESSAGE_LENGTH]).strip()).lower()
     for pattern, replacement in _RULES:
         text = pattern.sub(replacement, text)
     text = re.sub(r"\s+", " ", text).strip()

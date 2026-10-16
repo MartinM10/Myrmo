@@ -41,6 +41,9 @@ fp2 = "fp2_" + hex(sha256(normalize(message)))[0:16]
 
 `normalize(message)` applies, in order:
 
+0. Keep the first 1,000 characters (Unicode code points): as many as `problem.error_message` may hold, so no message
+   the protocol allows changes. A longer line, such as a first line of `raw_logs`, is cut there; the volatile-token
+   rules below backtrack, and on some lines of thousands of characters their cost grows with the square of the length.
 1. Unicode NFKC and trim.
 2. **Drop leading labels**, one after another, at most four. A label is what a tool puts in front
    of its message, followed by a colon and a space, matched on the text as written (the capital

@@ -8,7 +8,8 @@ key the trail was filed under.
 
     fp2 = "fp2_" + hex(sha256(normalize(message)))[0:16]
 
-`normalize` first drops the labels that wrap an error line (the exception class, a severity word, a tool's error
+`normalize` reads the first 1,000 characters of the message (as many as `problem.error_message` may hold; a longer
+line, such as a first line of `raw_logs`, is cut there), then drops the labels that wrap an error line (the exception class, a severity word, a tool's error
 code), then applies the same normalisation as fp1. Dropping them is what lets `java.util.concurrent.CompletionException:
 java.lang.IllegalStateException: Recursive update` and `IllegalStateException: Recursive update` meet.
 
@@ -31,6 +32,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from fingerprint_v1 import _RULES, MAX_NORMALIZED_LENGTH  # noqa: E402  (the volatile-token rules are shared)
 
 VERSION_PREFIX = "fp2_"
+#: Characters (code points) of the message that are read: as many as problem.error_message may hold.
+MAX_MESSAGE_LENGTH = 1000
 #: Labels removed from the start of the message, one after another, at most this many.
 MAX_LABELS = 4
 
@@ -57,7 +60,7 @@ def strip_labels(message: str) -> str:
 
 def normalize_message(message: str) -> str:
     """Strip everything that varies between machines or between wrappers, but not between errors."""
-    text = strip_labels(unicodedata.normalize("NFKC", message).strip()).lower()
+    text = strip_labels(unicodedata.normalize("NFKC", message[:MAX_MESSAGE_LENGTH]).strip()).lower()
     for pattern, replacement in _RULES:
         text = pattern.sub(replacement, text)
     text = re.sub(r"\s+", " ", text).strip()
@@ -118,6 +121,14 @@ _VECTOR_INPUTS: list[tuple[str, str, str]] = [
     ("same-text", "different classes with the same text share a key, by design", "TypeError: invalid value for the setting"),
     ("unicode", "NFKC folds full-width letters and colon", "Ｅｒｒｏｒ： boom went the thing"),
     ("unicode", "plain", "Error: boom went the thing"),
+    ("long-line", "only the first 1,000 characters are read",
+     "Error: failed to fetch https://example.com/" + "a" * 1100 + " after 3 retries"),
+    ("long-line", "what comes after them does not count",
+     "Error: failed to fetch https://example.com/" + "a" * 1100 + " after 5 retries"),
+    ("fetch-3-retries", "a message of up to 1,000 characters is read whole",
+     "Error: failed to fetch https://example.com/" + "a" * 900 + " after 3 retries"),
+    ("fetch-5-retries", "so its last words still count",
+     "Error: failed to fetch https://example.com/" + "a" * 900 + " after 5 retries"),
 ]
 
 

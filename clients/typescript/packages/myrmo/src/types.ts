@@ -88,7 +88,10 @@ export interface Trail {
 }
 
 export interface RiskFlag {
+  /** Index in shell_commands_executed; -1 for a command written elsewhere (a step, the root cause, a patch...). */
   command_index: number;
+  /** Protocol path where the command was found, such as `solution.steps[0]` (colonies from this version on). */
+  field?: string;
   flag: string;
   level: "low" | "medium" | "high";
   detail: string;
