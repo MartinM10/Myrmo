@@ -914,5 +914,304 @@
     "kinds": {
       "password_assignment": 1
     }
+  },
+  {
+    "input": "{\"auths\":{\"registry.example.com\":{\"auth\":\"ZmFrZXVzZXI6ZmFrZXBhc3M=\"}}}",
+    "output": "{\"auths\":{\"registry.example.com\":{\"auth\":\"<redacted:secret>\"}}}",
+    "kinds": {
+      "password_assignment": 1
+    }
+  },
+  {
+    "input": "{\"auths\": {\"registry.example.com\": {\"auth\": \"ZmFrZXVzZXI6ZmFrZXBhc3M=\", \"identitytoken\": \"fake-identity-token\"}}}",
+    "output": "{\"auths\": {\"registry.example.com\": {\"auth\": \"<redacted:secret>\", \"identitytoken\": \"<redacted:secret>\"}}}",
+    "kinds": {
+      "password_assignment": 2
+    }
+  },
+  {
+    "input": "{\\\"auths\\\":{\\\"registry.example.com\\\":{\\\"auth\\\":\\\"ZmFrZXVzZXI6ZmFrZXBhc3M=\\\"}}}",
+    "output": "{\\\"auths\\\":{\\\"registry.example.com\\\":{\\\"auth\\\":\\\"<redacted:secret>\\\"}}}",
+    "kinds": {
+      "password_assignment": 1
+    }
+  },
+  {
+    "input": "\"registrytoken\": \"FAKEregistry0000\"",
+    "output": "\"registrytoken\": \"<redacted:secret>\"",
+    "kinds": {
+      "password_assignment": 1
+    }
+  },
+  {
+    "input": "{\"auths\": {}, \"credsStore\": \"desktop\"}",
+    "output": "{\"auths\": {}, \"credsStore\": \"desktop\"}",
+    "kinds": {}
+  },
+  {
+    "input": "{\"auth\": \"basic\", \"realm\": \"registry\"}",
+    "output": "{\"auth\": \"basic\", \"realm\": \"registry\"}",
+    "kinds": {}
+  },
+  {
+    "input": "_auth=ZmFrZTpmYWtl",
+    "output": "_auth=<redacted:secret>",
+    "kinds": {
+      "password_assignment": 1
+    }
+  },
+  {
+    "input": "//registry.example.com/:_auth=ZmFrZTpmYWtl",
+    "output": "//registry.example.com/:_auth=<redacted:secret>",
+    "kinds": {
+      "password_assignment": 1
+    }
+  },
+  {
+    "input": "//registry.example.com/:_password=\"ZmFrZXBhc3M=\"",
+    "output": "//registry.example.com/:_password=\"<redacted:secret>\"",
+    "kinds": {
+      "password_assignment": 1
+    }
+  },
+  {
+    "input": "always-auth=true",
+    "output": "always-auth=true",
+    "kinds": {}
+  },
+  {
+    "input": "mysql -uroot -pFakePass123 -h db.example.com app",
+    "output": "mysql -uroot -p<redacted:secret> -h db.example.com app",
+    "kinds": {
+      "password_assignment": 1
+    }
+  },
+  {
+    "input": "mysqldump -u backup -pFakePass123 app > dump.sql",
+    "output": "mysqldump -u backup -p<redacted:secret> app > dump.sql",
+    "kinds": {
+      "password_assignment": 1
+    }
+  },
+  {
+    "input": "docker exec -it db mariadb -u root -p'FakePass123' app",
+    "output": "docker exec -it db mariadb -u root -p'<redacted:secret>' app",
+    "kinds": {
+      "password_assignment": 1
+    }
+  },
+  {
+    "input": "mysql -u root -p\"$MYSQL_ROOT_PASSWORD\" app",
+    "output": "mysql -u root -p\"$MYSQL_ROOT_PASSWORD\" app",
+    "kinds": {}
+  },
+  {
+    "input": "mysql -h db.example.com -P 3306 -u root -p app",
+    "output": "mysql -h db.example.com -P 3306 -u root -p app",
+    "kinds": {}
+  },
+  {
+    "input": "mkdir -p build && cd build",
+    "output": "mkdir -p build && cd build",
+    "kinds": {}
+  },
+  {
+    "input": "docker run -p 8080:80 nginx",
+    "output": "docker run -p 8080:80 nginx",
+    "kinds": {}
+  },
+  {
+    "input": "ssh -p 22 deploy@build-box",
+    "output": "ssh -p 22 deploy@build-box",
+    "kinds": {}
+  },
+  {
+    "input": "sshpass -p FakePass123 ssh deploy@build-box",
+    "output": "sshpass -p <redacted:secret> ssh deploy@build-box",
+    "kinds": {
+      "password_assignment": 1
+    }
+  },
+  {
+    "input": "sshpass -pFakePass123 scp app.tar deploy@build-box:/srv",
+    "output": "sshpass -p<redacted:secret> scp app.tar deploy@build-box:/srv",
+    "kinds": {
+      "password_assignment": 1
+    }
+  },
+  {
+    "input": "sshpass -f ~/.pw ssh -p 22 deploy@build-box",
+    "output": "sshpass -f ~/.pw ssh -p 22 deploy@build-box",
+    "kinds": {}
+  },
+  {
+    "input": "machine api.example.com login fakeuser password FakePass123",
+    "output": "machine api.example.com login fakeuser password <redacted:secret>",
+    "kinds": {
+      "password_assignment": 1
+    }
+  },
+  {
+    "input": "machine api.example.com\n  login fakeuser\n  password FakePass123\n",
+    "output": "machine api.example.com\n  login fakeuser\n  password <redacted:secret>\n",
+    "kinds": {
+      "password_assignment": 1
+    }
+  },
+  {
+    "input": "default login anonymous password FakePass123",
+    "output": "default login anonymous password <redacted:secret>",
+    "kinds": {
+      "password_assignment": 1
+    }
+  },
+  {
+    "input": "Enter your password when prompted.",
+    "output": "Enter your password when prompted.",
+    "kinds": {}
+  },
+  {
+    "input": "The default password is printed on the label.",
+    "output": "The default password is printed on the label.",
+    "kinds": {}
+  },
+  {
+    "input": "db.example.com:5432:app:fakeuser:FakePass123",
+    "output": "db.example.com:5432:app:fakeuser:<redacted:secret>",
+    "kinds": {
+      "password_assignment": 1
+    }
+  },
+  {
+    "input": "*:*:*:fakeuser:FakePass123\nlocalhost:5432:*:postgres:Fake\\:Pass123",
+    "output": "*:*:*:fakeuser:<redacted:secret>\nlocalhost:5432:*:postgres:<redacted:secret>",
+    "kinds": {
+      "password_assignment": 2
+    }
+  },
+  {
+    "input": "echo \"localhost:5432:app:fakeuser:FakePass123\" >> ~/.pgpass",
+    "output": "echo \"localhost:5432:app:fakeuser:<redacted:secret>\" >> ~/.pgpass",
+    "kinds": {
+      "password_assignment": 1
+    }
+  },
+  {
+    "input": "started at 12:30:45",
+    "output": "started at 12:30:45",
+    "kinds": {}
+  },
+  {
+    "input": "connect db.example.com:5432 failed",
+    "output": "connect db.example.com:5432 failed",
+    "kinds": {}
+  },
+  {
+    "input": "a:b:c:d:e",
+    "output": "a:b:c:d:e",
+    "kinds": {}
+  },
+  {
+    "input": "ERROR:42:parser:main:failed",
+    "output": "ERROR:42:parser:main:failed",
+    "kinds": {}
+  },
+  {
+    "input": "2026-10-16 12:30:45:123:456",
+    "output": "2026-10-16 12:30:45:123:456",
+    "kinds": {}
+  },
+  {
+    "input": "export VAULT_TOKEN=hvs.FAKEfakeFAKEfakeFAKEfake0000",
+    "output": "export VAULT_TOKEN=<redacted:api_key>",
+    "kinds": {
+      "api_key": 1
+    }
+  },
+  {
+    "input": "vault login hvs.FAKEfakeFAKEfakeFAKEfake0000",
+    "output": "vault login <redacted:api_key>",
+    "kinds": {
+      "api_key": 1
+    }
+  },
+  {
+    "input": "batch hvb.FAKEfakeFAKEfakeFAKEfakeFAKEfake0000 and recovery hvr.FAKEfakeFAKEfakeFAKEfake0000",
+    "output": "batch <redacted:api_key> and recovery <redacted:api_key>",
+    "kinds": {
+      "api_key": 2
+    }
+  },
+  {
+    "input": "see hvs.example for details",
+    "output": "see hvs.example for details",
+    "kinds": {}
+  },
+  {
+    "input": "SLACK_APP_TOKEN xapp-1-FAKE-APP-LEVEL-TOKEN-0000",
+    "output": "SLACK_APP_TOKEN <redacted:api_key>",
+    "kinds": {
+      "api_key": 1
+    }
+  },
+  {
+    "input": "the xapp-config file",
+    "output": "the xapp-config file",
+    "kinds": {}
+  },
+  {
+    "input": "AGE-SECRET-KEY-1FAKEFAKEFAKEFAKEFAKEFAKEFAKEFAKEFAKEFAKEFAKEFAKEFAKEFAKEQQ",
+    "output": "<redacted:private_key>",
+    "kinds": {
+      "private_key": 1
+    }
+  },
+  {
+    "input": "# public key: age1fakefakefake\nAGE-SECRET-KEY-1FAKEFAKEFAKEFAKEFAKEFAKEFAKEFAKEFAKEFAKEFAKEFAKEFAKEFAKEQQ",
+    "output": "# public key: age1fakefakefake\n<redacted:private_key>",
+    "kinds": {
+      "private_key": 1
+    }
+  },
+  {
+    "input": "AGE-SECRET-KEY-1 is how a key starts",
+    "output": "AGE-SECRET-KEY-1 is how a key starts",
+    "kinds": {}
+  },
+  {
+    "input": "doppler run --token dp.st.dev.FAKEfakeFAKEfakeFAKEfakeFAKEfakeFAKEfake",
+    "output": "doppler run --token <redacted:api_key>",
+    "kinds": {
+      "api_key": 1
+    }
+  },
+  {
+    "input": "service account dp.sa.FAKEfakeFAKEfakeFAKEfakeFAKEfakeFAKEfake",
+    "output": "service account <redacted:api_key>",
+    "kinds": {
+      "api_key": 1
+    }
+  },
+  {
+    "input": "dp.st.dev is a config",
+    "output": "dp.st.dev is a config",
+    "kinds": {}
+  },
+  {
+    "input": "pulumi login with pul-0000000000000000000000000000000000000000",
+    "output": "pulumi login with <redacted:api_key>",
+    "kinds": {
+      "api_key": 1
+    }
+  },
+  {
+    "input": "pul-request merged",
+    "output": "pul-request merged",
+    "kinds": {}
+  },
+  {
+    "input": "docker run -v \"$PWD:/src\" mysql:8",
+    "output": "docker run -v \"$PWD:/src\" mysql:8",
+    "kinds": {}
   }
 ]
