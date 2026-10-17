@@ -259,10 +259,10 @@ def test_a_gemini_stream_gives_tokens_and_failed_attempts():
         {"type": "result", "status": "success", "stats": {"total_tokens": 1234, "input_tokens": 1000, "output_tokens": 234, "tool_calls": 2}},
     ]
     m = run.parse_gemini_stream("\n".join(json.dumps(x) for x in lines) + "\nnot json\n[1]")
-    assert m == {"tokens": 1234, "cost_usd": 0.0, "turns": 2, "failed_attempts": 1, "agent_error": False}
+    assert m == {"tokens": 1234, "cost_usd": None, "turns": 2, "failed_attempts": 1, "agent_error": False}
     assert run.parse_gemini_stream("")["agent_error"] is True
     failed = {"type": "result", "status": "error", "stats": {"input_tokens": 10, "output_tokens": 5}}
-    assert run.parse_gemini_stream(json.dumps(failed)) == {"tokens": 15, "cost_usd": 0.0, "turns": 0, "failed_attempts": 0, "agent_error": True}
+    assert run.parse_gemini_stream(json.dumps(failed)) == {"tokens": 15, "cost_usd": None, "turns": 0, "failed_attempts": 0, "agent_error": True}
 
 
 def test_gemini_models_are_named_by_the_person_who_runs_it():
@@ -289,7 +289,7 @@ def test_an_antigravity_stream_gives_tokens_turns_and_estimated_failures():
         {"event": "result", "result": {"status": "SUCCESS", "num_turns": 1, "usage": {"total_tokens": 23781}}},
     ]
     m = run.parse_agy_stream("\n".join(json.dumps(x) for x in lines) + "\nexit=0")
-    assert m == {"tokens": 23781, "cost_usd": 0.0, "turns": 4, "failed_attempts": 1, "web_tool_calls": 1, "myrmo_calls": 1,
+    assert m == {"tokens": 23781, "cost_usd": None, "turns": 4, "failed_attempts": 1, "web_tool_calls": 1, "myrmo_calls": 1,
                  "notes_reads": 0, "agent_error": False}
     assert run.parse_agy_stream("")["agent_error"] is True
     assert run.parse_agy_stream(json.dumps({"event": "result", "result": {"status": "ERROR"}}))["agent_error"] is True

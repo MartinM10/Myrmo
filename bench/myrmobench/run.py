@@ -213,7 +213,8 @@ def summarize(runs: list[dict]) -> dict:
         med = lambda key: statistics.median(r[key] for r in rows)
         out[condition] = {"runs": len(rows), "success_rate": round(sum(r["success"] for r in rows) / len(rows), 3),
                           "median_tokens": med("tokens"), "median_failed_attempts": med("failed_attempts"),
-                          "median_seconds": round(med("seconds"), 1), "median_cost_usd": round(med("cost_usd"), 4)}
+                          "median_seconds": round(med("seconds"), 1),
+                          "median_cost_usd": round(statistics.median(costs), 4) if (costs := [r["cost_usd"] for r in rows if r["cost_usd"] is not None]) else None}
     return out
 
 
@@ -423,7 +424,7 @@ def parse_gemini_stream(text: str) -> dict:
     tokens = int(stats.get("total_tokens") or 0) or sum(int(stats.get(k) or 0) for k in ("input_tokens", "output_tokens"))
     turns = int(stats.get("tool_calls") or 0)
     ok = str(result.get("status", "success")).lower() == "success"
-    return {"tokens": tokens, "cost_usd": 0.0, "turns": turns, "failed_attempts": failed,
+    return {"tokens": tokens, "cost_usd": None, "turns": turns, "failed_attempts": failed,
             "agent_error": errored or not result or not ok}
 
 
@@ -497,7 +498,7 @@ def parse_agy_stream(text: str) -> dict:
             failed += 1
     usage = result.get("usage") or {}
     tokens = int(usage.get("total_tokens") or 0)
-    return {"tokens": tokens, "cost_usd": 0.0, "turns": turns, "failed_attempts": failed, "web_tool_calls": web,
+    return {"tokens": tokens, "cost_usd": None, "turns": turns, "failed_attempts": failed, "web_tool_calls": web,
             "myrmo_calls": myrmo, "notes_reads": notes, "agent_error": not result or str(result.get("status", "")).upper() != "SUCCESS"}
 
 
@@ -703,15 +704,15 @@ def cmd_run(args: argparse.Namespace) -> int:
             # then measure the colony as it was, and the result says so.
             wait_for_queue(args.colony)
             row["published"] = colony_trails(args.colony) > before
-        # A subscription agent may report no cost: the brake then counts the tokens at the assumed price.
-        spent += max(row["cost_usd"], row["tokens"] * price_of(model)[0] / 1e6)
+        # A subscription agent may report no cost (cost_usd None): the brake then counts the tokens at the assumed price.
+        spent += max(row["cost_usd"] or 0.0, row["tokens"] * price_of(model)[0] / 1e6)
         runs.append(row)
         with (out / "runs.jsonl").open("a", encoding="utf-8") as f:
             f.write(json.dumps(row) + "\n")
         print(f"{task.id:18} {model:18} {role:8} {step['condition']:8} {'PASS' if row['success'] else 'FAIL'} "
-              f"{row['tokens']:>9} tokens ${row['cost_usd']:.3f}" + ("" if role != "pioneer" else f" published={row['published']}"))
+              f"{row['tokens']:>9} tokens " + (f"${row['cost_usd']:.3f}" if row["cost_usd"] is not None else "cost not reported") + ("" if role != "pioneer" else f" published={row['published']}"))
     (out / "summary.json").write_text(json.dumps(summarize(runs), indent=2))
-    print(f"\n${spent:.2f} spent. Results in {out.relative_to(ROOT)}; publish with publish_results.py.")
+    print(f"\n${spent:.2f} spent (estimated from tokens where the agent reports no cost). Results in {out.relative_to(ROOT)}; publish with publish_results.py.")
     return 0
 
 
