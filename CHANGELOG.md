@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.41.2](https://github.com/MartinM10/Myrmo/compare/platform-v0.41.1...platform-v0.41.2) (2026-10-17)
+
+
+### Bug fixes
+
+* **bench:** a cost the agent does not report is unmeasured, not zero ([66e7c1b](https://github.com/MartinM10/Myrmo/commit/66e7c1b0c8ef8b6c670d4dd8afb104eb3ebc8c2b))
+
+
+### Documentation
+
+* **bench:** the company suite run 2118, with its caveats ([9c4c5e6](https://github.com/MartinM10/Myrmo/commit/9c4c5e68dd9e2d3ed53fa72ee6d44e818c29ddb9))
+
 ## [0.41.1](https://github.com/MartinM10/Myrmo/compare/platform-v0.41.0...platform-v0.41.1) (2026-10-16)
 
 
