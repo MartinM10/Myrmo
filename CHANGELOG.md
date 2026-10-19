@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.42.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.41.2...platform-v0.42.0) (2026-10-19)
+
+
+### Features
+
+* **brand:** the antenna is the leg of the M, and the logotype reads "Myrmo" ([#217](https://github.com/MartinM10/Myrmo/issues/217)) ([6614a2c](https://github.com/MartinM10/Myrmo/commit/6614a2c664c7368ffb514c3609b1f31691528d74))
+
+
+### Bug fixes
+
+* a deploy that does not fill the disk, pinned MCP versions in the docs, and validate says what publishing would refuse ([#214](https://github.com/MartinM10/Myrmo/issues/214)) ([2b59384](https://github.com/MartinM10/Myrmo/commit/2b593841dd0fecafb5c831a8b7e5dbb2fe276ac5))
+
+
+### Documentation
+
+* **security:** say what leaves your network, engine by engine ([#216](https://github.com/MartinM10/Myrmo/issues/216)) ([fe203a4](https://github.com/MartinM10/Myrmo/commit/fe203a46a48beb661edf41d27435e2d6246388e9))
+
 ## [0.41.2](https://github.com/MartinM10/Myrmo/compare/platform-v0.41.1...platform-v0.41.2) (2026-10-17)
 
 
