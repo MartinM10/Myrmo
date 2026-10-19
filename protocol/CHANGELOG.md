@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.8.2](https://github.com/MartinM10/Myrmo/compare/protocol-v1.8.1...protocol-v1.8.2) (2026-10-19)
+
+
+### Documentation
+
+* **protocol:** the source field records where an entry comes from, it does not watch the source ([#218](https://github.com/MartinM10/Myrmo/issues/218)) ([bb52092](https://github.com/MartinM10/Myrmo/commit/bb52092b3e2abcd97eab14d5c0d6559082f16b25))
+
 ## [1.8.1](https://github.com/MartinM10/Myrmo/compare/protocol-v1.8.0...protocol-v1.8.1) (2026-10-16)
 
 
