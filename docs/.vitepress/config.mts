@@ -60,7 +60,7 @@ export default defineConfig({
   },
 
   themeConfig: {
-    logo: "/logo.svg",
+    logo: { light: "/logo-light.svg", dark: "/logo-dark.svg" },
     siteTitle: "myrmo",
     // The logo and title lead back to the website, not to the docs home.
     logoLink: { link: `${site}/`, target: "_self" },
