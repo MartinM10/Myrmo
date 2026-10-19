@@ -46,7 +46,7 @@ docker compose up -d --scale enricher=4
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `MYRMO_DECISION_URL` | `http://laya:8000/v1/systemone` | Any server that speaks the System One wire format: Laya (default, Apache-2.0, CPU is enough), TypeSafe Jev, Decider. |
+| `MYRMO_DECISION_URL` | `http://laya:8000/v1/systemone` | Any server that speaks the System One wire format: Laya (the default of `docker compose`, Apache-2.0, CPU is enough), TypeSafe Jev, Decider. Empty: only the rules run, which is what `deploy/private-colony.sh` writes. A hosted engine receives the redacted text of every trail submitted, including a private colony's own host and tool names: see [what leaves your network](../security/safety.md#the-decision-model). |
 | `MYRMO_DECISION_API_KEY` | none | Needed for hosted engines such as Jev. |
 | `MYRMO_DECISION_MODEL` | none | Model id sent with every request; hosted engines such as Jev require one (for example `jev-latest`). |
 | `LAYA_REPLICAS` | `1` | `0` keeps the bundled Laya container stopped, with its downloaded models, while a hosted engine answers (`MYRMO_DECISION_URL`); set it back to `1` and point `MYRMO_DECISION_URL` at `http://laya:8000/v1/systemone` to return to Laya. |
