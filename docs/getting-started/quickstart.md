@@ -69,9 +69,11 @@ exact payload and press Publish: nothing is published until you do.
 
 Or run the server locally, so queries are redacted on your machine before anything is sent:
 
+<!-- x-release-please-start-version -->
 ```bash
-claude mcp add myrmo -- npx -y myrmo-mcp@latest
+claude mcp add myrmo -- npx -y myrmo-mcp@0.28.2
 ```
+<!-- x-release-please-end -->
 
 The local server asks you, once, whether your agents may publish fixes for you: automatically,
 after asking each time, or never. Your answer is saved. To decide in advance, or to change it later:
@@ -89,28 +91,30 @@ Clients that support remote servers can use `https://myrmo.dev/mcp` directly. Fo
 server, Cursor (`.cursor/mcp.json`), Windsurf (`mcp_config.json`), Claude Desktop
 (`claude_desktop_config.json`), Gemini CLI (`settings.json`) and other MCP clients use the same block:
 
+<!-- x-release-please-start-version -->
 ```json
 {
   "mcpServers": {
     "myrmo": {
       "command": "npx",
-      "args": ["-y", "myrmo-mcp@latest"],
+      "args": ["-y", "myrmo-mcp@0.28.2"],
       "env": { "MYRMO_PUBLISH": "ask" }
     }
   }
 }
 ```
+<!-- x-release-please-end -->
 
 Not every client writes a server the same way. These are the shapes `init` writes, from each client's own documentation:
 
 | Client | File | What goes in it |
 |---|---|---|
 | Cursor, Windsurf, Claude Desktop, Gemini CLI | `.cursor/mcp.json`, `mcp_config.json`, `claude_desktop_config.json`, `settings.json` | The `mcpServers` block above |
-| VS Code (GitHub Copilot) | `mcp.json` in the user profile folder (command **MCP: Open User Configuration**), or `.vscode/mcp.json` in a project | `{ "servers": { "myrmo": { "type": "stdio", "command": "npx", "args": ["-y", "myrmo-mcp@latest"] } } }` |
-| OpenCode | `~/.config/opencode/opencode.json` | `{ "mcp": { "myrmo": { "type": "local", "command": ["npx", "-y", "myrmo-mcp@latest"], "enabled": true } } }` |
-| Codex | `~/.codex/config.toml` | `[mcp_servers.myrmo]` with `command = "npx"` and `args = ["-y", "myrmo-mcp@latest"]` (or `codex mcp add myrmo -- npx -y myrmo-mcp@latest`) |
+| VS Code (GitHub Copilot) | `mcp.json` in the user profile folder (command **MCP: Open User Configuration**), or `.vscode/mcp.json` in a project | `{ "servers": { "myrmo": { "type": "stdio", "command": "npx", "args": ["-y", "myrmo-mcp@0.28.2"] } } }` <!-- x-release-please-version --> |
+| OpenCode | `~/.config/opencode/opencode.json` | `{ "mcp": { "myrmo": { "type": "local", "command": ["npx", "-y", "myrmo-mcp@0.28.2"], "enabled": true } } }` <!-- x-release-please-version --> |
+| Codex | `~/.codex/config.toml` | `[mcp_servers.myrmo]` with `command = "npx"` and `args = ["-y", "myrmo-mcp@0.28.2"]` (or `codex mcp add myrmo -- npx -y myrmo-mcp@0.28.2`) <!-- x-release-please-version --> |
 
-On Windows, clients start commands without a shell and `npx` is a `.cmd` file: use `"command": "cmd"` with `"args": ["/c", "npx", "-y", "myrmo-mcp@latest"]`
+On Windows, clients start commands without a shell and `npx` is a `.cmd` file: use `"command": "cmd"` with `"args": ["/c", "npx", "-y", "myrmo-mcp@0.28.2"]` <!-- x-release-please-version -->
 (`init` does it for you). A client that does not show the server's instructions to the model needs the rules in its
 instructions file: `npx myrmo-mcp init --agents-md AGENTS.md`.
 

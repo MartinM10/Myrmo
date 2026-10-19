@@ -392,7 +392,7 @@ it asks before it replaces anything.
 npx myrmo-mcp init --url https://myrmo.example.internal --key <their key> --private --publish auto
 ```
 
-Then `npx myrmo-mcp@latest doctor` checks the machine: Node, that the colony answers and lets the network in, that the key
+Then `npx myrmo-mcp@0.28.2 doctor` checks the machine: Node, that the colony answers and lets the network in, that the key <!-- x-release-please-version -->
 opens it, private mode, the publish choice and whether an agent is set up, and says what to do about each failure.
 
 It saves the colony in the person's settings file (`~/.myrmo/config.json`, readable only by them) with its key, private

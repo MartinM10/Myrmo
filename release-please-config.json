@@ -38,6 +38,10 @@
       "extra-files": [
         "src/server.ts",
         "/plugins/myrmo/scripts/launch-mcp.mjs",
+        "/docs/getting-started/quickstart.md",
+        "/docs/reference/components.md",
+        "/docs/reference/mcp.md",
+        "/docs/operate/self-hosting.md",
         { "type": "json", "path": "server.json", "jsonpath": "$.version" },
         { "type": "json", "path": "server.json", "jsonpath": "$.packages[0].version" }
       ]

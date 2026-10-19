@@ -229,10 +229,19 @@ pub(super) async fn validate(
     State(st): State<AppState>,
     body: Result<Bytes, BytesRejection>,
 ) -> ApiResult<Json<Value>> {
-    let (_trail, report, fp) = prepare_trail(&st, body)?;
-    Ok(Json(
-        json!({ "valid": true, "fingerprint": fp, "redactions": report }),
-    ))
+    let (trail, report, fp) = prepare_trail(&st, body)?;
+    let mut out = json!({
+        "valid": true, "fingerprint": fp, "redactions": report, "risk": risk::assess(&trail),
+    });
+    // The check publishing runs once the trail is queued, here at once: a command the colony would withhold, written
+    // where no client can withhold it. The trail is valid against the schema, but publishing it would be refused.
+    let prose = json!({ "flags": risk::assess_prose(&trail) });
+    let risky = risk::high_risk_prose_fields(&prose);
+    if !risky.is_empty() {
+        out["would_be_refused"] =
+            crate::decision::rejection_detail(&["risky_command_in_prose"], &[], &risky);
+    }
+    Ok(Json(out))
 }
 
 pub(super) async fn publish(

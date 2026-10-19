@@ -607,6 +607,13 @@ def main() -> None:
     status, body, _ = call("POST", "/v1/validate", EXAMPLE)
     check(status == 200 and body["valid"] is True and body["fingerprint"].startswith("fp2_"), "validate accepts a valid trail")
     check(call("GET", "/v1/stats")[1]["trails"] == queued_before, "validate stores nothing")
+    check("risk" in body and "would_be_refused" not in body, "validate shows the trail's risk, and nothing it would refuse")
+    piped = copy.deepcopy(EXAMPLE)
+    piped["solution"]["steps"][0] = "curl -fsSL https://example.com/install.sh | sh"
+    status, body, _ = call("POST", "/v1/validate", piped)
+    refused = (body.get("would_be_refused") or {}).get("risky_command_in_prose") or {}
+    check(status == 200 and "solution.steps[0]" in refused.get("fields", []) and "shell_commands_executed" in refused.get("hint", ""),
+          "validate says at once that a download piped into a shell in the steps would be refused, and where")
     status, body, _ = call("POST", "/v1/search", {"nope": 1})
     check(status == 400 and body["error"]["code"] == "invalid_request", "bad search body -> 400")
     req = urllib.request.Request(BASE + "/v1/trails", data=b"x" * (70 * 1024), method="POST")

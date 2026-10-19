@@ -37,6 +37,12 @@ exec </dev/null
 
 log() { echo "$(date -u +%FT%TZ) $*" | tee -a "$LOG" >&2; }
 compose() { docker compose -f docker-compose.yml -f deploy/docker-compose.prod.yml "$@"; }
+# The services to build and start. Laya is left out when it is scaled to zero (LAYA_REPLICAS=0, a hosted engine answers):
+# `compose up` builds a missing image even for a service with no replicas, and Laya's is gigabytes of PyTorch rebuilt on
+# every deploy for nothing. --no-deps keeps the services' depends_on from bringing it back.
+services() {
+  if grep -qx 'LAYA_REPLICAS=0' .env 2>/dev/null; then compose config --services | grep -vx laya; else compose config --services; fi
+}
 src_git() { GIT_TERMINAL_PROMPT=0 git -C "$SRC" "$@"; }
 
 if ! [[ "$SHA" =~ ^[0-9a-f]{40}$ ]]; then
@@ -77,7 +83,7 @@ log "deploy $SHA: backing up data"
   || { log "deploy $SHA: backup failed, nothing changed"; rm -rf "$NEW"; exit 1; }
 
 log "deploy $SHA: building"
-(cd "$NEW" && compose build) >> "$LOG" 2>&1 \
+(cd "$NEW" && mapfile -t svc < <(services) && compose build "${svc[@]}") >> "$LOG" 2>&1 \
   || { log "deploy $SHA: build failed, nothing changed (see $LOG)"; tail -n 40 "$LOG" >&2; rm -rf "$NEW"; exit 1; }
 
 healthy() {
@@ -100,12 +106,13 @@ log "deploy $SHA: switching"
 rm -rf "$PREV"
 mv "$APP" "$PREV"
 mv "$NEW" "$APP"
-(cd "$APP" && compose up -d --remove-orphans) >> "$LOG" 2>&1 || true
+(cd "$APP" && mapfile -t svc < <(services) && compose up -d --no-deps --remove-orphans "${svc[@]}") >> "$LOG" 2>&1 || true
 
 if wait_healthy; then
   log "deploy $SHA: healthy"
   docker image prune -f >/dev/null 2>&1 || true
-  docker builder prune -f --filter until=72h >/dev/null 2>&1 || true
+  # The server builds every deploy itself: keep its build cache bounded, or a week of deploys fills the disk.
+  docker builder prune -f --keep-storage 8GB >/dev/null 2>&1 || true
   log "deploy $SHA: done"
   exit 0
 fi
@@ -114,7 +121,7 @@ log "deploy $SHA: NOT healthy after ${WAIT_SECONDS}s, rolling back"
 (cd "$APP" && compose logs --tail 40 gateway enricher mcp web 2>&1) | tail -n 80 >&2 || true
 mv "$APP" "$FAILED"
 mv "$PREV" "$APP"
-(cd "$APP" && compose up -d --build --remove-orphans) >> "$LOG" 2>&1 || true
+(cd "$APP" && mapfile -t svc < <(services) && compose up -d --build --no-deps --remove-orphans "${svc[@]}") >> "$LOG" 2>&1 || true
 if wait_healthy; then
   log "deploy $SHA: rolled back to the previous version, which is healthy"
 else
