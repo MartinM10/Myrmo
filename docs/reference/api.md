@@ -141,7 +141,10 @@ POST /v1/validate
 
 Body: a [Trail](./protocol.md). Runs what publishing runs first, the schema check and the redaction pass,
 and stores nothing and uses none of the publishing quota. `200` with `{ "valid": true, "fingerprint": "...",
-"redactions": { ... } }`, or `400 invalid_trail` with the same `details` that publishing would return
+"redactions": { ... }, "risk": { "level": "...", "flags": [...] } }`, plus `would_be_refused` when the trail is valid
+but publishing it would be refused because a command the colony withholds is written in its steps, a purpose, the
+verification or a patch (`{ "risky_command_in_prose": { "fields": [...], "hint": "..." } }`, the same detail a refusal
+carries), or `400 invalid_trail` with the same `details` that publishing would return
 (`[{ "path": "/solution/verification_method/type", "message": "..." }]`). The SDKs and the MCP server use it
 so that the preview a person approves is a payload the colony will accept.
 
