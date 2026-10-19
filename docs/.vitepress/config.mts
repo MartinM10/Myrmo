@@ -60,8 +60,9 @@ export default defineConfig({
   },
 
   themeConfig: {
-    logo: "/logo.svg",
-    siteTitle: "myrmo",
+    // The M of "Myrmo" with its antennae is the logo and the title carries the rest of the letters.
+    logo: { light: "/wordmark-m-light.svg", dark: "/wordmark-m-dark.svg", alt: "M" },
+    siteTitle: "yrmo",
     // The logo and title lead back to the website, not to the docs home.
     logoLink: { link: `${site}/`, target: "_self" },
 

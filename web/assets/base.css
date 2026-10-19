@@ -198,9 +198,8 @@ code, pre, kbd { font-family: var(--f-code); }
 @media (max-width: 720px) { .nav-links .optional { display: none; } .nav { gap: 16px; } .nav-links { gap: 16px; } }
 
 .wordmark {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
+  display: inline-block;
+  white-space: nowrap;
   text-decoration: none;
   font-family: var(--f-display);
   font-weight: 800;
@@ -209,8 +208,13 @@ code, pre, kbd { font-family: var(--f-code); }
   letter-spacing: -0.04em;
   color: var(--chalk);
 }
-.wordmark svg { width: 26px; height: 12px; flex: none; }
-.wordmark svg circle { fill: var(--amber); }
+/* The M of "Myrmo": as tall as the capitals (0.8 em) and as wide as a letter of the face (0.709 em), standing on
+   the baseline; its antennae rise above the line without taking any room in it. */
+.wm-m { position: relative; display: inline-block; width: 0.709em; height: 0.8em; }
+.wm-m-svg { position: absolute; left: 0; bottom: -0.193em; width: 0.709em; height: 1.7655em; overflow: visible; }
+.wm-m-svg .body { stroke: currentColor; }
+.wm-m-svg .ant { stroke: var(--amber); }
+.wm-m-svg .node { fill: var(--amber); }
 
 /* ---------- Buttons ---------- */
 .btn {
