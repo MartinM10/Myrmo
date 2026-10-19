@@ -36,7 +36,7 @@
       "default": "fix"
     },
     "source": {
-      "description": "Where the knowledge comes from, when an agent did not find it out itself: a handover document, a repository's documentation, a person. Lets a colony show provenance and notice when the source changes.",
+      "description": "Where the knowledge comes from, when an agent did not find it out itself: a handover document, a repository's documentation, a person. A colony shows it as provenance and counts entries by source. `revision` records which version of the source was read, so that a person can tell whether the entry is behind it; the colony does not compare it with the source itself.",
       "type": "object",
       "additionalProperties": false,
       "required": ["type"],
