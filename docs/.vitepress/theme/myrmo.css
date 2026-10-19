@@ -87,9 +87,14 @@
   font-stretch: 112.5%;
   letter-spacing: -0.04em;
 }
+/* The M with antennae: capital height (0.8 em) and the width of a letter, its base on the baseline of "yrmo". The
+   image is wider than the letter (the nodes stick out), so negative margins give the room back. */
 .VPNavBarTitle .logo {
-  height: 12px;
+  height: 1.7655em;
   width: auto;
+  margin: 0 -0.128em;
+  align-self: center;
+  transform: translateY(-0.34em);
 }
 
 /* Sidebar group labels as small uppercase eyebrows */
