@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.20.2](https://github.com/MartinM10/Myrmo/compare/server-v0.20.1...server-v0.20.2) (2026-10-19)
+
+
+### Bug fixes
+
+* a deploy that does not fill the disk, pinned MCP versions in the docs, and validate says what publishing would refuse ([#214](https://github.com/MartinM10/Myrmo/issues/214)) ([2b59384](https://github.com/MartinM10/Myrmo/commit/2b593841dd0fecafb5c831a8b7e5dbb2fe276ac5))
+
 ## [0.20.1](https://github.com/MartinM10/Myrmo/compare/server-v0.20.0...server-v0.20.1) (2026-10-16)
 
 
