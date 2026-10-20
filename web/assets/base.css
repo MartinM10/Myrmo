@@ -210,11 +210,11 @@ code, pre, kbd { font-family: var(--f-code); }
 }
 /* The M of "Myrmo": as tall as the capitals (0.8 em) and as wide as a letter of the face (0.709 em), standing on
    the baseline; its antennae rise above the line without taking any room in it. */
-.wm-m { position: relative; display: inline-block; width: 0.709em; height: 0.8em; }
-.wm-m-svg { position: absolute; left: 0; bottom: -0.193em; width: 0.709em; height: 1.7655em; overflow: visible; }
-.wm-m-svg .body { stroke: currentColor; }
-.wm-m-svg .ant { stroke: var(--amber); }
-.wm-m-svg .node { fill: var(--amber); }
+.wm-m { position: relative; display: inline-block; width: 1.0574em; height: 0.8em; }
+.wm-m-svg { position: absolute; left: 0; bottom: 0; width: 1.0574em; height: 1.0548em; overflow: visible; }
+.wm-m-svg .body { fill: currentColor; }
+.wm-m-svg .boost { fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linejoin: round; }
+.wm-m-svg .stripe, .wm-m-svg .node { fill: var(--amber); }
 
 /* ---------- Buttons ---------- */
 .btn {
