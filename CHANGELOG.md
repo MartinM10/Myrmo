@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.43.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.42.0...platform-v0.43.0) (2026-10-20)
+
+
+### Features
+
+* **brand:** the mark is an ant that is also an M ([#220](https://github.com/MartinM10/Myrmo/issues/220)) ([5b76677](https://github.com/MartinM10/Myrmo/commit/5b766770535c281509a32968156a7b880b485a3b))
+
 ## [0.42.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.41.2...platform-v0.42.0) (2026-10-19)
 
 
