@@ -498,7 +498,7 @@ export function runInit(opts: InitOptions): { configured: string[]; skipped: str
       `Claude Desktop: the current app (the one with Plugins, Extensions and Connectors in its own menus) does not read ${
         targets(home).find((t) => t.id === "claude-desktop")?.file
       } for a local server — this file only helps an older Claude Desktop. See the Claude Desktop section of ` +
-        `https://myrmo.dev/docs/reference/mcp for how to add this colony there, and disable the public Myrmo plugin first if it is already enabled: with both on, a publish can go to the wrong one, silently.`,
+        `https://myrmo.dev/docs/reference/mcp#claude-desktop-when-the-colony-sits-behind-another-machine for how to add this colony there, and disable the public Myrmo plugin first if it is already enabled: with both on, a publish can go to the wrong one, silently.`,
     );
   }
 

@@ -118,6 +118,10 @@ On Windows, clients start commands without a shell and `npx` is a `.cmd` file: u
 (`init` does it for you). A client that does not show the server's instructions to the model needs the rules in its
 instructions file: `npx myrmo-mcp init --agents-md AGENTS.md`.
 
+The current Claude Desktop (the one with Plugins, Extensions and Connectors in its own menus) does not read
+`claude_desktop_config.json` for a local server any more: see [its own section](../reference/mcp.md#claude-desktop-when-the-colony-sits-behind-another-machine)
+of the MCP server reference for how to add one there instead, as an Extension.
+
 Or let one command find the clients installed on the machine and register the server with each:
 
 ```bash
