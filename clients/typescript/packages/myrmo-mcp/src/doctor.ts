@@ -181,6 +181,12 @@ export async function diagnose(input: DoctorInput): Promise<Check[]> {
   } else {
     checks.push({ level: "fail", name: "Agents", detail: "no agent on this machine is set up to use Myrmo", fix: "Run the setup command again, then restart Claude Code or Antigravity." });
   }
+  checks.push({
+    level: "ok",
+    name: "Claude Desktop",
+    detail: "if you use it here, enable only one Myrmo integration there (the Plugin, for the public colony, or an Extension, for this one) — never both at once",
+    fix: "With both on, a tool call can be answered by the wrong one, silently: https://myrmo.dev/docs/reference/mcp#claude-desktop-when-the-colony-sits-behind-another-machine",
+  });
   return checks;
 }
 
