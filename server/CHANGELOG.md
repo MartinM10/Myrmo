@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.20.3](https://github.com/MartinM10/Myrmo/compare/server-v0.20.2...server-v0.20.3) (2026-10-21)
+
+
+### Bug fixes
+
+* **panel:** the invitations carry the colony's address, not the one the operator has open ([#222](https://github.com/MartinM10/Myrmo/issues/222)) ([9ce9abc](https://github.com/MartinM10/Myrmo/commit/9ce9abc292cc167dd1ce6c8d19ab85f8ff1af457))
+
 ## [0.20.2](https://github.com/MartinM10/Myrmo/compare/server-v0.20.1...server-v0.20.2) (2026-10-19)
 
 
