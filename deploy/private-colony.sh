@@ -34,7 +34,9 @@ PORT="${MYRMO_PORT:-8080}"
 TASK_MODEL="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 # The settings file is the source of truth once written: a MYRMO_ALLOWED_NETWORKS left in the shell from the first `up`
 # (or `any`) would otherwise win over it, since compose prefers the shell's variables to the env file's.
-compose() { env -u MYRMO_ALLOWED_NETWORKS docker compose -p "$PROJECT" --env-file "$ENV_FILE" "$@"; }
+# The colony is told the address people use (MYRMO_COLONY_URL, else this machine's), so that the invitations of its
+# panel carry it and not the address the operator has open, which behind a tunnel is localhost.
+compose() { env -u MYRMO_ALLOWED_NETWORKS MYRMO_COLONY_URL="$(colony_url)" docker compose -p "$PROJECT" --env-file "$ENV_FILE" "$@"; }
 
 [ -f docker-compose.yml ] || { echo "Run this from the root of the Myrmo repository." >&2; exit 1; }
 docker compose version >/dev/null 2>&1 || { echo "Docker with the compose plugin is needed (docker compose version)." >&2; exit 1; }

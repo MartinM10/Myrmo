@@ -210,6 +210,8 @@ jobs:
       # Heuristic judgements only: the decision model is a 1.7 GB download.
       MYRMO_DECISION_URL: ""
       MYRMO_ADMIN_TOKEN: ci-operator-token-0123456789
+      # The address the panel writes into its invitations; smoke.py checks that it comes back from the admin API.
+      MYRMO_COLONY_URL: http://colony.example.test:8080
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Start a colony

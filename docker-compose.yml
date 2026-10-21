@@ -58,6 +58,8 @@ services:
       MYRMO_CORS_ORIGINS: ${MYRMO_CORS_ORIGINS:-}
       MYRMO_ALLOWED_HOSTS: ${MYRMO_ALLOWED_HOSTS:-}
       MYRMO_PUBLIC_URL: ${MYRMO_PUBLIC_URL:-http://localhost:3000}
+      # The address people use to reach this colony, written into the invitations of the panel (empty: the address the panel is opened at).
+      MYRMO_COLONY_URL: ${MYRMO_COLONY_URL:-}
     ports:
       - "${MYRMO_HOST_IP:-127.0.0.1}:${MYRMO_PORT:-8080}:8080"
     depends_on: [valkey, qdrant, embed]

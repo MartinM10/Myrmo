@@ -508,6 +508,12 @@ def main() -> None:
         check(status == 200 and body["days"] == 30, "an operator can ask for a longer demand window")
         status, _, _ = call("GET", "/v1/analytics", token="x" * 20)
         check(status == 401, "a wrong operator token cannot read analytics")
+        # The panel writes the colony's configured address into its invitations (and not the one the browser has open).
+        status, body, _ = call("GET", "/v1/admin/people?days=1", token=ADMIN)
+        expected = os.environ.get("MYRMO_COLONY_URL", "").rstrip("/") or None
+        check(status == 200 and body.get("colony_url") == expected, f"the people response carries the colony's address ({body.get('colony_url')!r}, expected {expected!r})")
+        status, body, _ = call("GET", "/v1/admin/settings", token=ADMIN)
+        check(status == 200 and body["read_only"].get("colony_url") == expected, "the settings show it as read-only")
     status, body, _ = call("DELETE", f"/v1/trails/{first['trail_id']}")
     check(status == 403, f"removing a trail needs its author's id or an operator token (got {status})")
     if ADMIN:

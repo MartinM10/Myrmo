@@ -233,7 +233,7 @@ pub(super) async fn people(
         }
     }
     Ok(private(Json(json!({
-        "days": days, "people_detail": st.cfg.people_detail.as_str(), "people": people, "team": counts(&team),
+        "days": days, "people_detail": st.cfg.people_detail.as_str(), "colony_url": st.cfg.colony_url, "people": people, "team": counts(&team),
         "reuse": reuse, "released": crate::versions::describe()["clients"],
     }))))
 }
@@ -479,6 +479,7 @@ fn describe(st: &AppState, live: &Live, peer: &str) -> Value {
             "private": st.cfg.private,
             "profile": st.cfg.profile(),
             "people_detail": st.cfg.people_detail.as_str(),
+            "colony_url": st.cfg.colony_url,
             "task_index": st.tasks.is_some(),
             "decision_engine": if st.cfg.decision_url.is_some() { "configured" } else { "none (rules only)" },
             "version": env!("CARGO_PKG_VERSION"),

@@ -2419,7 +2419,7 @@ async function value(view) {
 /* TAB: PEOPLE                                                               */
 /* ========================================================================= */
 
-function invitation(name, key, detail) {
+function invitation(name, key, detail, address) {
   const people = detail === "named"
     ? "your searches, reports and publications, counted per day by name and kept 90 days"
     : "your searches, reports and publications only as team totals, never by name";
@@ -2434,7 +2434,7 @@ You need: Node.js 20 or newer (node --version) and Claude Code and/or Antigravit
 
 1. Run this once (it sets up the agents on your machine):
 
-   npx myrmo-mcp@latest init --url ${location.origin} --key ${key} --private --publish auto
+   npx myrmo-mcp@latest init --url ${address || location.origin} --key ${key} --private --publish auto
 
 2. Restart Claude Code / Antigravity. In Antigravity, accept the permission for the myrmo tools ("always").
 3. In Claude Code, let it update by itself: /plugin > Marketplaces > myrmo > Enable auto-update.
@@ -2470,7 +2470,7 @@ async function people(view) {
 
   const showSingleSecret = (made) => {
     nameInput.value = ""; say(note, "");
-    const inviteMsg = invitation(made.name, made.key, data.people_detail);
+    const inviteMsg = invitation(made.name, made.key, data.people_detail, data.colony_url);
     const text = el("textarea", { readOnly: true, value: inviteMsg, style: "min-height:220px;font-family:var(--f-display);font-size:.82rem" });
     const copyBtn = el("button", { className: "btn btn-act", onclick: () => copyToClipboard(inviteMsg, copyBtn) }, "Copy Invitation");
 
@@ -2495,9 +2495,9 @@ async function people(view) {
     secret.style.borderColor = "var(--amber)";
     secret.style.marginTop = "16px";
 
-    const allInvites = keys.map((k) => `# ${k.name}\n${invitation(k.name, k.key, data.people_detail)}`).join("\n" + "=".repeat(60) + "\n\n");
-    const initCmds = keys.map((k) => `${k.name}: npx myrmo-mcp@latest init --url ${location.origin} --key ${k.key} --private --publish auto`).join("\n");
-    const csv = ["name,key,init_command", ...keys.map((k) => `"${k.name}","${k.key}","npx myrmo-mcp@latest init --url ${location.origin} --key ${k.key} --private --publish auto"`)].join("\n");
+    const allInvites = keys.map((k) => `# ${k.name}\n${invitation(k.name, k.key, data.people_detail, data.colony_url)}`).join("\n" + "=".repeat(60) + "\n\n");
+    const initCmds = keys.map((k) => `${k.name}: npx myrmo-mcp@latest init --url ${data.colony_url || location.origin} --key ${k.key} --private --publish auto`).join("\n");
+    const csv = ["name,key,init_command", ...keys.map((k) => `"${k.name}","${k.key}","npx myrmo-mcp@latest init --url ${data.colony_url || location.origin} --key ${k.key} --private --publish auto"`)].join("\n");
 
     const text = el("textarea", { readOnly: true, value: initCmds, style: "min-height:160px;font-family:var(--f-display);font-size:.82rem;width:100%" });
 
@@ -2506,7 +2506,7 @@ async function people(view) {
     const copyCsvBtn = el("button", { className: "btn btn-quiet", onclick: () => copyToClipboard(csv, copyCsvBtn) }, "Copy CSV");
 
     const keyRows = keys.map((k) => {
-      const copyRowBtn = el("button", { className: "copy-code-btn", style: "padding:2px 8px;font-size:.72rem", onclick: () => copyToClipboard(`npx myrmo-mcp@latest init --url ${location.origin} --key ${k.key} --private --publish auto`, copyRowBtn) }, "Copy Command");
+      const copyRowBtn = el("button", { className: "copy-code-btn", style: "padding:2px 8px;font-size:.72rem", onclick: () => copyToClipboard(`npx myrmo-mcp@latest init --url ${data.colony_url || location.origin} --key ${k.key} --private --publish auto`, copyRowBtn) }, "Copy Command");
       return el("tr", {},
         el("td", { style: "padding:6px 10px;font-weight:600;font-family:var(--f-display)" }, k.name),
         el("td", { style: "padding:6px 10px;font-family:var(--f-display);color:var(--dust);font-size:.8rem" }, k.key),
