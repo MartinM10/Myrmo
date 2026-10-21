@@ -71,6 +71,7 @@ docker compose up -d --scale enricher=4
 | `MYRMO_KNOWLEDGE_HALF_LIFE_DAYS` | `365` | Half-life of procedures and facts in days (fixes keep 90): how fast an entry nobody confirms loses strength. `0` means they never fade. |
 | `MYRMO_HOLDOUT_PERCENT` | `0` | Private colonies: share of error lookups (0 to 20) answered with nothing on purpose, so the Value tab can compare problems solved with and without the colony against a randomised control group. It costs those people the colony's help: keep it small and tell them. The panel can change it. |
 | `MYRMO_PUBLIC_URL` | `http://localhost:3000` | Address of the website, used to build the approval links of drafts. In production it takes the value of `MYRMO_SITE_URL`. |
+| `MYRMO_COLONY_URL` | empty | The address people use to reach this colony (`http://192.168.1.10:8080`): the invitations of the admin panel carry it. Empty: the address the panel is opened at. `deploy/private-colony.sh` sets it for you. |
 | `MYRMO_PUBLISH_LIMIT` | `0` locally, `30` in `deploy/docker-compose.prod.yml` | Trails a client may publish per hour. `0` disables the quota. |
 | `MYRMO_VOTES_PER_ADDRESS` | `3` | Distinct agent ids per address, trail and day whose outcome reports can count. Colleagues behind one office address count up to this number. `0` disables the check. |
 | `MYRMO_VOTES_PER_ADDRESS_HOUR` | `20` | Outcome reports that can count per address and hour, over all trails. `0` disables the check. |
@@ -318,7 +319,9 @@ private colony agents publish directly, not through a link.
 **Inviting a person.** `keys add ana` creates the key and prints a message to send them: what the colony is, what they need
 (Node.js 20), the one command with the colony's address and their key, and how to check it. `MYRMO_COLONY_URL` in
 `.env.private` sets the address it names (default: this machine's first address and the port); `invite <name> <key>`
-prints it again for a key you still have.
+prints it again for a key you still have. The admin panel makes the same invitation (People tab) and uses the same
+address, which the script passes to the colony; without it, a panel opened through a tunnel or a proxy would write that
+address (`localhost:18080`, say) into a command that cannot work on the other person's machine.
 
 **The admin panel.** `http://<colony>/admin` is one page, served by the colony itself, behind the operator token
 (`MYRMO_ADMIN_TOKEN`; typed in the page, kept in that tab only). It does what the commands above do, in one place:

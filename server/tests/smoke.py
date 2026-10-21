@@ -551,12 +551,16 @@ def main() -> None:
         check(status == 409, "adding the same person twice -> 409")
         status, body, _ = call("GET", "/v1/admin/people?days=7", token=ADMIN)
         check(status == 200 and person in [p["name"] for p in body["people"]] and "key" not in json.dumps(body), "the list shows the person and never a key")
+        # The panel writes the colony's configured address into its invitations, and not the one the browser has open.
+        expected_url = os.environ.get("MYRMO_COLONY_URL", "").rstrip("/") or None
+        check(body.get("colony_url") == expected_url, f"the people response carries the colony's address ({body.get('colony_url')!r}, expected {expected_url!r})")
         status, body, _ = call("DELETE", f"/v1/admin/people/{person}", token=ADMIN)
         check(status == 200 and body["revoked"], "an operator revokes the key")
         status, _, _ = call("DELETE", f"/v1/admin/people/{person}", token=ADMIN)
         check(status == 404, "revoking an unknown person -> 404")
         status, body, _ = call("GET", "/v1/admin/settings", token=ADMIN)
         check(status == 200 and "your_address" in body and "allowed_networks" in body, "the settings are readable")
+        check(body["read_only"].get("colony_url") == expected_url, "the settings show the colony's address as read-only")
         status, _, _ = call("PUT", "/v1/admin/settings", {"allowed_networks": "not-a-network"}, token=ADMIN)
         check(status == 400, "a list that is not addresses -> 400")
         status, body, _ = call("PUT", "/v1/admin/settings", {"allowed_networks": "203.0.113.0/24"}, token=ADMIN)

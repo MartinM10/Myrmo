@@ -85,6 +85,9 @@ pub struct Config {
     pub holdout_percent: u64,
     /// Public address of the website, used to build approval links for drafts.
     pub public_url: String,
+    /// The address people use to reach this colony (`MYRMO_COLONY_URL`), written into the invitations the panel makes.
+    /// Without it the panel uses the address the operator has open, which is wrong behind a tunnel or a proxy.
+    pub colony_url: Option<String>,
     /// Minimum cosine similarity for a semantic match.
     pub min_similarity: f64,
     /// Most trails one exact fingerprint keeps (see `keys::add_to_fingerprint`).
@@ -222,6 +225,7 @@ impl Config {
             public_url: get("MYRMO_PUBLIC_URL", "http://localhost:3000")
                 .trim_end_matches('/')
                 .to_string(),
+            colony_url: var("MYRMO_COLONY_URL").and_then(|u| colony_address(&u)),
             admin_token: var("MYRMO_ADMIN_TOKEN").filter(|t| t.len() >= 16),
             require_key,
             min_similarity: get("MYRMO_MIN_SIMILARITY", "0.75").parse().unwrap_or(0.75),
@@ -248,9 +252,42 @@ impl Config {
     }
 }
 
+/// The address of the colony as the invitations show it: an http(s) address with a host, no spaces, no trailing slash.
+/// Anything else is ignored, so that a typo cannot put a strange string into the command people are told to run.
+fn colony_address(raw: &str) -> Option<String> {
+    let url = raw.trim().trim_end_matches('/');
+    let host = url
+        .strip_prefix("http://")
+        .or_else(|| url.strip_prefix("https://"))?;
+    (!host.is_empty() && !url.chars().any(char::is_whitespace)).then(|| url.to_string())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_colony_address_is_an_http_address_without_a_trailing_slash() {
+        assert_eq!(
+            colony_address(" http://192.168.1.10:8080/ "),
+            Some("http://192.168.1.10:8080".to_string())
+        );
+        assert_eq!(
+            colony_address("https://memory.example.org"),
+            Some("https://memory.example.org".to_string())
+        );
+        for bad in [
+            "",
+            "   ",
+            "192.168.1.10:8080",
+            "ftp://host",
+            "http://",
+            "http://a b",
+            "javascript:alert(1)",
+        ] {
+            assert_eq!(colony_address(bad), None, "{bad:?}");
+        }
+    }
 
     #[test]
     fn people_are_counted_as_a_team_unless_named_is_asked_for() {
