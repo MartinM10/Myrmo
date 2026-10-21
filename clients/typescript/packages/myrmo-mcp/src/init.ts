@@ -493,6 +493,15 @@ export function runInit(opts: InitOptions): { configured: string[]; skipped: str
     log(`${t.name}: ${verb} add the "myrmo" server to ${t.file}`);
   }
 
+  if (opts.private && wanted("claude-desktop") && (configured.includes("Claude Desktop") || skipped.includes("Claude Desktop"))) {
+    log(
+      `Claude Desktop: the current app (the one with Plugins, Extensions and Connectors in its own menus) does not read ${
+        targets(home).find((t) => t.id === "claude-desktop")?.file
+      } for a local server — this file only helps an older Claude Desktop. See the Claude Desktop section of ` +
+        `https://myrmo.dev/docs/reference/mcp for how to add this colony there, and disable the public Myrmo plugin first if it is already enabled: with both on, a publish can go to the wrong one, silently.`,
+    );
+  }
+
   const block = opts.readOnly ? AGENTS_BLOCK_READ_ONLY : opts.private ? AGENTS_BLOCK_PRIVATE : AGENTS_BLOCK;
   if (opts.rules !== false) {
     for (const r of rulesFiles(home)) {
