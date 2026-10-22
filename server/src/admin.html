@@ -505,10 +505,12 @@
     display: grid;
     grid-template-columns: minmax(0, 1fr) 340px;
     gap: 16px; align-items: stretch;
-    height: calc(100vh - 120px); min-height: 640px;
+    height: calc(100vh - 210px); min-height: 560px;
   }
   @media (max-width: 1100px) {
     .map-wrapper { grid-template-columns: minmax(0, 1fr); height: auto; }
+    .map-canvas-container { height: 72vh; min-height: 520px; }
+    .map-inspector { height: auto; max-height: 70vh; }
   }
 
   .map-canvas-container {
@@ -610,44 +612,14 @@
   .dock-btn.active { color: var(--amber); background: var(--card); }
   .dock-divider { width: 1px; height: 16px; background: var(--wall); margin: 0 2px; }
 
-  /* Perfectly Centered Radar Minimap */
-  .map-radar-card {
-    position: absolute; bottom: 16px; right: 16px; z-index: 10;
-    width: 156px; height: 108px; border-radius: var(--radius);
-    background: color-mix(in srgb, var(--tunnel) 94%, transparent);
-    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
-    border: 1px solid var(--wall); box-shadow: var(--shadow-lg);
-    overflow: hidden; display: flex; flex-direction: column;
-    transition: opacity .2s, transform .2s;
-  }
-  .map-radar-card.collapsed {
-    display: none;
-  }
-  .radar-header {
-    height: 20px; padding: 2px 8px; background: var(--soil-subtle);
-    display: flex; align-items: center; justify-content: space-between;
-    border-bottom: 1px solid var(--wall);
-  }
-  .radar-title {
-    font: 700 .62rem var(--f-display); color: var(--dust);
-    text-transform: uppercase; letter-spacing: .08em;
-  }
-  .radar-close-btn {
-    border: 0; background: none; color: var(--dust); cursor: pointer;
-    font-size: 11px; padding: 0; line-height: 1;
-  }
-  .radar-close-btn:hover { color: var(--chalk); }
-  .radar-canvas-area {
-    flex: 1; position: relative; cursor: crosshair;
-  }
-  .radar-canvas-area canvas { width: 100%; height: 100%; display: block; }
-
   /* Main Canvas */
   #graph-canvas {
-    width: 100%; height: 100%; display: block;
-    cursor: grab; touch-action: none; flex: 1;
+    width: 100%; height: 100%; display: block; flex: 1; min-height: 0;
   }
-  #graph-canvas:active { cursor: grabbing; }
+  /* The map is a dark scan in both themes: neurons glow on it. */
+  .map-canvas-container.brain { background: #070605; border-color: color-mix(in srgb, var(--wall) 70%, #000); }
+  .map-canvas-container.brain .logo-tag { background: rgba(10, 8, 6, .7); color: #cfc5b4; border-color: rgba(255, 220, 180, .16); }
+  .dock-legend { font: 500 .72rem var(--f-display); color: var(--dust); padding: 0 6px; white-space: nowrap; }
 
   /* Map Inspector / Detail Sidebar */
   .map-inspector {
@@ -656,7 +628,7 @@
     border-radius: var(--radius-lg);
     display: flex; flex-direction: column;
     overflow: hidden; box-shadow: var(--shadow);
-    height: 100%;
+    height: 100%; min-height: 0;
   }
   .inspector-header {
     padding: 14px 18px; border-bottom: 1px solid var(--wall);
@@ -668,8 +640,12 @@
     display: flex; align-items: center; gap: 8px;
   }
   .inspector-content {
-    padding: 18px; overflow-y: auto; flex: 1; display: grid; gap: 16px;
+    padding: 18px; overflow-y: auto; flex: 1; min-height: 0;
+    display: flex; flex-direction: column; gap: 16px; overscroll-behavior: contain;
+    overflow-wrap: anywhere;
   }
+  /* Every block keeps its own height: the panel scrolls instead of squeezing them. */
+  .inspector-content > * { flex-shrink: 0; min-width: 0; }
 
   .detail-strength-box {
     background: var(--card); border: 1px solid var(--wall);
@@ -694,6 +670,7 @@
     font-size: .8rem; transition: background .15s;
   }
   .topic-stat-row:hover { background: var(--card-hover); }
+  .topic-stat-row.active { background: var(--card-hover); box-shadow: inset 2px 0 0 var(--amber); }
   .topic-stat-pill {
     display: inline-flex; align-items: center; gap: 6px; font-weight: 500;
   }
@@ -1360,48 +1337,56 @@ async function map(view) {
 
   const css = getComputedStyle(document.documentElement);
   const color = (v) => css.getPropertyValue(v).trim();
-  const isLight = document.documentElement.getAttribute("data-theme") === "light";
+  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-  const KIND_COLORS = {
-    fix: color("--amber") || "#f59e0b",
-    procedure: color("--moss") || "#10b981",
-    fact: color("--sapphire") || "#3b82f6"
-  };
-  const HEALTH_COLORS = {
-    ok: color("--moss") || "#10b981",
-    contested: color("--ember") || "#ef4444",
-    stale: color("--ochre") || "#eab308",
-    unconfirmed: color("--cyan") || "#06b6d4",
-    replaced: color("--dust") || "#94a3b8"
-  };
-
-  const PALETTE = ["#f59e0b", "#10b981", "#3b82f6", "#a855f7", "#ec4899", "#06b6d4", "#f97316", "#84cc16", "#6366f1", "#14b8a6", "#e11d48", "#64748b"];
+  // The canvas is always a dark "scan", whatever the theme: neurons glow on it. These colours are tuned for that ground.
+  const KIND_COLORS = { fix: "#ffb23e", procedure: "#4fd6a0", fact: "#6aa8ff" };
+  const HEALTH_COLORS = { ok: "#4fd6a0", contested: "#ff6b5b", stale: "#e8c35a", unconfirmed: "#46d3e8", replaced: "#8a8172" };
+  const PALETTE = ["#ffb23e", "#4fd6a0", "#6aa8ff", "#c38bff", "#ff7ab8", "#46d3e8", "#ff9a52", "#a6e05a", "#8c8cff", "#3fd1c0", "#ff5d7a", "#9aa4b2"];
   const topicOf = (n) => (n.kind === "fix" ? n.category || "other" : n.kind);
   const topics = [...g.nodes.reduce((m, n) => m.set(topicOf(n), (m.get(topicOf(n)) || 0) + 1), new Map())].sort((a, b) => b[1] - a[1]).map(([t]) => t);
   const TOPIC_COLORS = new Map(topics.map((t, i) => [t, PALETTE[i % PALETTE.length]]));
 
   let colorMode = "topic"; // "topic" | "kind" | "health" | "strength"
-  let labelMode = "hover"; // "hover" (default clean!) | "all" | "off"
-  let showClusterHalos = true;
-  let showRadar = true;
-  let simulationActive = true;
+  let labelMode = "hover"; // "hover" | "all" | "off"
+  let pulsesOn = !reduceMotion;
 
-  // Node initialization with wider spacing
+  /* ---------- The brain: a lateral silhouette in a 1000 x 720 world, the nodes laid out inside it ---------- */
+  // Facing left: frontal lobe, the dome, occipital lobe, cerebellum and brainstem, and the temporal lobe under the
+  // lateral fissure with the notch in front of it.
+  const BRAIN = new Path2D(
+    "M190 420 C160 330 190 220 280 160 C360 100 470 70 560 72 C680 74 800 120 860 210 " +
+    "C910 280 915 380 870 440 C850 470 810 490 770 495 C830 520 840 590 780 620 C730 645 660 635 630 600 " +
+    "C615 620 608 660 604 700 L560 700 C566 650 566 610 560 585 C500 575 420 560 360 535 " +
+    "C310 515 290 480 300 455 C280 448 250 440 230 444 C210 446 195 436 190 420 Z");
+  const SULCI = [
+    "M300 452 C380 430 470 410 560 380 C610 362 650 350 690 352",      // lateral (Sylvian) fissure
+    "M560 74 C545 150 562 232 520 332",                                 // central sulcus
+    "M470 80 C455 150 470 210 440 270",                                 // precentral
+    "M650 84 C640 150 660 220 630 300",                                 // postcentral
+    "M770 495 C740 500 700 520 660 560",                                // above the cerebellum
+    "M690 560 C730 570 780 568 815 555", "M660 590 C710 605 770 600 810 585", "M650 615 C700 628 750 625 790 610",
+  ];
+  const probe = document.createElement("canvas").getContext("2d");
+  const inside = (x, y) => probe.isPointInPath(BRAIN, x, y) && !(y > 585 && x > 540 && x < 630);
+  const CENTER = { x: 545, y: 330 };
+
+  // Weight of an entry: how much it is relied on. Strength counts most, use (worked) on a log scale.
+  const maxWorked = Math.max(1, ...g.nodes.map((n) => n.worked || 0));
+  const weightOf = (n) => 0.6 * Math.min(1, n.strength || 0) + 0.4 * (Math.log1p(n.worked || 0) / Math.log1p(maxWorked));
+
   const nodes = g.nodes.map((n, i) => {
-    const angle = i * 2.39996, dist = 16 * Math.sqrt(i);
+    const angle = i * 2.39996, dist = 9 * Math.sqrt(i);
+    const w = weightOf(n);
     return {
-      ...n,
-      x: Math.cos(angle) * dist,
-      y: Math.sin(angle) * dist,
-      vx: 0,
-      vy: 0,
-      r: 6 + 9 * Math.min(1, n.strength || 0),
-      links: [],
-      neighbors: new Set(),
-      pinned: false
+      ...n, w,
+      x: CENTER.x + Math.cos(angle) * dist, y: CENTER.y + Math.sin(angle) * dist * 0.7,
+      vx: 0, vy: 0,
+      r: 3.2 + 10.5 * w,
+      phase: (i * 0.618) % 1 * Math.PI * 2,
+      links: [], neighbors: new Set(),
     };
   });
-
   const byId = new Map(nodes.map((n) => [n.id, n]));
   const edges = (g.edges || []).map((e) => ({ a: byId.get(e.a), b: byId.get(e.b), s: e.s })).filter((e) => e.a && e.b);
   for (const e of edges) {
@@ -1409,26 +1394,57 @@ async function map(view) {
     e.a.neighbors.add(e.b); e.b.neighbors.add(e.a);
   }
 
-  // Island / Cluster Detection
-  const root = new Map(nodes.map((n) => [n, n]));
-  const find = (n) => { while (root.get(n) !== n) { root.set(n, root.get(root.get(n))); n = root.get(n); } return n; };
-  for (const e of edges) root.set(find(e.a), find(e.b));
-  const groups = new Map();
-  for (const n of nodes) { const r = find(n); (groups.get(r) || groups.set(r, []).get(r)).push(n); }
-
-  const tagUse = new Map();
-  for (const n of nodes) for (const t of n.tags || []) tagUse.set(t, (tagUse.get(t) || 0) + 1);
-  const telling = (t) => (tagUse.get(t) || 0) <= Math.max(3, nodes.length / 5);
-
-  const islands = [...groups.values()].filter((m) => m.length >= 3).map((members) => {
-    const count = new Map();
-    for (const n of members) {
-      const tags = (n.tags || []).filter(telling);
-      for (const t of tags.length ? tags : [topicOf(n)]) count.set(t, (count.get(t) || 0) + 1);
+  // Laid out once, then still: similar entries pull together, all keep their distance, and the skull keeps them in.
+  (function layout() {
+    const spacing = Math.max(16, Math.min(46, Math.sqrt(380000 / Math.max(1, nodes.length))));
+    const rep = spacing * spacing * 0.9;
+    for (let it = 0, alpha = 1; it < 520; it++, alpha *= 0.992) {
+      const cell = spacing * 2.2, grid = new Map();
+      for (const n of nodes) {
+        const k = Math.floor(n.x / cell) + "," + Math.floor(n.y / cell);
+        (grid.get(k) || grid.set(k, []).get(k)).push(n);
+      }
+      for (const n of nodes) {
+        const cx = Math.floor(n.x / cell), cy = Math.floor(n.y / cell);
+        for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) {
+          for (const m of grid.get((cx + dx) + "," + (cy + dy)) || []) {
+            if (m === n) continue;
+            let x = n.x - m.x, y = n.y - m.y, d2 = x * x + y * y;
+            if (d2 < 0.01) { x = Math.random() - 0.5; y = Math.random() - 0.5; d2 = 0.5; }
+            if (d2 > cell * cell) continue;
+            const f = (rep * alpha) / d2 * 0.06;
+            n.vx += x * f; n.vy += y * f;
+          }
+        }
+        n.vx += (CENTER.x - n.x) * 0.0009 * alpha;
+        n.vy += (CENTER.y - n.y) * 0.0009 * alpha;
+      }
+      for (const e of edges) {
+        const x = e.b.x - e.a.x, y = e.b.y - e.a.y, d = Math.hypot(x, y) || 1;
+        const f = ((d - spacing * (1.1 + 1.6 * (1 - e.s))) / d) * 0.05 * alpha;
+        e.a.vx += x * f; e.a.vy += y * f; e.b.vx -= x * f; e.b.vy -= y * f;
+      }
+      for (const n of nodes) {
+        n.vx *= 0.6; n.vy *= 0.6;
+        n.x += Math.max(-12, Math.min(12, n.vx));
+        n.y += Math.max(-12, Math.min(12, n.vy));
+        // A margin inside the skull, so the neurons do not line its edge.
+        if (!inside(n.x, n.y) || !inside(n.x - 16, n.y) || !inside(n.x + 16, n.y) || !inside(n.x, n.y - 16) || !inside(n.x, n.y + 16)) {
+          n.x += (CENTER.x - n.x) * 0.06;
+          n.y += (CENTER.y - n.y) * 0.06;
+        }
+      }
     }
-    const [name] = [...count].sort((a, b) => b[1] - a[1])[0] || ["topic"];
-    return { members, name: String(name).replaceAll("_", " ") };
-  });
+  })();
+
+  // Each link is a gently curved axon; its bend is fixed per pair so the picture never jitters.
+  for (const e of edges) {
+    const mx = (e.a.x + e.b.x) / 2, my = (e.a.y + e.b.y) / 2;
+    const dx = e.b.x - e.a.x, dy = e.b.y - e.a.y, len = Math.hypot(dx, dy) || 1;
+    const sign = ((e.a.id.charCodeAt(0) + e.b.id.charCodeAt(1)) % 2) ? 1 : -1;
+    const bend = sign * len * 0.16;
+    e.cx = mx - (dy / len) * bend; e.cy = my + (dx / len) * bend;
+  }
 
   // Filtering state
   const kinds = { fix: true, procedure: true, fact: true };
@@ -1438,7 +1454,6 @@ async function map(view) {
   let query = "";
   let selected = null;
   let hover = null;
-  let draggedNode = null;
 
   const matches = (n) => {
     if (!kinds[n.kind]) return false;
@@ -1452,109 +1467,142 @@ async function map(view) {
     return query.split(/\s+/).every((w) => text.includes(w));
   };
 
-  const getNodeColor = (n) => {
-    if (colorMode === "kind") return KIND_COLORS[n.kind] || color("--dust");
-    if (colorMode === "health") return HEALTH_COLORS[n.health] || color("--moss");
+  const nodeColor = (n) => {
+    if (colorMode === "kind") return KIND_COLORS[n.kind] || "#9aa4b2";
+    if (colorMode === "health") return HEALTH_COLORS[n.health] || HEALTH_COLORS.ok;
     if (colorMode === "strength") {
       const s = Math.min(1, Math.max(0, n.strength || 0));
-      return s > 0.7 ? "#10b981" : s > 0.4 ? "#f59e0b" : "#ef4444";
+      return s > 0.7 ? "#4fd6a0" : s > 0.4 ? "#ffb23e" : "#ff6b5b";
     }
-    return TOPIC_COLORS.get(topicOf(n)) || color("--dust");
+    return TOPIC_COLORS.get(topicOf(n)) || "#9aa4b2";
   };
 
-  // Canvas and Elements
-  const canvas = el("canvas", { id: "graph-canvas" });
-  const radarCard = el("div", { className: "map-radar-card" });
-  const radarCanvas = el("canvas", { width: 156, height: 88 });
-  const radarCtx = radarCanvas.getContext("2d");
-  const inspectorBody = el("div", { className: "inspector-content" });
+  // A soft glow per colour, drawn once and stamped under every neuron of that colour.
+  const glowCache = new Map();
+  const glowOf = (c) => {
+    if (glowCache.has(c)) return glowCache.get(c);
+    const s = 64, cv = document.createElement("canvas");
+    cv.width = cv.height = s;
+    const gx = cv.getContext("2d");
+    const grad = gx.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, s / 2);
+    grad.addColorStop(0, c + "cc"); grad.addColorStop(0.25, c + "55"); grad.addColorStop(1, c + "00");
+    gx.fillStyle = grad; gx.fillRect(0, 0, s, s);
+    glowCache.set(c, cv);
+    return cv;
+  };
 
+  // The brain itself, drawn once at high resolution: tissue, folds and its outline.
+  const BRAIN_RES = 2.4;
+  const brainSprite = document.createElement("canvas");
+  brainSprite.width = 1000 * BRAIN_RES; brainSprite.height = 720 * BRAIN_RES;
+  (function paintBrain() {
+    const b = brainSprite.getContext("2d");
+    b.scale(BRAIN_RES, BRAIN_RES);
+    const tissue = b.createRadialGradient(520, 330, 40, 520, 360, 480);
+    tissue.addColorStop(0, "rgba(255, 178, 62, 0.10)");
+    tissue.addColorStop(0.7, "rgba(255, 150, 60, 0.045)");
+    tissue.addColorStop(1, "rgba(255, 140, 60, 0.02)");
+    b.fillStyle = tissue; b.fill(BRAIN);
+    b.save();
+    b.clip(BRAIN);
+    // Volume: lighter in the middle of each lobe, darker towards the edge.
+    const shade = b.createRadialGradient(500, 250, 60, 540, 360, 460);
+    shade.addColorStop(0, "rgba(255, 220, 170, 0.07)"); shade.addColorStop(1, "rgba(0, 0, 0, 0.28)");
+    b.fillStyle = shade; b.fill(BRAIN);
+    // Gyri: wandering folds from a fixed seed, so every visit shows the same brain.
+    let seed = 7;
+    const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    b.lineCap = "round"; b.lineJoin = "round";
+    for (let k = 0; k < 260; k++) {
+      let x = 170 + rnd() * 740, y = 70 + rnd() * 580, a = rnd() * Math.PI * 2;
+      b.beginPath(); b.moveTo(x, y);
+      for (let s = 0; s < 16; s++) {
+        a += (rnd() - 0.5) * 1.1;
+        x += Math.cos(a) * 9; y += Math.sin(a) * 9;
+        b.lineTo(x, y);
+      }
+      b.strokeStyle = `rgba(255, 205, 150, ${0.05 + rnd() * 0.07})`;
+      b.lineWidth = 1.8 + rnd() * 2.6;
+      b.stroke();
+    }
+    b.strokeStyle = "rgba(255, 205, 150, 0.22)"; b.lineWidth = 3;
+    for (const d of SULCI) b.stroke(new Path2D(d));
+    b.restore();
+    b.shadowColor = "rgba(255, 178, 62, 0.55)"; b.shadowBlur = 22;
+    b.strokeStyle = "rgba(255, 196, 120, 0.42)"; b.lineWidth = 2;
+    b.stroke(BRAIN);
+  })();
+
+  /* ---------- Elements ---------- */
+  const canvas = el("canvas", { id: "graph-canvas", "aria-label": "Map of the colony's knowledge as a brain: each neuron is an entry, each link a similarity" });
+  const inspectorBody = el("div", { className: "inspector-content" });
   const countBadge = el("span", { className: "logo-tag", style: "margin-left:auto" });
 
-  // Type Toggle Pills
-  const toggleBtn = (k, name, shape) => {
+  const toggleBtn = (k, name) => {
     const btn = el("button", { className: "hud-toggle-pill", "aria-pressed": "true" },
-      el("span", { className: "shape-icon", style: `background:currentColor;${shape}` }),
-      `${name} (${nodes.filter(n => n.kind === k).length})`);
-    btn.onclick = () => {
-      kinds[k] = !kinds[k];
-      btn.setAttribute("aria-pressed", String(kinds[k]));
-      refresh();
-    };
+      el("span", { className: "shape-icon", style: `background:${KIND_COLORS[k]};border-radius:50%` }),
+      `${name} (${nodes.filter((n) => n.kind === k).length})`);
+    btn.onclick = () => { kinds[k] = !kinds[k]; btn.setAttribute("aria-pressed", String(kinds[k])); refresh(); };
     return btn;
   };
-
-  const pillFix = toggleBtn("fix", "Fixes", "border-radius:50%");
-  const pillProc = toggleBtn("procedure", "Procedures", "border-radius:2px");
-  const pillFact = toggleBtn("fact", "Facts", "transform:rotate(45deg) scale(.8)");
+  const pillFix = toggleBtn("fix", "Fixes");
+  const pillProc = toggleBtn("procedure", "Procedures");
+  const pillFact = toggleBtn("fact", "Facts");
 
   const searchInput = el("input", { type: "search", placeholder: "Search nodes (/ to focus)…", value: query });
   searchInput.oninput = (e) => { query = e.target.value.trim().toLowerCase(); refresh(); };
 
   const colorSelect = el("select", { className: "map-select-styled" },
-    el("option", { value: "topic" }, "🎨 Color: Topic"),
-    el("option", { value: "kind" }, "🏷️ Color: Kind"),
-    el("option", { value: "health" }, "❤️ Color: Health"),
-    el("option", { value: "strength" }, "⚡ Color: Strength"));
+    el("option", { value: "topic" }, "Color: Topic"),
+    el("option", { value: "kind" }, "Color: Kind"),
+    el("option", { value: "health" }, "Color: Health"),
+    el("option", { value: "strength" }, "Color: Strength"));
   colorSelect.onchange = (e) => { colorMode = e.target.value; refresh(); };
 
-  // Label Mode Selector Button
-  const labelBtn = el("button", { className: "hud-toggle-pill", title: "Toggle text labels display" },
-    "🏷️ Labels: Hover Only");
+  const labelText = () => "Labels: " + (labelMode === "hover" ? "On focus" : labelMode === "all" ? "All" : "Off");
+  const labelBtn = el("button", { className: "hud-toggle-pill", title: "Which labels are drawn" }, labelText());
   labelBtn.onclick = () => {
-    labelMode = labelMode === "hover" ? "all" : (labelMode === "all" ? "off" : "hover");
-    labelBtn.textContent = labelMode === "hover" ? "🏷️ Labels: Hover Only" : (labelMode === "all" ? "🏷️ Labels: All" : "🏷️ Labels: Off");
-    refresh();
+    labelMode = labelMode === "hover" ? "all" : labelMode === "all" ? "off" : "hover";
+    labelBtn.textContent = labelText();
   };
 
-  // Preset Chips
   const presetPillsContainer = el("div", { className: "presets-row" });
   function buildPresets() {
-    const contestedCount = nodes.filter(x => x.health === "contested").length;
-    const staleCount = nodes.filter(x => x.health === "stale").length;
-    const unconfirmedCount = nodes.filter(x => x.health === "unconfirmed").length;
-
+    const count = (h) => nodes.filter((x) => x.health === h).length;
     const mkPill = (label, val, active) => {
       const p = el("div", { className: "preset-chip" + (active ? " active" : "") }, label);
       p.onclick = () => { focusHealth = focusHealth === val ? null : val; refresh(); };
       return p;
     };
-
-    const pills = [
+    setChildren(presetPillsContainer,
       mkPill("All", null, !focusHealth && !activeTopic),
-      contestedCount ? mkPill(`⚠️ Contested (${contestedCount})`, "contested", focusHealth === "contested") : null,
-      staleCount ? mkPill(`⏳ Stale (${staleCount})`, "stale", focusHealth === "stale") : null,
-      unconfirmedCount ? mkPill(`🆕 Unconfirmed (${unconfirmedCount})`, "unconfirmed", focusHealth === "unconfirmed") : null,
-      mkPill("⭐ Most Used", "used", focusHealth === "used"),
-      activeTopic ? el("div", { className: "preset-chip active", onclick: () => { activeTopic = null; refresh(); } }, `Topic: ${activeTopic.replaceAll("_", " ")} ✕`) : null
-    ];
-    setChildren(presetPillsContainer, ...pills);
+      count("contested") ? mkPill(`Contested (${count("contested")})`, "contested", focusHealth === "contested") : null,
+      count("stale") ? mkPill(`Stale (${count("stale")})`, "stale", focusHealth === "stale") : null,
+      count("unconfirmed") ? mkPill(`Unconfirmed (${count("unconfirmed")})`, "unconfirmed", focusHealth === "unconfirmed") : null,
+      mkPill("Most used", "used", focusHealth === "used"),
+      activeTopic ? el("div", { className: "preset-chip active", onclick: () => { activeTopic = null; refresh(); } }, `Topic: ${activeTopic.replaceAll("_", " ")} ✕`) : null);
   }
 
-  // Floating Dock Controls
-  const btnZoomIn = el("button", { className: "dock-btn", title: "Zoom In" }, "＋");
-  const btnZoomOut = el("button", { className: "dock-btn", title: "Zoom Out" }, "－");
-  const btnFit = el("button", { className: "dock-btn", title: "Fit to Viewport" }, "⛶ Fit");
-  const btnSim = el("button", { className: "dock-btn", title: "Pause/Play Physics" }, "⏸ Physics");
-  const btnReheat = el("button", { className: "dock-btn", title: "Reheat Physics" }, "↺ Reheat");
-  const btnRadarToggle = el("button", { className: "dock-btn active", title: "Toggle Radar Minimap" }, "◰ Radar");
-
-  const mapDock = el("div", { className: "map-dock" },
-    btnZoomIn, btnZoomOut, el("div", { className: "dock-divider" }),
-    btnFit, btnSim, btnReheat, el("div", { className: "dock-divider" }),
-    btnRadarToggle);
+  const btnOverview = el("button", { className: "dock-btn", title: "Back to the whole brain (Esc)" }, "⛶ Whole brain");
+  const btnPulses = el("button", { className: "dock-btn" + (pulsesOn ? " active" : ""), title: "Signals travelling along the links" }, "∿ Signals");
+  const legend = el("span", { className: "dock-legend" }, "size = weight (strength and use)");
+  const mapDock = el("div", { className: "map-dock" }, btnOverview, el("div", { className: "dock-divider" }), btnPulses, el("div", { className: "dock-divider" }), legend);
 
   function refresh() {
     const shown = nodes.filter(matches).length;
     countBadge.textContent = `${shown} / ${nodes.length} nodes · ${edges.length} links`;
     buildPresets();
-    draw();
   }
 
-  // Camera & Canvas Coordinates
-  let scale = 1, tx = 0, ty = 0, W = 0, H = 0;
-  let targetScale = 1, targetTx = 0, targetTy = 0;
+  /* ---------- Camera: the whole brain, or zoomed onto one neuron and its connections ---------- */
+  let W = 0, H = 0;
+  const cam = { x: 500, y: 360, s: 1 }, goal = { x: 500, y: 360, s: 1 };
   const ctx = canvas.getContext("2d");
+  // The whole brain, framed between the controls on top (about 110 px) and the dock below (about 70 px).
+  const overview = () => {
+    const s = Math.min((W - 60) / 770, (H - 190) / 640);
+    return { x: 540, y: 386 - 20 / s, s };
+  };
 
   function resize() {
     const dpr = window.devicePixelRatio || 1;
@@ -1562,378 +1610,190 @@ async function map(view) {
     W = rect.width; H = rect.height;
     canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    draw();
+    if (!selected) Object.assign(goal, overview());
   }
 
-  // Optimized Physics Simulation with Higher Repulsion & Spacing
-  let alpha = 1;
-  function tickSimulation() {
-    if (!simulationActive && alpha <= 0.005) return;
-    const cell = 120, grid = new Map();
-    for (const n of nodes) {
-      if (n.pinned) continue;
-      const k = Math.floor(n.x / cell) + "," + Math.floor(n.y / cell);
-      (grid.get(k) || grid.set(k, []).get(k)).push(n);
-    }
+  function focusOn(n) {
+    selected = n;
+    describe(n);
+    if (!n) { Object.assign(goal, overview()); return; }
+    const group = [n, ...n.neighbors];
+    const xs = group.map((m) => m.x), ys = group.map((m) => m.y);
+    const minX = Math.min(...xs) - 70, maxX = Math.max(...xs) + 70;
+    const minY = Math.min(...ys) - 60, maxY = Math.max(...ys) + 60;
+    const base = overview().s;
+    goal.s = Math.max(base * 1.6, Math.min(base * 4.5, Math.min(W / (maxX - minX), (H - 120) / (maxY - minY))));
+    goal.x = (minX + maxX) / 2; goal.y = (minY + maxY) / 2 - 20 / goal.s;
+    if (reduceMotion) Object.assign(cam, goal);
+  }
 
-    for (const n of nodes) {
-      if (n.pinned) continue;
-      const cx = Math.floor(n.x / cell), cy = Math.floor(n.y / cell);
-      for (let dx = -1; dx <= 1; dx++) {
-        for (let dy = -1; dy <= 1; dy++) {
-          for (const m of grid.get((cx + dx) + "," + (cy + dy)) || []) {
-            if (m === n) continue;
-            let x = n.x - m.x, y = n.y - m.y, d2 = x * x + y * y;
-            if (d2 < 0.01) { x = Math.random() - 0.5; y = Math.random() - 0.5; d2 = 0.5; }
-            if (d2 > cell * cell) continue;
-            const f = (520 * alpha) / d2;
-            n.vx += x * f; n.vy += y * f;
-          }
-        }
+  const toScreen = (x, y) => [(x - cam.x) * cam.s + W / 2, (y - cam.y) * cam.s + H / 2];
+  const toWorld = (sx, sy) => [(sx - W / 2) / cam.s + cam.x, (sy - H / 2) / cam.s + cam.y];
+
+  /* ---------- Signals: dots travelling along the axons ---------- */
+  const pulses = [];
+  const along = (e, t) => {
+    const u = 1 - t;
+    return [u * u * e.a.x + 2 * u * t * e.cx + t * t * e.b.x, u * u * e.a.y + 2 * u * t * e.cy + t * t * e.b.y];
+  };
+  function stepPulses(dt) {
+    if (!pulsesOn) { pulses.length = 0; return; }
+    if (selected) {
+      // From the chosen neuron outwards, along each of its links.
+      for (const e of selected.links) {
+        if (!pulses.some((p) => p.e === e) && Math.random() < 0.05) pulses.push({ e, t: 0, dir: e.a === selected ? 1 : -1, v: 0.45 + Math.random() * 0.3, lit: true });
       }
-      // Gentle center gravitation
-      n.vx -= n.x * 0.0016 * alpha;
-      n.vy -= n.y * 0.0016 * alpha;
+    } else if (pulses.length < 18 && edges.length && Math.random() < 0.35) {
+      const e = edges[Math.floor(Math.random() * edges.length)];
+      if (matches(e.a) && matches(e.b)) pulses.push({ e, t: 0, dir: Math.random() < 0.5 ? 1 : -1, v: 0.25 + Math.random() * 0.25, lit: false });
     }
-
-    for (const e of edges) {
-      if (e.a.pinned && e.b.pinned) continue;
-      const x = e.b.x - e.a.x, y = e.b.y - e.a.y;
-      const d = Math.hypot(x, y) || 1;
-      const target = 32 + 70 * (1 - e.s);
-      const f = ((d - target) / d) * 0.42 * alpha;
-      if (!e.a.pinned) { e.a.vx += x * f; e.a.vy += y * f; }
-      if (!e.b.pinned) { e.b.vx -= x * f; e.b.vy -= y * f; }
-    }
-
-    for (const n of nodes) {
-      if (n.pinned) continue;
-      n.vx *= 0.65; n.vy *= 0.65;
-      n.x += Math.max(-25, Math.min(25, n.vx));
-      n.y += Math.max(-25, Math.min(25, n.vy));
-    }
-
-    alpha = Math.max(0.004, alpha * 0.993);
+    for (const p of pulses) p.t += p.v * dt;
+    for (let i = pulses.length - 1; i >= 0; i--) if (pulses[i].t >= 1) pulses.splice(i, 1);
   }
 
-  // Camera interpolation
-  function updateCamera() {
-    tx += (targetTx - tx) * 0.16;
-    ty += (targetTy - ty) * 0.16;
-    scale += (targetScale - scale) * 0.16;
-  }
-
-  function fit(animate = true) {
-    const xs = nodes.map((n) => n.x), ys = nodes.map((n) => n.y);
-    if (!xs.length) return;
-    const minX = Math.min(...xs), maxX = Math.max(...xs);
-    const minY = Math.min(...ys), maxY = Math.max(...ys);
-    const w = maxX - minX + 160, h = maxY - minY + 160;
-    const s = Math.min(2.5, Math.max(0.2, Math.min((W - 100) / w, (H - 100) / h)));
-    targetScale = s;
-    targetTx = -((maxX + minX) / 2) * s;
-    targetTy = -((maxY + minY) / 2) * s;
-    if (!animate) { scale = targetScale; tx = targetTx; ty = targetTy; }
-  }
-
-  // Main Canvas Rendering
-  function draw() {
+  /* ---------- Drawing ---------- */
+  function draw(time) {
     if (!W || !H) return;
-    ctx.clearRect(0, 0, W, H);
+    // The scan's ground, then the brain.
+    const bg = ctx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, Math.max(W, H) * 0.75);
+    bg.addColorStop(0, "#17130e"); bg.addColorStop(1, "#070605");
+    ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
 
     ctx.save();
-    ctx.translate(W / 2 + tx, H / 2 + ty);
-    ctx.scale(scale, scale);
+    ctx.translate(W / 2, H / 2); ctx.scale(cam.s, cam.s); ctx.translate(-cam.x, -cam.y);
+    ctx.globalAlpha = selected ? 0.55 : 1;
+    ctx.drawImage(brainSprite, 0, 0, 1000, 720);
+    ctx.globalAlpha = 1;
 
-    // 1. Cluster Islands Background Clouds & Badges
-    if (showClusterHalos && !query && !focusHealth && !activeTopic) {
-      for (const isl of islands) {
-        if (!isl.members.length) continue;
-        const xs = isl.members.map((n) => n.x), ys = isl.members.map((n) => n.y);
-        const cx = xs.reduce((a, b) => a + b, 0) / xs.length;
-        const cy = ys.reduce((a, b) => a + b, 0) / ys.length;
-        const maxD = Math.max(45, ...isl.members.map((n) => Math.hypot(n.x - cx, n.y - cy)));
-
-        // Soft Radial Nebula
-        const radGrad = ctx.createRadialGradient(cx, cy, 10, cx, cy, maxD + 35);
-        radGrad.addColorStop(0, isLight ? "rgba(217, 119, 6, 0.07)" : "rgba(245, 158, 11, 0.05)");
-        radGrad.addColorStop(1, "rgba(245, 158, 11, 0)");
-        ctx.fillStyle = radGrad;
-        ctx.beginPath();
-        ctx.arc(cx, cy, maxD + 35, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Elegant Topic Badge
-        ctx.font = `600 ${10.5 / scale}px ${color("--f-display")}`;
-        ctx.textAlign = "center";
-        const topY = Math.min(...ys);
-        const text = `${isl.name.toUpperCase()} · ${isl.members.length}`;
-        const tw = ctx.measureText(text).width;
-
-        ctx.fillStyle = isLight ? "rgba(255, 255, 255, 0.85)" : "rgba(14, 12, 10, 0.85)";
-        ctx.beginPath();
-        ctx.roundRect(cx - tw / 2 - 8 / scale, topY - 26 / scale, tw + 16 / scale, 17 / scale, 5 / scale);
-        ctx.fill();
-
-        ctx.strokeStyle = color("--wall");
-        ctx.lineWidth = 1 / scale;
-        ctx.stroke();
-
-        ctx.fillStyle = isLight ? "#92400e" : color("--amber-ink");
-        ctx.fillText(text, cx, topY - 14 / scale);
-      }
-      ctx.textAlign = "start";
-    }
-
-    // 2. Edges / Links
+    const focus = selected || hover;
     const lit = new Set();
-    if (selected) {
-      lit.add(selected);
-      for (const e of selected.links) { lit.add(e.a); lit.add(e.b); }
-    } else if (hover) {
-      lit.add(hover);
-      for (const e of hover.links) { lit.add(e.a); lit.add(e.b); }
-    }
+    if (focus) { lit.add(focus); for (const m of focus.neighbors) lit.add(m); }
+    const px = 1 / cam.s; // one screen pixel in world units
 
+    // Axons.
+    ctx.lineCap = "round";
     for (const e of edges) {
-      const matchA = matches(e.a), matchB = matches(e.b);
-      const isLit = (selected && (e.a === selected || e.b === selected)) ||
-                    (!selected && hover && (e.a === hover || e.b === hover));
-
-      if (isLit) {
-        ctx.lineWidth = 2.4 / scale;
-        ctx.strokeStyle = color("--amber");
-        ctx.globalAlpha = 1;
+      const both = matches(e.a) && matches(e.b);
+      const on = focus && (e.a === focus || e.b === focus);
+      if (on) {
+        ctx.strokeStyle = "rgba(255, 196, 110, 0.85)";
+        ctx.lineWidth = 1.8 * px;
       } else {
-        ctx.lineWidth = (0.7 + 1.3 * e.s) / scale;
-        ctx.strokeStyle = matchA && matchB ? color("--wall-light") : color("--wall");
-        ctx.globalAlpha = (matchA && matchB) ? (selected ? 0.04 : 0.12 + 0.38 * e.s) : 0.02;
+        const a = !both ? 0.015 : selected ? 0.03 : 0.05 + 0.16 * e.s;
+        ctx.strokeStyle = `rgba(255, 214, 170, ${a})`;
+        ctx.lineWidth = (0.6 + 0.9 * e.s) * px;
       }
-
-      ctx.beginPath();
-      ctx.moveTo(e.a.x, e.a.y);
-      ctx.lineTo(e.b.x, e.b.y);
-      ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(e.a.x, e.a.y); ctx.quadraticCurveTo(e.cx, e.cy, e.b.x, e.b.y); ctx.stroke();
     }
 
-    // 3. Nodes (Polished Gemstones / Tech Icons)
+    // Signals.
+    for (const p of pulses) {
+      const [x, y] = along(p.e, p.dir > 0 ? p.t : 1 - p.t);
+      const r = (p.lit ? 9 : 6) * px;
+      ctx.globalAlpha = Math.sin(Math.PI * p.t) * (p.lit ? 1 : 0.7);
+      ctx.drawImage(glowOf(p.lit ? "#ffd27a" : "#ffe2b8"), x - r, y - r, r * 2, r * 2);
+    }
+    ctx.globalAlpha = 1;
+
+    // Neurons: a glow, a body, a bright nucleus. Bigger means more relied on.
+    const breathe = reduceMotion ? 0 : 1;
     for (const n of nodes) {
       const isMatch = matches(n);
-      const isSelected = n === selected;
-      const isHovered = n === hover;
-      const isNeighbor = lit.has(n);
-
-      let alphaVal = 1;
-      if (!isMatch) alphaVal = 0.08;
-      else if (selected && !isSelected && !isNeighbor) alphaVal = 0.22;
-      else if (n.health === "stale") alphaVal = 0.55;
-
-      ctx.globalAlpha = alphaVal;
-      const nodeCol = getNodeColor(n);
-
-      // Node Shadow / Glow
-      if (isMatch) {
-        ctx.save();
-        if (isSelected || isHovered) {
-          ctx.shadowColor = color("--amber");
-          ctx.shadowBlur = (isSelected ? 18 : 10) / scale;
-        } else if (isLight) {
-          ctx.shadowColor = "rgba(0, 0, 0, 0.14)";
-          ctx.shadowBlur = 4 / scale;
-          ctx.shadowOffsetY = 1.5 / scale;
-        }
-        ctx.fillStyle = nodeCol;
-        drawNodeShape(ctx, n);
-        ctx.fill();
-        ctx.restore();
+      const dim = !isMatch ? 0.08 : selected && !lit.has(n) ? 0.16 : n.health === "stale" ? 0.6 : 1;
+      const c = nodeColor(n);
+      const pulse = breathe * Math.sin(time / 900 + n.phase);
+      const r = n.r * (n === selected ? 1.25 + 0.08 * pulse : 1);
+      ctx.globalAlpha = dim * (0.55 + 0.12 * pulse + (lit.has(n) ? 0.3 : 0));
+      const gr = r * (n === selected ? 4.2 : 3.2);
+      ctx.drawImage(glowOf(c), n.x - gr, n.y - gr, gr * 2, gr * 2);
+      ctx.globalAlpha = dim;
+      ctx.fillStyle = c;
+      ctx.beginPath(); ctx.arc(n.x, n.y, r, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "rgba(255, 248, 235, 0.85)";
+      ctx.beginPath(); ctx.arc(n.x - r * 0.18, n.y - r * 0.18, r * 0.36, 0, Math.PI * 2); ctx.fill();
+      if (isMatch && n.health === "contested") {
+        ctx.strokeStyle = HEALTH_COLORS.contested; ctx.lineWidth = 1.6 * px;
+        ctx.beginPath(); ctx.arc(n.x, n.y, r + 3 * px, 0, Math.PI * 2); ctx.stroke();
       }
-
-      // Main Node Fill
-      ctx.fillStyle = nodeCol;
-      drawNodeShape(ctx, n);
-      ctx.fill();
-
-      // Outer Ring for Definition
-      ctx.lineWidth = (isLight ? 1.5 : 1) / scale;
-      ctx.strokeStyle = isLight ? "rgba(0, 0, 0, 0.15)" : "rgba(255, 255, 255, 0.25)";
-      drawNodeShape(ctx, n);
-      ctx.stroke();
-
-      // Internal Pupil / Core
-      if (isMatch) {
-        ctx.fillStyle = isLight ? "rgba(255, 255, 255, 0.75)" : "rgba(0, 0, 0, 0.45)";
-        ctx.beginPath();
-        ctx.arc(n.x, n.y, n.r * 0.38, 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      // Health Indicators (Contested hazard / Unconfirmed dash)
-      if (isMatch) {
-        if (n.health === "contested") {
-          ctx.lineWidth = 2.4 / scale;
-          ctx.strokeStyle = color("--ember");
-          ctx.beginPath();
-          ctx.arc(n.x, n.y, n.r + 3.8 / scale, 0, Math.PI * 2);
-          ctx.stroke();
-        } else if (n.health === "unconfirmed") {
-          ctx.lineWidth = 1.6 / scale;
-          ctx.strokeStyle = color("--cyan");
-          ctx.setLineDash([3 / scale, 3 / scale]);
-          ctx.beginPath();
-          ctx.arc(n.x, n.y, n.r + 3.2 / scale, 0, Math.PI * 2);
-          ctx.stroke();
-          ctx.setLineDash([]);
-        }
-
-        // Selection Target Ring
-        if (isSelected || isHovered) {
-          ctx.lineWidth = (isSelected ? 2.8 : 2) / scale;
-          ctx.strokeStyle = isSelected ? color("--amber-ink") : color("--chalk");
-          ctx.beginPath();
-          ctx.arc(n.x, n.y, n.r + 4.8 / scale, 0, Math.PI * 2);
-          ctx.stroke();
-        }
-      }
-
-      // Text Labels: Clean & uncluttered!
-      // ONLY shown on hover, selected, neighbor, or when explicitly set to "all"
-      const shouldShowText = isMatch && (
-        (labelMode === "all") ||
-        (labelMode !== "off" && (isSelected || isHovered || isNeighbor))
-      );
-
-      if (shouldShowText) {
-        ctx.font = `600 ${10.5 / scale}px ${color("--f-display")}`;
-        const text = cut(n.label, isSelected || isHovered ? 55 : 24);
-        const tw = ctx.measureText(text).width;
-        const txPos = n.x, tyPos = n.y + n.r + 11 / scale;
-
-        ctx.fillStyle = isLight ? "rgba(255, 255, 255, 0.92)" : "rgba(14, 12, 10, 0.9)";
-        ctx.beginPath();
-        ctx.roundRect(txPos - tw / 2 - 4 / scale, tyPos - 8.5 / scale, tw + 8 / scale, 13 / scale, 3 / scale);
-        ctx.fill();
-
-        ctx.strokeStyle = isSelected ? color("--amber") : color("--wall");
-        ctx.lineWidth = 1 / scale;
-        ctx.stroke();
-
-        ctx.fillStyle = isSelected ? color("--amber-ink") : color("--chalk");
-        ctx.textAlign = "center";
-        ctx.fillText(text, txPos, tyPos + 1.5 / scale);
-        ctx.textAlign = "start";
+      if (n === selected || n === hover) {
+        ctx.strokeStyle = "rgba(255, 236, 200, 0.95)"; ctx.lineWidth = 1.4 * px;
+        ctx.beginPath(); ctx.arc(n.x, n.y, r + 4.5 * px, 0, Math.PI * 2); ctx.stroke();
       }
     }
-
+    ctx.globalAlpha = 1;
     ctx.restore();
 
-    // 4. Render Perfectly Centered Radar
-    if (showRadar) drawMinimap();
-  }
+    // Labels, in screen space so they stay crisp at every zoom.
+    ctx.font = `600 11px ${color("--f-display") || "monospace"}`;
+    ctx.textAlign = "center";
+    // The chosen neuron's label first, then the heaviest; one that would overlap a label already drawn is left out.
+    const placed = [];
+    const order = nodes.filter((n) => matches(n) && labelMode !== "off" &&
+      (labelMode === "all" || n === hover || n === selected || (selected && lit.has(n))))
+      .sort((a, b) => (b === selected) - (a === selected) || (b === hover) - (a === hover) || b.w - a.w);
+    for (const n of order) {
+      const [sx, sy] = toScreen(n.x, n.y);
+      if (sx < -50 || sx > W + 50 || sy < -20 || sy > H + 20) continue;
+      const text = cut(n.label, n === selected || n === hover ? 60 : 30);
+      const tw = ctx.measureText(text).width;
+      const y = sy + n.r * cam.s + 16;
+      const box = [sx - tw / 2 - 6, y - 11, sx + tw / 2 + 6, y + 6];
+      if (placed.some((p) => box[0] < p[2] && box[2] > p[0] && box[1] < p[3] && box[3] > p[1])) continue;
+      placed.push(box);
+      ctx.fillStyle = "rgba(10, 8, 6, 0.82)";
+      ctx.beginPath(); ctx.roundRect(sx - tw / 2 - 6, y - 11, tw + 12, 17, 5); ctx.fill();
+      ctx.strokeStyle = n === selected ? "rgba(255, 196, 110, 0.8)" : "rgba(255, 220, 180, 0.16)";
+      ctx.lineWidth = 1; ctx.stroke();
+      ctx.fillStyle = n === selected ? "#ffd38a" : "#efe6d6";
+      ctx.fillText(text, sx, y + 1.5);
+    }
+    ctx.textAlign = "start";
 
-  function drawNodeShape(c, n) {
-    c.beginPath();
-    if (n.kind === "procedure") {
-      c.roundRect(n.x - n.r * 0.85, n.y - n.r * 0.85, n.r * 1.7, n.r * 1.7, 3);
-    } else if (n.kind === "fact") {
-      c.moveTo(n.x, n.y - n.r * 1.15);
-      c.lineTo(n.x + n.r * 1.15, n.y);
-      c.lineTo(n.x, n.y + n.r * 1.15);
-      c.lineTo(n.x - n.r * 1.15, n.y);
-      c.closePath();
-    } else {
-      c.arc(n.x, n.y, n.r, 0, Math.PI * 2);
+    if (!nodes.length) {
+      ctx.fillStyle = "#cfc5b4"; ctx.textAlign = "center";
+      ctx.fillText("Nothing in the colony yet: entries appear here as agents publish them.", W / 2, H / 2);
+      ctx.textAlign = "start";
     }
   }
 
-  // Mathematically Accurate Centered Minimap
-  function drawMinimap() {
-    const mw = 156, mh = 88;
-    radarCtx.clearRect(0, 0, mw, mh);
-
-    const xs = nodes.map((n) => n.x), ys = nodes.map((n) => n.y);
-    if (!xs.length) return;
-    const minX = Math.min(...xs), maxX = Math.max(...xs);
-    const minY = Math.min(...ys), maxY = Math.max(...ys);
-    const gw = Math.max(120, maxX - minX + 80);
-    const gh = Math.max(100, maxY - minY + 80);
-    const cx = (minX + maxX) / 2;
-    const cy = (minY + maxY) / 2;
-
-    const ms = Math.min((mw - 24) / gw, (mh - 24) / gh);
-    const mcx = mw / 2, mcy = mh / 2;
-
-    // Node dots in radar
-    for (const n of nodes) {
-      if (!matches(n)) continue;
-      const rx = mcx + (n.x - cx) * ms;
-      const ry = mcy + (n.y - cy) * ms;
-      radarCtx.fillStyle = n === selected ? "#f59e0b" : (isLight ? "#968c7e" : "#554b3e");
-      radarCtx.beginPath();
-      radarCtx.arc(rx, ry, n === selected ? 2.8 : 1.4, 0, Math.PI * 2);
-      radarCtx.fill();
-    }
-
-    // Viewport camera rectangle
-    const vLeft = (-W / 2 - tx) / scale;
-    const vTop = (-H / 2 - ty) / scale;
-    const vRight = (W / 2 - tx) / scale;
-    const vBottom = (H / 2 - ty) / scale;
-
-    const vrX = mcx + (vLeft - cx) * ms;
-    const vrY = mcy + (vTop - cy) * ms;
-    const vrW = (vRight - vLeft) * ms;
-    const vrH = (vBottom - vTop) * ms;
-
-    radarCtx.fillStyle = "rgba(245, 158, 11, 0.08)";
-    radarCtx.fillRect(vrX, vrY, vrW, vrH);
-
-    radarCtx.strokeStyle = "rgba(245, 158, 11, 0.85)";
-    radarCtx.lineWidth = 1.2;
-    radarCtx.strokeRect(vrX, vrY, vrW, vrH);
-  }
-
-  // Animation Loop
-  let animId = null;
-  function loop() {
-    tickSimulation();
-    updateCamera();
-    draw();
+  let animId = null, last = 0;
+  function loop(time) {
+    const dt = Math.min(0.05, (time - (last || time)) / 1000);
+    last = time;
+    const k = reduceMotion ? 1 : 1 - Math.pow(0.0025, dt); // ease towards the goal, the same speed at any frame rate
+    cam.x += (goal.x - cam.x) * k; cam.y += (goal.y - cam.y) * k; cam.s += (goal.s - cam.s) * k;
+    stepPulses(dt);
+    draw(time);
     animId = requestAnimationFrame(loop);
   }
 
-  // Inspector Sidebar
+  /* ---------- Inspector ---------- */
   function describe(n) {
     if (!n) {
-      setChildren(inspectorBody, 
+      setChildren(inspectorBody,
         el("div", { className: "stat-card", style: "margin:0" },
-          el("div", { className: "sec-title" }, "Graph Intelligence Overview"),
+          el("div", { className: "sec-title" }, "Overview"),
           el("div", { className: "stats-grid", style: "grid-template-columns:1fr 1fr;gap:8px;margin-top:8px" },
-            el("div", { className: "stat-card" }, el("div", { className: "val" }, num(nodes.length)), el("div", { className: "lbl" }, "Total Nodes")),
-            el("div", { className: "stat-card" }, el("div", { className: "val" }, num(edges.length)), el("div", { className: "lbl" }, "Knowledge Links")),
-            el("div", { className: "stat-card" }, el("div", { className: "val" }, num(islands.length)), el("div", { className: "lbl" }, "Topic Clusters")),
-            el("div", { className: "stat-card" }, el("div", { className: "val" }, num(nodes.filter(x => x.health === "contested").length)), el("div", { className: "lbl" }, "Contested"))),
-          el("div", { style: "margin-top:16px" },
-            el("div", { className: "sec-title" }, "Knowledge Topics (Click to filter)"),
-            ...topics.map((t) => {
-              const count = nodes.filter(x => topicOf(x) === t).length;
-              return el("div", {
-                className: "topic-stat-row",
-                onclick: () => { activeTopic = activeTopic === t ? null : t; refresh(); }
-              },
-                el("span", { className: "topic-stat-pill" },
-                  el("i", { style: `background:${TOPIC_COLORS.get(t)}` }),
-                  t.replaceAll("_", " ")),
-                el("span", { className: "mono", style: "color:var(--dust)" }, num(count)));
-            })),
-          el("p", { className: "hint", style: "margin-top:16px;line-height:1.6" },
-            "Hover any node to preview its title and strength. Click to open full execution commands, steps, and neighbor links. Drag nodes to explore relationships.")));
+            el("div", { className: "stat-card" }, el("div", { className: "val" }, num(nodes.length)), el("div", { className: "lbl" }, "Entries")),
+            el("div", { className: "stat-card" }, el("div", { className: "val" }, num(edges.length)), el("div", { className: "lbl" }, "Links")),
+            el("div", { className: "stat-card" }, el("div", { className: "val" }, num(topics.length)), el("div", { className: "lbl" }, "Topics")),
+            el("div", { className: "stat-card" }, el("div", { className: "val" }, num(nodes.filter((x) => x.health === "contested").length)), el("div", { className: "lbl" }, "Contested")))),
+        el("div", {},
+          el("div", { className: "sec-title" }, "Topics (click to filter)"),
+          ...topics.map((t) => el("div", {
+            className: "topic-stat-row" + (activeTopic === t ? " active" : ""),
+            onclick: () => { activeTopic = activeTopic === t ? null : t; refresh(); describe(null); },
+          },
+            el("span", { className: "topic-stat-pill" }, el("i", { style: `background:${TOPIC_COLORS.get(t)}` }), t.replaceAll("_", " ")),
+            el("span", { className: "mono", style: "color:var(--dust)" }, num(nodes.filter((x) => topicOf(x) === t).length))))),
+        el("p", { className: "hint", style: "margin:0;line-height:1.6" },
+          "Each neuron is an entry and each link a similarity; the bigger it is, the more it is relied on. Click a neuron to zoom onto it and its connections; click empty space or press Esc to see the whole brain again."));
       return;
     }
 
-    const near = n.links.map((e) => ({ m: e.a === n ? e.b : e.a, s: e.s })).sort((x, y) => y.s - x.s).slice(0, 6);
+    const near = n.links.map((e) => ({ m: e.a === n ? e.b : e.a, s: e.s })).sort((x, y) => y.s - x.s);
     const score = Math.round(Number(n.strength || 0) * 100);
-
-    setChildren(inspectorBody, 
+    setChildren(inspectorBody,
       el("div", { style: "display:flex;gap:6px;flex-wrap:wrap" },
         el("span", { className: "pill " + (n.kind === "fix" ? "amber" : "ok") }, n.kind),
         n.category ? el("span", { className: "pill" }, String(n.category).replaceAll("_", " ")) : null,
@@ -1944,10 +1804,9 @@ async function map(view) {
         n.summary && n.summary !== n.label ? el("p", { style: "margin:0;color:var(--dust);font-size:.86rem" }, n.summary) : null),
       el("div", { className: "detail-strength-box" },
         el("div", { className: "strength-num-row" },
-          el("span", { style: "font:600 .76rem var(--f-display);text-transform:uppercase;color:var(--dust)" }, "Reliability Score"),
+          el("span", { style: "font:600 .76rem var(--f-display);text-transform:uppercase;color:var(--dust)" }, "Strength"),
           el("span", { className: "strength-score" }, `${score}%`)),
-        el("div", { className: "strength-bar-bg" },
-          el("div", { className: "strength-bar-fill", style: `width:${score}%` })),
+        el("div", { className: "strength-bar-bg" }, el("div", { className: "strength-bar-fill", style: `width:${score}%` })),
         el("div", { style: "display:flex;justify-content:space-between;margin-top:8px;font-size:.76rem;font-family:var(--f-display);color:var(--dust)" },
           el("span", { style: "color:var(--moss)" }, `✔ ${num(n.worked)} worked`),
           el("span", { style: "color:var(--ember)" }, `✖ ${num(n.failed)} failed`))),
@@ -1955,203 +1814,66 @@ async function map(view) {
         el("div", { className: "sec-title" }, "Tags"),
         el("div", { className: "chips-cloud" }, n.tags.map((t) => el("span", { className: "pill" }, t)))) : null,
       el("div", { style: "display:flex;gap:8px;flex-wrap:wrap" },
-        el("button", {
-          className: "btn btn-act btn-sm",
-          onclick: () => {
-            current = "colony";
-            show("colony");
-          }
-        }, "Open Trail in Feed ↗"),
-        el("button", {
-          className: "btn btn-quiet btn-sm",
-          onclick: (e) => copyToClipboard(n.id, e.target)
-        }, "Copy ID")),
+        el("button", { className: "btn btn-act btn-sm", onclick: () => { current = "colony"; show("colony"); } }, "Open in Colony ↗"),
+        el("button", { className: "btn btn-quiet btn-sm", onclick: (e) => copyToClipboard(n.id, e.target) }, "Copy ID"),
+        el("button", { className: "btn btn-quiet btn-sm", onclick: () => focusOn(null) }, "Whole brain")),
       near.length ? el("div", {},
-        el("div", { className: "sec-title" }, "Connected Neighbors (" + near.length + ")"),
-        el("div", { style: "display:grid;gap:6px" }, near.map(({ m, s }) => el("div", {
-          className: "neighbor-card",
-          onclick: () => {
-            selected = m;
-            describe(m);
-            targetScale = Math.max(1.4, scale);
-            targetTx = -m.x * targetScale;
-            targetTy = -m.y * targetScale;
-          }
-        },
-          el("span", { style: "overflow:hidden;text-overflow:ellipsis;white-space:nowrap" }, cut(m.label, 34)),
-          el("span", { className: "similarity-tag" }, Math.round(s * 100) + "% match"))))) : null);
+        el("div", { className: "sec-title" }, `Connections (${near.length})`),
+        el("div", { style: "display:grid;gap:6px" }, near.map(({ m, s }) => el("div", { className: "neighbor-card", onclick: () => focusOn(m) },
+          el("span", { style: "overflow:hidden;text-overflow:ellipsis;white-space:nowrap" }, cut(m.label, 40)),
+          el("span", { className: "similarity-tag" }, Math.round(s * 100) + "%"))))) :
+        el("p", { className: "hint", style: "margin:0" }, "No close neighbour: nothing else in the colony is about the same thing."));
   }
 
-  // Pointer & Drag Interactions
-  const world = (ev) => {
+  /* ---------- Pointer: hover to preview, click to zoom. No dragging. ---------- */
+  const pickAt = (ev) => {
     const r = canvas.getBoundingClientRect();
-    return {
-      x: (ev.clientX - r.left - W / 2 - tx) / scale,
-      y: (ev.clientY - r.top - H / 2 - ty) / scale
-    };
-  };
-
-  const pickNode = (p) => {
+    const [x, y] = toWorld(ev.clientX - r.left, ev.clientY - r.top);
     let best = null, bd = Infinity;
     for (const n of nodes) {
       if (!matches(n)) continue;
-      const d = Math.hypot(n.x - p.x, n.y - p.y);
-      if (d < n.r + 8 / scale && d < bd) { best = n; bd = d; }
+      const d = Math.hypot(n.x - x, n.y - y);
+      if (d < n.r + 7 / cam.s && d < bd) { best = n; bd = d; }
     }
     return best;
   };
-
-  let dragCanvas = null;
-  canvas.onpointerdown = (ev) => {
-    const w = world(ev);
-    const clickedNode = pickNode(w);
-    if (clickedNode) {
-      draggedNode = clickedNode;
-      draggedNode.pinned = true;
-      alpha = 0.25;
-      canvas.setPointerCapture(ev.pointerId);
-      return;
-    }
-
-    dragCanvas = { x: ev.clientX, y: ev.clientY, tx, ty, moved: false };
-    canvas.setPointerCapture(ev.pointerId);
-  };
-
+  const tooltip = $("map-tooltip");
   canvas.onpointermove = (ev) => {
-    const w = world(ev);
-    if (draggedNode) {
-      draggedNode.x = w.x;
-      draggedNode.y = w.y;
-      alpha = Math.max(0.2, alpha);
-      return;
-    }
-
-    if (dragCanvas) {
-      const dx = ev.clientX - dragCanvas.x, dy = ev.clientY - dragCanvas.y;
-      if (Math.hypot(dx, dy) > 3) dragCanvas.moved = true;
-      tx = dragCanvas.tx + dx; ty = dragCanvas.ty + dy;
-      targetTx = tx; targetTy = ty;
-      return;
-    }
-
-    // Hover tooltip
-    const h = pickNode(w);
+    const h = pickAt(ev);
+    canvas.style.cursor = h ? "pointer" : "default";
     if (h !== hover) {
       hover = h;
-      const tt = $("map-tooltip");
       if (hover) {
-        tt.className = "map-tooltip visible";
-        tt.style.left = ev.clientX + "px";
-        tt.style.top = ev.clientY + "px";
-        setChildren(tt, 
+        setChildren(tooltip,
           el("div", { className: "tt-title" }, hover.label),
           el("div", { className: "tt-meta" },
             el("span", { className: "pill " + (hover.kind === "fix" ? "amber" : "ok") }, hover.kind),
-            el("span", {}, `${Math.round(hover.strength * 100)}% strength`),
-            el("span", {}, `✔ ${hover.worked} · ✖ ${hover.failed}`)));
-      } else {
-        tt.className = "map-tooltip";
+            el("span", {}, `${Math.round((hover.strength || 0) * 100)}% strength`),
+            el("span", {}, `✔ ${hover.worked} · ✖ ${hover.failed}`),
+            el("span", {}, `${hover.neighbors.size} links`)));
       }
-    } else if (hover) {
-      const tt = $("map-tooltip");
-      tt.style.left = ev.clientX + "px";
-      tt.style.top = ev.clientY + "px";
+      tooltip.className = "map-tooltip" + (hover ? " visible" : "");
     }
+    if (hover) { tooltip.style.left = ev.clientX + "px"; tooltip.style.top = ev.clientY + "px"; }
+  };
+  canvas.onpointerleave = () => { hover = null; tooltip.className = "map-tooltip"; };
+  canvas.onclick = (ev) => {
+    const n = pickAt(ev);
+    focusOn(n || null);
+  };
+  const onKey = (ev) => {
+    if (ev.key === "Escape" && selected) focusOn(null);
+    if (ev.key === "/" && document.activeElement !== searchInput) { ev.preventDefault(); searchInput.focus(); }
+  };
+  document.addEventListener("keydown", onKey);
+
+  btnOverview.onclick = () => focusOn(null);
+  btnPulses.onclick = () => {
+    pulsesOn = !pulsesOn;
+    btnPulses.className = "dock-btn" + (pulsesOn ? " active" : "");
   };
 
-  canvas.onpointerup = (ev) => {
-    if (draggedNode) {
-      draggedNode.pinned = false;
-      draggedNode = null;
-      return;
-    }
-
-    if (dragCanvas) {
-      const moved = dragCanvas.moved;
-      dragCanvas = null;
-      if (!moved) {
-        const clicked = pickNode(world(ev));
-        selected = clicked;
-        describe(selected);
-        if (selected) {
-          targetScale = Math.max(1.3, scale);
-          targetTx = -selected.x * targetScale;
-          targetTy = -selected.y * targetScale;
-        }
-      }
-    }
-  };
-
-  canvas.onwheel = (ev) => {
-    ev.preventDefault();
-    const r = canvas.getBoundingClientRect();
-    const mx = ev.clientX - r.left - W / 2, my = ev.clientY - r.top - H / 2;
-    const k = Math.exp(-ev.deltaY * 0.0018);
-    const next = Math.min(8, Math.max(0.1, scale * k));
-    tx = mx - ((mx - tx) * next) / scale;
-    ty = my - ((my - ty) * next) / scale;
-    scale = next; targetScale = scale; targetTx = tx; targetTy = ty;
-  };
-
-  // Button Action Bindings
-  btnZoomIn.onclick = () => { targetScale = Math.min(8, scale * 1.35); };
-  btnZoomOut.onclick = () => { targetScale = Math.max(0.1, scale / 1.35); };
-  btnFit.onclick = () => { fit(true); };
-  btnSim.onclick = () => {
-    simulationActive = !simulationActive;
-    btnSim.textContent = simulationActive ? "⏸ Physics" : "▶ Physics";
-    btnSim.className = "dock-btn" + (simulationActive ? "" : " active");
-    showToast(simulationActive ? "Physics resumed" : "Physics paused");
-  };
-  btnReheat.onclick = () => {
-    alpha = 1;
-    showToast("Simulation reheated");
-  };
-
-  // Radar Interactive Navigation (Click on radar to pan)
-  const radarArea = el("div", { className: "radar-canvas-area" }, radarCanvas);
-  radarArea.onclick = (ev) => {
-    const rect = radarCanvas.getBoundingClientRect();
-    const rx = ev.clientX - rect.left;
-    const ry = ev.clientY - rect.top;
-
-    const xs = nodes.map((n) => n.x), ys = nodes.map((n) => n.y);
-    if (!xs.length) return;
-    const minX = Math.min(...xs), maxX = Math.max(...xs);
-    const minY = Math.min(...ys), maxY = Math.max(...ys);
-    const gw = Math.max(120, maxX - minX + 80);
-    const gh = Math.max(100, maxY - minY + 80);
-    const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
-    const ms = Math.min((156 - 24) / gw, (88 - 24) / gh);
-
-    // Convert radar point to world point
-    const worldX = cx + (rx - 156 / 2) / ms;
-    const worldY = cy + (ry - 88 / 2) / ms;
-
-    targetTx = -worldX * scale;
-    targetTy = -worldY * scale;
-  };
-
-  const radarClose = el("button", { className: "radar-close-btn", title: "Hide Radar" }, "✕");
-  radarClose.onclick = () => {
-    showRadar = false;
-    radarCard.className = "map-radar-card collapsed";
-    btnRadarToggle.className = "dock-btn";
-  };
-
-  btnRadarToggle.onclick = () => {
-    showRadar = !showRadar;
-    radarCard.className = "map-radar-card" + (showRadar ? "" : " collapsed");
-    btnRadarToggle.className = "dock-btn" + (showRadar ? " active" : "");
-  };
-
-  setChildren(radarCard, 
-    el("div", { className: "radar-header" },
-      el("span", { className: "radar-title" }, "Radar View"),
-      radarClose),
-    radarArea);
-
-  // Assemble Top HUD
+  /* ---------- Assembly ---------- */
   const hudTop = el("div", { className: "map-hud-top" },
     el("div", { className: "map-hud-row" },
       el("div", { className: "hud-pill-group" }, pillFix, pillProc, pillFact),
@@ -2164,45 +1886,37 @@ async function map(view) {
       countBadge),
     el("div", { className: "map-hud-row" }, presetPillsContainer));
 
-  const canvasContainer = el("div", { className: "map-canvas-container" },
-    hudTop,
-    canvas,
-    mapDock,
-    radarCard);
-
+  const canvasContainer = el("div", { className: "map-canvas-container brain" }, hudTop, canvas, mapDock);
   const inspectorContainer = el("aside", { className: "map-inspector" },
     el("div", { className: "inspector-header" },
       el("h3", {},
         svg("svg", { width: "16", height: "16", fill: "none", stroke: "currentColor", "stroke-width": "2", viewBox: "0 0 24 24" },
           svg("circle", { cx: "12", cy: "12", r: "10" }), svg("line", { x1: "12", y1: "16", x2: "12", y2: "12" }), svg("line", { x1: "12", y1: "8", x2: "12.01", y2: "8" })),
-        "Node Inspector"),
-      selected ? el("button", { className: "clear-btn", onclick: () => { selected = null; describe(null); } }, "✕") : null),
+        "Node Inspector")),
     inspectorBody);
 
   setChildren(view, el("div", { className: "view-container", style: "padding-bottom:20px" },
     el("div", { className: "page-header", style: "margin-bottom:14px" },
       el("div", { className: "page-title" },
-        el("h1", {}, "Knowledge Constellation Map"),
-        el("p", {}, "Interactive topological network of agent knowledge islands, connected by semantic similarity."))),
+        el("h1", {}, "Knowledge Map"),
+        el("p", {}, "The colony as a brain: every entry a neuron, every link a similarity between two entries."))),
     el("div", { className: "map-wrapper" }, canvasContainer, inspectorContainer)));
 
   const onResize = () => resize();
   window.addEventListener("resize", onResize);
-
   mapStop = () => {
     if (animId) cancelAnimationFrame(animId);
     window.removeEventListener("resize", onResize);
-    $("map-tooltip").className = "map-tooltip";
+    document.removeEventListener("keydown", onKey);
+    tooltip.className = "map-tooltip";
     mapStop = null;
   };
 
   resize();
-  // Layout initial settling
-  for (let i = 0; i < 400; i++) tickSimulation();
-  fit(false);
+  Object.assign(cam, overview());
   refresh();
   describe(null);
-  loop();
+  animId = requestAnimationFrame(loop);
 }
 
 /* ========================================================================= */
