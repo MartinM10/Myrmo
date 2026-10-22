@@ -465,6 +465,14 @@ export function decideStop(input, { now = Date.now(), state = {}, env = process.
   if (failures <= Number(state.harvestedAt ?? 0) && !shown) return none;
   const minMs = Number(env.MYRMO_HARVEST_MINUTES ?? 30) * 60_000;
   if ((state.harvests ?? 0) >= 3 || (state.harvestedTs && now - state.harvestedTs < minMs)) return none;
+  // Nothing new failed since this session last published: what is left is only reporting on what was shown, so ask that alone
+  // instead of asking again to share what was learned.
+  if (state.publishedTs && failures <= Number(state.harvestedAt ?? 0) && shown) {
+    const reason =
+      `Myrmo: before you finish, call myrmo_report for each entry it showed you for this task (${shown.ids.join(", ")}) that you actually relied on ` +
+      "(worked, partially_worked, or failed if it was wrong or out of date, saying what changed); skip the ones you did not use. If you used none, finish.";
+    return { reason, state: { ...state, brief: { ...shown, asked: true }, harvestedTs: now, harvests: (state.harvests ?? 0) + 1 } };
+  }
   const reportShown = shown
     ? `Myrmo showed you knowledge for this task (${shown.ids.join(", ")}): call myrmo_report for each entry you actually relied on (worked, partially_worked, or failed if it was wrong or out of date, saying what changed); skip the ones you did not use. `
     : "For a trail Myrmo gave you, call myrmo_report if you have not. ";
