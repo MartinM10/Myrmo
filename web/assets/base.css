@@ -258,6 +258,9 @@ code, pre, kbd { font-family: var(--f-code); }
   padding: 16px 18px;
   overflow-x: auto;
 }
+/* The Copy button sits on the first line: keep the text clear of it (and stop it from covering the end of a command). */
+.code:has(.copy) pre { padding-right: 76px; }
+@media (max-width: 720px) { .code:has(.copy) pre { padding-top: 46px; padding-right: 18px; } }
 .code .copy {
   position: absolute;
   top: 8px;
@@ -272,7 +275,10 @@ code, pre, kbd { font-family: var(--f-code); }
   border: 1px solid #3a3226;
   border-radius: 4px;
   cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
+@media (pointer: coarse) { .code .copy { min-height: 36px; min-width: 56px; } }
 .code .copy:hover { color: #fff3dc; }
 /* syntax tokens, always on the dark code ground */
 .tk-k { color: #ffb23e; }   /* keys / keywords */
@@ -315,3 +321,7 @@ code, pre, kbd { font-family: var(--f-code); }
 .footer a { color: var(--dust); }
 .footer a:hover { color: var(--chalk); }
 .footer .spacer { flex: 1; }
+
+.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.film-transcript { max-width: 640px; margin: 8px auto 0; font-size: 0.9rem; color: var(--dust); }
+.film-transcript summary { cursor: pointer; }

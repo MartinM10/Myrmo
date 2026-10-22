@@ -112,39 +112,6 @@ function observe(els, opts, cb) {
   observe(watched, { threshold: 0.25 }, function (el) { el.classList.add("in"); });
 })();
 
-/* ---------- Typed-out streams: terminal transcript, then the JSON the agent receives ---------- */
-(function streams() {
-  var term = document.querySelector(".term pre");
-  var json = document.getElementById("json-sample");
-  if (!term || reduce || !("IntersectionObserver" in window)) return;
-
-  // Wrap each line in a span (newlines stay in the text, so copying still works).
-  function wrap(pre, stepMs, startMs, cap) {
-    // Every span in these blocks opens and closes on one line, so splitting the HTML is safe.
-    var html = pre.innerHTML.split("\n");
-    pre.innerHTML = html.map(function (line, i) {
-      var d = startMs + Math.min(i, cap) * stepMs;
-      var last = i === html.length - 1 ? " last" : "";
-      return '<span class="ln' + last + '" style="--d:' + d + '">' + line + "</span>";
-    }).join("\n");
-    pre.classList.add("stream", "armed");
-    return startMs + Math.min(html.length, cap) * stepMs;
-  }
-  var termEnd = wrap(term, 230, 250, 60);
-  if (json) wrap(json, 45, termEnd - 200, 60);
-
-  var io = new IntersectionObserver(function (entries) {
-    if (!entries[0].isIntersecting) return;
-    io.disconnect();
-    [term, json].forEach(function (pre) {
-      if (!pre) return;
-      pre.classList.remove("armed");
-      pre.classList.add("play");
-    });
-  }, { threshold: 0.4 });
-  io.observe(term);
-})();
-
 /* ---------- Request flow: a packet travels each lane ---------- */
 (function flow() {
   var lanes = $(".flow .lane");

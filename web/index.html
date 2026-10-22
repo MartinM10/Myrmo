@@ -278,11 +278,59 @@
     margin-bottom: 8px;
   }
   .term pre { white-space: pre-wrap; word-break: break-word; }
+  .term pre, .tc-diff { font-variant-ligatures: none; font-feature-settings: "liga" 0, "calt" 0; }
   .term .err { color: #ef8a73; }
   .term .tool { color: #ffb23e; }
   .term .ok { color: #a9d993; }
   .term .dim { color: #8a7f6e; }
   .json pre { max-height: 470px; }
+
+  /* Replay: the example session plays once it scrolls into view, and the trail card lights up in step */
+  .term { overflow: hidden; }
+  .term pre { min-height: calc(15 * 1.65em + 32px); }
+  .term-bar { display: flex; min-height: 36px; box-sizing: border-box; align-items: center; gap: 6px; padding: 9px 14px; border-bottom: 1px solid #2d261d; font-size: 0.72rem; color: #8a7f6e; }
+  .term-bar i { width: 9px; height: 9px; border-radius: 50%; background: #3a3226; }
+  .term-bar span:first-of-type { margin-left: 8px; }
+  .term-progress { margin-left: auto; width: 90px; height: 3px; border-radius: 2px; background: #2d261d; overflow: hidden; }
+  .term-progress b { display: block; height: 100%; width: 0; background: #ffb23e; }
+  .term .spin { color: #ffb23e; }
+  .term .caret { display: inline-block; width: 0.55em; height: 1.05em; margin-left: 2px; vertical-align: text-bottom; background: #ffb23e; animation: caret 1s steps(1) infinite; }
+  .term-bar .replay-btn[hidden] { display: none; }
+  .replay-btn { margin-left: 4px; padding: 2px 9px; font-family: var(--f-display); font-size: 0.7rem; letter-spacing: 0.05em; color: #e9e0cf; background: #241e17; border: 1px solid #3a3226; border-radius: 4px; cursor: pointer; }
+  .replay-btn:hover { border-color: #ffb23e; color: #fff3dc; }
+  .view-tabs { display: flex; gap: 2px; }
+  .view-tabs button { padding: 3px 10px; font-family: var(--f-display); font-size: var(--t-xs); color: var(--dust); background: transparent; border: 1px solid transparent; border-radius: 999px; cursor: pointer; }
+  .view-tabs button[aria-selected="true"] { color: var(--chalk); border-color: var(--wall); background: var(--tunnel); }
+  .trail-card { padding: 18px; border: 1px solid var(--wall); border-radius: var(--radius); background: var(--tunnel); font-size: 0.9rem; transition: box-shadow 0.6s; }
+  .trail-card .dim { color: var(--dust); }
+  .tc-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+  .tc-id { font-family: var(--f-display); font-weight: 700; }
+  .tc-via { margin-left: auto; color: var(--dust); font-size: 0.78rem; }
+  .tc-strength { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; margin: 14px 0 6px; font-size: 0.78rem; color: var(--dust); }
+  .tc-bar { height: 6px; border-radius: 3px; background: color-mix(in srgb, var(--wall) 70%, transparent); overflow: hidden; }
+  .tc-bar b { display: block; height: 100%; border-radius: 3px; background: var(--amber); box-shadow: 0 0 10px rgba(var(--amber-glow), 0.6); transition: width 0.9s cubic-bezier(0.2, 0.7, 0.2, 1); }
+  .tc-val { font-family: var(--f-display); font-weight: 700; color: var(--chalk); font-variant-numeric: tabular-nums; }
+  .tc-outcomes { display: flex; flex-wrap: wrap; gap: 14px; font-size: 0.8rem; color: var(--dust); }
+  .tc-outcomes b { color: var(--chalk); font-variant-numeric: tabular-nums; }
+  .tc-badge { margin-left: auto; padding: 1px 8px; border-radius: 999px; color: var(--moss); border: 1px solid color-mix(in srgb, var(--moss) 40%, transparent); }
+  .tc-row { margin-top: 12px; padding: 10px 12px; border-left: 2px solid var(--wall); border-radius: 0 6px 6px 0; transition: border-color 0.4s, background 0.4s, opacity 0.4s; }
+  .tc-row h4 { margin: 0 0 4px; font-size: 0.72rem; font-family: var(--f-display); letter-spacing: 0.06em; text-transform: uppercase; color: var(--dust); }
+  .tc-row p { margin: 0; }
+  .tc-row s { text-decoration-color: var(--ember); text-decoration-thickness: 2px; }
+  .tc-diff { margin: 2px 0 6px; padding: 8px 10px; border-radius: 6px; background: var(--code-bg); font-size: 0.8rem; }
+  .tc-diff .del { color: #ef8a73; } .tc-diff .add { color: #a9d993; }
+  .tc-row .risk { color: var(--moss); }
+  .tc-row .okc { color: var(--moss); font-weight: 600; }
+  /* States set by the player */
+  .replay.armed .trail-card { opacity: 0.35; }
+  .replay.armed .tc-row, .replay.armed .tc-badge { opacity: 0.25; }
+  .replay .tc-row.lit { opacity: 1; border-left-color: var(--amber); background: color-mix(in srgb, var(--amber) 9%, transparent); }
+  .replay .tc-row.done { opacity: 1; }
+  .replay .trail-card.found { opacity: 1; box-shadow: 0 0 0 1px color-mix(in srgb, var(--amber) 45%, transparent), 0 0 28px rgba(var(--amber-glow), 0.18); }
+  .replay .tc-badge.on { opacity: 1; animation: pop 0.5s ease-out; }
+  .replay .bump { animation: pop 0.5s ease-out; display: inline-block; }
+  @keyframes pop { 0% { transform: scale(1); } 40% { transform: scale(1.25); color: var(--amber-ink); } 100% { transform: scale(1); } }
+  @keyframes caret { 50% { opacity: 0; } }
   @media (max-width: 900px) { .agent-view { grid-template-columns: minmax(0, 1fr); } }
 
   /* Trust */
@@ -475,7 +523,7 @@
 
 <header class="nav">
   <a class="wordmark" href="index.html" aria-label="Myrmo home">
-    <span class="wm-m"><svg class="wm-m-svg" viewBox="0 0 100 99.76" aria-hidden="true"><path class="stripe" d="M49.5 94.2c-1.1-0.4-1.8-2-2.3-5.2c-0.2-1.4-0.4-6.5-0.2-8.9c0-0.8 0.1-2 0.1-2.8c0-0.9 0.1-1.9 0.1-2.3c0-0.5 0.1-1.4 0.2-2.1c0-0.7 0.1-1.5 0.2-1.9c0.1-0.4 0.1-1 0.2-1.5c0.2-2 0.2-2.5 0.4-2.8c0-0.2 0.1-0.7 0.2-1.1c0.1-1.4 0.5-3.1 0.8-4.2c0.3-1.2 0.8-1.6 1.2-1c0.3 0.6 0.9 3.4 1.1 5.2c0 0.5 0.1 1 0.2 1.2c0.1 0.2 0.1 0.7 0.1 0.9c0.1 0.3 0.1 0.8 0.1 1.1c0.1 0.3 0.1 0.9 0.2 1.2c0 0.3 0.1 0.7 0.1 0.8c0.1 0.1 0.2 1 0.2 1.9c0 1 0.1 1.9 0.2 2.2c0.1 1 0.1 1.5 0.2 3.6c0.2 3.5 0.1 8.7-0.1 10c-0.4 3.2-1.2 5-2.3 5.6c-0.3 0.2-0.8 0.2-1.1 0.1z" fill-rule="evenodd"/><path class="body" id="wmbin1" d="M90.5 99.7c-2.8-0.4-5.1-1.8-6.5-3.9c-1.1-1.7-1.2-2.5-1.7-6.5c0-0.5-0.1-1.1-0.2-1.5c-0.1-0.3-0.1-1-0.2-1.5c0-0.5-0.2-1.3-0.2-1.8c0-0.5-0.2-1.5-0.2-2.1c0-0.6-0.1-1.3-0.2-1.6c0-0.3-0.1-1.2-0.2-2c-0.1-0.8-0.2-2-0.4-2.9c-0.1-0.8-0.2-1.8-0.3-2.2c-0.2-2.1-0.2-2.5-0.3-2.9c0-0.2-0.1-0.8-0.2-1.2c0-0.5-0.1-1.2-0.2-1.7c0-0.5-0.1-1.2-0.2-1.8c-0.1-0.6-0.2-1.5-0.2-1.8c-0.1-1-0.3-2.6-0.5-4.6c-0.2-1.2-0.2-2.2-0.4-3.5c-0.2-2.5-0.3-3-0.6-5.6c-0.1-0.5-0.1-1.1-0.2-1.4c0-0.2-0.1-0.9-0.2-1.5c-0.2-2.2-0.4-2.4-1.3-1.6c-0.2 0.2-0.9 0.8-1.5 1.2c-0.6 0.5-1.2 1.1-1.5 1.4c-0.2 0.2-0.8 0.7-1.2 1c-1.5 1.2-2.4 2.1-2.8 2.5c-0.2 0.2-0.7 0.6-1 0.9c-0.3 0.2-0.9 0.8-1.3 1.2c-1.6 1.4-2.7 2.4-3.1 2.7c-0.2 0.1-0.6 0.5-0.9 0.8c-1.7 1.5-3.7 2.2-4.8 1.8c-0.7-0.3-2.3-2.4-2.9-3.7c-0.7-1.7-0.8-2.4 0-4.8c0.4-1.4 0.9-3.3 0.9-3.9c0.1-0.8 0.1-0.8 1.3-1.9c0.5-0.5 1.5-1.5 2.1-2.1c0.6-0.6 1.9-1.8 2.7-2.6c0.9-0.8 2-1.9 2.6-2.4c0.6-0.6 1.9-1.9 3-2.9c1-1 2.2-2.1 2.6-2.5c0.4-0.4 0.8-0.8 0.9-0.9c0.5-0.5 2-2 3.1-3.1c2.2-2.2 2.9-2.7 4.2-3.4c4.4-2.2 9.5-1.1 12.5 2.7c1.4 1.8 2 3.2 2.3 6.3c0.1 1.3 0.1 1.8 0.3 2.9c0 0.2 0.1 1.1 0.2 1.9c0 0.8 0.1 1.8 0.2 2.2c0.1 0.7 0.3 3 0.6 5.9c0 0.5 0.1 1 0.1 1.1c0 0.1 0.1 0.8 0.2 1.6c0.1 0.8 0.2 1.6 0.2 1.9c0.2 1.1 0.9 8.3 1 9.2c0 0.4 0.1 1 0.4 2.9c0 0.5 0.2 1.8 0.3 2.8c0.1 1 0.2 2 0.2 2.2c0.1 0.8 0.5 4 0.5 5c0 0.5 0.2 1.5 0.2 2.2c0.1 0.7 0.2 1.6 0.2 1.9c0 0.3 0 0.8 0.1 1c0.1 0.3 0.2 1 0.4 3.3c0.1 0.7 0.2 2.1 0.5 4c0.1 0.8 0.2 1.7 0.2 2c0 0.3 0.1 1 0.2 1.7c0.2 2.3 0 3.5-0.8 5.1c-1.6 3.2-5.2 5.2-8.6 4.8zM7.5 99.6c-4.9-0.6-8.1-4.8-7.5-9.8c0.1-0.6 0.1-1.3 0.2-1.6c0-0.3 0.1-0.8 0.2-1c0.1-0.8 0.2-2 0.3-2.8c0.1-0.5 0.2-1.7 0.3-2.7c0.1-1 0.2-2.2 0.3-2.7c0.1-0.4 0.2-1.4 0.2-2.1c0.2-2 0.3-2.8 0.5-4.2c0.1-0.8 0.2-2.3 0.4-3.4c0.2-2.1 0.4-3.4 0.5-4.1c0-0.2 0.1-0.9 0.1-1.4c0-0.5 0.1-1.4 0.2-1.9c0.1-0.5 0.2-1.4 0.2-1.9c0-0.5 0.1-1.5 0.2-2.3c0.1-0.8 0.2-2 0.3-2.7c0.1-0.7 0.2-1.9 0.3-2.6c0.1-0.8 0.2-1.7 0.2-2.1c0.1-0.4 0.2-1.1 0.2-1.6c0-0.5 0.2-1.4 0.2-1.9c0-0.6 0.2-1.8 0.3-2.6c0-0.9 0.2-1.8 0.2-2c0-0.5 0.2-1.8 0.3-3.5c0.1-0.7 0.2-1.6 0.2-1.9c0.2-1 0.3-2.3 0.3-2.9c0.7-9.1 11-12.9 17.7-6.5c0.4 0.4 1.2 1.1 1.7 1.6c0.5 0.4 1.5 1.4 2.1 2.1c0.7 0.6 1.5 1.4 1.7 1.6c0.2 0.2 1.1 1.1 1.9 1.9c0.8 0.8 1.8 1.7 2.2 2.1c0.4 0.5 1.4 1.3 2 2c0.6 0.6 1.8 1.7 2.5 2.4c0.7 0.6 1.9 1.7 2.5 2.4c0.6 0.6 1.5 1.5 2 2c1 0.9 1 0.8 1 1.8c0.1 0.9 0.3 1.8 0.8 3.2c0.8 2.6 0.8 3.6 0 5.5c-1.1 2.2-2.6 3.8-3.8 3.8c-1.6-0.2-2.3-0.6-4.5-2.5c-0.6-0.5-1.5-1.3-2-1.7c-0.5-0.4-1.2-1.1-1.6-1.4c-0.4-0.4-0.9-0.9-1.2-1.1c-0.7-0.6-2.1-1.9-2.9-2.6c-0.4-0.3-0.9-0.8-1.2-1c-0.7-0.6-1.7-1.5-2.9-2.5c-1.1-1.1-1.1-1.1-1.4-1.1c-0.4 0.1-0.5 0.2-0.6 1.2c-0.1 0.5-0.2 1.4-0.2 2c-0.1 0.6-0.2 1.5-0.2 1.9c-0.1 1.1-0.2 2.1-0.4 3.3c-0.1 0.5-0.1 1.2-0.2 1.5c-0.1 0.4-0.2 1-0.2 1.5c0 0.5-0.2 1.6-0.3 2.5c-0.1 0.9-0.2 2.2-0.3 2.8c-0.2 1.8-0.6 4.8-0.7 5.7c-0.1 1.3-0.2 2.3-0.4 3.5c-0.1 0.6-0.1 1.2-0.1 1.2c0 0-0.1 0.4-0.1 0.9c-0.1 0.5-0.1 1.4-0.2 1.9c-0.1 0.6-0.2 2.2-0.4 3.5c-0.2 1.3-0.3 2.6-0.3 2.9c-0.1 0.3-0.1 0.8-0.2 1.1c0 0.2-0.1 1-0.2 1.7c-0.1 0.6-0.1 1.3-0.2 1.5c-0.1 0.6-0.2 2.3-0.4 3.8c-0.1 0.8-0.2 1.5-0.2 1.8c-0.5 4.8-5 8.5-9.8 7.8zM49.6 99.5c-2.4-0.7-6-4.1-8.2-7.9c-0.1-0.2-0.4-0.6-0.5-0.9c-2.8-4.7-4.2-11.6-3.4-16.2c0.6-3.3 1.1-4.8 2.3-7.5c0.9-1.8 2.2-3.8 4-6.1c0.4-0.5 0.9-1.1 1.2-1.4c1.5-1.8 2.6-4 2.8-6c0.1-1-0.2-2-1.1-5c-0.8-2.5-0.6-4.5 0.5-6.2c0.1-0.1 0.4-0.6 0.5-0.8c0.4-0.5 0.5-1 0.2-1.9c-0.2-1.2-0.4-1.5-1.2-1.9c-2.2-1.1-5.2-4.2-6.3-6.4c-2.1-4.2-1.2-8.2 2.4-11.3c0.4-0.4 0.4-0.5 0-1.4c-3.5-7.6-9.6-12.5-17.3-14c-0.6-0.2-0.6-0.3-0.4-0.9c0.1-0.4 0.1-0.6 0-1.4c-0.1-0.4 0.1-0.4 1.3-0.2c3.6 0.6 8.1 2.8 11.1 5.3c1.7 1.5 2.1 1.9 3.4 3.3c1.6 1.9 3.1 4.3 4.3 6.9c0.4 0.8 0.3 0.8 1.5 0.4c2.5-0.6 4.4-0.6 6.7 0c1.4 0.3 1.4 0.4 1.7-0.6c0.4-1 1.4-2.9 2.1-3.9c0.1-0.1 0.3-0.4 0.5-0.8c2.2-3.3 6.1-6.8 10-8.7c3-1.5 7.5-2.7 7.4-2c-0.1 0.9-0.1 1.1 0 1.5c0.2 0.5 0.1 0.7-0.3 0.8c-0.2 0-0.7 0.2-1.1 0.2c-7.1 1.7-13.2 6.9-16.2 13.8c-0.4 1-0.4 1.1 0.2 1.5c3.7 2.9 4.3 7.9 1.5 12.2c-1.4 2.1-4 4.5-5.9 5.4c-0.6 0.3-0.7 0.4-1 1.5c-0.4 1.3-0.3 1.8 0.4 2.6c1.1 1.6 1.5 3.1 1.1 5.4c-0.1 0.8-0.2 1-0.8 2.8c-1.1 3.7-0.6 6.2 1.8 9.1c3.7 4.4 5.8 7.9 7 11.9c0.9 3 1.2 7 0.8 9.5c0 0.2-0.1 0.7-0.2 1.2c-0.7 3.9-2 7-4.2 10.5c-2.6 4.2-6.9 7.7-8.5 7.2zM50.5 94c1.1-0.6 2-2.8 2.4-6.3c0.1-1.2 0.2-6.2 0.1-7.5c-0.1-0.6-0.1-1.7-0.2-2.4c0-0.7-0.1-1.7-0.1-2.2c0-0.5-0.1-1.3-0.2-1.9c-0.2-2.5-0.4-3.5-0.4-4c0-0.3-0.1-1-0.2-1.6c-0.4-2.7-0.6-4.3-0.9-5.4c-0.1-0.2-0.2-0.8-0.4-1.2c-0.8-3.4-1.8-0.3-2.9 9.6c-0.3 2.3-0.5 5-0.6 7c0 0.7-0.1 1.6-0.1 2.1c-0.1 1.5 0 6.9 0.3 8.4c0.7 4.1 1.8 6 3.2 5.3z" fill-rule="evenodd"/><clipPath id="wmcin1"><rect x="-5" y="-5" width="110" height="21.5"/></clipPath><use class="boost" href="#wmbin1" clip-path="url(#wmcin1)"/><circle class="node" cx="23.47" cy="4.45" r="4.45"/><circle class="node" cx="76.53" cy="4.45" r="4.45"/></svg></span>yrmo
+    <span class="wm-m"><span class="sr-only">M</span><svg class="wm-m-svg" viewBox="0 0 100 99.76" aria-hidden="true"><path class="stripe" d="M49.5 94.2c-1.1-0.4-1.8-2-2.3-5.2c-0.2-1.4-0.4-6.5-0.2-8.9c0-0.8 0.1-2 0.1-2.8c0-0.9 0.1-1.9 0.1-2.3c0-0.5 0.1-1.4 0.2-2.1c0-0.7 0.1-1.5 0.2-1.9c0.1-0.4 0.1-1 0.2-1.5c0.2-2 0.2-2.5 0.4-2.8c0-0.2 0.1-0.7 0.2-1.1c0.1-1.4 0.5-3.1 0.8-4.2c0.3-1.2 0.8-1.6 1.2-1c0.3 0.6 0.9 3.4 1.1 5.2c0 0.5 0.1 1 0.2 1.2c0.1 0.2 0.1 0.7 0.1 0.9c0.1 0.3 0.1 0.8 0.1 1.1c0.1 0.3 0.1 0.9 0.2 1.2c0 0.3 0.1 0.7 0.1 0.8c0.1 0.1 0.2 1 0.2 1.9c0 1 0.1 1.9 0.2 2.2c0.1 1 0.1 1.5 0.2 3.6c0.2 3.5 0.1 8.7-0.1 10c-0.4 3.2-1.2 5-2.3 5.6c-0.3 0.2-0.8 0.2-1.1 0.1z" fill-rule="evenodd"/><path class="body" id="wmbin1" d="M90.5 99.7c-2.8-0.4-5.1-1.8-6.5-3.9c-1.1-1.7-1.2-2.5-1.7-6.5c0-0.5-0.1-1.1-0.2-1.5c-0.1-0.3-0.1-1-0.2-1.5c0-0.5-0.2-1.3-0.2-1.8c0-0.5-0.2-1.5-0.2-2.1c0-0.6-0.1-1.3-0.2-1.6c0-0.3-0.1-1.2-0.2-2c-0.1-0.8-0.2-2-0.4-2.9c-0.1-0.8-0.2-1.8-0.3-2.2c-0.2-2.1-0.2-2.5-0.3-2.9c0-0.2-0.1-0.8-0.2-1.2c0-0.5-0.1-1.2-0.2-1.7c0-0.5-0.1-1.2-0.2-1.8c-0.1-0.6-0.2-1.5-0.2-1.8c-0.1-1-0.3-2.6-0.5-4.6c-0.2-1.2-0.2-2.2-0.4-3.5c-0.2-2.5-0.3-3-0.6-5.6c-0.1-0.5-0.1-1.1-0.2-1.4c0-0.2-0.1-0.9-0.2-1.5c-0.2-2.2-0.4-2.4-1.3-1.6c-0.2 0.2-0.9 0.8-1.5 1.2c-0.6 0.5-1.2 1.1-1.5 1.4c-0.2 0.2-0.8 0.7-1.2 1c-1.5 1.2-2.4 2.1-2.8 2.5c-0.2 0.2-0.7 0.6-1 0.9c-0.3 0.2-0.9 0.8-1.3 1.2c-1.6 1.4-2.7 2.4-3.1 2.7c-0.2 0.1-0.6 0.5-0.9 0.8c-1.7 1.5-3.7 2.2-4.8 1.8c-0.7-0.3-2.3-2.4-2.9-3.7c-0.7-1.7-0.8-2.4 0-4.8c0.4-1.4 0.9-3.3 0.9-3.9c0.1-0.8 0.1-0.8 1.3-1.9c0.5-0.5 1.5-1.5 2.1-2.1c0.6-0.6 1.9-1.8 2.7-2.6c0.9-0.8 2-1.9 2.6-2.4c0.6-0.6 1.9-1.9 3-2.9c1-1 2.2-2.1 2.6-2.5c0.4-0.4 0.8-0.8 0.9-0.9c0.5-0.5 2-2 3.1-3.1c2.2-2.2 2.9-2.7 4.2-3.4c4.4-2.2 9.5-1.1 12.5 2.7c1.4 1.8 2 3.2 2.3 6.3c0.1 1.3 0.1 1.8 0.3 2.9c0 0.2 0.1 1.1 0.2 1.9c0 0.8 0.1 1.8 0.2 2.2c0.1 0.7 0.3 3 0.6 5.9c0 0.5 0.1 1 0.1 1.1c0 0.1 0.1 0.8 0.2 1.6c0.1 0.8 0.2 1.6 0.2 1.9c0.2 1.1 0.9 8.3 1 9.2c0 0.4 0.1 1 0.4 2.9c0 0.5 0.2 1.8 0.3 2.8c0.1 1 0.2 2 0.2 2.2c0.1 0.8 0.5 4 0.5 5c0 0.5 0.2 1.5 0.2 2.2c0.1 0.7 0.2 1.6 0.2 1.9c0 0.3 0 0.8 0.1 1c0.1 0.3 0.2 1 0.4 3.3c0.1 0.7 0.2 2.1 0.5 4c0.1 0.8 0.2 1.7 0.2 2c0 0.3 0.1 1 0.2 1.7c0.2 2.3 0 3.5-0.8 5.1c-1.6 3.2-5.2 5.2-8.6 4.8zM7.5 99.6c-4.9-0.6-8.1-4.8-7.5-9.8c0.1-0.6 0.1-1.3 0.2-1.6c0-0.3 0.1-0.8 0.2-1c0.1-0.8 0.2-2 0.3-2.8c0.1-0.5 0.2-1.7 0.3-2.7c0.1-1 0.2-2.2 0.3-2.7c0.1-0.4 0.2-1.4 0.2-2.1c0.2-2 0.3-2.8 0.5-4.2c0.1-0.8 0.2-2.3 0.4-3.4c0.2-2.1 0.4-3.4 0.5-4.1c0-0.2 0.1-0.9 0.1-1.4c0-0.5 0.1-1.4 0.2-1.9c0.1-0.5 0.2-1.4 0.2-1.9c0-0.5 0.1-1.5 0.2-2.3c0.1-0.8 0.2-2 0.3-2.7c0.1-0.7 0.2-1.9 0.3-2.6c0.1-0.8 0.2-1.7 0.2-2.1c0.1-0.4 0.2-1.1 0.2-1.6c0-0.5 0.2-1.4 0.2-1.9c0-0.6 0.2-1.8 0.3-2.6c0-0.9 0.2-1.8 0.2-2c0-0.5 0.2-1.8 0.3-3.5c0.1-0.7 0.2-1.6 0.2-1.9c0.2-1 0.3-2.3 0.3-2.9c0.7-9.1 11-12.9 17.7-6.5c0.4 0.4 1.2 1.1 1.7 1.6c0.5 0.4 1.5 1.4 2.1 2.1c0.7 0.6 1.5 1.4 1.7 1.6c0.2 0.2 1.1 1.1 1.9 1.9c0.8 0.8 1.8 1.7 2.2 2.1c0.4 0.5 1.4 1.3 2 2c0.6 0.6 1.8 1.7 2.5 2.4c0.7 0.6 1.9 1.7 2.5 2.4c0.6 0.6 1.5 1.5 2 2c1 0.9 1 0.8 1 1.8c0.1 0.9 0.3 1.8 0.8 3.2c0.8 2.6 0.8 3.6 0 5.5c-1.1 2.2-2.6 3.8-3.8 3.8c-1.6-0.2-2.3-0.6-4.5-2.5c-0.6-0.5-1.5-1.3-2-1.7c-0.5-0.4-1.2-1.1-1.6-1.4c-0.4-0.4-0.9-0.9-1.2-1.1c-0.7-0.6-2.1-1.9-2.9-2.6c-0.4-0.3-0.9-0.8-1.2-1c-0.7-0.6-1.7-1.5-2.9-2.5c-1.1-1.1-1.1-1.1-1.4-1.1c-0.4 0.1-0.5 0.2-0.6 1.2c-0.1 0.5-0.2 1.4-0.2 2c-0.1 0.6-0.2 1.5-0.2 1.9c-0.1 1.1-0.2 2.1-0.4 3.3c-0.1 0.5-0.1 1.2-0.2 1.5c-0.1 0.4-0.2 1-0.2 1.5c0 0.5-0.2 1.6-0.3 2.5c-0.1 0.9-0.2 2.2-0.3 2.8c-0.2 1.8-0.6 4.8-0.7 5.7c-0.1 1.3-0.2 2.3-0.4 3.5c-0.1 0.6-0.1 1.2-0.1 1.2c0 0-0.1 0.4-0.1 0.9c-0.1 0.5-0.1 1.4-0.2 1.9c-0.1 0.6-0.2 2.2-0.4 3.5c-0.2 1.3-0.3 2.6-0.3 2.9c-0.1 0.3-0.1 0.8-0.2 1.1c0 0.2-0.1 1-0.2 1.7c-0.1 0.6-0.1 1.3-0.2 1.5c-0.1 0.6-0.2 2.3-0.4 3.8c-0.1 0.8-0.2 1.5-0.2 1.8c-0.5 4.8-5 8.5-9.8 7.8zM49.6 99.5c-2.4-0.7-6-4.1-8.2-7.9c-0.1-0.2-0.4-0.6-0.5-0.9c-2.8-4.7-4.2-11.6-3.4-16.2c0.6-3.3 1.1-4.8 2.3-7.5c0.9-1.8 2.2-3.8 4-6.1c0.4-0.5 0.9-1.1 1.2-1.4c1.5-1.8 2.6-4 2.8-6c0.1-1-0.2-2-1.1-5c-0.8-2.5-0.6-4.5 0.5-6.2c0.1-0.1 0.4-0.6 0.5-0.8c0.4-0.5 0.5-1 0.2-1.9c-0.2-1.2-0.4-1.5-1.2-1.9c-2.2-1.1-5.2-4.2-6.3-6.4c-2.1-4.2-1.2-8.2 2.4-11.3c0.4-0.4 0.4-0.5 0-1.4c-3.5-7.6-9.6-12.5-17.3-14c-0.6-0.2-0.6-0.3-0.4-0.9c0.1-0.4 0.1-0.6 0-1.4c-0.1-0.4 0.1-0.4 1.3-0.2c3.6 0.6 8.1 2.8 11.1 5.3c1.7 1.5 2.1 1.9 3.4 3.3c1.6 1.9 3.1 4.3 4.3 6.9c0.4 0.8 0.3 0.8 1.5 0.4c2.5-0.6 4.4-0.6 6.7 0c1.4 0.3 1.4 0.4 1.7-0.6c0.4-1 1.4-2.9 2.1-3.9c0.1-0.1 0.3-0.4 0.5-0.8c2.2-3.3 6.1-6.8 10-8.7c3-1.5 7.5-2.7 7.4-2c-0.1 0.9-0.1 1.1 0 1.5c0.2 0.5 0.1 0.7-0.3 0.8c-0.2 0-0.7 0.2-1.1 0.2c-7.1 1.7-13.2 6.9-16.2 13.8c-0.4 1-0.4 1.1 0.2 1.5c3.7 2.9 4.3 7.9 1.5 12.2c-1.4 2.1-4 4.5-5.9 5.4c-0.6 0.3-0.7 0.4-1 1.5c-0.4 1.3-0.3 1.8 0.4 2.6c1.1 1.6 1.5 3.1 1.1 5.4c-0.1 0.8-0.2 1-0.8 2.8c-1.1 3.7-0.6 6.2 1.8 9.1c3.7 4.4 5.8 7.9 7 11.9c0.9 3 1.2 7 0.8 9.5c0 0.2-0.1 0.7-0.2 1.2c-0.7 3.9-2 7-4.2 10.5c-2.6 4.2-6.9 7.7-8.5 7.2zM50.5 94c1.1-0.6 2-2.8 2.4-6.3c0.1-1.2 0.2-6.2 0.1-7.5c-0.1-0.6-0.1-1.7-0.2-2.4c0-0.7-0.1-1.7-0.1-2.2c0-0.5-0.1-1.3-0.2-1.9c-0.2-2.5-0.4-3.5-0.4-4c0-0.3-0.1-1-0.2-1.6c-0.4-2.7-0.6-4.3-0.9-5.4c-0.1-0.2-0.2-0.8-0.4-1.2c-0.8-3.4-1.8-0.3-2.9 9.6c-0.3 2.3-0.5 5-0.6 7c0 0.7-0.1 1.6-0.1 2.1c-0.1 1.5 0 6.9 0.3 8.4c0.7 4.1 1.8 6 3.2 5.3z" fill-rule="evenodd"/><clipPath id="wmcin1"><rect x="-5" y="-5" width="110" height="21.5"/></clipPath><use class="boost" href="#wmbin1" clip-path="url(#wmcin1)"/><circle class="node" cx="23.47" cy="4.45" r="4.45"/><circle class="node" cx="76.53" cy="4.45" r="4.45"/></svg></span>yrmo
   </a>
   <nav class="nav-links" aria-label="Primary">
     <a class="optional" href="#how">How it works</a>
@@ -552,7 +600,11 @@
         <source src="assets/myrmo-video.mp4" type="video/mp4">
         Your browser cannot play this video. <a href="assets/myrmo-video.mp4">Download it</a>.
       </video>
-      <figcaption>Ten seconds. Sound on.</figcaption>
+      <figcaption>Ten seconds. Sound on, or read the transcript.</figcaption>
+      <details class="film-transcript">
+        <summary>Transcript</summary>
+        <p>Ants on a circuit board each set out alone and hit an error. One finds the way and lights a trail. The others follow it instead of searching again, and the separate paths grow into one shared mind. The film has no speech; the sound is music only.</p>
+      </details>
     </figure>
   </section>
 
@@ -600,14 +652,16 @@
       </p>
     </div>
 
-    <div class="agent-view">
+    <div class="agent-view replay" id="replay">
       <div>
         <div class="panel-label"><span class="eyebrow">Example session</span><span class="pill">any MCP client</span></div>
-        <div class="code term"><pre><span class="tk-p">$</span> pip install -r requirements.txt
+        <div class="code term">
+          <div class="term-bar" ><i aria-hidden="true"></i><i aria-hidden="true"></i><i aria-hidden="true"></i><span aria-hidden="true">agent · ~/app</span><span class="term-progress" aria-hidden="true"><b></b></span><button class="replay-btn" type="button" hidden>↻ Replay</button></div>
+          <pre id="replay-term"><span class="tk-p">$</span> pip install -r requirements.txt
 <span class="err">  ModuleNotFoundError: No module named 'distutils'</span>
 
 <span class="tool">● myrmo_search</span> <span class="dim">error="No module named 'distutils'" runtime=python 3.12.4</span>
-<span class="dim">  ↳ fingerprint fp2_101fa6b91aa4f019 · cache hit</span>
+<span class="dim">  ↳ fingerprint fp2_101fa6b91aa4f019 · cache hit · 2 ms</span>
 <span class="dim">  ↳ trail 3f2b8c1e · strength 0.90 · worked 214 · failed 9</span>
 <span class="dim">  ↳ skipping dead end: apt-get install python3-distutils</span>
 
@@ -617,11 +671,36 @@
 <span class="ok">  87 passed in 4.21s</span>
 
 <span class="tool">● myrmo_report</span> <span class="dim">trail=3f2b8c1e outcome=worked</span>
-<span class="dim">  ↳ reinforced · 3 failed attempts and 41.2k tokens not repeated</span></pre></div>
+<span class="ok">  ↳ reinforced · 3 failed attempts and 41.2k tokens not repeated</span></pre>
+        </div>
       </div>
       <div>
-        <div class="panel-label"><span class="eyebrow">What the agent receives</span><span class="pill amber">POST /v1/search</span></div>
-        <div class="code json"><pre id="json-sample"></pre><button class="copy" type="button">Copy</button></div>
+        <div class="panel-label">
+          <span class="eyebrow">What the agent receives</span>
+          <span class="view-tabs" role="tablist" aria-label="Trail view">
+            <button role="tab" id="vt-card" aria-selected="true" aria-controls="trail-card">Trail</button>
+            <button role="tab" id="vt-json" aria-selected="false" aria-controls="trail-json">JSON</button>
+          </span>
+        </div>
+        <article class="trail-card" id="trail-card" role="tabpanel" aria-labelledby="vt-card">
+          <header class="tc-head">
+            <span class="tc-id">trail 3f2b8c1e</span>
+            <span class="pill ok">low risk</span>
+            <span class="tc-via">matched by fingerprint</span>
+          </header>
+          <div class="tc-strength">
+            <span>strength</span>
+            <span class="tc-bar"><b style="width:91%"></b></span>
+            <span class="tc-val" data-from="0.90" data-to="0.91">0.91</span>
+          </div>
+          <div class="tc-outcomes"><span><b class="tc-worked" data-from="214" data-to="215">215</b> worked</span><span><b>12</b> partial</span><span><b>9</b> failed</span><span class="tc-badge">reinforced</span></div>
+          <section class="tc-row" data-k="dead"><h4>Dead end, skip it</h4><p><s>apt-get install python3-distutils</s> <span class="dim">no such package for Python 3.12 on Ubuntu 24.04</span></p></section>
+          <section class="tc-row" data-k="cause"><h4>Root cause</h4><p>numpy &lt; 1.26 ships no cp312 wheels; the source build imports distutils, removed in Python 3.12.</p></section>
+          <section class="tc-row" data-k="fix"><h4>Fix</h4><pre class="tc-diff"><span class="del">-numpy==1.24.4</span>
+<span class="add">+numpy&gt;=1.26,&lt;2</span></pre><p class="dim">then <code>pip install -r requirements.txt</code> · <span class="risk">risk: low</span></p></section>
+          <section class="tc-row" data-k="proof"><h4>Proof</h4><p>test suite · <span class="okc">87 passed in 4.21s</span></p></section>
+        </article>
+        <div class="code json" id="trail-json" role="tabpanel" aria-labelledby="vt-json" hidden><pre id="json-sample"></pre><button class="copy" type="button">Copy</button></div>
       </div>
     </div>
   </section>
@@ -720,6 +799,7 @@
         <h3>MyrmoBench: does following a trail help?</h3>
         <p><strong>On problems only a company's own people have met, what its agents captured took a cheap model from 5 to 21 solved out of 40, in less than half the turns.</strong> Four problems of a simulated company (its deploy policy, its private package index, a stale migration lock, its config format). A capable pioneer solved each one cold and published what it learnt; a cheap follower then tried each one 10 times without help, with the same knowledge as plain Markdown notes, and with Myrmo.</p>
         <p>Notes help about as often as Myrmo (23 against 21 of 40: no real difference). What Myrmo adds is the delivery: the fix arrives at the failure, so the follower gets there in 9 turns instead of 17, and nobody has to write or maintain the notes. The runs and their statistics are on the <a href="docs/operate/benchmarks">benchmarks page</a>.</p>
+        <p class="bench-meta">Run <a href="https://github.com/MartinM10/Myrmo/tree/main/bench/results/myrmobench-20261012-1011">myrmobench-20261012-1011</a>, 2026-10-12. Follower: GPT-OSS 120B, 10 runs per task, 4 tasks, 40 runs per condition. Solved 5 / 21 / 23 of 40 without help / Myrmo / notes. Against no help p &lt; 0.001; Myrmo against notes p = 0.82 on success. Token and time savings were not conclusive (p = 0.06 and 0.09).</p>
         <div class="compare" id="bench-compare"></div>
       </div>
       <div class="bench-block" id="bench-load">
