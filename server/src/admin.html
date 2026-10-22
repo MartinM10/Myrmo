@@ -1182,6 +1182,10 @@ async function colony(view) {
     alerts.push(["warn", "No backup recorded yet. Schedule a daily one on the colony's machine: bash deploy/private-colony.sh backup schedule (or wait for the next scheduled one to show here)."]);
   } else if (backup && backup.old) {
     alerts.push(["warn", `The last backup is ${backup.age_days} days old (${backup.archive || "unknown archive"}). Check the schedule: bash deploy/private-colony.sh doctor.`]);
+  } else if (backup && backup.offsite_old) {
+    alerts.push(["warn", backup.offsite_at
+      ? `The last copy off this machine is ${backup.offsite_age_days} days old. Check the upload (MYRMO_BACKUP_S3_URI) or the machine that pulls the backups.`
+      : "The backups are only on the colony's own machine: a disk or machine failure loses them with it. Set MYRMO_BACKUP_S3_URI, or pull them from another machine with deploy/pull-backups.sh (see Backups in the self-hosting guide)."]);
   }
   const day1 = Date.now() / 1000 - 86400;
   const recentRefused = (refused.items || []).filter((r) => r.last >= day1);

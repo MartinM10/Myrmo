@@ -884,6 +884,9 @@ fn health_item(c: &super::Candidate, now: i64) -> Value {
 
 /// Days after which the panel warns that the last backup is old: a daily backup missed twice.
 const BACKUP_OLD_DAYS: f64 = 2.0;
+/// An off-site copy (uploaded by `deploy/backup.sh`, or pulled through `deploy/backup-serve.sh`) older than this, or
+/// none at all, is warned about: a copy on the colony's own machine is lost with that machine.
+const OFFSITE_OLD_DAYS: f64 = 3.0;
 
 /// What the panel says about backups, from what `deploy/backup.sh` recorded.
 fn backup_status(h: &HashMap<String, String>, now: i64) -> Value {
@@ -891,7 +894,9 @@ fn backup_status(h: &HashMap<String, String>, now: i64) -> Value {
     let Some(ts) = int("ts") else {
         return json!({ "last_at": null, "old": true });
     };
-    let age_days = ((now - ts).max(0) as f64 / 86_400.0 * 10.0).round() / 10.0;
+    let days = |t: i64| ((now - t).max(0) as f64 / 86_400.0 * 10.0).round() / 10.0;
+    let age_days = days(ts);
+    let offsite = int("offsite_ts");
     json!({
         "last_at": keys::iso(ts),
         "age_days": age_days,
@@ -899,7 +904,9 @@ fn backup_status(h: &HashMap<String, String>, now: i64) -> Value {
         "archive": h.get("archive"),
         "bytes": int("bytes"),
         "trails": int("trails"),
-        "offsite_at": int("offsite_ts").map(keys::iso),
+        "offsite_at": offsite.map(keys::iso),
+        "offsite_age_days": offsite.map(days),
+        "offsite_old": offsite.is_none_or(|t| days(t) > OFFSITE_OLD_DAYS),
     })
 }
 
@@ -1118,11 +1125,22 @@ pub(super) async fn map(State(st): State<AppState>, headers: HeaderMap) -> ApiRe
         None => ("error", &st.qdrant, st.cfg.min_similarity * 0.85),
     };
     let sample = total.min(MAP_MAX);
-    let pairs = if sample >= 2 {
+    let pairs: Vec<(String, String, f64)> = if sample >= 2 {
+        // The task index holds a second point per trail (its task context): drawn as its trail, never linked to it.
         qdrant
             .neighbour_pairs(sample, 4)
             .await
             .map_err(|e| internal(&e))?
+            .into_iter()
+            .map(|(a, b, s)| {
+                (
+                    crate::knowledge::trail_of_point(&a),
+                    crate::knowledge::trail_of_point(&b),
+                    s,
+                )
+            })
+            .filter(|(a, b, _)| a != b)
+            .collect()
     } else {
         Vec::new()
     };
@@ -1257,7 +1275,21 @@ mod backup_tests {
         assert_eq!(fresh["age_days"], 0.5);
         assert_eq!(fresh["trails"], 119);
         assert_eq!(fresh["offsite_at"], Value::Null);
+        assert_eq!(
+            fresh["offsite_old"], true,
+            "no copy off the machine is warned about"
+        );
         assert_eq!(backup_status(&h, 1_000_000 + 3 * day)["old"], true);
+        let mut copied = h.clone();
+        copied.insert("offsite_ts".into(), "1000000".into());
+        assert_eq!(
+            backup_status(&copied, 1_000_000 + day)["offsite_old"],
+            false
+        );
+        assert_eq!(
+            backup_status(&copied, 1_000_000 + 4 * day)["offsite_old"],
+            true
+        );
     }
 }
 
