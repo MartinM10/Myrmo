@@ -65,6 +65,16 @@ test("the agent is asked to share what it learned once per batch of failures, an
   assert.equal(decideStop({}, { env: PRIVATE, state: { ...again, harvests: 3 }, now: 31 * 60_000 }).reason, null, "three times a session at most");
 });
 
+test("after a publish with no new failure, the stop hook asks only for the reports on what was shown", () => {
+  const state = { failures: 2, harvestedAt: 2, publishedTs: 5, brief: { ids: ["5d2c1b0a"] } };
+  const asked = decideStop({}, { env: PRIVATE, state, now: 10 });
+  assert.match(asked.reason, /myrmo_report for each entry it showed you for this task \(5d2c1b0a\)/);
+  assert.doesNotMatch(asked.reason, /myrmo_publish/, "what was learned was already shared");
+  assert.equal(decideStop({}, { env: PRIVATE, state: asked.state, now: 31 * 60_000 }).reason, null, "asked once");
+  const unpublished = decideStop({}, { env: PRIVATE, state: { ...state, publishedTs: undefined }, now: 10 });
+  assert.match(unpublished.reason, /myrmo_publish/, "without a publish the full request stays");
+});
+
 let colony;
 let url;
 const requests = [];
