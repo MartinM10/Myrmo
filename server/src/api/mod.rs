@@ -597,7 +597,9 @@ async fn rate_limit(
         let mut err = ApiError::new(
             StatusCode::TOO_MANY_REQUESTS,
             "rate_limited",
-            "Quota exhausted. Wait for Retry-After seconds.",
+            format!(
+                "Too many requests this minute ({limit} per minute for this caller). Retry in {reset} s."
+            ),
         );
         err.retry_after = Some(reset);
         let mut res = err.into_response();
