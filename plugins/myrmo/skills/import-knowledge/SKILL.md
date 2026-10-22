@@ -43,6 +43,8 @@ Show the user the list (kind, one line each) and how many entries it makes. Impo
   text only when the document quotes it; otherwise write the symptom in words in `summary` and do not invent an error
   line.
 - `source`: `{ "type": "handover" (or "document"), "ref": "<repository>/<path>#<section>", "revision": "<commit or date>" }`.
+  Always set it: a fix taken from a document has no failed attempts to count, and the source is what lets it be
+  published without them.
 - `tags`: the systems involved (`lldap`, `argocd`, `harbor`...).
 - Keep machine names, addresses, internal tools and services exactly as written: that is what a private colony is for.
   Leave out passwords, tokens and keys (write `<robot password>`), people's names and e-mail addresses (write the role:
@@ -67,7 +69,11 @@ A fact, for reference:
 ## 3. Publish and check
 
 1. Publish the first entry with `preview: true` and show the user the payload. Fix what they point out.
-2. Publish the rest with `myrmo_publish`, one call per entry. Each answer says whether the colony indexed it.
+2. Publish the rest with `myrmo_publish`, one call per entry and **one at a time**, from this session rather than
+   from subagents: parallel calls with one key run into the colony's per-minute limit, and a subagent may be refused
+   permission for content the main session was allowed to send. Each answer says whether the colony indexed it. If an
+   answer says the hourly publishing quota is reached, stop, tell the user how many entries are left, and do not retry
+   in a loop.
 3. Check the import the way an agent will use it: call `myrmo_brief` with three or four requests a colleague might
    type ("da de alta a una persona en LLDAP", "deploy a new tenant in dev"). If a request does not find the entry it
    should, its `task_context` does not say when it applies: improve it and publish it again.

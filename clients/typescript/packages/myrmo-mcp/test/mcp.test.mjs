@@ -296,6 +296,19 @@ test("publish refuses fixes that took no failed attempt, but accepts one", async
   await client.close();
 });
 
+test("a fix taken from a handover or a document needs no failed attempt, and the preview says when publishing would refuse", async () => {
+  const client = await stdioClient("ask", { answer: async () => ({ action: "accept", content: { publish: true } }) });
+  const easy = { ...trail, effort: { failed_attempts: 0 } };
+  const preview = textOf(await client.callTool({ name: "myrmo_publish", arguments: { trail: easy, preview: true } }));
+  assert.match(preview, /It would NOT be published: this fix took 0 failed attempts/);
+  const before = published();
+  const fromRunbook = { ...easy, source: { type: "document", ref: "runbooks/payments.md#restart" } };
+  assert.doesNotMatch(textOf(await client.callTool({ name: "myrmo_publish", arguments: { trail: fromRunbook, preview: true } })), /would NOT be published/);
+  await client.callTool({ name: "myrmo_publish", arguments: { trail: fromRunbook } });
+  assert.equal(published(), before + 1);
+  await client.close();
+});
+
 test("in ask mode the user approves the exact redacted payload through the client", async () => {
   const shown = [];
   const client = await stdioClient("ask", {
