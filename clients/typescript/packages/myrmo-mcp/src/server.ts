@@ -275,6 +275,14 @@ function errorText(err: unknown): string {
     const issues = (err.details as { path?: string; message?: string }[]).map((d) => ({ path: String(d.path ?? ""), message: String(d.message ?? "") }));
     return `The colony would not accept this trail (invalid_trail). Fix these and try again:\n${describeIssues(issues)}`;
   }
+  if (err instanceof MyrmoError && err.code === "rate_limited") {
+    const wait = err.retryAfter ? `${err.retryAfter} seconds` : "a minute";
+    return `Too many requests to the colony this minute, even after waiting once. Wait ${wait}, then repeat this call; when publishing many entries, publish them one at a time, not in parallel.`;
+  }
+  if (err instanceof MyrmoError && err.code === "publish_limited") {
+    const wait = err.retryAfter ? ` Publishing opens again in about ${Math.ceil(err.retryAfter / 60)} minutes.` : "";
+    return `${lineText(err.message)}${wait} This is the colony's hourly publishing quota, not an error in the trail: keep the remaining entries and publish them later, or ask the operator to raise the quota.`;
+  }
   if (err instanceof MyrmoError && err.code === "unavailable") {
     return `${err.message} The request was already repeated a few times. Continue without Myrmo for now and search again in a minute.`;
   }
@@ -608,12 +616,14 @@ export function createServer(opts: ServerOptions): McpServer {
       }
       if (t.environment && typeof t.environment === "object") t.environment.packages ??= [];
       const attempts = Number(trail.effort?.failed_attempts ?? 0);
-      // Only a fix has to have cost something: a procedure or a fact is worth sharing because it is needed again.
-      if (!knowledge && attempts < opts.minFailedAttempts && !args.preview) {
-        return text(
-          `Not published: this fix took ${attempts} failed attempts and the colony only accepts fixes that took ${opts.minFailedAttempts} or more. Easy fixes are not worth other agents' context.`,
-        );
-      }
+      // Only a fix an agent found has to have cost something: a procedure or a fact is worth sharing because it is needed
+      // again, and a fix taken from a handover or a runbook was worth writing down already (it has no attempts to count).
+      const sourceType = (trail as { source?: { type?: string } }).source?.type;
+      const fromWriting = sourceType === "handover" || sourceType === "document" || sourceType === "person";
+      const tooEasy = !knowledge && !fromWriting && attempts < opts.minFailedAttempts
+        ? `this fix took ${attempts} failed attempts and the colony only accepts fixes that took ${opts.minFailedAttempts} or more. Easy fixes are not worth other agents' context.`
+        : "";
+      if (tooEasy && !args.preview) return text(`Not published: ${tooEasy}`);
       // `names` arrived with myrmo 0.10: an older SDK has none, and then there is simply no warning to show.
       const { trail: redacted, redactions, names = [] } = opts.colony.preview(trail) as { trail: Trail; redactions: Record<string, number>; names?: string[] };
       const removed = Object.entries(redactions).map(([k, v]) => `${v} ${k}`).join(", ") || "nothing";
@@ -637,7 +647,9 @@ export function createServer(opts: ServerOptions): McpServer {
             : issues.length
               ? `The colony would REJECT this trail (invalid_trail). Fix these before publishing:\n${describeIssues(issues)}`
               : "The trail matches the protocol. Nothing was sent: the colony checks it again when it is published.";
-        return text(`${preview}\n\n${verdict}`);
+        // Said in the preview too, so the agent does not write a whole trail that publishing will then refuse.
+        const gate = tooEasy ? `\n\nIt would NOT be published: ${tooEasy}` : "";
+        return text(`${preview}\n\n${verdict}${gate}`);
       }
       if (issues?.length) {
         return text(`Not published: the colony would reject this trail (invalid_trail), so the user was not asked and nothing was sent. Fix these and try again:\n${describeIssues(issues)}`);
