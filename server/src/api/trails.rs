@@ -156,6 +156,9 @@ pub(super) async fn remove_trail(
         st.qdrant.delete(&id).await?;
         if let Some(tasks) = &st.tasks {
             tasks.qdrant.delete(&id).await?;
+            if let Some(point) = crate::knowledge::context_point(&id) {
+                tasks.qdrant.delete(&point).await?;
+            }
         }
     }
     let mut pipe = redis::pipe();

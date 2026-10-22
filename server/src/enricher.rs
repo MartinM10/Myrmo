@@ -842,11 +842,28 @@ pub async fn index_task(st: &AppState, id: &str, trail: &Value) -> Result<()> {
         .embed(&knowledge::task_text(trail))
         .await
         .context("task embedding")?;
+    let kind = Kind::of(trail).as_str();
     tasks
         .qdrant
-        .upsert(id, vector, json!({ "kind": Kind::of(trail).as_str() }))
+        .upsert(id, vector, json!({ "kind": kind }))
         .await
-        .context("task indexing")
+        .context("task indexing")?;
+    // When it applies, on its own: a request phrased like it finds it even when the summary and steps say otherwise.
+    if let (Some(text), Some(point)) =
+        (knowledge::context_text(trail), knowledge::context_point(id))
+    {
+        let vector = tasks
+            .embedder
+            .embed(&text)
+            .await
+            .context("task context embedding")?;
+        tasks
+            .qdrant
+            .upsert(&point, vector, json!({ "kind": kind, "context_of": id }))
+            .await
+            .context("task context indexing")?;
+    }
+    Ok(())
 }
 
 /// Every 2 seconds, fold outcome counters of recently reported trails into Qdrant.

@@ -334,15 +334,22 @@ async fn search_task(
             "This colony has no task index (MYRMO_TASK_EMBED_URL is not set): search by error line instead.",
         ));
     };
+    // Up to two points per trail (its task text and its task context, `knowledge::context_point`): a trail scores the
+    // better of the two.
     let hits = tasks
         .qdrant
-        .search(&tasks.embedder.embed(query).await?, 20)
+        .search(&tasks.embedder.embed(query).await?, 40)
         .await?;
-    let scores: HashMap<String, f64> = hits
+    let mut scores: HashMap<String, f64> = HashMap::new();
+    for hit in hits
         .iter()
         .filter(|h| h.score >= st.cfg.task_min_similarity)
-        .map(|h| (h.id.clone(), h.score))
-        .collect();
+    {
+        let best = scores
+            .entry(crate::knowledge::trail_of_point(&hit.id))
+            .or_insert(0.0);
+        *best = best.max(hit.score);
+    }
     let ids: Vec<String> = scores.keys().cloned().collect();
     let now = keys::now();
     let candidates = load(st, &ids).await?;
