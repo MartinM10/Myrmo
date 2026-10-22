@@ -90,6 +90,43 @@ pub fn task_text(trail: &Value) -> String {
     text.chars().take(2000).collect()
 }
 
+/// The second text of the task index: when the trail applies (`task_context`) and nothing else, or `None` when it has
+/// none. A request is phrased like a task context, and the summary and steps around it in [`task_text`] pull the
+/// vector away from it, most of all when they are written in another language: measured on a private colony of 370
+/// trails, a request that is literally a trail's task context scored 0.65 against this text and 0.44 against the
+/// whole task text, under the 0.55 threshold. The task index keeps both vectors and a trail scores the better one.
+pub fn context_text(trail: &Value) -> Option<String> {
+    let context = s(trail, "/problem/task_context").trim();
+    if context.is_empty() {
+        return None;
+    }
+    let kind = Kind::of(trail);
+    let prefix = if kind.is_knowledge() {
+        format!("{}: ", kind.as_str())
+    } else {
+        String::new()
+    };
+    Some(format!("{prefix}{context}").chars().take(2000).collect())
+}
+
+/// The id of a trail's context point in the task index: the trail's own id with UUID version 8 instead of 4, so it is
+/// derived without storing anything and cannot be another trail's id (trail ids are version 4). `None` for an id that
+/// is not a version-4 UUID.
+pub fn context_point(id: &str) -> Option<String> {
+    let bytes = id.as_bytes();
+    (id.len() == 36 && bytes[14] == b'4').then(|| format!("{}8{}", &id[..14], &id[15..]))
+}
+
+/// The trail a task-index point belongs to: itself, or the trail of a context point ([`context_point`]).
+pub fn trail_of_point(point: &str) -> String {
+    let bytes = point.as_bytes();
+    if point.len() == 36 && bytes[14] == b'8' {
+        format!("{}4{}", &point[..14], &point[15..])
+    } else {
+        point.to_string()
+    }
+}
+
 /// A deterministic quality score for a procedure or a fact, 0 to 1, in the spirit of `decision::heuristic_quality`:
 /// what makes it usable by another agent is a clear subject, when it applies, enough steps and where it came from.
 pub fn heuristic_quality(trail: &Value) -> f64 {
@@ -159,6 +196,24 @@ mod tests {
             text.contains("ops-01 machine") && text.contains("Tags: lldap, ops-01"),
             "{text}"
         );
+    }
+
+    #[test]
+    fn context_points_map_back_to_their_trail() {
+        let id = "73fb80f1-b4a4-4cb0-bbfd-b9a591dbd4b1";
+        let point = context_point(id).unwrap();
+        assert_eq!(point, "73fb80f1-b4a4-8cb0-bbfd-b9a591dbd4b1");
+        assert_eq!(trail_of_point(&point), id);
+        assert_eq!(trail_of_point(id), id);
+        assert_eq!(context_point("not-a-uuid"), None);
+        assert_eq!(
+            context_text(&fact()).unwrap(),
+            format!(
+                "fact: {}",
+                fact()["problem"]["task_context"].as_str().unwrap()
+            )
+        );
+        assert_eq!(context_text(&json!({"problem": {"summary": "x"}})), None);
     }
 
     #[test]

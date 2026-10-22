@@ -124,20 +124,38 @@ pub async fn backfill_tasks(st: AppState) -> Result<usize> {
     let ids: Vec<String> = con.zrange(keys::FEED, 0, -1).await?;
     let mut filed = 0;
     for chunk in ids.chunks(BATCH) {
+        // A trail is filed when its task point is there, and its context point too (filed since 0.21: trails
+        // indexed before have only the first, and get the second here).
+        let mut wanted: Vec<String> = chunk.to_vec();
+        wanted.extend(
+            chunk
+                .iter()
+                .filter_map(|id| crate::knowledge::context_point(id)),
+        );
         let present: std::collections::HashSet<String> = tasks
             .qdrant
-            .get(chunk)
+            .get(&wanted)
             .await?
             .into_iter()
             .map(|(id, _)| id)
             .collect();
-        let missing: Vec<String> = chunk
+        let candidates: Vec<String> = chunk
             .iter()
-            .filter(|id| !present.contains(*id))
+            .filter(|id| {
+                !present.contains(*id)
+                    || crate::knowledge::context_point(id).is_some_and(|p| !present.contains(&p))
+            })
             .cloned()
             .collect();
-        for (id, payload) in st.qdrant.get(&missing).await? {
-            crate::enricher::index_task(&st, &id, &payload["trail"]).await?;
+        for (id, payload) in st.qdrant.get(&candidates).await? {
+            let trail = &payload["trail"];
+            let has_context = crate::knowledge::context_text(trail).is_some();
+            let context_there =
+                crate::knowledge::context_point(&id).is_some_and(|p| present.contains(&p));
+            if present.contains(&id) && (!has_context || context_there) {
+                continue;
+            }
+            crate::enricher::index_task(&st, &id, trail).await?;
             filed += 1;
         }
     }
