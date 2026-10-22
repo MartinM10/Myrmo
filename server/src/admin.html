@@ -706,6 +706,38 @@
   .map-tooltip .tt-title { font-weight: 600; font-family: var(--f-display); margin-bottom: 5px; overflow-wrap: anywhere; line-height: 1.35; }
   .map-tooltip .tt-meta { display: flex; gap: 8px; color: var(--dust); font-size: .74rem; font-family: var(--f-display); align-items: center; }
 
+
+  /* Audit timeline */
+  .audit-list { display: flex; flex-direction: column; }
+  .audit-day { font: 700 .7rem var(--f-display); letter-spacing: .08em; text-transform: uppercase; color: var(--dust); padding: 14px 0 6px; border-bottom: 1px solid var(--wall); }
+  .audit-row { display: grid; grid-template-columns: 54px 28px minmax(0, 1fr); gap: 10px; align-items: start; padding: 10px 0; border-bottom: 1px solid color-mix(in srgb, var(--wall) 55%, transparent); }
+  .audit-time { color: var(--dust); font-size: .78rem; padding-top: 4px; white-space: nowrap; }
+  .audit-icon { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-size: .8rem; background: var(--card); border: 1px solid var(--wall); color: var(--dust); }
+  .audit-icon.ok { color: var(--moss); border-color: color-mix(in srgb, var(--moss) 45%, transparent); }
+  .audit-icon.bad { color: var(--ember); border-color: color-mix(in srgb, var(--ember) 45%, transparent); }
+  .audit-icon.setting { color: var(--amber-ink); border-color: color-mix(in srgb, var(--amber) 40%, transparent); }
+  .audit-icon.trail { color: var(--sapphire); border-color: color-mix(in srgb, var(--sapphire) 40%, transparent); }
+  .audit-line { font-size: .88rem; overflow-wrap: anywhere; padding-top: 3px; }
+  .audit-raw { margin-top: 6px; font-size: .76rem; color: var(--dust); }
+  .audit-raw summary { cursor: pointer; }
+  .audit-raw code { display: block; margin-top: 6px; padding: 8px 10px; background: var(--card); border: 1px solid var(--wall); border-radius: var(--radius-sm); white-space: pre-wrap; overflow-wrap: anywhere; max-height: 220px; overflow: auto; }
+
+  /* Proportions with a legend (sources, records) */
+  .segmented-bar.tall { height: 12px; border-radius: 999px; }
+  .source-legend { display: flex; flex-wrap: wrap; gap: 8px 22px; margin-top: 12px; font-size: .84rem; }
+  .source-legend > div { display: inline-flex; align-items: center; gap: 8px; }
+  .source-legend i { width: 10px; height: 10px; border-radius: 3px; }
+  .source-legend span { color: var(--dust); font-size: .78rem; }
+  .health-clear { display: flex; gap: 14px; align-items: center; }
+  .health-ok { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; color: var(--moss); background: color-mix(in srgb, var(--moss) 12%, transparent); border: 1px solid color-mix(in srgb, var(--moss) 40%, transparent); flex-shrink: 0; }
+
+  /* Records per day */
+  .records-chart { display: grid; grid-template-columns: 34px minmax(0, 1fr); grid-template-rows: 120px auto; gap: 4px 8px; }
+  .rc-scale { display: flex; flex-direction: column; justify-content: space-between; align-items: flex-end; font-size: .7rem; color: var(--dust); }
+  .rc-plot { display: flex; align-items: flex-end; gap: 3px; border-bottom: 1px solid var(--wall); background: repeating-linear-gradient(to top, transparent 0 29px, color-mix(in srgb, var(--wall) 45%, transparent) 29px 30px); }
+  .rc-day { flex: 1; height: 100%; display: flex; flex-direction: column-reverse; border-radius: 3px 3px 0 0; overflow: hidden; }
+  .rc-day:hover { background: color-mix(in srgb, var(--chalk) 6%, transparent); }
+  .rc-axis { grid-column: 2; display: flex; justify-content: space-between; font-size: .7rem; color: var(--dust); }
   /* Knowledge Page Upgrades */
   .knowledge-hero {
     display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -2015,10 +2047,19 @@ async function knowledge(view) {
         el("div", { className: "lbl" }, "Contested Entries"),
         el("div", { className: "sub" }, "fail more than they succeed"))),
 
-    el("div", { className: "stat-card", style: "margin-bottom:16px" },
-      el("h2", { style: "margin:0 0 10px;font:600 1.05rem var(--f-display)" }, "Where Knowledge Came From"),
-      table(["Source Provider", "Entries Count"], Object.entries(k.sources || {}).map(([src, n]) => [src, num(n)]), [1]),
-      el("p", { className: "hint", style: "margin:8px 0 0" }, "agent: written autonomously by AI agents after completing tasks. handover, document, person: imported via skills.")),
+    (() => {
+      const SRC = { agent: "var(--amber)", document: "var(--sapphire)", handover: "var(--moss)", person: "#c38bff" };
+      const entries = Object.entries(k.sources || {}).sort((x, y) => y[1] - x[1]);
+      const all = entries.reduce((t, [, n]) => t + n, 0) || 1;
+      return el("div", { className: "stat-card", style: "margin-bottom:16px" },
+        el("h2", { style: "margin:0 0 12px;font:600 1.05rem var(--f-display)" }, "Where Knowledge Came From"),
+        el("div", { className: "segmented-bar tall" }, entries.map(([src, n]) =>
+          el("span", { title: `${src}: ${n}`, style: `width:${(n / all) * 100}%;background:${SRC[src] || "var(--dust)"}` }))),
+        el("div", { className: "source-legend" }, entries.map(([src, n]) => el("div", {},
+          el("i", { style: `background:${SRC[src] || "var(--dust)"}` }),
+          el("b", {}, src), el("span", { className: "mono" }, `${num(n)} · ${Math.round((n / all) * 100)}%`)))),
+        el("p", { className: "hint", style: "margin:10px 0 0" }, "agent: written by AI agents after completing tasks. handover, document, person: imported via skills."));
+    })(),
 
     el("div", { className: "stat-card", style: "margin-bottom:16px" },
       el("div", { style: "display:flex;justify-content:space-between;align-items:center;margin-bottom:8px" },
@@ -2034,9 +2075,24 @@ async function knowledge(view) {
         el("span", { style: "font-family:var(--f-display);font-size:.84rem" }, g.text)
       ])) : el("p", { className: "hint" }, "No unanswered gaps logged.")),
 
-    blockCard("Contested Entries", k.contested || {}, "Entries with more failures than successes. Likely outdated or misleading: check them, then confirm, correct or remove.", "contested", true),
-    blockCard("Stale Entries", k.stale || {}, "No success for a half-life, so their strength has halved: 90 days for a fix, a year for a procedure or a fact. If one still holds, say so.", "stale", true),
-    blockCard("Unconfirmed Entries", k.unconfirmed || {}, "Nobody reported on them after two weeks (imported handovers start here). If one is right, say so.", "unconfirmed", true),
+    // Health checks: the ones with entries get their card, the clear ones share one line.
+    (() => {
+      const checks = [
+        ["Contested Entries", k.contested || {}, "Entries with more failures than successes. Likely outdated or misleading: check them, then confirm, correct or remove.", "contested"],
+        ["Stale Entries", k.stale || {}, "No success for a half-life, so their strength has halved: 90 days for a fix, a year for a procedure or a fact. If one still holds, say so.", "stale"],
+        ["Unconfirmed Entries", k.unconfirmed || {}, "Nobody reported on them after two weeks (imported handovers start here). If one is right, say so.", "unconfirmed"],
+      ];
+      const clear = checks.filter(([, b]) => !b.count);
+      return [
+        clear.length ? el("div", { className: "stat-card health-clear", style: "margin-bottom:16px" },
+          el("span", { className: "health-ok" }, "✓"),
+          el("div", {},
+            el("div", { style: "font:600 .95rem var(--f-display)" }, clear.length === checks.length ? "Knowledge health: all clear" : "Also clear"),
+            el("div", { className: "chips-cloud", style: "margin-top:6px" }, clear.map(([title, , help]) =>
+              el("span", { className: "pill ok", title: help }, `${title.replace(" Entries", "").toLowerCase()} · 0`))))) : null,
+        ...checks.filter(([, b]) => b.count).map(([title, b, help, focus]) => blockCard(title, b, help, focus, true)),
+      ];
+    })(),
     blockCard("Most Used Entries", k.most_used || {}, "Top high-impact knowledge saving developer hours across the team.", "used")));
 }
 
@@ -2066,12 +2122,21 @@ async function value(view) {
       e.aided_without_baseline ? el("p", { className: "hint", style: "margin:10px 0 0" }, `${num(e.aided_without_baseline)} problem(s) solved with help are left out: nobody was measured solving those errors without it.`) : null,
     ] : el("p", { className: "hint", style: "margin:0" }, "Not enough records yet: this needs at least one error measured both without and with the colony's help."));
 
-  const maxDay = Math.max(1, ...(v.days || []).map((d) => d.aided + d.unaided + d.holdout));
-  const bars = el("div", { style: "display:flex;align-items:flex-end;gap:3px;height:70px;margin-top:8px" },
-    (v.days || []).map((d) => el("div", { title: `${d.date}: ${d.aided} with help, ${d.unaided} without, ${d.holdout} held out`, style: "flex:1;display:flex;flex-direction:column-reverse;height:100%" },
-      el("i", { style: `height:${(d.unaided / maxDay) * 100}%;background:var(--wall)` }),
-      el("i", { style: `height:${(d.holdout / maxDay) * 100}%;background:var(--amber)` }),
-      el("i", { style: `height:${(d.aided / maxDay) * 100}%;background:var(--moss)` }))));
+  const days = v.days || [];
+  const maxDay = Math.max(1, ...days.map((d) => d.aided + d.unaided + d.holdout));
+  const total = (key) => days.reduce((t, d) => t + (d[key] || 0), 0);
+  const shortDay = (iso) => new Date(iso + "T00:00:00").toLocaleDateString(undefined, { day: "numeric", month: "short" });
+  const bars = el("div", { className: "records-chart" },
+    el("div", { className: "rc-scale mono" }, el("span", {}, num(maxDay)), el("span", {}, "0")),
+    el("div", { className: "rc-plot" },
+      days.map((d) => el("div", { className: "rc-day", title: `${d.date}: ${d.aided} with help, ${d.unaided} without, ${d.holdout} held out` },
+        el("i", { style: `height:${(d.unaided / maxDay) * 100}%;background:var(--wall-light, var(--wall))` }),
+        el("i", { style: `height:${(d.holdout / maxDay) * 100}%;background:var(--amber)` }),
+        el("i", { style: `height:${(d.aided / maxDay) * 100}%;background:var(--moss)` })))),
+    el("div", { className: "rc-axis mono" }, days.length ? [shortDay(days[0].date), shortDay(days[Math.floor(days.length / 2)].date), shortDay(days[days.length - 1].date)].map((t) => el("span", {}, t)) : null));
+  const recordsLegend = el("div", { className: "source-legend", style: "margin:0 0 12px" },
+    [["var(--moss)", "with help", total("aided")], ["var(--amber)", "held out", total("holdout")], ["var(--wall-light, var(--wall))", "without help", total("unaided")]].map(([c, name, n]) =>
+      el("div", {}, el("i", { style: `background:${c}` }), el("b", {}, name), el("span", { className: "mono" }, num(n)))));
 
   setChildren(view, el("div", { className: "view-container" },
     el("div", { className: "page-header" },
@@ -2128,7 +2193,8 @@ async function value(view) {
         : el("p", { className: "hint" }, "No records yet.")),
     el("div", { className: "stat-card", style: "margin-bottom:20px" },
       el("h2", { style: "margin:0 0 4px;font:600 1.05rem var(--f-display)" }, "Records, last 30 days"),
-      el("p", { className: "hint", style: "margin:0" }, "Green: solved with help. Amber: held out. Grey: solved without help."),
+      el("p", { className: "hint", style: "margin:0 0 10px" }, "Problems solved each day, as measured by the agents' clients."),
+      recordsLegend,
       bars),
     el("div", { className: "stat-card" },
       el("h2", { style: "margin:0 0 6px;font:600 1.05rem var(--f-display)" }, "How it is worked out"),
@@ -2481,17 +2547,78 @@ async function settings(view) {
 
 async function activity(view) {
   const [a, r] = await Promise.all([api("/v1/admin/audit"), api("/v1/admin/refused")]);
+
+  // What an audit line says, read back: its kind, a one-line summary and, for a setting, what changed.
+  const parse = (what) => {
+    let m = /^setting ([a-z_]+): (.*) -> (.*)$/s.exec(what);
+    if (m) {
+      const [, name, was, now] = m;
+      const label = name.replaceAll("_", " ");
+      const list = (v) => v.split(",").map((x) => x.trim()).filter(Boolean);
+      let detail = null, line = `${label}: ${cut(was, 40) || "unset"} → ${cut(now, 40)}`;
+      try {
+        const A = JSON.parse(was || "{}"), B = JSON.parse(now || "{}");
+        if (A && B && typeof A === "object" && typeof B === "object") {
+          const keys = [...new Set([...Object.keys(A), ...Object.keys(B)])];
+          const added = keys.filter((k) => !(k in A)), removed = keys.filter((k) => !(k in B));
+          const changed = keys.filter((k) => k in A && k in B && JSON.stringify(A[k]) !== JSON.stringify(B[k]));
+          line = `${label}: ` + [added.length && `${added.length} added`, changed.length && `${changed.length} changed`, removed.length && `${removed.length} removed`].filter(Boolean).join(", ");
+          detail = [...added.map((k) => ["+", k]), ...changed.map((k) => ["~", k]), ...removed.map((k) => ["−", k])];
+        }
+      } catch {
+        if (was.includes(",") || now.includes(",")) {
+          const A = new Set(list(was)), B = new Set(list(now));
+          const added = [...B].filter((x) => !A.has(x)), removed = [...A].filter((x) => !B.has(x));
+          line = `${label}: ` + ([added.length && `+${added.join(", +")}`, removed.length && `−${removed.join(", −")}`].filter(Boolean).join("  ") || "no change");
+        }
+      }
+      return { kind: "setting", icon: "⚙", line, detail, raw: what };
+    }
+    if ((m = /^setting ([a-z_]+): back to the environment's value$/.exec(what))) return { kind: "setting", icon: "⚙", line: `${m[1].replaceAll("_", " ")}: back to the environment's value`, raw: what };
+    if ((m = /^key (created|revoked) for (.+)$/.exec(what))) return { kind: "key", icon: m[1] === "created" ? "＋" : "✕", line: `Key ${m[1]} for ${m[2]}`, tone: m[1] === "revoked" ? "bad" : "ok", raw: what };
+    if (/^data of a person erased/.test(what)) return { kind: "key", icon: "⌫", line: what.replace(/^data/, "Data"), tone: "bad", raw: what };
+    if ((m = /^trail ([0-9a-f-]{8})[0-9a-f-]* (.*)$/s.exec(what))) return { kind: "trail", icon: "◆", line: `Entry ${m[1]} ${m[2]}`, raw: what };
+    return { kind: "other", icon: "•", line: what, raw: what };
+  };
+  const events = (a.items || []).map((i) => ({ ts: i.ts, ...parse(i.what) }));
+  const day = (ts) => new Date(ts * 1000).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+  const time = (ts) => new Date(ts * 1000).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+
+  let filter = "all";
+  const list = el("div", { className: "audit-list" });
+  const chips = el("div", { className: "presets-row", style: "margin-bottom:12px" });
+  const KINDS = [["all", "All"], ["setting", "Settings"], ["key", "Keys and people"], ["trail", "Entries"]];
+  function render() {
+    setChildren(chips, ...KINDS.map(([k, name]) => {
+      const n = k === "all" ? events.length : events.filter((e) => e.kind === k).length;
+      return n || k === "all" ? el("div", { className: "preset-chip" + (filter === k ? " active" : ""), onclick: () => { filter = k; render(); } }, `${name} (${n})`) : null;
+    }));
+    const shown = events.filter((e) => filter === "all" || e.kind === filter);
+    let lastDay = "";
+    setChildren(list, ...(shown.length ? shown.flatMap((e) => {
+      const d = day(e.ts), out = [];
+      if (d !== lastDay) { out.push(el("div", { className: "audit-day" }, d)); lastDay = d; }
+      out.push(el("div", { className: "audit-row" },
+        el("span", { className: "audit-time mono" }, time(e.ts)),
+        el("span", { className: "audit-icon " + (e.tone || e.kind) }, e.icon),
+        el("div", { className: "audit-body" },
+          el("div", { className: "audit-line" }, e.line),
+          e.detail?.length ? el("div", { className: "chips-cloud", style: "margin-top:6px" },
+            e.detail.slice(0, 24).map(([sign, k]) => el("span", { className: "pill " + (sign === "+" ? "ok" : sign === "−" ? "bad" : "") }, `${sign} ${k}`))) : null,
+          e.raw.length > 120 ? el("details", { className: "audit-raw" }, el("summary", {}, "Exact record"), el("code", {}, e.raw)) : null)));
+      return out;
+    }) : [el("p", { className: "hint" }, "No operator activity recorded yet.")]));
+  }
+  render();
+
   setChildren(view, el("div", { className: "view-container" },
     el("div", { className: "page-header" },
       el("div", { className: "page-title" },
         el("h1", {}, "Audit Trail & Activity Log"),
         el("p", {}, "Tamper-evident log of administrative actions, key lifecycle events, and network connection rejections."))),
     el("div", { className: "stat-card", style: "margin-bottom:20px" },
-      el("h2", { style: "margin:0 0 12px;font:600 1.05rem var(--f-display)" }, "Operator Audit Events (Last 200)"),
-      a.items.length ? table(["Timestamp", "Action Executed"], a.items.map((i) => [
-        when(i.ts),
-        el("code", { style: "font-size:.82rem" }, i.what)
-      ])) : el("p", { className: "hint" }, "No operator activity recorded yet.")),
+      el("h2", { style: "margin:0 0 12px;font:600 1.05rem var(--f-display)" }, `Operator Audit Events (last ${num(events.length)})`),
+      chips, list),
     el("div", { className: "stat-card" },
       el("h2", { style: "margin:0 0 12px;font:600 1.05rem var(--f-display)" }, "Subnet Refusal History (30 Days)"),
       (r.items || []).length ? table(["IP Address", "Attempts", "Most Recent"], r.items.map((i) => [
