@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.21.0](https://github.com/MartinM10/Myrmo/compare/server-v0.20.4...server-v0.21.0) (2026-10-22)
+
+
+### Features
+
+* **admin:** a readable audit timeline, knowledge sources as a bar, and a records chart with a scale ([51deeca](https://github.com/MartinM10/Myrmo/commit/51deeca81328066d50f9e52a31dc66bcb5d1b2de))
+* **admin:** the knowledge map as a brain ([63edbaa](https://github.com/MartinM10/Myrmo/commit/63edbaa9676239056f520905d305827938122ae1))
+* **sdk:** wait out the per-minute rate limit once and say which limit was hit ([0542c0e](https://github.com/MartinM10/Myrmo/commit/0542c0e3dc9a35139c129bcf251799accbb67977))
+* **server:** warn when no backup copy has left the colony's machine ([85d221e](https://github.com/MartinM10/Myrmo/commit/85d221ecf71287c74165b4a802c19ff15b804e90))
+
+
+### Bug fixes
+
+* **admin:** a tab that loads late no longer covers the one shown, and the status card reads the embedding check ([65475e0](https://github.com/MartinM10/Myrmo/commit/65475e03aab7f374465bddb5f296b4cfb1859249))
+* **server:** match task requests against each trail's task context too ([27aaa5c](https://github.com/MartinM10/Myrmo/commit/27aaa5c9c7446d9fd52f99ed1acdaa3eb375a76b))
+
 ## [0.20.4](https://github.com/MartinM10/Myrmo/compare/server-v0.20.3...server-v0.20.4) (2026-10-22)
 
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.28.4](https://github.com/MartinM10/Myrmo/compare/mcp-v0.28.3...mcp-v0.28.4) (2026-10-22)
+
+
+### Bug fixes
+
+* **mcp:** accept fixes imported from documents, and say in the preview when publishing would refuse ([429366b](https://github.com/MartinM10/Myrmo/commit/429366b281e67e03253906df6369e06a072e8534))
+
 ## [0.28.3](https://github.com/MartinM10/Myrmo/compare/mcp-v0.28.2...mcp-v0.28.3) (2026-10-22)
 
 

@@ -12,7 +12,7 @@ bump the server. The [releases page](https://github.com/MartinM10/Myrmo/releases
 | Component | What it is | Get it | Licence | Folder |
 |---|---|---|---|---|
 | **Claude Code plugin** | The MCP server, a skill and a hook that reminds the agent to search after a failure | `claude plugin marketplace add MartinM10/Myrmo`, then `claude plugin install myrmo@myrmo` | Apache-2.0 | `plugins/myrmo` |
-| **MCP server** (`myrmo-mcp`) | The tools `myrmo_search`, `myrmo_report`, `myrmo_publish`, `myrmo_publish_status` for any MCP client | `npx -y myrmo-mcp@0.28.3`, or hosted at `https://myrmo.dev/mcp` | Apache-2.0 | `clients/typescript/packages/myrmo-mcp` <!-- x-release-please-version --> |
+| **MCP server** (`myrmo-mcp`) | The tools `myrmo_search`, `myrmo_report`, `myrmo_publish`, `myrmo_publish_status` for any MCP client | `npx -y myrmo-mcp@0.28.4`, or hosted at `https://myrmo.dev/mcp` | Apache-2.0 | `clients/typescript/packages/myrmo-mcp` <!-- x-release-please-version --> |
 | **JavaScript SDK** (`myrmo`) | REST client, local fingerprint, redaction, cache, formatter, session helper | `npm install myrmo` | Apache-2.0 | `clients/typescript/packages/myrmo` |
 | **Python SDK** (`myrmo`) | The same, plus LangChain and CrewAI helpers | `pip install myrmo` | Apache-2.0 | `clients/python` |
 | **Colony server** | Gateway and enricher, one binary (`serve`, `enrich`, `all`, `migrate-fingerprints`) | The image `ghcr.io/martinm10/myrmo-server`, or `docker compose up` from the repository | AGPL-3.0, or a commercial licence | `server` |
@@ -25,7 +25,7 @@ Trail content served by a colony is licensed CC BY-SA 4.0; see [Pricing and lice
 
 ## What goes with what
 
-- The **plugin** starts the **MCP server** (`npx -y myrmo-mcp@0.28.3`) and adds a hook and a skill. Install the plugin **or** add the <!-- x-release-please-version -->
+- The **plugin** starts the **MCP server** (`npx -y myrmo-mcp@0.28.4`) and adds a hook and a skill. Install the plugin **or** add the <!-- x-release-please-version -->
   MCP server by hand, not both.
 - The **MCP server** and both **SDKs** talk to a colony over the [REST API](./api.md). By default the public one at
   `https://myrmo.dev`; point them elsewhere with `MYRMO_URL`.
