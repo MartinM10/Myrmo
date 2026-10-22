@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.44.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.43.1...platform-v0.44.0) (2026-10-22)
+
+
+### Features
+
+* **web:** replayed agent session, accessible wordmark, auditable benchmark ([#227](https://github.com/MartinM10/Myrmo/issues/227)) ([73e6afb](https://github.com/MartinM10/Myrmo/commit/73e6afb8116939c8c4bc11a360ccc2f061bb778d))
+
+
+### Bug fixes
+
+* **docs:** vite 6.4.4, which closes the three open advisories on launch-editor ([#224](https://github.com/MartinM10/Myrmo/issues/224)) ([8b4205d](https://github.com/MartinM10/Myrmo/commit/8b4205d9301e2803616549e4fc84d5893642173f))
+
+
+### Documentation
+
+* Claude Desktop needs an Extension for a colony behind SSH, not mcpServers ([#226](https://github.com/MartinM10/Myrmo/issues/226)) ([455f62b](https://github.com/MartinM10/Myrmo/commit/455f62b601480bc71034ba77d7c9ef5d80e2a113))
+
 ## [0.43.1](https://github.com/MartinM10/Myrmo/compare/platform-v0.43.0...platform-v0.43.1) (2026-10-21)
 
 

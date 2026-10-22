@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.20.4](https://github.com/MartinM10/Myrmo/compare/server-v0.20.3...server-v0.20.4) (2026-10-22)
+
+
+### Documentation
+
+* Claude Desktop needs an Extension for a colony behind SSH, not mcpServers ([#226](https://github.com/MartinM10/Myrmo/issues/226)) ([455f62b](https://github.com/MartinM10/Myrmo/commit/455f62b601480bc71034ba77d7c9ef5d80e2a113))
+
 ## [0.20.3](https://github.com/MartinM10/Myrmo/compare/server-v0.20.2...server-v0.20.3) (2026-10-21)
 
 
