@@ -49,6 +49,8 @@ export interface ColonyOptions {
 
 /** What a colony that is restarting or overloaded answers with. */
 const UNAVAILABLE = new Set([502, 503, 504]);
+/** The longest Retry-After a request waits out by itself, in seconds: the per-minute window is at most 60. */
+const RATE_WAIT_MAX_S = 60;
 const DEFAULT_RETRY_DELAYS_MS = [500, 1500, 3000];
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -58,6 +60,8 @@ export class MyrmoError extends Error {
     readonly code: string,
     message: string,
     readonly details?: unknown,
+    /** Seconds the colony asked to wait (the Retry-After header), when it said. */
+    readonly retryAfter?: number,
   ) {
     super(message);
     this.name = "MyrmoError";
@@ -184,6 +188,7 @@ export class Colony {
     Object.assign(headers, extra);
     const attempts = idempotent ? this.retries + 1 : 1;
     const pause = (attempt: number) => sleep(this.retryDelaysMs[Math.min(attempt, this.retryDelaysMs.length - 1)] * (1 + Math.random() * 0.25));
+    let limited = false;
     for (let attempt = 0; ; attempt++) {
       const last = attempt + 1 >= attempts;
       let res: Response;
@@ -209,12 +214,21 @@ export class Colony {
         continue;
       }
       const data = (await res.json().catch(() => null)) as T & { error?: { code: string; message: string; details?: unknown } };
+      // Over the per-minute limit, the colony refused the request before doing anything, so it is safe to repeat
+      // (a publish too) once the window it names has passed. Waited once and only for a short window.
+      const wait = Number(res.headers.get("retry-after"));
+      if (res.status === 429 && data?.error?.code === "rate_limited" && this.retries > 0 && !limited && Number.isFinite(wait) && wait > 0 && wait <= RATE_WAIT_MAX_S) {
+        limited = true;
+        await sleep(wait * 1000 + Math.random() * 500);
+        continue;
+      }
       if (UNAVAILABLE.has(res.status)) {
         throw new MyrmoError(res.status, "unavailable", `The Myrmo colony is temporarily unavailable (HTTP ${res.status}). It is probably restarting: try again in a few seconds.`);
       }
       if (!res.ok && res.status !== 404) {
         const err = data?.error;
-        throw new MyrmoError(res.status, err?.code ?? "http_error", err?.message ?? `HTTP ${res.status}`, err?.details);
+        const retryAfter = Number(res.headers.get("retry-after"));
+        throw new MyrmoError(res.status, err?.code ?? "http_error", err?.message ?? `HTTP ${res.status}`, err?.details, Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : undefined);
       }
       return { status: res.status, data };
     }
