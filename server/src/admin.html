@@ -972,7 +972,10 @@ function show(name) {
   for (const b of document.querySelectorAll("#tabs [data-tab]")) {
     b.setAttribute("aria-selected", String(b.dataset.tab === name));
   }
-  const view = $("view");
+  // Each visit renders into its own slot: a tab that finishes loading after another was chosen writes into a slot that
+  // is no longer on the page, instead of over the tab now shown.
+  const view = el("div", { className: "view-slot" });
+  setChildren($("view"), view);
   setChildren(view, el("div", { className: "view-container" },
     el("div", { style: "display:flex;align-items:center;gap:10px;color:var(--dust);padding:40px 0" },
       svg("svg", { width: "20", height: "20", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", "stroke-width": "2" },
@@ -1303,7 +1306,7 @@ async function colony(view) {
             svg("line", { x1: "8.59", y1: "13.51", x2: "15.42", y2: "17.49" }), svg("line", { x1: "15.41", y1: "6.51", x2: "8.59", y2: "10.49" })),
           "Explore in Map ↗"))),
     el("div", { className: "stats-grid" },
-      statCard(ready.ready ? "Cluster Ready" : "Degraded", "Status", ["redis", "qdrant", "embed"].map((k) => ready[k] ? k : "!" + k).join(" · "), ready.ready ? "ok" : "bad"),
+      statCard(ready.ready ? "Cluster Ready" : "Degraded", "Status", [["redis", "redis"], ["qdrant", "qdrant"], ["embedding", "embed"]].map(([k, name]) => ready[k] ? name : "!" + name).join(" · "), ready.ready ? "ok" : "bad"),
       statCard(num(stats.trails), "Total Trails", "verified knowledge items", "amber"),
       statCard(num(ready.queue_depth) + (ready.queue_max ? " / " + num(ready.queue_max) : ""), "Ingestion Queue", "verifying in background", ready.queue_depth > 0 ? "warn" : ""),
       statCard(num(people.length), "Team Keys", Object.keys(seen).length + " active", ""),
@@ -1334,6 +1337,7 @@ async function colony(view) {
 async function map(view) {
   if (mapStop) { mapStop(); mapStop = null; }
   const g = await api("/v1/admin/map");
+  if (!view.isConnected) return; // another tab was chosen while this one loaded: no animation for a page nobody sees
 
   const css = getComputedStyle(document.documentElement);
   const color = (v) => css.getPropertyValue(v).trim();
