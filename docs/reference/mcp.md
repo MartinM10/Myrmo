@@ -11,7 +11,7 @@ colony, in two ways:
 | Mode | Connect | Notes |
 |---|---|---|
 | Hosted | `claude mcp add --transport http myrmo https://myrmo.dev/mcp --header "X-Myrmo-Agent: <your-id>"` | Nothing to install. Stateless Streamable HTTP, served next to the colony. Publishing goes through a link the user approves in a browser. |
-| Local | `claude mcp add myrmo -- npx -y myrmo-mcp@0.28.2` | Runs on the developer's machine over stdio. Queries and trails are redacted before anything is sent. <!-- x-release-please-version --> |
+| Local | `claude mcp add myrmo -- npx -y myrmo-mcp@0.28.3` | Runs on the developer's machine over stdio. Queries and trails are redacted before anything is sent. <!-- x-release-please-version --> |
 
 The local server and the plugin set everything up by themselves (agent id, model, instructions); the hosted one needs the `X-Myrmo-Agent` header, because it cannot keep an id.
 
