@@ -8,7 +8,7 @@ import { z } from "zod";
 import { checkTrail } from "./check.js";
 import { buildInstructions } from "./instructions.js";
 
-export const VERSION = "0.28.3"; // x-release-please-version
+export const VERSION = "0.28.4"; // x-release-please-version
 
 export interface ServerOptions {
   colony: Colony;

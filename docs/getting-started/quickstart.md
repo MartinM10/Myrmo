@@ -71,7 +71,7 @@ Or run the server locally, so queries are redacted on your machine before anythi
 
 <!-- x-release-please-start-version -->
 ```bash
-claude mcp add myrmo -- npx -y myrmo-mcp@0.28.3
+claude mcp add myrmo -- npx -y myrmo-mcp@0.28.4
 ```
 <!-- x-release-please-end -->
 
@@ -97,7 +97,7 @@ server, Cursor (`.cursor/mcp.json`), Windsurf (`mcp_config.json`), Claude Deskto
   "mcpServers": {
     "myrmo": {
       "command": "npx",
-      "args": ["-y", "myrmo-mcp@0.28.3"],
+      "args": ["-y", "myrmo-mcp@0.28.4"],
       "env": { "MYRMO_PUBLISH": "ask" }
     }
   }
@@ -110,11 +110,11 @@ Not every client writes a server the same way. These are the shapes `init` write
 | Client | File | What goes in it |
 |---|---|---|
 | Cursor, Windsurf, Claude Desktop, Gemini CLI | `.cursor/mcp.json`, `mcp_config.json`, `claude_desktop_config.json`, `settings.json` | The `mcpServers` block above |
-| VS Code (GitHub Copilot) | `mcp.json` in the user profile folder (command **MCP: Open User Configuration**), or `.vscode/mcp.json` in a project | `{ "servers": { "myrmo": { "type": "stdio", "command": "npx", "args": ["-y", "myrmo-mcp@0.28.3"] } } }` <!-- x-release-please-version --> |
-| OpenCode | `~/.config/opencode/opencode.json` | `{ "mcp": { "myrmo": { "type": "local", "command": ["npx", "-y", "myrmo-mcp@0.28.3"], "enabled": true } } }` <!-- x-release-please-version --> |
-| Codex | `~/.codex/config.toml` | `[mcp_servers.myrmo]` with `command = "npx"` and `args = ["-y", "myrmo-mcp@0.28.3"]` (or `codex mcp add myrmo -- npx -y myrmo-mcp@0.28.2`) <!-- x-release-please-version --> |
+| VS Code (GitHub Copilot) | `mcp.json` in the user profile folder (command **MCP: Open User Configuration**), or `.vscode/mcp.json` in a project | `{ "servers": { "myrmo": { "type": "stdio", "command": "npx", "args": ["-y", "myrmo-mcp@0.28.4"] } } }` <!-- x-release-please-version --> |
+| OpenCode | `~/.config/opencode/opencode.json` | `{ "mcp": { "myrmo": { "type": "local", "command": ["npx", "-y", "myrmo-mcp@0.28.4"], "enabled": true } } }` <!-- x-release-please-version --> |
+| Codex | `~/.codex/config.toml` | `[mcp_servers.myrmo]` with `command = "npx"` and `args = ["-y", "myrmo-mcp@0.28.4"]` (or `codex mcp add myrmo -- npx -y myrmo-mcp@0.28.2`) <!-- x-release-please-version --> |
 
-On Windows, clients start commands without a shell and `npx` is a `.cmd` file: use `"command": "cmd"` with `"args": ["/c", "npx", "-y", "myrmo-mcp@0.28.3"]` <!-- x-release-please-version -->
+On Windows, clients start commands without a shell and `npx` is a `.cmd` file: use `"command": "cmd"` with `"args": ["/c", "npx", "-y", "myrmo-mcp@0.28.4"]` <!-- x-release-please-version -->
 (`init` does it for you). A client that does not show the server's instructions to the model needs the rules in its
 instructions file: `npx myrmo-mcp init --agents-md AGENTS.md`.
 

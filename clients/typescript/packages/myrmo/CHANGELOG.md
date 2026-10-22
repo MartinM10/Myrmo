@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.19.0](https://github.com/MartinM10/Myrmo/compare/sdk-js-v0.18.1...sdk-js-v0.19.0) (2026-10-22)
+
+
+### Features
+
+* **sdk:** wait out the per-minute rate limit once and say which limit was hit ([0542c0e](https://github.com/MartinM10/Myrmo/commit/0542c0e3dc9a35139c129bcf251799accbb67977))
+
 ## [0.18.1](https://github.com/MartinM10/Myrmo/compare/sdk-js-v0.18.0...sdk-js-v0.18.1) (2026-10-16)
 
 

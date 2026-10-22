@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.45.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.44.0...platform-v0.45.0) (2026-10-22)
+
+
+### Features
+
+* **sdk:** wait out the per-minute rate limit once and say which limit was hit ([0542c0e](https://github.com/MartinM10/Myrmo/commit/0542c0e3dc9a35139c129bcf251799accbb67977))
+* **server:** warn when no backup copy has left the colony's machine ([85d221e](https://github.com/MartinM10/Myrmo/commit/85d221ecf71287c74165b4a802c19ff15b804e90))
+
+
+### Bug fixes
+
+* **mcp:** accept fixes imported from documents, and say in the preview when publishing would refuse ([429366b](https://github.com/MartinM10/Myrmo/commit/429366b281e67e03253906df6369e06a072e8534))
+* **plugin:** after a publish, the stop hook asks only for the reports still due ([03d2868](https://github.com/MartinM10/Myrmo/commit/03d28688b0f36c242d56e0021ed4979f8c692cd5))
+
 ## [0.44.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.43.1...platform-v0.44.0) (2026-10-22)
 
 
