@@ -4,6 +4,26 @@
 "use strict";
 
 
+/** Copy text with the async Clipboard API, falling back to a hidden textarea and execCommand (older iOS Safari, http, WebViews). */
+async function copyText(text, anchor) {
+  if (navigator.clipboard && window.isSecureContext) {
+    try { await navigator.clipboard.writeText(text); return true; } catch { /* fall through */ }
+  }
+  const area = document.createElement("textarea");
+  area.value = text;
+  area.setAttribute("readonly", "");
+  // Off-screen but focusable; font-size 16px stops iOS zooming into it.
+  area.style.cssText = "position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;font-size:16px";
+  (anchor?.parentElement ?? document.body).appendChild(area);
+  area.focus();
+  area.select();
+  area.setSelectionRange(0, text.length);
+  let ok = false;
+  try { ok = document.execCommand("copy"); } catch { ok = false; }
+  area.remove();
+  return ok;
+}
+
 /** Wire up every `.copy` button to copy the text of the sibling <pre>. */
 function initCopyButtons(root = document) {
   root.querySelectorAll(".code .copy").forEach((btn) => {
@@ -11,11 +31,10 @@ function initCopyButtons(root = document) {
       const pre = btn.parentElement.querySelector("pre");
       // Copy what to type, not the prompt: a leading "$ " would make the shell fail.
       const text = (pre.dataset.copy ?? pre.innerText).replace(/^\$ /gm, "");
-      try {
-        await navigator.clipboard.writeText(text);
+      if (await copyText(text, btn)) {
         btn.textContent = "Copied";
-      } catch {
-        // Clipboard can be unavailable (insecure context, sandbox). Select the text instead.
+      } else {
+        // Nothing worked: select the text so the person can copy it by hand.
         const range = document.createRange();
         range.selectNodeContents(pre);
         const sel = window.getSelection();

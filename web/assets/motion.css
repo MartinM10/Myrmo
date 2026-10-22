@@ -240,22 +240,6 @@
 .js .lifecycle li:not(.in)::after { color: var(--dust); }
 .lifecycle li.in::after { text-shadow: 0 0 14px rgba(var(--amber-glow), 0.7); }
 
-/* Terminal transcript and JSON response are typed out line by line */
-@keyframes line-in { from { opacity: 0; filter: blur(3px); } to { opacity: 1; filter: none; } }
-@keyframes caret { 50% { opacity: 0; } }
-.stream.armed .ln { opacity: 0; }
-.stream.play .ln { animation: line-in 0.4s ease-out both; animation-delay: calc(var(--d, 0) * 1ms); }
-.stream.play .ln.last::after {
-  content: "";
-  display: inline-block;
-  width: 0.55em; height: 1.05em;
-  margin-left: 4px;
-  vertical-align: text-bottom;
-  background: var(--amber);
-  animation: caret 1s steps(1) infinite;
-  animation-delay: calc(var(--d, 0) * 1ms + 0.4s);
-}
-
 /* Strength chart: a glowing head rides the line while it draws */
 #strength-chart .head { fill: var(--amber); opacity: 0; filter: drop-shadow(0 0 5px rgba(var(--amber-glow), 0.9)); }
 @keyframes ride { 0% { offset-distance: 0%; opacity: 1; } 100% { offset-distance: 100%; opacity: 1; } }
