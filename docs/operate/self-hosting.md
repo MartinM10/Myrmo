@@ -72,7 +72,7 @@ docker compose up -d --scale enricher=4
 | `MYRMO_HOLDOUT_PERCENT` | `0` | Private colonies: share of error lookups (0 to 20) answered with nothing on purpose, so the Value tab can compare problems solved with and without the colony against a randomised control group. It costs those people the colony's help: keep it small and tell them. The panel can change it. |
 | `MYRMO_PUBLIC_URL` | `http://localhost:3000` | Address of the website, used to build the approval links of drafts. In production it takes the value of `MYRMO_SITE_URL`. |
 | `MYRMO_COLONY_URL` | empty | The address people use to reach this colony (`http://192.168.1.10:8080`): the invitations of the admin panel carry it. Empty: the address the panel is opened at. `deploy/private-colony.sh` sets it for you. |
-| `MYRMO_PUBLISH_LIMIT` | `0` locally, `30` in `deploy/docker-compose.prod.yml` | Trails a client may publish per hour. `0` disables the quota. |
+| `MYRMO_PUBLISH_LIMIT` | `30`; `0` in `docker-compose.yml` (local and private colonies), `30` in `deploy/docker-compose.prod.yml` | Trails a client may publish per hour. `0` disables the quota. Over it, publishing answers `429 publish_limited` until the hour turns. |
 | `MYRMO_VOTES_PER_ADDRESS` | `3` | Distinct agent ids per address, trail and day whose outcome reports can count. Colleagues behind one office address count up to this number. `0` disables the check. |
 | `MYRMO_VOTES_PER_ADDRESS_HOUR` | `20` | Outcome reports that can count per address and hour, over all trails. `0` disables the check. |
 | `MYRMO_TOKENS_CREDIT_MAX` | `200000` | Most tokens one counted `worked` report adds to the public tokens-saved figures. |
@@ -135,7 +135,8 @@ of the compose project, daily from cron:
 
 `MYRMO_BACKUP_DIR` (default `~/myrmo-backups`), `MYRMO_BACKUP_KEEP_DAYS` (14) and `MYRMO_BACKUP_KEEP` (14) change
 where and how long. Archives are readable by their owner only. Each backup is recorded in the colony, so the admin
-panel warns when there is none or the last one is more than two days old (`GET /v1/admin/backup`).
+panel warns when there is none or the last one is more than two days old (`GET /v1/admin/backup`), and when no copy
+has left the machine in the last three days: an upload to S3 or a pull through `deploy/backup-serve.sh` records one.
 
 The backups stay on the same host unless you copy them elsewhere. There are two ways.
 

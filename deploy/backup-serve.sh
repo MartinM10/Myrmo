@@ -28,6 +28,14 @@ case "${1:-}" in
     name="${2:-}"
     [[ "$name" =~ $NAME ]] && [ -f "$DIR/$name" ] || { echo "no such backup: $name" >&2; exit 1; }
     cat -- "$DIR/$name"
+    # Recorded in the colony, so that its panel knows a copy left this machine. The compose project is MYRMO_PROJECT,
+    # or the only Valkey container running here. A failure here does not fail the copy.
+    valkey="${MYRMO_PROJECT:+$MYRMO_PROJECT-valkey-1}"
+    if [ -z "$valkey" ]; then
+      found="$(docker ps --format '{{.Names}}' --filter name=valkey-1 2>/dev/null || true)"
+      [ "$(printf '%s\n' "$found" | grep -c .)" = 1 ] && valkey="$found"
+    fi
+    [ -z "$valkey" ] || docker exec "$valkey" valkey-cli HSET backup:last offsite_ts "$(date +%s)" >/dev/null 2>&1 || true
     ;;
   *)
     echo "this key can only run: list | get <myrmo-YYYYMMDDTHHMMSSZ.tar.gz>" >&2
