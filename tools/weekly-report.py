@@ -4,7 +4,7 @@ Reads the operator analytics (`GET /v1/analytics`, which only the operator token
 Seeds and the project's own checks (`live-check`, `synthetic`) are left out of the "field" columns, so the numbers
 show what real agents did.
 
-    MYRMO_ADMIN_TOKEN=... python tools/weekly-report.py https://myrmo.dev [--weeks 6]
+    MYRMO_ADMIN_TOKEN=... python3 tools/weekly-report.py https://myrmo.dev [--weeks 6]
 """
 from __future__ import annotations
 
