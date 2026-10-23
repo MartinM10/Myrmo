@@ -1,0 +1,56 @@
+{
+  "task_id": "radar-pypi-grpcio-1.82.0-yanked",
+  "image": "python:3.11-slim-bookworm",
+  "runtime": {
+    "name": "python",
+    "version": "3.11"
+  },
+  "category": "dependency",
+  "error_type": "VersionError",
+  "summary": "Importing grpc_health.v1.health_pb2 raises a protobuf Gencode/Runtime VersionError after installing grpcio-health-checking 1.82.0 next to protobuf 6.",
+  "context": "A service pins protobuf below 7 and installs grpcio-health-checking 1.82.0. pip accepts the combination, but the generated code in that release was built with protobuf 7 and refuses to load on a 6.x runtime.",
+  "setup": "pip install -q --no-cache-dir \"protobuf<7\" \"grpcio-health-checking==1.82.0\"",
+  "failing_command": "python -c \"\ntry:\n    from grpc_health.v1 import health_pb2\nexcept Exception as e:\n    print(type(e).__name__ + ': ' + str(e))\n    raise SystemExit(1)\n\" 2>&1",
+  "failed_approaches": [
+    "pip install -q --no-cache-dir --force-reinstall --no-deps \"grpcio-health-checking==1.82.0\" >/dev/null 2>&1 ; python -c \"\ntry:\n    from grpc_health.v1 import health_pb2\nexcept Exception as e:\n    print(type(e).__name__ + ': ' + str(e))\n    raise SystemExit(1)\n\" 2>&1",
+    "pip install -q --no-cache-dir \"protobuf==6.31.1\" >/dev/null 2>&1 ; python -c \"\ntry:\n    from grpc_health.v1 import health_pb2\nexcept Exception as e:\n    print(type(e).__name__ + ': ' + str(e))\n    raise SystemExit(1)\n\" 2>&1"
+  ],
+  "fix_command": "pip install -q --no-cache-dir \"protobuf>=7,<8\"",
+  "verification_command": "python -c \"from grpc_health.v1 import health_pb2; print('ok')\"",
+  "root_cause": "grpcio-health-checking 1.82.0 ships generated protobuf code built with protobuf 7.35.0 but declares a dependency range that still allows protobuf 6.x, so pip installs an unusable pair. The protobuf runtime refuses to load gencode newer than itself, and an older minor of the same major (6.31.1) does not help. The release was yanked on PyPI for this reason.",
+  "steps": [
+    "Read the VersionError: it names the gencode version (7.35.0) and the installed runtime (6.x), and the runtime cannot be older than the gencode.",
+    "Check which protobuf is installed with pip list; reinstalling the same grpcio-health-checking or another 6.x protobuf keeps the mismatch.",
+    "Upgrade the protobuf runtime to 7.x (or, if the project must stay on protobuf 6, install a grpcio-health-checking release older than 1.82.0 whose gencode matches).",
+    "Import grpc_health.v1.health_pb2 again to confirm the error is gone."
+  ],
+  "tags": [
+    "grpc",
+    "grpcio-health-checking",
+    "protobuf",
+    "yanked",
+    "version-mismatch"
+  ],
+  "ecosystem": "radar",
+  "written_by_model": "claude-sonnet-5-5",
+  "_lead": {
+    "ecosystem": "pypi",
+    "package": "grpcio",
+    "version": "1.82.0",
+    "released": "2026-07-06",
+    "signal": "yanked",
+    "detail": "Bad protobuf dependency version specified; only 7.x should be supported https://github.com/grpc/grpc/issues/42906",
+    "source": "https://pypi.org/project/grpcio/",
+    "repo": "grpc/grpc",
+    "evidence": []
+  },
+  "_sources": [
+    {
+      "kind": "repository",
+      "ref": "https://github.com/grpc/grpc",
+      "licence": "Apache-2.0",
+      "used_as": "discovery"
+    }
+  ],
+  "_drafted_at": "2026-10-23T07:26:15+00:00"
+}
