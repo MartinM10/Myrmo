@@ -21,7 +21,7 @@
 //   5. After a failed command, the hook searches the colony itself and shows a strong match (lookup.mjs).
 //   6. When the user sends a request, the hook asks the colony what the organisation already knows about that task and
 //      shows a short list (UserPromptSubmit; lookup.mjs `briefNote`). MYRMO_HOOK_BRIEF=off turns only this off.
-//   7. When the agent stops after a turn in which commands failed or knowledge was shown, it is asked once to report what
+//   7. (In the public colony too, only for trails shown and not reported on.) When the agent stops after a turn in which commands failed or knowledge was shown, it is asked once to report what
 //      it relied on and to share what the next person's agent would need (Stop hook): what is learned in a session
 //      otherwise leaves with it.
 //
@@ -450,6 +450,25 @@ export function decide(input, { now = Date.now(), state = {}, env = process.env,
 }
 
 /**
+ * 6b. The agent is about to stop in the public colony, with trails shown to it and not reported on: ask once for the
+ * report, and nothing else. Measured on the public colony, 8 reports followed 235 searches that returned trails: the
+ * reminder after a failed command succeeds again rarely applies (a fix is often checked by another command), and
+ * without the outcome a trail can neither rise nor fade. Not after the reminder of case 4 (it already asked), not for
+ * trails shown more than 12 hours ago, and once per set of trails.
+ */
+function askToReport(state, now) {
+  const found = state.found;
+  const none = { reason: null, state };
+  if (!found || found.nudged || found.asked || !Array.isArray(found.ids) || !found.ids.length) return none;
+  if (now - found.at > 12 * 3_600_000) return none;
+  const reason =
+    `Myrmo: before you finish, call myrmo_report once for each trail it showed you (${found.ids.join(", ")}) that you tried: ` +
+    "worked, partially_worked, or failed if it was wrong or out of date, saying what changed; not_applicable if it was about something else. " +
+    "It is how good trails rise and stale ones fade. If you tried none, finish.";
+  return { reason, state: { ...state, found: { ...found, asked: true } } };
+}
+
+/**
  * 6. The agent is about to stop. In a private colony, after a turn in which commands failed, ask it once to share what
  * it learned before it finishes: Claude Code then continues with this as its next instruction. At most once every
  * MYRMO_HARVEST_MINUTES (default 30) and three times a session, never while it is already continuing because of this
@@ -457,8 +476,9 @@ export function decide(input, { now = Date.now(), state = {}, env = process.env,
  */
 export function decideStop(input, { now = Date.now(), state = {}, env = process.env, settings = {} } = {}) {
   const none = { reason: null, state };
-  if (hookMode(env, settings) === "off" || !privateColony(env, settings) || env.MYRMO_HARVEST === "off") return none;
+  if (hookMode(env, settings) === "off" || env.MYRMO_HARVEST === "off") return none;
   if (input?.stop_hook_active === true) return none;
+  if (!privateColony(env, settings)) return askToReport(state, now);
   const failures = Number(state.failures ?? 0);
   // Knowledge shown at the start of the task and not reported on yet: worth asking once, failures or not.
   const shown = state.brief && !state.brief.reported && !state.brief.asked ? state.brief : null;
