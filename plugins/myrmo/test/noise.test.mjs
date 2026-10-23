@@ -67,3 +67,17 @@ test("knowledge already shown in the session is not shown again", () => {
   assert.match(third.note, new RegExp(B));
   assert.doesNotMatch(third.note, new RegExp(A));
 });
+
+test("in the public colony the agent is asked once to report on trails it was shown, and only then", () => {
+  const shown = { found: { at: 0, ids: ["11111111-1111-4111-8111-111111111111"] } };
+  const asked = decideStop({}, { env: {}, state: shown, now: 1 });
+  assert.match(asked.reason, /myrmo_report/);
+  assert.match(asked.reason, /11111111-1111-4111-8111-111111111111/);
+  assert.doesNotMatch(asked.reason, /myrmo_publish/, "public colony: only the report is asked for");
+  assert.equal(decideStop({}, { env: {}, state: asked.state, now: 2 }).reason, null, "once per set of trails");
+  assert.equal(decideStop({}, { env: {}, state: {}, now: 1 }).reason, null, "no trails shown: nothing to ask");
+  assert.equal(decideStop({}, { env: {}, state: { found: { ...shown.found, nudged: true } }, now: 1 }).reason, null, "already reminded after the fix");
+  assert.equal(decideStop({}, { env: {}, state: shown, now: 13 * 3_600_000 }).reason, null, "shown long ago");
+  assert.equal(decideStop({ stop_hook_active: true }, { env: {}, state: shown, now: 1 }).reason, null);
+  assert.equal(decideStop({}, { env: { MYRMO_HARVEST: "off" }, state: shown, now: 1 }).reason, null);
+});
