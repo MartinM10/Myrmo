@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.46.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.45.0...platform-v0.46.0) (2026-10-23)
+
+
+### Features
+
+* **plugin:** ask once for the report on trails shown, in the public colony too ([#232](https://github.com/MartinM10/Myrmo/issues/232)) ([6239441](https://github.com/MartinM10/Myrmo/commit/623944162ae6e17283c2e64e707de3404ac9580c))
+
+
+### Bug fixes
+
+* **seed-factory:** demand check counts candidates somebody searched for ([#233](https://github.com/MartinM10/Myrmo/issues/233)) ([be531bd](https://github.com/MartinM10/Myrmo/commit/be531bd2688122145fff7ded0100537feabefa9f))
+
+
+### Performance
+
+* **web:** cache fonts and the video for 30 days; weekly usage report ([#231](https://github.com/MartinM10/Myrmo/issues/231)) ([e32b688](https://github.com/MartinM10/Myrmo/commit/e32b688c68dde1fe329df455b2ea16128b3cc0b6))
+
 ## [0.45.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.44.0...platform-v0.45.0) (2026-10-22)
 
 
