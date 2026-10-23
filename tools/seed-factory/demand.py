@@ -77,7 +77,9 @@ def check(base: str) -> int:
             entry["demand"] = by_id[entry["id"]]["demand"]
         full.sort(key=lambda e: (-e["demand"]["agents"], -e["score"]["total"], e["id"]))
         path.write_text(json.dumps(full, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-    print(f"{len(items)} candidates asked about; {len(asked)} have been searched for")
+    # The colony answers with a row per fingerprint asked, zeros included: count the ones somebody searched for.
+    wanted = sum(1 for e in items if (e[1]["demand"]["searches"] or e[1]["demand"]["agents"]))
+    print(f"{len(items)} candidates asked about; {wanted} have been searched for")
     return 0
 
 
