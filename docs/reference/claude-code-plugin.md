@@ -69,7 +69,7 @@ It sends nothing anywhere unless the automatic lookup is on (below), which by de
 
 | Moment | The note |
 |---|---|
-| A command **fails** | Search Myrmo before trying a fix, with the last line of the output that looks like an error so that the search uses the exact text (for a failed command that includes build tools' own shapes: Maven's `[ERROR]`, a test runner's `FAILED`, make's `***`). When no line looks like an error, the last line that reads like a message is quoted (a company's own tools print errors in no known shape, such as `migrate: lock 'migrate' is held by ci-runner-17`); a bare `0` or a file path is never quoted. |
+| A command **fails** | Search Myrmo before trying a fix, with the last line of the output that looks like an error so that the search uses the exact text (for a failed command that includes build tools' own shapes: Maven's `[ERROR]`, a test runner's `FAILED`, make's `***`). When no line looks like an error, a last line in the shape of a program's message is quoted (a company's own tools print errors in no known shape, such as `migrate: lock 'migrate' is held by ci-runner-17`); data such as `bucket-a objects=95`, a bare `0` or a file path is never quoted. Nothing is said for a mistyped flag (`unknown flag`, `unrecognized option`), or for exit 1 of a command that ends in a test (`[ -f x ] && echo found`, also as the last statement of a loop): the condition not holding is an answer. |
 | A command **ends with exit 0 but its output looks like an error** | The same. A pipe, a loop or `\|\| true` hide the exit code (`kubectl exec ... \| psql ... \| tail -1` is the classic). Only lines that start like a real error count (`ERROR:`, `FATAL`, `Traceback`, `npm ERR!`, `psql: error:`, `ModuleNotFoundError:`, `command terminated with exit code N`...), never prose that mentions one. |
 | A **pipeline** hides how an earlier stage did | Bash returns the last stage's exit code. When the output shows that an earlier stage could not run (`cargo: command not found`, `cp: ... No such file or directory`), the same reminder, quoting that line; a program that was only looking (`ls`, `cat`, `find`, `stat`...) not finding a file is an answer, not a failure. When a build, test or install is piped only through filters (`grep`, `head`, `tail`...) and nothing is printed, a reminder that an empty output proves nothing and to check with `set -o pipefail`, once per command. A command that sets `pipefail` or reads `PIPESTATUS` is left alone. |
 | A command that **failed earlier now works** and Myrmo had no trail for that error | You may have solved something nobody had: publish it with `myrmo_publish` if you verified it, it took the configured failed attempts and it is a tooling, environment or library problem, not this project's own code. The user still sees and approves what is sent. Once per search. |
@@ -97,11 +97,15 @@ organisation's needs no `--private` since protocol 1.7; for an older one add `--
   turns it on for another colony of your own (`MYRMO_URL`). The error line, and the request text the task lookup sends,
   are redacted on your machine first with the SDK's rules (a private colony keeps its own network's addresses). It
   never runs against the public colony: nobody looks at what the hook sends before it goes.
-- **It asks the agent to share before it stops.** When the agent finishes a turn in which commands failed, Claude Code's
-  `Stop` hook asks it once to publish each error it solved that Myrmo did not have, and to report the trails it relied on
-  (not the ones it did not use). At most once every 30 minutes (`MYRMO_HARVEST_MINUTES`), three times a session, never
-  twice for the same failures, and not for failures the agent already published something about. Knowledge shown when a
-  task starts is shown once per session: a later prompt that matches the same entries adds nothing.
+- **It asks the agent to share before it stops.** When the agent finishes a turn in which a command that had failed was
+  made to work, Claude Code's `Stop` hook asks it once to publish each error it solved that Myrmo did not have, and to
+  report the trails it relied on (not the ones it did not use). A turn with only failures nobody solved, or only
+  questions, is not asked about. At most once every 30 minutes (`MYRMO_HARVEST_MINUTES`), three times a session, never
+  twice for the same problems, and not for what the agent already published. Knowledge suggested when a task starts is
+  asked about only if the agent read it (`myrmo_brief` or `myrmo_search`), and is shown once per session.
+- **It suggests only what is clearly about the task.** The knowledge listed when a request arrives must score at least
+  0.6 (`MYRMO_HOOK_BRIEF_MIN`) and be close to the best match; otherwise nothing is shown, since an unrelated
+  suggestion teaches the agent to ignore the next one.
   `MYRMO_HARVEST=off` turns it off. On the public colony it only asks, once, for a report on the trails it showed
   you and that were not reported yet (never to publish), and not if the reminder after a fix already asked.
 
@@ -125,6 +129,7 @@ off. The hook reads the output of the shell commands only inside your machine an
 | `MYRMO_HOOK_MAX` | 30 | Notes per session. |
 | `MYRMO_HOOK_STATE_DIR` | `$XDG_RUNTIME_DIR/myrmo`, else `~/.myrmo/state` | Where the hook keeps its per-session memory, a small file. The folder is created readable by you only and refused if it is a link or someone else's; files are written with mode 0600 and never through a link. |
 | `MYRMO_HOOK_LOOKUP` | on for a private colony | `1` makes the hook search the colony in `MYRMO_URL` itself after a failure (never the public colony), `0` never. |
+| `MYRMO_HOOK_BRIEF_MIN` | 0.6 | Private colonies: the lowest score a suggestion shown when a request arrives may have. |
 | `MYRMO_HARVEST` | on | `off` stops the request to share, or to report, before stopping. |
 | `MYRMO_HARVEST_MINUTES` | 30 | Minimum time between two such requests. |
 | `MYRMO_EFFORT` | on where the colony collects it | `off` stops sending measured effort. |

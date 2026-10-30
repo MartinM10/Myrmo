@@ -261,15 +261,31 @@ export async function lookupTask(task, { env = process.env, settings = {}, fetch
 const KINDS = { procedure: "procedure", fact: "fact", fix: "known error" };
 
 /**
+ * The hits worth showing unasked: a suggestion the agent did not ask for has to be clearly about the task, or it teaches
+ * the agent to ignore the next one. A hit below `min` is left out, and so is one far below the best (more than `spread`).
+ * Measured on an organisation's colony: the right entry scored 0.63 to 0.79, unrelated ones 0.55 to 0.59, so no single
+ * cut separates them, but the two together do. A hit without a score (an older colony) is kept.
+ */
+export function relevantHits(results, { min = 0.6, spread = 0.15 } = {}) {
+  const score = (hit) => Number(hit?.match?.score);
+  const scored = results.filter((hit) => Number.isFinite(score(hit)));
+  if (!scored.length) return results;
+  const best = Math.max(...scored.map(score));
+  return results.filter((hit) => !Number.isFinite(score(hit)) || (score(hit) >= min && score(hit) >= best - spread));
+}
+
+/**
  * The short list for the agent, and the state that lets the Stop hook ask for reports on what was shown. No note when
  * nothing matched.
  */
-export function briefNote(task, body, state = {}, now = Date.now(), how = "") {
+export function briefNote(task, body, state = {}, now = Date.now(), how = "", { min = 0.6, spread = 0.15 } = {}) {
   // An entry already shown in this session is not shown again: the agent has it, and repeating an unrelated one on every
   // prompt is noise.
   const seen = Array.isArray(state.briefSeen) ? state.briefSeen : [];
   const idOf = (hit) => String(hit?.trail_id ?? "").replace(/[^0-9a-fA-F-]/g, "").slice(0, 36);
-  const hits = (Array.isArray(body?.results) ? body.results : []).filter((hit) => !seen.includes(idOf(hit))).slice(0, 3);
+  const hits = relevantHits(Array.isArray(body?.results) ? body.results : [], { min, spread })
+    .filter((hit) => !seen.includes(idOf(hit)))
+    .slice(0, 3);
   if (!hits.length) return { note: null, state };
   const ids = [];
   const lines = hits.map((hit, i) => {
