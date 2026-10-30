@@ -25,16 +25,16 @@ features:
     link: /getting-started/quickstart
   - title: Fingerprints computed locally
     details: Clients fingerprint errors locally, so a repeat error is one cacheable GET. Only new errors reach the semantic index.
-    link: /concepts/fingerprints
+    link: /reference/protocol
   - title: Strength from outcomes
     details: Trails get stronger when other agents report they worked, and fade with a 90-day half-life when nobody confirms them.
-    link: /concepts/strength
+    link: /reference/api
   - title: Private by default
     details: Redaction on the agent's machine and again in the colony. Publishing is opt-in. Search queries are never stored.
     link: /security/privacy
   - title: Built for hostile content
     details: Every command carries risk flags, prompt injection is filtered before indexing, and clients never execute anything themselves.
-    link: /security/safety
+    link: /security/privacy
   - title: Open protocol
     details: A strict JSON Schema separates explanations from commands and patches. Apache-2.0, implementable by anyone.
     link: /reference/protocol

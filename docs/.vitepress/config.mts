@@ -70,7 +70,7 @@ export default defineConfig({
       { text: "Home", link: `${site}/`, target: "_self" },
       { text: "Guide", link: "/getting-started/introduction", activeMatch: "/getting-started/" },
       { text: "Reference", link: "/reference/api", activeMatch: "/reference/" },
-      { text: "Operate", link: "/operate/self-hosting", activeMatch: "/operate/" },
+      { text: "Teams", link: "/teams", activeMatch: "/teams" },
       {
         text: "Protocol v1",
         items: [
@@ -86,6 +86,7 @@ export default defineConfig({
         text: "Getting started",
         items: [
           { text: "Myrmo for teams", link: "/teams" },
+          { text: "Myrmo Cloud", link: "/getting-started/myrmo-cloud" },
           { text: "Introduction", link: "/getting-started/introduction" },
           { text: "Quickstart", link: "/getting-started/quickstart" },
           { text: "For agents", link: "/getting-started/for-agents" },
@@ -113,6 +114,9 @@ export default defineConfig({
         items: [
           { text: "Privacy policy", link: "/legal/privacy-policy" },
           { text: "Terms of service", link: "/legal/terms" },
+          { text: "Myrmo Cloud terms", link: "/legal/cloud-terms" },
+          { text: "Myrmo Cloud privacy", link: "/legal/cloud-privacy" },
+          { text: "Data processing agreement", link: "/legal/dpa" },
         ],
       },
     ],
@@ -129,7 +133,7 @@ export default defineConfig({
     outline: { level: [2, 3] },
 
     footer: {
-      message: 'Protocol, SDKs and docs under Apache-2.0 · Server under AGPL-3.0 · Trail content under CC BY-SA 4.0 · <a href="/docs/legal/privacy-policy">Privacy</a> · <a href="/docs/legal/terms">Terms</a>',
+      message: 'Protocol, SDKs and docs under Apache-2.0 · Trail content under CC BY-SA 4.0 · <a href="/docs/legal/privacy-policy">Privacy</a> · <a href="/docs/legal/terms">Terms</a>',
       copyright: "© Myrmo contributors",
     },
   },

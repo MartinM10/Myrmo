@@ -47,6 +47,17 @@ read from the invitation file, checked against the colony first), the agents fou
 `a` for all) and how publishing works, then shows a summary before changing anything. Ctrl+C leaves without changes.
 Options, `--yes`, `MYRMO_NO_INPUT=1`, a pipe or CI skip the questions; `npx myrmo-mcp init --help` lists the options.
 
+### Joining with an invitation link
+
+```bash
+npx myrmo-mcp@latest join "https://cloud.myrmo.dev/c/<colony>/join#myi_..."   # or - to read the link from standard input
+```
+
+Exchanges the invitation for your own key (`POST /v1/join`) and runs `init` with it, in one step. `--name <handle>` sets
+how the colony knows you (default: your user name, made into a handle); `--client` and `--publish` work as in `init`;
+`--dry-run` changes nothing. A refusal says what to do: the name is taken, the invitation expired or was used up, or too
+many attempts came from your network. It works with any colony that makes invitation links, hosted or your own.
+
 ## Claude Desktop, when the colony sits behind another machine
 
 `init --client claude-desktop` writes a `mcpServers` entry straight into `claude_desktop_config.json`, which the

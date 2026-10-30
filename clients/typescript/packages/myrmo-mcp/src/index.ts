@@ -44,6 +44,7 @@ const USAGE = `myrmo-mcp ${VERSION}: the Myrmo MCP server and its commands.
   myrmo-mcp                          run the MCP server on stdio (what an agent's client launches)
   myrmo-mcp --http [--port N] [--host H]  run it over Streamable HTTP, stateless (default host 127.0.0.1)
   myrmo-mcp init [options]           set this machine's agents up (add --url, --key or --key-file, --private for a team colony)
+  myrmo-mcp join <invitation link>   join a colony with an invitation and set this machine's agents up for it
   myrmo-mcp doctor                   check that this machine can use the colony, and say what to fix
   myrmo-mcp config [setting value]   show or change a setting (publish, hook, ...)
   myrmo-mcp export <dir> [--skill]   write the colony's trails as Markdown notes
@@ -51,7 +52,7 @@ const USAGE = `myrmo-mcp ${VERSION}: the Myrmo MCP server and its commands.
   myrmo-mcp --version
 
 Docs: https://myrmo.dev/docs/reference/mcp`;
-const COMMANDS = ["init", "doctor", "config", "export", "pilot-roi"];
+const COMMANDS = ["init", "join", "doctor", "config", "export", "pilot-roi"];
 const INIT_USAGE = `myrmo-mcp init [options]: set up the agents on this machine to use Myrmo.
 
   (no options)                 every agent client found: Claude Code (plugin), Cursor, Windsurf, Gemini CLI,
@@ -72,6 +73,10 @@ const INIT_USAGE = `myrmo-mcp init [options]: set up the agents on this machine 
 Afterwards: npx myrmo-mcp doctor (checks everything), npx myrmo-mcp config (shows and changes settings).`;
 if (args[0] === "init" && (flag("--help") || flag("-h"))) {
   console.log(INIT_USAGE);
+  process.exit(0);
+}
+if (args[0] === "join" && (flag("--help") || flag("-h"))) {
+  console.log((await import("./join.js")).JOIN_USAGE);
   process.exit(0);
 }
 if (flag("--help") || flag("-h") || args[0] === "help") {
@@ -204,6 +209,53 @@ if (args[0] === "doctor") {
   });
   console.log(render(checks));
   process.exit(checks.some((c) => c.level === "fail") ? 1 : 0);
+}
+
+if (args[0] === "join") {
+  const { exchange, handleFrom, JOIN_USAGE, parseInvitation } = await import("./join.js");
+  if (!args[1]) {
+    console.log(JOIN_USAGE);
+    process.exit(2);
+  }
+  const { readFileSync } = await import("node:fs");
+  const { userInfo } = await import("node:os");
+  const link = args[1] === "-" ? readFileSync(0, "utf8") : args[1];
+  const inv = parseInvitation(link);
+  if (typeof inv === "string") {
+    console.error(inv);
+    process.exit(2);
+  }
+  let name = option("--name", "") || handleFrom(process.env.USER ?? process.env.USERNAME ?? userInfo().username) || "";
+  if (!name) {
+    console.error("Say how the colony should know you: --name <handle> (2 to 32 lowercase letters, digits, '.', '-' or '_').");
+    process.exit(2);
+  }
+  const publish = option("--publish", "auto");
+  if (!["auto", "ask", "off"].includes(publish)) {
+    console.error("--publish takes auto, ask or off");
+    process.exit(2);
+  }
+  const clientsArg = option("--client", "");
+  // The options are checked before the invitation is spent; the key here is a stand-in for the one the colony gives.
+  const initArgs = ["--url", inv.url, "--key", "myk_" + "0".repeat(64), "--publish", publish, ...(clientsArg ? ["--client", clientsArg] : [])];
+  const parsed = parseInitArgs(initArgs);
+  if (typeof parsed === "string") {
+    console.error(parsed);
+    process.exit(2);
+  }
+  if (flag("--dry-run")) {
+    console.log(`Would join ${inv.url} as "${name}", then set this machine's agents up for it (publishing: ${publish}).`);
+    process.exit(0);
+  }
+  const joined = await exchange(inv, name);
+  if (typeof joined === "string") {
+    console.error(`Could not join: ${joined}.`);
+    process.exit(1);
+  }
+  console.log(`Joined ${inv.url} as "${joined.name}". Setting up this machine's agents...\n`);
+  runInit({ ...parsed, key: joined.key, keySource: "file" });
+  console.log("\nCheck it any time with: npx myrmo-mcp doctor");
+  process.exit(0);
 }
 
 if (args[0] === "init") {
