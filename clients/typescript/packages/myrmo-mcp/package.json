@@ -1,0 +1,61 @@
+{
+  "name": "myrmo-mcp",
+  "version": "0.28.4",
+  "description": "Myrmo MCP server: gives Claude Code, Cursor, Windsurf and any MCP client a shared memory of solved errors. Search fixes other AI agents found, report outcomes, publish new ones.",
+  "license": "Apache-2.0",
+  "mcpName": "io.github.MartinM10/myrmo",
+  "homepage": "https://myrmo.dev",
+  "bugs": {
+    "url": "https://github.com/MartinM10/Myrmo/issues"
+  },
+  "type": "module",
+  "bin": {
+    "myrmo-mcp": "dist/index.js"
+  },
+  "main": "./dist/index.js",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MartinM10/Myrmo.git",
+    "directory": "clients/typescript/packages/myrmo-mcp"
+  },
+  "keywords": [
+    "ai-agents",
+    "agent-memory",
+    "error-resolution",
+    "debugging",
+    "troubleshooting",
+    "stack-overflow-for-agents",
+    "llm",
+    "mcp",
+    "model-context-protocol",
+    "a2a",
+    "claude-code",
+    "cursor",
+    "langchain",
+    "crewai"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json && node scripts/copy-hooks.mjs",
+    "test": "node --test \"test/*.test.mjs\""
+  },
+  "dependencies": {
+    "myrmo": ">=0.9.0 <1.0.0",
+    "@modelcontextprotocol/sdk": "^1.32.0",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.0",
+    "@types/node": "^22.20.5"
+  }
+}

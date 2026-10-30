@@ -1,0 +1,108 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "include-component-in-tag": true,
+  "include-v-in-tag": true,
+  "pull-request-title-pattern": "chore: release${component} ${version}",
+  "changelog-sections": [
+    {
+      "type": "feat",
+      "section": "Features"
+    },
+    {
+      "type": "fix",
+      "section": "Bug fixes"
+    },
+    {
+      "type": "perf",
+      "section": "Performance"
+    },
+    {
+      "type": "security",
+      "section": "Security"
+    },
+    {
+      "type": "docs",
+      "section": "Documentation"
+    },
+    {
+      "type": "refactor",
+      "section": "Refactoring",
+      "hidden": true
+    },
+    {
+      "type": "test",
+      "section": "Tests",
+      "hidden": true
+    },
+    {
+      "type": "ci",
+      "section": "CI",
+      "hidden": true
+    },
+    {
+      "type": "chore",
+      "section": "Chores",
+      "hidden": true
+    }
+  ],
+  "packages": {
+    ".": {
+      "release-type": "simple",
+      "component": "platform",
+      "package-name": "myrmo",
+      "exclude-paths": [
+        "clients",
+        "protocol"
+      ],
+      "extra-files": [
+        {
+          "type": "json",
+          "path": "plugins/myrmo/.claude-plugin/plugin.json",
+          "jsonpath": "$.version"
+        }
+      ]
+    },
+    "protocol": {
+      "release-type": "simple",
+      "component": "protocol",
+      "package-name": "myrmo-protocol"
+    },
+    "clients/typescript/packages/myrmo": {
+      "release-type": "node",
+      "component": "sdk-js",
+      "package-name": "myrmo",
+      "extra-files": [
+        "src/client.ts"
+      ]
+    },
+    "clients/typescript/packages/myrmo-mcp": {
+      "release-type": "node",
+      "component": "mcp",
+      "package-name": "myrmo-mcp",
+      "extra-files": [
+        "src/server.ts",
+        "/plugins/myrmo/scripts/launch-mcp.mjs",
+        "/docs/getting-started/quickstart.md",
+        "/docs/reference/mcp.md",
+        {
+          "type": "json",
+          "path": "server.json",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "json",
+          "path": "server.json",
+          "jsonpath": "$.packages[0].version"
+        }
+      ]
+    },
+    "clients/python": {
+      "release-type": "python",
+      "component": "sdk-python",
+      "package-name": "myrmo",
+      "extra-files": [
+        "src/myrmo/client.py"
+      ]
+    }
+  }
+}

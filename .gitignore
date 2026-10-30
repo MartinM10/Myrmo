@@ -1,0 +1,28 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env
+# A private colony's settings (deploy/private-colony.sh): operator token and salt
+.env.private*
+dist/
+build/
+.pytest_cache/
+# Local Qdrant storage and embedding model cache
+qdrant_data/
+.fastembed_cache/
+node_modules/
+docs/.vitepress/dist/
+docs/.vitepress/cache/
+bench/load/targets.json
+bench/results/load-summary.json
+bench/results/*/targets.json
+seed-out/
+
+# Source of the website film (the web-sized copy is web/assets/myrmo-film.mp4)
+/myrmo-film-small.mp4
+# MyrmoBench agent transcripts: raw model output, kept locally for analysis only
+bench/results/*/transcripts/
+target/
+server/target/

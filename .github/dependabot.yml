@@ -1,0 +1,41 @@
+# Actions are pinned to commit SHAs (a moved tag cannot change what runs with the release and deploy secrets);
+# Dependabot proposes the updates, with the tag in a comment. Base images are pinned by digest and the CI tools by exact
+# version for the same reason, and Dependabot proposes those updates too. Each ecosystem gets one grouped pull request a
+# week at most, so that updates stay reviewable.
+# Major versions of npm and pip packages are not proposed: they change APIs and need a migration someone
+# plans (TypeScript 7, zod 4 and @types/node 26 broke the build in #204). Minor and patch updates still arrive.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: npm
+    directories:
+      - /clients/typescript
+      - /docs
+    schedule:
+      interval: weekly
+    groups:
+      npm:
+        patterns: ["*"]
+    open-pull-requests-limit: 3
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
+  # The SDK's own requirements (pyproject.toml) and the tools CI installs (.github/ci/requirements.txt).
+  - package-ecosystem: pip
+    directories:
+      - /clients/python
+      - /.github/ci
+    schedule:
+      interval: weekly
+    groups:
+      pip:
+        patterns: ["*"]
+    open-pull-requests-limit: 3
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]

@@ -1,0 +1,114 @@
+[
+  {
+    "runtime": "python",
+    "error_type": "ModuleNotFoundError",
+    "message": "ModuleNotFoundError: No module named 'distutils'",
+    "normalized": "no module named 'distutils'",
+    "fingerprint": "fp1_3927a18f5b14a126"
+  },
+  {
+    "runtime": "python",
+    "error_type": "ModuleNotFoundError",
+    "message": "ModuleNotFoundError:   No module named 'distutils'  ",
+    "normalized": "no module named 'distutils'",
+    "fingerprint": "fp1_3927a18f5b14a126"
+  },
+  {
+    "runtime": "python",
+    "error_type": "ModuleNotFoundError",
+    "message": "No module named 'numpy'",
+    "normalized": "no module named 'numpy'",
+    "fingerprint": "fp1_305d75d6ef642ac1"
+  },
+  {
+    "runtime": "node",
+    "error_type": "ERR_OSSL_EVP_UNSUPPORTED",
+    "message": "Error: error:0308010C:digital envelope routines::unsupported",
+    "normalized": "error: error:0308010c:digital envelope routines::unsupported",
+    "fingerprint": "fp1_bb510f183bfadb13"
+  },
+  {
+    "runtime": "python",
+    "error_type": "RuntimeError",
+    "message": "RuntimeError: CUDA error: no kernel image is available for execution on the device",
+    "normalized": "cuda error: no kernel image is available for execution on the device",
+    "fingerprint": "fp1_43defeb700b638db"
+  },
+  {
+    "runtime": "node",
+    "error_type": "git fatal",
+    "message": "fatal: detected dubious ownership in repository at '/__w/app/app'",
+    "normalized": "fatal: detected dubious ownership in repository at '<path>'",
+    "fingerprint": "fp1_5ca95897009343bb"
+  },
+  {
+    "runtime": "node",
+    "error_type": "git fatal",
+    "message": "fatal: detected dubious ownership in repository at '/home/runner/work/x/x'",
+    "normalized": "fatal: detected dubious ownership in repository at '<path>'",
+    "fingerprint": "fp1_5ca95897009343bb"
+  },
+  {
+    "runtime": "python",
+    "error_type": "OSError",
+    "message": "OSError: [Errno 98] Address already in use: ('10.0.0.12', 8080)",
+    "normalized": "[errno 98] address already in use: ('<ip>', <n>)",
+    "fingerprint": "fp1_c8d8668eba173ca4"
+  },
+  {
+    "runtime": "python",
+    "error_type": "OSError",
+    "message": "OSError: [Errno 98] Address already in use: ('192.168.1.5', 8080)",
+    "normalized": "[errno 98] address already in use: ('<ip>', <n>)",
+    "fingerprint": "fp1_c8d8668eba173ca4"
+  },
+  {
+    "runtime": "python",
+    "error_type": "FileNotFoundError",
+    "message": "FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\ana\\proj\\cfg.yaml'",
+    "normalized": "[errno 2] no such file or directory: '<path>'",
+    "fingerprint": "fp1_cedc02d5dcd7b9a6"
+  },
+  {
+    "runtime": "python",
+    "error_type": "FileNotFoundError",
+    "message": "FileNotFoundError: [Errno 2] No such file or directory: '/home/bob/proj/cfg.yaml'",
+    "normalized": "[errno 2] no such file or directory: '<path>'",
+    "fingerprint": "fp1_cedc02d5dcd7b9a6"
+  },
+  {
+    "runtime": "rust",
+    "error_type": "E0502",
+    "message": "error[E0502]: cannot borrow `*self` as mutable because it is also borrowed as immutable --> src/lib.rs:42:9",
+    "normalized": "error[e0502]: cannot borrow `*self` as mutable because it is also borrowed as immutable --> <path>:<n>",
+    "fingerprint": "fp1_7e6ad69f1fb30ac2"
+  },
+  {
+    "runtime": "rust",
+    "error_type": "E0502",
+    "message": "error[E0502]: cannot borrow `*self` as mutable because it is also borrowed as immutable --> src/main.rs:7:13",
+    "normalized": "error[e0502]: cannot borrow `*self` as mutable because it is also borrowed as immutable --> <path>:<n>",
+    "fingerprint": "fp1_7e6ad69f1fb30ac2"
+  },
+  {
+    "runtime": "python",
+    "error_type": "HTTP 429",
+    "message": "anthropic.RateLimitError: Error code: 429 - request req_011CXk2v9mYwq7Zt3 failed",
+    "normalized": "anthropic.ratelimiterror: error code: 429 - request <id> failed",
+    "fingerprint": "fp1_2b878373020eb4fa"
+  },
+  {
+    "runtime": "python",
+    "error_type": "HTTP 429",
+    "message": "anthropic.RateLimitError: Error code: 429 - request req_7Hq2LmN9xPw4Kd81 failed",
+    "normalized": "anthropic.ratelimiterror: error code: 429 - request <id> failed",
+    "fingerprint": "fp1_2b878373020eb4fa"
+  },
+  {
+    "runtime": "node",
+    "error_type": "Error",
+    "message": "Error: connect ECONNREFUSED 127.0.0.1:5432 (request 3f2b8c1e-9a4d-4e2f-8b1a-2c3d4e5f6a7b)",
+    "normalized": "connect econnrefused <ip> (request <uuid>)",
+    "fingerprint": "fp1_3cf60a726fee84a4"
+  }
+]

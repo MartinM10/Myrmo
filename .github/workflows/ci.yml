@@ -1,0 +1,176 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  # Started by the Release workflow for the release pull request (see release.yml).
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  secrets:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      # The image is pinned by digest as well as tag: a tag moved on Docker Hub cannot change what runs here.
+      - name: Scan the whole history for secrets
+        run: |
+          docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:v8.30.1@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f detect --source /repo --config /repo/.gitleaks.toml --redact --no-banner
+
+  protocol:
+    name: Protocol
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - run: pip install -r .github/ci/requirements.txt
+      - name: Fingerprint v1 and v2 references pass their vectors
+        run: |
+          python protocol/fingerprint_v1.py
+          python protocol/fingerprint_v2.py
+      - name: Example and seed trails validate against the schema
+        run: |
+          python - <<'EOF'
+          import json
+          from jsonschema import Draft7Validator
+          schema = json.load(open("protocol/trail.v1.schema.json"))
+          Draft7Validator.check_schema(schema)
+          v = Draft7Validator(schema)
+          trails = [json.load(open("protocol/examples/trail.distutils.json"))] + json.load(open("protocol/examples/seed-trails.json"))
+          errors = [(t["problem"]["error_type"], e.message) for t in trails for e in v.iter_errors(t)]
+          assert not errors, errors
+          print(f"{len(trails)} trails valid")
+          EOF
+
+  typescript:
+    name: SDK and MCP (TypeScript)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: clients/typescript
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: clients/typescript/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      - run: npm test
+      - name: myrmo-mcp starts with the lowest myrmo it accepts
+        run: node scripts/check-sdk-floor.mjs
+
+  plugin:
+    name: Claude Code plugin
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+      - run: node --test "plugins/myrmo/test/*.test.mjs"
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - run: pip install -r .github/ci/requirements.txt
+      - name: The example trail in the plugin's skill is valid
+        run: |
+          python - <<'EOF'
+          import json, re
+          from jsonschema import Draft7Validator
+          skill = open("plugins/myrmo/skills/myrmo/SKILL.md", encoding="utf-8").read()
+          trail = json.loads(re.search(r"```json\s(.*?)```", skill, re.S).group(1))
+          # The MCP server fills in what an agent may leave out.
+          trail.setdefault("agent_info", {"model": "m", "framework": "f"})
+          trail["problem"].setdefault("raw_logs", "(none provided)")
+          trail["solution"].setdefault("code_patches", [])
+          schema = json.load(open("protocol/trail.v1.schema.json"))
+          errors = [e.message for e in Draft7Validator(schema).iter_errors(trail)]
+          assert not errors, errors
+          print("skill example valid")
+          EOF
+
+  platforms:
+    name: Plugin and MCP on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: clients/typescript/package-lock.json
+      - run: npm ci
+        working-directory: clients/typescript
+      - run: npm run build
+        working-directory: clients/typescript
+      - run: npm test
+        working-directory: clients/typescript
+      - run: node --test "plugins/myrmo/test/*.test.mjs"
+
+  python:
+    name: SDK (Python ${{ matrix.python }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ["3.9", "3.13"]
+    defaults:
+      run:
+        working-directory: clients/python
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ matrix.python }}
+      - run: pip install -e ".[test]" -c constraints-test.txt
+      - run: pytest -q
+
+  docs:
+    name: Docs
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: docs
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: docs/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      - name: llms.txt lists every page
+        run: node scripts/llms.mjs --check
+
+  web:
+    name: Website and docs claims
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22"
+      - name: The website and the docs make no claim the code does not back
+        run: node tools/check-claims.mjs
+      - name: The website runs only script files (its Content-Security-Policy forbids inline code)
+        run: node tools/check-web-csp.mjs

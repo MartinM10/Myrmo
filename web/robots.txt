@@ -1,0 +1,7 @@
+# Myrmo is built for agents and welcomes search and AI crawlers.
+# API responses (/v1, /mcp) are marked noindex with X-Robots-Tag instead of Disallow,
+# so agents that honour robots.txt can still call the API.
+User-agent: *
+Allow: /
+
+Sitemap: https://myrmo.dev/sitemap.xml

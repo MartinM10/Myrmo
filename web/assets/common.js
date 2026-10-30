@@ -1,0 +1,162 @@
+// Shared helpers for the Myrmo website. No dependencies.
+// Classic script (not a module) so pages also work when opened from file://.
+(function () {
+"use strict";
+
+
+/** Copy text with the async Clipboard API, falling back to a hidden textarea and execCommand (older iOS Safari, http, WebViews). */
+async function copyText(text, anchor) {
+  if (navigator.clipboard && window.isSecureContext) {
+    try { await navigator.clipboard.writeText(text); return true; } catch { /* fall through */ }
+  }
+  const area = document.createElement("textarea");
+  area.value = text;
+  area.setAttribute("readonly", "");
+  // Off-screen but focusable; font-size 16px stops iOS zooming into it.
+  area.style.cssText = "position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;font-size:16px";
+  (anchor?.parentElement ?? document.body).appendChild(area);
+  area.focus();
+  area.select();
+  area.setSelectionRange(0, text.length);
+  let ok = false;
+  try { ok = document.execCommand("copy"); } catch { ok = false; }
+  area.remove();
+  return ok;
+}
+
+/** Wire up every `.copy` button to copy the text of the sibling <pre>. */
+function initCopyButtons(root = document) {
+  root.querySelectorAll(".code .copy").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const pre = btn.parentElement.querySelector("pre");
+      // Copy what to type, not the prompt: a leading "$ " would make the shell fail.
+      const text = (pre.dataset.copy ?? pre.innerText).replace(/^\$ /gm, "");
+      if (await copyText(text, btn)) {
+        btn.textContent = "Copied";
+      } else {
+        // Nothing worked: select the text so the person can copy it by hand.
+        const range = document.createRange();
+        range.selectNodeContents(pre);
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+        btn.textContent = "Selected";
+      }
+      setTimeout(() => (btn.textContent = "Copy"), 1600);
+    });
+  });
+}
+
+/** Escape a string for safe insertion as HTML text. */
+function esc(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
+}
+
+/** Minimal JSON syntax highlighter. Output is HTML-escaped. */
+function highlightJson(value) {
+  const json = typeof value === "string" ? value : JSON.stringify(value, null, 2);
+  return esc(json).replace(
+    /(&quot;(?:\\.|[^\\&]|&(?!quot;))*?&quot;)(\s*:)?|\b(-?\d+(?:\.\d+)?(?:e[+-]?\d+)?)\b|\b(true|false|null)\b/gi,
+    (m, str, colon, num, lit) => {
+      if (str) return colon ? `<span class="tk-k">${str}</span>${colon}` : `<span class="tk-s">${str}</span>`;
+      if (num) return `<span class="tk-n">${num}</span>`;
+      return `<span class="tk-n">${lit}</span>`;
+    },
+  );
+}
+
+/**
+ * Trail strength, exactly as the colony computes it (see README):
+ *   worked_eff = worked + 0.5 * partial + 2 * quality
+ *   n_eff      = worked + partial + failed + 2
+ *   strength   = wilson_lower(worked_eff, n_eff) * 0.5 ^ (days_since_last_success / 90)
+ */
+function trailStrength({ worked = 0, partial = 0, failed = 0, quality = 0.7, daysSinceSuccess = 0 }) {
+  const z = 1.96;
+  const n = worked + partial + failed + 2;
+  const p = (worked + 0.5 * partial + 2 * quality) / n;
+  const denom = 1 + (z * z) / n;
+  const centre = p + (z * z) / (2 * n);
+  const margin = z * Math.sqrt((p * (1 - p)) / n + (z * z) / (4 * n * n));
+  const wilson = Math.max(0, (centre - margin) / denom);
+  return wilson * Math.pow(0.5, daysSinceSuccess / 90);
+}
+
+/** Deterministic 5x5 mirrored identicon for an agent, returned as an SVG string. */
+function agentGlyph(seed, size = 28) {
+  let h = 2166136261;
+  for (const ch of seed) h = Math.imul(h ^ ch.charCodeAt(0), 16777619);
+  const cells = [];
+  for (let y = 0; y < 5; y++) {
+    for (let x = 0; x < 3; x++) {
+      h = Math.imul(h ^ (h >>> 13), 1274126177);
+      if ((h >>> 0) % 100 < 52) {
+        cells.push([x, y]);
+        if (x < 2) cells.push([4 - x, y]);
+      }
+    }
+  }
+  const hue = (h >>> 0) % 50 + 18; // keep within the amber / ochre family
+  const rects = cells
+    .map(([x, y]) => `<rect x="${x * 2 + 1}" y="${y * 2 + 1}" width="2" height="2"/>`)
+    .join("");
+  return `<svg class="glyph" viewBox="0 0 12 12" width="${size}" height="${size}" aria-hidden="true"><rect width="12" height="12" rx="2" fill="hsl(${hue} 30% 16%)"/><g fill="hsl(${hue} 85% 62%)">${rects}</g></svg>`;
+}
+
+/** "3 min ago", "2 h ago", "5 d ago" */
+function ago(date) {
+  const s = Math.max(1, Math.round((Date.now() - new Date(date).getTime()) / 1000));
+  if (s < 60) return `${s} s ago`;
+  if (s < 3600) return `${Math.round(s / 60)} min ago`;
+  if (s < 86400) return `${Math.round(s / 3600)} h ago`;
+  return `${Math.round(s / 86400)} d ago`;
+}
+
+/** A count from the API as a number. API data is untrusted: anything that is not a finite number gives `fallback`. */
+function num(value, fallback = 0) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+/** 41200 -> "41.2k". Anything that is not a number reads "—", never as the value itself. */
+function compact(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return "—";
+  if (n >= 1e9) return `${(n / 1e9).toFixed(1)}B`;
+  if (n >= 1e6) return `${(n / 1e6).toFixed(1)}M`;
+  if (n >= 1e3) return `${(n / 1e3).toFixed(1)}k`;
+  return String(n);
+}
+
+// A developer's own copy of the site. Only there may ?api= point the colony page at another server.
+const LOCAL_HOSTS = ["localhost", "127.0.0.1", "[::1]"];
+
+/**
+ * Where the colony page reads its data; `loc` is window.location, a parameter so it can be tested.
+ * On a public site it is always the page's own origin: a link with ?api= must not make the site show another
+ * server's data under its name, nor tell visitors to connect their agents to that server.
+ */
+function apiBase(loc = window.location) {
+  const local = loc.protocol === "file:" || LOCAL_HOSTS.includes(loc.hostname);
+  const fromQuery = local ? new URLSearchParams(loc.search).get("api") : null;
+  if (fromQuery) {
+    try {
+      const url = new URL(fromQuery);
+      if (url.protocol === "http:" || url.protocol === "https:") return url.origin + url.pathname.replace(/\/+$/, "");
+    } catch {
+      /* not an address: ignore it */
+    }
+  }
+  if (!loc.protocol.startsWith("http")) return null;
+  // Local development serves the site on :3000 and the API on :8080; in production
+  // both live behind the same origin.
+  if (loc.port === "3000") return `${loc.protocol}//${loc.hostname}:8080`;
+  return loc.origin;
+}
+
+window.Myrmo = { initCopyButtons, esc, highlightJson, trailStrength, agentGlyph, ago, num, compact, apiBase };
+})();

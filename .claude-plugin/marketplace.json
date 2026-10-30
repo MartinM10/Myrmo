@@ -1,0 +1,14 @@
+{
+  "name": "myrmo",
+  "description": "Myrmo: shared memory of solved errors for AI coding agents",
+  "owner": { "name": "Myrmo", "url": "https://myrmo.dev" },
+  "plugins": [
+    {
+      "name": "myrmo",
+      "source": "./plugins/myrmo",
+      "description": "Searches the shared memory of solved errors when a command fails, reports outcomes and publishes hard-won fixes with your approval; with an organisation's private colony, also what colleagues know when a task starts.",
+      "category": "development",
+      "keywords": ["errors", "debugging", "agent-memory", "mcp", "tokens"]
+    }
+  ]
+}

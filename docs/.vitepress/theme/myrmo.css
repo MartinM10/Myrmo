@@ -1,0 +1,239 @@
+/*
+ * Myrmo theme for VitePress: same palette and type as the website.
+ * Dark "underground" by default, light "limestone" alternative.
+ */
+:root {
+  --vp-font-family-base: "Geologica", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --vp-font-family-mono: "Fragment Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+  --myrmo-display: "Martian Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+
+  /* light: limestone */
+  --vp-c-bg: #f7f5f0;
+  --vp-c-bg-alt: #ebe8e1;
+  --vp-c-bg-soft: #ebe8e1;
+  --vp-c-bg-elv: #fbfaf7;
+  --vp-c-divider: #d6d0c4;
+  --vp-c-gutter: #d6d0c4;
+  --vp-c-border: #d6d0c4;
+  --vp-c-text-1: #1c1813;
+  --vp-c-text-2: #4f483e;
+  --vp-c-text-3: #7a7164;
+
+  --vp-c-brand-1: #a35a00;
+  --vp-c-brand-2: #b8650a;
+  --vp-c-brand-3: #e8901c;
+  --vp-c-brand-soft: rgba(232, 144, 28, 0.14);
+
+  --vp-c-tip-1: var(--vp-c-brand-1);
+  --vp-c-tip-soft: var(--vp-c-brand-soft);
+
+  --vp-code-block-bg: #1c1813;
+  --vp-code-block-color: #e9e0cf;
+  --vp-code-copy-code-bg: #241e17;
+  --vp-code-copy-code-hover-bg: #2d261d;
+  --vp-code-lang-color: #9d9282;
+  --vp-code-line-highlight-color: rgba(255, 178, 62, 0.1);
+
+  --vp-button-brand-bg: #e8901c;
+  --vp-button-brand-border: #e8901c;
+  --vp-button-brand-text: #1a1206;
+  --vp-button-brand-hover-bg: #ffb23e;
+  --vp-button-brand-hover-border: #ffb23e;
+  --vp-button-brand-hover-text: #1a1206;
+}
+
+.dark {
+  /* dark: loam */
+  --vp-c-bg: #13100c;
+  --vp-c-bg-alt: #0f0d0a;
+  --vp-c-bg-soft: #1c1813;
+  --vp-c-bg-elv: #1c1813;
+  --vp-c-divider: #2d261d;
+  --vp-c-gutter: #0f0d0a;
+  --vp-c-border: #2d261d;
+  --vp-c-text-1: #ede4d3;
+  --vp-c-text-2: #b9ad99;
+  --vp-c-text-3: #8a7f6e;
+
+  --vp-c-brand-1: #ffb23e;
+  --vp-c-brand-2: #f0a02c;
+  --vp-c-brand-3: #d98a12;
+  --vp-c-brand-soft: rgba(255, 178, 62, 0.14);
+
+  --vp-code-block-bg: #0e0c09;
+  --vp-code-bg: rgba(255, 178, 62, 0.08);
+  --vp-code-color: #f3c47e;
+}
+
+/* Display face for headings and the wordmark */
+.vp-doc h1,
+.vp-doc h2,
+.vp-doc h3,
+.VPNavBarTitle .title {
+  font-family: var(--myrmo-display);
+  letter-spacing: -0.02em;
+}
+.vp-doc h1 {
+  font-weight: 800;
+  font-stretch: 87.5%;
+  letter-spacing: -0.04em;
+}
+.vp-doc h2 {
+  font-stretch: 87.5%;
+  border-top-color: var(--vp-c-divider);
+}
+.VPNavBarTitle .title {
+  font-weight: 800;
+  font-stretch: 112.5%;
+  letter-spacing: -0.04em;
+}
+/* The M-ant: as tall as the capitals plus its antennae (1.0548 em; the letter itself is 0.8 em, the height of a capital of
+   the face) and standing on the baseline of "yrmo". */
+.VPNavBarTitle .logo {
+  height: 1.0548em;
+  width: auto;
+  margin: 0;
+  align-self: center;
+  transform: translateY(-0.18em);
+}
+
+/* Sidebar group labels as small uppercase eyebrows */
+.VPSidebarItem.level-0 > .item > .text {
+  font-family: var(--myrmo-display);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* Tables: quieter */
+.vp-doc table {
+  font-size: 14px;
+}
+.vp-doc th {
+  font-family: var(--myrmo-display);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+
+/* HTTP method badges: write **GET** `/v1/...` in markdown, styled here */
+.vp-doc .method {
+  display: inline-block;
+  padding: 1px 8px;
+  margin-right: 6px;
+  border-radius: 4px;
+  font-family: var(--myrmo-display);
+  font-size: 11px;
+  font-weight: 700;
+  color: #1a1206;
+  background: var(--vp-c-brand-3);
+  vertical-align: 2px;
+}
+.vp-doc .method.get {
+  background: #93d17f;
+}
+
+/* Home hero */
+.VPHero .name,
+.VPHero .text {
+  font-family: var(--myrmo-display);
+  font-stretch: 87.5%;
+  letter-spacing: -0.045em;
+}
+.VPHero .name .clip {
+  background: none;
+  -webkit-text-fill-color: var(--vp-c-brand-1);
+  color: var(--vp-c-brand-1);
+}
+.VPFeature .title {
+  font-family: var(--myrmo-display);
+  font-size: 15px;
+}
+
+/*
+ * Motion: same language as the website. Base styles stay visible; every animation is an
+ * entrance that ends in the normal state, and reduced-motion users get none of it.
+ */
+@keyframes myrmo-rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes myrmo-grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes myrmo-shimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+
+@media (prefers-reduced-motion: no-preference) {
+  /* New page content rises in, first blocks one after the other (replays on each page change) */
+  .vp-doc > div > :nth-child(-n + 6) { animation: myrmo-rise 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+  .vp-doc > div > :nth-child(2) { animation-delay: 0.06s; }
+  .vp-doc > div > :nth-child(3) { animation-delay: 0.12s; }
+  .vp-doc > div > :nth-child(4) { animation-delay: 0.18s; }
+  .vp-doc > div > :nth-child(5) { animation-delay: 0.24s; }
+  .vp-doc > div > :nth-child(6) { animation-delay: 0.3s; }
+
+  /* Home hero */
+  .VPHero .name, .VPHero .text, .VPHero .tagline, .VPHero .actions { animation: myrmo-rise 0.8s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+  .VPHero .text { animation-delay: 0.12s; }
+  .VPHero .tagline { animation-delay: 0.26s; }
+  .VPHero .actions { animation-delay: 0.4s; }
+  .VPHero .text {
+    background: linear-gradient(100deg, var(--vp-c-text-1) 35%, var(--vp-c-brand-1) 50%, var(--vp-c-text-1) 65%) 100% 0 / 300% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: myrmo-rise 0.8s 0.12s cubic-bezier(0.2, 0.7, 0.2, 1) both, myrmo-shimmer 6s 1.4s ease-in-out infinite;
+  }
+
+  /* Hover: sidebar links slide, code blocks and feature cards lift and glow */
+  .VPSidebarItem .link > .text { transition: transform 0.2s ease; }
+  .VPSidebarItem .link:hover > .text { transform: translateX(3px); }
+  .vp-doc div[class*="language-"] { transition: box-shadow 0.3s ease; }
+  .vp-doc div[class*="language-"]:hover { box-shadow: 0 0 0 1px rgba(232, 144, 28, 0.35), 0 12px 30px -18px rgba(232, 144, 28, 0.5); }
+  .VPFeature { transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.3s ease; }
+  .VPFeature:hover { transform: translateY(-3px); border-color: var(--vp-c-brand-3); box-shadow: 0 14px 34px -20px rgba(232, 144, 28, 0.55); }
+  .VPButton { transition: transform 0.18s ease, background-color 0.25s, border-color 0.25s, color 0.25s; }
+  .VPButton:hover { transform: translateY(-2px); }
+
+  /* Headings: the rule under h2 draws itself */
+  .vp-doc h2 { position: relative; }
+  .vp-doc h2::before {
+    content: "";
+    position: absolute;
+    top: -1px; left: 0;
+    width: 48px; height: 2px;
+    background: var(--vp-c-brand-3);
+    transform-origin: left center;
+    animation: myrmo-grow 0.7s 0.2s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+
+  /* Scroll-driven, where the browser supports it */
+  @supports (animation-timeline: scroll()) {
+    body::before {
+      content: "";
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      z-index: 60;
+      pointer-events: none;
+      background: linear-gradient(90deg, rgba(232, 144, 28, 0.25), var(--vp-c-brand-3));
+      box-shadow: 0 0 10px rgba(232, 144, 28, 0.6);
+      transform-origin: left center;
+      animation: myrmo-grow linear both;
+      animation-timeline: scroll(root block);
+    }
+  }
+  @supports (animation-timeline: view()) {
+    .vp-doc > div > :nth-child(n + 7):is(table, blockquote, details, [class*="language-"], .custom-block, ul, ol) {
+      animation: myrmo-rise linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 30%;
+    }
+    .VPFeature { animation: myrmo-rise linear backwards; animation-timeline: view(); animation-range: entry 0% entry 40%; }
+  }
+}
+
+/* Code contrast: vitesse-dark paints punctuation (#666) and quoted-string quotes at half
+ * opacity, too faint on the dark block. Lift them to a readable level. */
+.vp-doc div[class*="language-"] span[style*="#666666"] { color: #a39a88 !important; }
+.vp-doc div[class*="language-"] span[style*="#B8A96577"] { color: #b8a965cc !important; }
+.vp-doc div[class*="language-"] span[style*="#C98A7D77"] { color: #c98a7dcc !important; }
+.vp-doc div[class*="language-"] span[style*="#4C9A91"] { color: #5fb3a9 !important; }

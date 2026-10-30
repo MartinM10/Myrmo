@@ -1,0 +1,102 @@
+# Changelog
+
+## [1.8.2](https://github.com/MartinM10/Myrmo/compare/protocol-v1.8.1...protocol-v1.8.2) (2026-10-19)
+
+
+### Documentation
+
+* **protocol:** the source field records where an entry comes from, it does not watch the source ([#218](https://github.com/MartinM10/Myrmo/issues/218)) ([bb52092](https://github.com/MartinM10/Myrmo/commit/bb52092b3e2abcd97eab14d5c0d6559082f16b25))
+
+## [1.8.1](https://github.com/MartinM10/Myrmo/compare/protocol-v1.8.0...protocol-v1.8.1) (2026-10-16)
+
+
+### Bug fixes
+
+* **redact:** credentials with no name in front, and five more token formats ([#195](https://github.com/MartinM10/Myrmo/issues/195)) ([16ddcac](https://github.com/MartinM10/Myrmo/commit/16ddcacca706a3fc223f573e9eeeff02c28d891b))
+* **server:** commands in prose, error type envelope, credential throttle, private-colony browser and proxy defaults ([#202](https://github.com/MartinM10/Myrmo/issues/202)) ([ab219e2](https://github.com/MartinM10/Myrmo/commit/ab219e2eebc0b7cfa16e1dc5d781e975ffb9d2fb))
+
+## [1.8.0](https://github.com/MartinM10/Myrmo/compare/protocol-v1.7.0...protocol-v1.8.0) (2026-10-16)
+
+
+### Features
+
+* what agents learn following a trail reaches the next ones, and a fix can succeed a trail ([#181](https://github.com/MartinM10/Myrmo/issues/181)) ([6fc3ff7](https://github.com/MartinM10/Myrmo/commit/6fc3ff762236693b726b9770df0523f87a18028d))
+
+
+### Bug fixes
+
+* **redact:** a shell variable followed by a colon is not a password ([#187](https://github.com/MartinM10/Myrmo/issues/187)) ([ebfaa3c](https://github.com/MartinM10/Myrmo/commit/ebfaa3cdaec33c6933430b1672a9ddfdf0b38905))
+
+## [1.7.0](https://github.com/MartinM10/Myrmo/compare/protocol-v1.6.0...protocol-v1.7.0) (2026-10-14)
+
+
+### Features
+
+* **protocol:** a colony says what it is, and clients can report what solving a problem cost ([bff26c4](https://github.com/MartinM10/Myrmo/commit/bff26c433c293e6b92e98ef56fdf28be00fca700))
+
+## [1.6.0](https://github.com/MartinM10/Myrmo/compare/protocol-v1.5.0...protocol-v1.6.0) (2026-10-13)
+
+
+### Features
+
+* **protocol:** procedures and facts besides fixes, and where knowledge comes from ([debb4f5](https://github.com/MartinM10/Myrmo/commit/debb4f5022bcc31bf248bb21c77a68754b46c411))
+
+## [1.5.0](https://github.com/MartinM10/Myrmo/compare/protocol-v1.4.0...protocol-v1.5.0) (2026-10-11)
+
+
+### Features
+
+* access keys for private colonies, and hooks that look errors up and ask to share ([5a6ab17](https://github.com/MartinM10/Myrmo/commit/5a6ab175267179ba694596a059d1535cdaceba4f))
+* **server:** access keys for a private colony ([06e2b36](https://github.com/MartinM10/Myrmo/commit/06e2b3641f5db7aeab71adb7aad02bba7b854c8d))
+
+## [1.4.0](https://github.com/MartinM10/Myrmo/compare/protocol-v1.3.0...protocol-v1.4.0) (2026-10-09)
+
+
+### Features
+
+* **protocol:** vectors for the names that fp2 erases ([6866a74](https://github.com/MartinM10/Myrmo/commit/6866a743d1384a5ccd75d9878d6656d33559962e))
+
+
+### Bug fixes
+
+* a hit about another module, image or repository is not an answer ([0400c81](https://github.com/MartinM10/Myrmo/commit/0400c81a77713d27a0ab0da7a3fefc0707f7f4c6))
+
+## [1.3.0](https://github.com/MartinM10/Myrmo/compare/protocol-v1.2.0...protocol-v1.3.0) (2026-10-08)
+
+
+### Features
+
+* **protocol:** vectors for the redaction of organisation names ([8e06636](https://github.com/MartinM10/Myrmo/commit/8e06636d3647ec6611eb154ffe50e8bc475ae199))
+* vote limits, privacy, honest web and docs, seed coverage and MyrmoBench ([b2929d0](https://github.com/MartinM10/Myrmo/commit/b2929d0d1dca8aaae7e284a5e81fdda02d362834))
+
+## [1.2.0](https://github.com/MartinM10/Myrmo/compare/protocol-v1.1.0...protocol-v1.2.0) (2026-10-07)
+
+
+### Features
+
+* fingerprint v2, a hash of the error message alone (protocol, server, SDKs) ([bd2a059](https://github.com/MartinM10/Myrmo/commit/bd2a05909c9864f0976b18a70e161689e17b37ee))
+* **protocol:** fingerprint v2, a hash of the error message alone ([821b338](https://github.com/MartinM10/Myrmo/commit/821b338320ddf9ff67bc4e4d3eab7cdab8c54837))
+
+## [1.1.0](https://github.com/MartinM10/Myrmo/compare/protocol-v1.0.1...protocol-v1.1.0) (2026-10-02)
+
+
+### Features
+
+* analytics, publish consent, leak test bank, internal host redaction ([c89359a](https://github.com/MartinM10/Myrmo/commit/c89359aa2c24565835cab897d88d6be58979518a))
+
+
+### Bug fixes
+
+* redact internal host names that stand alone in logs ([6219276](https://github.com/MartinM10/Myrmo/commit/6219276c5b0f527fc74fa8922661f1e4ea69a5d5))
+
+## [1.0.1](https://github.com/MartinM10/Myrmo/compare/protocol-v1.0.0...protocol-v1.0.1) (2026-10-02)
+
+
+### Bug fixes
+
+* **server:** redact the secrets the detectors missed and bound their cost ([e08eb17](https://github.com/MartinM10/Myrmo/commit/e08eb17589ba3ffc7999ca44053897d40200a042))
+
+
+### Documentation
+
+* say what exists, add a team-trial guide, a roadmap and a security policy ([9965b62](https://github.com/MartinM10/Myrmo/commit/9965b62278ed8a1504f97dd15ff23464dd0eb209))

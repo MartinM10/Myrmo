@@ -1,0 +1,178 @@
+// The Claude Code plugin: the failure hook must stay quiet unless a search is worth suggesting,
+// never break the agent, and the manifests must point at files that exist.
+
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { decide, readSettings } from "../scripts/on-failure.mjs";
+
+const root = join(dirname(fileURLToPath(import.meta.url)), "..");
+const repo = join(root, "..", "..");
+const json = (p) => JSON.parse(readFileSync(p, "utf8"));
+const fail = (command, exit_code = 1, extra = {}) => ({ tool_name: "Bash", tool_input: { command }, exit_code, error: `Command failed with exit code ${exit_code}`, ...extra });
+
+test("a failing build or install gets a reminder to search first", () => {
+  const out = decide(fail("pip install -r requirements.txt"), { env: {} });
+  assert.match(out.note, /myrmo_search/);
+  assert.match(out.note, /BEFORE you try a fix/);
+  assert.match(out.note, /untrusted/);
+  assert.equal(out.state.count, 1);
+});
+
+test("a failing command run with the PowerShell tool gets the reminder too", () => {
+  const out = decide(fail("python -c \"import nada\"", 1, { tool_name: "PowerShell" }), { env: {} });
+  assert.match(out.note, /myrmo_search/);
+  for (const cmd of ["Select-String foo x.txt", "Get-ChildItem missing", "Test-Path x", "gc nofile"]) {
+    assert.equal(decide(fail(cmd, 1, { tool_name: "PowerShell" }), { env: {} }).note, null, cmd);
+  }
+});
+
+test("probes, interruptions and other tools are left alone", () => {
+  for (const cmd of ["grep -r foo src", "diff a b", "test -f x", "git diff --quiet", "ls missing", "rg TODO", "npx myrmo-mcp config"]) {
+    assert.equal(decide(fail(cmd), { env: {} }).note, null, cmd);
+  }
+  for (const code of [130, 143, 137, 124]) assert.equal(decide(fail("npm test", code), { env: {} }).note, null, `exit ${code}`);
+  assert.equal(decide({ tool_name: "Edit", exit_code: 1 }, { env: {} }).note, null);
+});
+
+test("reminders are spaced out and capped per session", () => {
+  let state = {};
+  const env = { MYRMO_HOOK_MIN_SECONDS: "45", MYRMO_HOOK_MAX: "2" };
+  // Each failure is a different error: the same one is only ever reminded once (see hook.test.mjs).
+  const failing = (n) => fail("npm test", 1, { error: `Exit code 1
+Error: problem number ${"abcdef"[n]} happened` });
+  let r = decide(failing(0), { now: 1_000_000, state, env });
+  assert.ok(r.note);
+  state = r.state;
+  r = decide(failing(1), { now: 1_000_000 + 10_000, state, env });
+  assert.equal(r.note, null, "ten seconds later is too soon");
+  r = decide(failing(2), { now: 1_000_000 + 60_000, state, env });
+  assert.ok(r.note, "a minute later is fine");
+  state = r.state;
+  r = decide(failing(3), { now: 1_000_000 + 600_000, state, env });
+  assert.equal(r.note, null, "the cap of two per session is reached");
+});
+
+test("the user can switch it off", () => {
+  assert.equal(decide(fail("npm test"), { env: { MYRMO_HOOK: "off" } }).note, null);
+});
+
+test("the script speaks the hook protocol and exits 0 whatever it receives", () => {
+  // Its own settings file: the machine's may point at a private colony, where the hook would look the error up itself.
+  const config = join(mkdtempSync(join(tmpdir(), "myrmo-plugin-")), "config.json");
+  const run = (input) => spawnSync(process.execPath, [join(root, "scripts", "on-failure.mjs")], { input, encoding: "utf8", env: { ...process.env, MYRMO_HOOK: "", MYRMO_CONFIG: config, MYRMO_HOOK_STATE_DIR: dirname(config) } });
+  const ok = run(JSON.stringify({ ...fail("cargo build"), session_id: `test-${Date.now()}` }));
+  assert.equal(ok.status, 0);
+  const body = JSON.parse(ok.stdout);
+  assert.equal(body.hookSpecificOutput.hookEventName, "PostToolUseFailure");
+  assert.match(body.hookSpecificOutput.additionalContext, /myrmo_search/);
+  for (const bad of ["", "not json", "null", "[]"]) {
+    const r = run(bad);
+    assert.equal(r.status, 0, `input ${JSON.stringify(bad)}`);
+    assert.equal(r.stdout, "");
+  }
+});
+
+test("manifests are valid and point at files that exist", () => {
+  const plugin = json(join(root, ".claude-plugin", "plugin.json"));
+  assert.equal(plugin.name, "myrmo");
+  assert.ok(!/^(claude|anthropic)/i.test(plugin.name), "names that pass as Anthropic's own are reserved");
+
+  const market = json(join(repo, ".claude-plugin", "marketplace.json"));
+  assert.ok(market.name && market.owner?.name);
+  const entry = market.plugins.find((p) => p.name === plugin.name);
+  assert.ok(entry, "the marketplace lists the plugin under its manifest name");
+  assert.ok(existsSync(join(repo, entry.source, ".claude-plugin", "plugin.json")), "the entry's source is the plugin directory");
+  assert.ok(!entry.source.includes(".."));
+
+  const hooks = json(join(root, "hooks", "hooks.json"));
+  const hook = hooks.hooks.PostToolUseFailure[0];
+  assert.equal(hook.matcher, "Bash|PowerShell", "Claude Code on Windows runs commands with the PowerShell tool");
+  const script = hook.hooks[0].args[0].replace("${CLAUDE_PLUGIN_ROOT}", root);
+  assert.ok(existsSync(script), "the hook script exists");
+
+  const mcp = json(join(root, ".mcp.json"));
+  assert.ok(existsSync(mcp.mcpServers.myrmo.args[0].replace("${CLAUDE_PLUGIN_ROOT}", root)), "the MCP launcher exists");
+});
+
+test("the skill has the front matter Claude Code needs", () => {
+  const text = readFileSync(join(root, "skills", "myrmo", "SKILL.md"), "utf8");
+  const front = /^---\n([\s\S]*?)\n---/.exec(text)?.[1] ?? "";
+  assert.match(front, /^name: myrmo$/m);
+  assert.match(front, /^description: .{40,}/m);
+});
+
+test("the settings file can switch the hook off, and the environment variable still wins", () => {
+  const off = { settings: { hook: "off" } };
+  assert.equal(decide(fail("npm test"), { env: {}, ...off }).note, null);
+  assert.match(decide(fail("npm test"), { env: { MYRMO_HOOK: "on" }, ...off }).note, /myrmo_search/, "MYRMO_HOOK=on beats hook: off in the file");
+  assert.equal(decide(fail("npm test"), { env: { MYRMO_HOOK: "off" }, settings: { hook: "on" } }).note, null);
+  assert.match(decide(fail("npm test"), { env: {}, settings: { hook: "on" } }).note, /myrmo_search/);
+  assert.match(decide(fail("npm test"), { env: {} }).note, /myrmo_search/, "no settings at all means on");
+});
+
+test("readSettings reads the shared file, and a missing or damaged one means the defaults", () => {
+  const dir = mkdtempSync(join(tmpdir(), "myrmo-hook-settings-"));
+  const file = join(dir, "config.json");
+  assert.deepEqual(readSettings({ MYRMO_CONFIG: file }), {});
+  writeFileSync(file, JSON.stringify({ hook: "off", agent_id: "x".repeat(20) }));
+  assert.equal(readSettings({ MYRMO_CONFIG: file }).hook, "off");
+  writeFileSync(file, "{ not json");
+  assert.deepEqual(readSettings({ MYRMO_CONFIG: file }), {});
+});
+
+test("the hook script, run like Claude Code runs it, honours the settings file", () => {
+  const dir = mkdtempSync(join(tmpdir(), "myrmo-hook-run-"));
+  const file = join(dir, "config.json");
+  const input = JSON.stringify({ session_id: "settings-test-" + Date.now(), ...fail("npm test") });
+  const run = () => spawnSync(process.execPath, [join(root, "scripts", "on-failure.mjs")], { input, encoding: "utf8", env: { ...process.env, MYRMO_CONFIG: file, MYRMO_HOOK: "", MYRMO_HOOK_STATE_DIR: dir } });
+  writeFileSync(file, JSON.stringify({ hook: "off" }));
+  assert.equal(run().stdout, "");
+  writeFileSync(file, JSON.stringify({ hook: "on" }));
+  assert.match(run().stdout, /myrmo_search/);
+});
+
+test("the launcher starts the exact myrmo-mcp that this repository releases, never @latest", () => {
+  const launcher = readFileSync(join(root, "scripts", "launch-mcp.mjs"), "utf8");
+  const pinned = launcher.match(/const MCP_VERSION = "(\d+\.\d+\.\d+)"; \/\/ x-release-please-version/);
+  assert.ok(pinned, "the version sits on a line release-please updates");
+  assert.equal(pinned[1], json(join(repo, "clients", "typescript", "packages", "myrmo-mcp", "package.json")).version);
+  assert.doesNotMatch(launcher, /myrmo-mcp@latest/);
+  assert.match(launcher, /shell: process\.platform === "win32"/, "the Windows fix stays");
+  const config = json(join(repo, "release-please-config.json"));
+  assert.ok(config.packages["clients/typescript/packages/myrmo-mcp"]["extra-files"].includes("/plugins/myrmo/scripts/launch-mcp.mjs"));
+});
+
+test("the plugin manifest has a version that release-please keeps", () => {
+  const manifest = json(join(root, ".claude-plugin", "plugin.json"));
+  assert.match(manifest.version, /^\d+\.\d+\.\d+$/);
+  const config = json(join(repo, "release-please-config.json"));
+  assert.ok(config.packages["."]["extra-files"].some((f) => f.path === "plugins/myrmo/.claude-plugin/plugin.json" && f.jsonpath === "$.version"));
+  assert.equal(manifest.version, json(join(repo, ".release-please-manifest.json"))["."]);
+});
+
+test("a pipeline that hides an earlier stage's failure is caught although it exits 0", async () => {
+  const { hiddenProducer } = await import("../scripts/on-failure.mjs");
+  const ran = (command, stdout, state = {}) => decide({ hook_event_name: "PostToolUse", tool_name: "Bash", tool_input: { command }, tool_response: { stdout } }, { env: {}, settings: {}, state });
+  // An earlier stage could not run: the shell says so in the output, and the exit code is the last stage's.
+  const missing = ran("cargo test 2>&1 | tail -30", "/bin/bash: line 1: cargo: command not found");
+  assert.match(missing.note, /pipeline finished with exit 0, but an earlier stage could not run: «\/bin\/bash: line 1: cargo: command not found»/);
+  assert.match(missing.note, /call myrmo_search/);
+  // A build filtered down to nothing: an empty output is no proof it worked. Said once per command.
+  const quietBuild = ran('cd server; cargo build 2>&1 | grep -E "^(error|warning)" -A6 | head -60', "");
+  assert.match(quietBuild.note, /`cargo build` ran inside a pipeline that printed nothing/);
+  assert.match(quietBuild.note, /set -o pipefail/);
+  assert.equal(ran("cargo build 2>&1 | grep error", "", quietBuild.state).note, null, "once per command");
+  // Not a hidden producer: pipefail set, a probe, an output to read, an alternative instead of a pipe.
+  assert.equal(hiddenProducer("set -o pipefail; cargo build | head"), "");
+  assert.equal(hiddenProducer("ls | grep x"), "");
+  assert.equal(hiddenProducer("cargo build || true"), "");
+  assert.equal(hiddenProducer("cat f | python3 x.py"), "");
+  assert.equal(hiddenProducer("npm test 2>&1 | grep -c fail"), "npm test");
+  assert.equal(ran("npm test 2>&1 | tail -3", "# pass 61\n# fail 0").note, null, "what it printed is there to read");
+  assert.equal(ran("ls src | grep main", "").note, null);
+});

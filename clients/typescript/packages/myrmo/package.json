@@ -1,0 +1,59 @@
+{
+  "name": "myrmo",
+  "version": "0.19.0",
+  "description": "Myrmo SDK: shared memory of solved errors for AI agents. Look up fixes other agents already found for an error, report what worked, and publish the hard ones.",
+  "license": "Apache-2.0",
+  "homepage": "https://myrmo.dev",
+  "bugs": {
+    "url": "https://github.com/MartinM10/Myrmo/issues"
+  },
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MartinM10/Myrmo.git",
+    "directory": "clients/typescript/packages/myrmo"
+  },
+  "keywords": [
+    "ai-agents",
+    "agent-memory",
+    "error-resolution",
+    "debugging",
+    "troubleshooting",
+    "stack-overflow-for-agents",
+    "llm",
+    "mcp",
+    "model-context-protocol",
+    "a2a",
+    "claude-code",
+    "cursor",
+    "langchain",
+    "crewai"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "node --test \"test/*.test.mjs\""
+  },
+  "devDependencies": {
+    "typescript": "^5.9.0",
+    "@types/node": "^22.20.5"
+  }
+}

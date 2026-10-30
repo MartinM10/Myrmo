@@ -1,0 +1,346 @@
+"""Client-side redaction: the same detectors the colony runs, applied before anything
+leaves the machine. Keep in sync with the colony server's redaction and
+clients/typescript/packages/myrmo/src/redact.ts: all three must reproduce
+protocol/redact.v1.vectors.json exactly.
+
+Rules run in order, most specific first. A rule's replacement never matches a later rule (it
+starts with `<`, which no value pattern accepts), so redacting twice changes nothing."""
+
+from __future__ import annotations
+
+import re
+from typing import Any, Callable, Dict, List, Optional, Tuple
+
+Report = Dict[str, int]
+Replacer = Callable[[re.Match], Optional[str]]
+
+
+def _full(kind: str) -> str:
+    return f"<redacted:{kind}>"
+
+
+# Values that are references or placeholders, not secrets. The test is narrow on purpose: a
+# password may contain `(`, `$` or `/`, and leaking one costs far more than keeping a code
+# fragment, so only unmistakable references are kept: `$DB_PASSWORD`, `${{ secrets.X }}`,
+# `os.getenv(`, `get_secret()`, `None`, `****`, a URL, a path.
+_LITERALS = {
+    "none", "null", "nil", "true", "false", "undefined", "required", "optional", "string", "str",
+    "int", "integer", "bool", "boolean", "empty", "redacted", "password", "secret", "token",
+}
+_ENV_REFERENCE = re.compile(r"^(?:\$\{?[A-Z_][A-Z0-9_]*\}?|%[A-Za-z_][A-Za-z0-9_]*%)$")
+_CODE_REFERENCE = re.compile(r"^[A-Za-z_][\w.]*(?:\(\)|[(\[])$")
+
+
+def _assignment(m: "re.Match[str]") -> Optional[str]:
+    # `"$PWD:/src"` and `$PATH:/opt/bin` expand a shell variable and go on with more text: the name gives no value.
+    # `$TOKEN=value` is still redacted, since what follows the `=` may well be a secret.
+    name = m.group(1)
+    if (name.startswith("$") and name.rstrip().endswith(":")) or _is_reference(m.group(3)):
+        return None
+    return m.group(1) + m.group(2) + _full("secret")
+
+
+def _value_only(value_group: int) -> Replacer:
+    """Replaces the value group with `<redacted:secret>`, keeping every group before and after it."""
+
+    def replace(m: re.Match) -> Optional[str]:
+        if _is_reference(m.group(value_group)):
+            return None
+        groups = range(1, (m.re.groups or 0) + 1)
+        return "".join(_full("secret") if n == value_group else (m.group(n) or "") for n in groups)
+
+    return replace
+
+
+def _is_reference(value: str) -> bool:
+    lower = value.lower()
+    return (
+        bool(_ENV_REFERENCE.match(value) or _CODE_REFERENCE.match(value))
+        or value.startswith(("${", "{{", "[", "{"))
+        or lower.startswith(("http://", "https://", "./", "../", "~/"))
+        or (value.startswith("/") and "/" in value[1:])
+        or lower in _LITERALS
+        or set(value) <= set("*xX.#-_")
+    )
+
+
+def _luhn(digits: str) -> bool:
+    total = 0
+    for i, ch in enumerate(reversed(digits)):
+        n = int(ch)
+        if i % 2 == 1:
+            n *= 2
+            if n > 9:
+                n -= 9
+        total += n
+    return total % 10 == 0
+
+
+def _ip(m: re.Match) -> Optional[str]:
+    ip = m.group(0)
+    valid = all(int(octet) <= 255 for octet in ip.split("."))
+    harmless = ip in ("127.0.0.1", "0.0.0.0", "255.255.255.255")
+    return _full("ip") if valid and not harmless else None
+
+
+def _card(m: re.Match) -> Optional[str]:
+    digits = re.sub(r"[^0-9]", "", m.group(0))
+    return _full("card") if 13 <= len(digits) <= 19 and _luhn(digits) else None
+
+
+def _keep_prefix(kind: str, value_group: int) -> Replacer:
+    """`name = value` becomes `name = <redacted:kind>` unless the value is a reference."""
+
+    def replace(m: re.Match) -> Optional[str]:
+        if _is_reference(m.group(value_group)):
+            return None
+        return "".join(m.group(i) for i in range(1, value_group)) + _full(kind)
+
+    return replace
+
+
+def _authorization(m: re.Match) -> Optional[str]:
+    scheme, value = m.group(2), m.group(3)
+    if not scheme and value.lower() in ("bearer", "basic", "token", "digest", "negotiate", "ntlm", "hawk"):
+        return None  # `Authorization: Bearer <redacted:token>`: the credential is already gone
+    if _is_reference(value):
+        return None
+    return m.group(1) + scheme + _full("auth_header")
+
+
+_NAMES_STRONG = (
+    r"password|passwd|pwd|passphrase|secret|api[_-]?key|apikey|access[_-]?key|private[_-]?key|"
+    r"signing[_-]?key|encryption[_-]?key|access[_-]?token|auth[_-]?token"
+)
+_NAMES_WEAK = r"token|credentials?|session[_-]?id|sessionid|csrf|xsrf"
+_CLI_NAMES = (
+    r"password|passwd|pwd|pass|passphrase|secret|token|api[_-]?key|access[_-]?key|auth[_-]?token|"
+    r"client[_-]?secret|private[_-]?key"
+)
+
+# A `.pgpass` line, `host:port:database:user:` before the password. The host has a letter or a dot (or is `*`) and
+# the port has four or five digits (or is `*`), so a timestamp, an IPv6 address or a log such as `a:b:c:d:e` is left
+# alone. A colon inside a field is escaped as `\:`.
+_PGPASS_FIELD = r"(?:\\.|[^:\s\\'\x22<>])+"
+_PGPASS = r"(?:\*|[0-9_\-]*[A-Za-z.][A-Za-z0-9_.\-]*):(?:[0-9]{4,5}|\*):" + _PGPASS_FIELD + ":" + _PGPASS_FIELD + ":"
+# The MySQL and MariaDB clients take the password glued to `-p`: `mysql -uroot -pSECRET`. `-p 3306`, `mkdir -p`
+# and `ssh -p 22` are other commands or have a space.
+_MYSQL = r"(?:mysql(?:dump|admin|import|check|show|pump|slap|binlog|sh)?|mariadb(?:-?dump|-admin|-import|-check|-show)?)"
+
+# Configuration values that name an organisation or a person: `edc.ui.organization=Acme`, `"owner": "Ana"`,
+# `LABEL maintainer=...`. The key decides, never the value, because a name looks like any other word. A key
+# matches only when its last part is one of these words, so `org.eclipse.edc:dcp-core` (a Maven coordinate) and
+# `--org-id` are left alone. A product or connector `*.title` is included: it is usually the owner's brand.
+_ORG_KEY = (
+    r"(?:(?:[A-Za-z0-9_.\-]{0,64}[._\-])?(?:(?:organi[sz]ations?|org|compan(?:y|ies)|tenants?|customers?|owners?|authors?|"
+    r"contacts?|maintainers?|publishers?|vendors?|employers?)(?:[_.\-]?(?:name|title))?|"
+    r"(?:client|display|full|legal|trade|business|brand)[_.\-]?name)|"
+    r"(?:[A-Za-z0-9_.\-]{0,64}[._\-])?(?:connector|product|portal|brand|app|ui|site)[._\-](?:[A-Za-z0-9_.\-]{0,64}[._\-])?title)"
+)
+# Values that are not a name: placeholders, types and generic words.
+_ORG_KEEP = {
+    "default", "unknown", "example", "test", "testing", "user", "users", "admin", "administrator", "root", "me",
+    "self", "system", "anonymous", "n/a", "na", "tbd", "todo", "unset", "any", "object", "dict", "list", "set",
+    "array", "map", "number", "float", "date", "datetime", "name", "author", "owner", "org", "organization",
+    "company", "customer", "tenant",
+}
+
+
+# A type annotation such as `Optional[str]`, not a name.
+_ORG_TYPE = re.compile(r"^[A-Za-z_][A-Za-z0-9_.]*\[[A-Za-z0-9_., \[\]]*\]$")
+# The key of a rule anchored to the start of a line cannot begin with `-`, or the `-Dkey=value` of a command
+# would take the rest of the command with it.
+_ORG_KEY_LINE = _ORG_KEY.replace(r"[A-Za-z0-9_.\-]{0,64}[._\-]", r"[A-Za-z0-9_][A-Za-z0-9_.\-]{0,63}[._\-]")
+
+
+def _org_kept(value: str, inline: bool) -> bool:
+    lower = value.lower()
+    return (
+        _is_reference(value)
+        or value.startswith("<")
+        or not any(ch.isalpha() for ch in value)
+        or bool(_ORG_TYPE.match(value))
+        or lower in _ORG_KEEP
+        or lower.startswith(("your", "example", "sample", "my-", "my_"))
+        or (inline and any(ch in "${}[]()*\\" for ch in value))
+    )
+
+
+def _org_value(value_group: int, inline: bool) -> Replacer:
+    """Replaces the value group with `<redacted:org>`, keeping every group before and after it."""
+
+    def replace(m: re.Match) -> Optional[str]:
+        if _org_kept(m.group(value_group), inline):
+            return None
+        return "".join(_full("org") if n == value_group else m.group(n) for n in range(1, (m.re.groups or 0) + 1))
+
+    return replace
+
+
+_RULES: List[Tuple[str, re.Pattern, Replacer]] = [
+    (kind, re.compile(pattern, flags), replace)
+    for kind, pattern, flags, replace in [
+        # Private keys, whole or cut off by a truncated log.
+        ("private_key", r"-----BEGIN [A-Z0-9 ]*PRIVATE KEY(?: BLOCK)?-----[\s\S]*?-----END [A-Z0-9 ]*PRIVATE KEY(?: BLOCK)?-----", 0, lambda m: _full("private_key")),
+        ("private_key", r"-----BEGIN [A-Z0-9 ]*PRIVATE KEY(?: BLOCK)?-----(?:(?:\\n|\r?\n)[A-Za-z0-9+/=]{16,})*", 0, lambda m: _full("private_key")),
+        # An age secret key: `AGE-SECRET-KEY-1` and Bech32 in upper case.
+        ("private_key", r"\bAGE-SECRET-KEY-1[QPZRY9X8GF2TVDW0S3JN54KHCE6MUA7L]{40,}", 0, lambda m: _full("private_key")),
+        # Password hashes: bcrypt, argon2, crypt(3).
+        ("password_hash", r"\$(?:2[abxy]\$[0-9]{2}\$[./A-Za-z0-9]{53}|argon2(?:id|i|d)\$[^\s'\x22<>]{20,}|[156y]\$[./A-Za-z0-9]{1,16}\$[./A-Za-z0-9]{20,})", 0, lambda m: _full("password_hash")),
+        # Provider tokens.
+        ("api_key", r"\bsk-ant-[A-Za-z0-9_\-]{20,}", 0, lambda m: _full("api_key")),
+        ("api_key", r"\bsk-(?:proj-|svcacct-)?[A-Za-z0-9_\-]{20,}", 0, lambda m: _full("api_key")),
+        ("api_key", r"\bgh[pousr]_[A-Za-z0-9]{30,}|\bgithub_pat_[A-Za-z0-9_]{22,}", 0, lambda m: _full("api_key")),
+        ("api_key", r"\bglpat-[A-Za-z0-9_\-]{20,}", 0, lambda m: _full("api_key")),
+        ("api_key", r"\bxox[abprs]-[A-Za-z0-9\-]{10,}|\bxapp-[A-Za-z0-9\-]{10,}", 0, lambda m: _full("api_key")),
+        ("api_key", r"\bAIza[0-9A-Za-z_\-]{35}", 0, lambda m: _full("api_key")),
+        ("api_key", r"\b[rs]k_(?:live|test)_[A-Za-z0-9]{20,}", 0, lambda m: _full("api_key")),
+        ("api_key", r"\bmyk_[0-9a-f]{64}\b", 0, lambda m: _full("api_key")),
+        ("api_key", r"\bnpm_[A-Za-z0-9]{36}\b", 0, lambda m: _full("api_key")),
+        ("api_key", r"\bhf_[A-Za-z0-9]{30,}", 0, lambda m: _full("api_key")),
+        ("api_key", r"\bSG\.[A-Za-z0-9_\-]{16,}\.[A-Za-z0-9_\-]{16,}", 0, lambda m: _full("api_key")),
+        ("api_key", r"\bpypi-AgEIcHlwaS5vcmc[A-Za-z0-9_\-]{40,}", 0, lambda m: _full("api_key")),
+        ("api_key", r"\bya29\.[A-Za-z0-9_\-]{20,}", 0, lambda m: _full("api_key")),
+        ("api_key", r"\b(?:dckr_pat_|dop_v1_|gsk_|xai-|r8_|lin_api_|pplx-|shp(?:at|ca|pa|ss)_|whsec_|sq0(?:atp|csp)-|glptt-|glrt-|GOCSPX-)[A-Za-z0-9_\-]{16,}", 0, lambda m: _full("api_key")),
+        ("api_key", r"\b(?:dapi|SK)[0-9a-f]{32}\b|\bkey-[0-9a-f]{32}\b", 0, lambda m: _full("api_key")),
+        ("api_key", r"\b(?:secret_[A-Za-z0-9]{43}|ntn_[A-Za-z0-9]{36,})\b", 0, lambda m: _full("api_key")),
+        # HashiCorp Vault service, batch and recovery tokens; Doppler service, personal, service account and CLI
+        # tokens; Pulumi access tokens.
+        ("api_key", r"\bhv[sbr]\.[A-Za-z0-9_\-]{24,}", 0, lambda m: _full("api_key")),
+        ("api_key", r"\bdp\.(?:st|pt|sa|ct)\.(?:[A-Za-z0-9_\-]{1,64}\.)?[A-Za-z0-9]{30,}", 0, lambda m: _full("api_key")),
+        ("api_key", r"\bpul-[0-9a-f]{40}\b", 0, lambda m: _full("api_key")),
+        ("api_key", r"\b((?:account|sharedaccess)key\s*=)[A-Za-z0-9+/=]{20,}", re.I, lambda m: m.group(1) + _full("api_key")),
+        ("aws_access_key", r"\b(?:AKIA|ASIA)[0-9A-Z]{16}\b", 0, lambda m: _full("aws_access_key")),
+        ("aws_access_key", r"(aws_secret_access_key\s*[=:]\s*['\x22]?)[A-Za-z0-9/+=]{40}", re.I, lambda m: m.group(1) + _full("aws_access_key")),
+        ("webhook", r"https://hooks\.slack\.com/services/[A-Za-z0-9/]{20,}|https://(?:discord(?:app)?\.com)/api/webhooks/[0-9]+/[A-Za-z0-9_\-]+|https://[a-z0-9.\-]*webhook\.office\.com/[^\s'\x22<>]+", re.I, lambda m: _full("webhook")),
+        ("jwt", r"\beyJ[A-Za-z0-9_\-]{8,}\.[A-Za-z0-9_\-]{8,}\.[A-Za-z0-9_\-]{8,}", 0, lambda m: _full("jwt")),
+        ("token", r"\b(bearer\s+)[A-Za-z0-9\-._~+/]{16,}=*", re.I, lambda m: m.group(1) + _full("token")),
+        # Headers.
+        ("auth_header", r"\b((?:proxy-)?authorization['\x22]?[ \t]*[:=][ \t]*['\x22]?)((?:[A-Za-z][A-Za-z0-9_\-]*[ \t]+)?)([^\s'\x22,;<>]{6,})", re.I, _authorization),
+        ("auth_header", r"\b((?:x-api-key|x-auth-token|x-access-token|x-amz-security-token|x-csrf-token|x-xsrf-token|x-goog-api-key|x-gitlab-token|x-github-token|private-token|api-key|apikey)['\x22]?[ \t]*[:=][ \t]*['\x22]?)([^\s'\x22,;<>]{4,})", re.I, _keep_prefix("auth_header", 2)),
+        ("cookie", r"\b((?:set-)?cookie['\x22]?[ \t]*:[ \t]*['\x22]?)([^\r\n'\x22<>]{6,})", re.I, lambda m: m.group(1) + _full("cookie")),
+        # Credentials inside URLs.
+        ("connection_string", r"\b([a-z][a-z0-9+.\-]{0,30}://)[^:/\s@<>]+:[^@\s/<>]+@", re.I, lambda m: m.group(1) + _full("connection_string") + "@"),
+        ("connection_string", r"\b([a-z][a-z0-9+.\-]{0,30}://)[A-Za-z0-9_\-.~%]{20,}@", re.I, lambda m: m.group(1) + _full("connection_string") + "@"),
+        ("url_secret", r"([?&;](?:access_token|refresh_token|id_token|token|api[_-]?key|apikey|secret|client_secret|password|passwd|pwd|sig|signature|x-amz-signature|x-amz-security-token|x-amz-credential|private_token|sessionid|jwt)=)([^&\s'\x22<>#]{4,})", re.I, _keep_prefix("url_secret", 2)),
+        # Credentials files and commands whose password has no `name =` in front of it: Docker's `config.json`
+        # (`"auth"` is base64 of user:password), npm's legacy `_auth=`, `mysql -pSECRET`, `sshpass -p SECRET`, a
+        # `.netrc` entry, and a `.pgpass` line on its own or written to `.pgpass`.
+        ("password_assignment", r"(\\?\x22(?:auth|identitytoken|registrytoken)\\?\x22[ \t]*:[ \t]*\\?\x22)([A-Za-z0-9+/=_.\-]{8,})(\\?\x22)", re.I, _value_only(2)),
+        ("password_assignment", r"((?:^|[^A-Za-z0-9_])_auth[ \t]*=[ \t]*)(['\x22]?)([^\s'\x22,;<>]{4,})", 0, _assignment),
+        ("password_assignment", r"((?:^|[\s;&|(/])" + _MYSQL + r"(?:[ \t]+[^\s;&|]+)*?[ \t]+-p)(['\x22]?)([^\s'\x22<>]+)", 0, _assignment),
+        ("password_assignment", r"((?:^|[\s;&|(/])sshpass(?:[ \t]+-v)*[ \t]+-p[ \t]*)(['\x22]?)([^\s'\x22<>]+)", 0, _assignment),
+        ("password_assignment", r"((?:^|\s)(?:machine[ \t]+[^\s]+|default)(?:\s+(?:login|account)[ \t]+[^\s]+)+\s+password[ \t]+)(['\x22]?)([^\s'\x22<>]+)", 0, _assignment),
+        ("password_assignment", r"(^[ \t]*" + _PGPASS + r")(" + _PGPASS_FIELD + r")([ \t]*\r?$)", re.M, _value_only(2)),
+        ("password_assignment", r"((?:^|[\s'\x22])" + _PGPASS + r")(" + _PGPASS_FIELD + r")([ \t]*['\x22]?[ \t]*>{1,2}[ \t]*[^\s]*\.pgpass)", 0, _value_only(2)),
+        # `name = value`, in code, config, JSON, env files and command lines.
+        ("password_assignment", r"(\$?\b[\w.\-]{0,64}(?:" + _NAMES_STRONG + r")[\w.\-]{0,64}['\x22]?[ \t]*[=:][ \t]*)(['\x22]?)([^\s'\x22,;<>]{4,})", re.I, _assignment),
+        ("password_assignment", r"(\$?\b[\w.\-]{0,64}(?:" + _NAMES_WEAK + r")[\w.\-]{0,64}['\x22]?[ \t]*[=:][ \t]*)(['\x22]?)([^\s'\x22,;<>]{12,})", re.I, _assignment),
+        ("password_assignment", r"((?:^|\s)--?(?:" + _CLI_NAMES + r")(?:=|[ \t]+))(['\x22]?)([^\s'\x22<>\-][^\s'\x22<>]{2,})", re.I, _assignment),
+        # Personal data.
+        ("email", r"\b[A-Za-z0-9._%+\-]{1,64}@[A-Za-z0-9.\-]{1,255}\.[A-Za-z]{2,}\b", 0, lambda m: None if m.group(0).startswith("git@") else _full("email")),
+        ("ip", r"\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b", 0, _ip),
+        ("ipv6", r"\b(?:[0-9A-Fa-f]{1,4}:){7}[0-9A-Fa-f]{1,4}\b|\b(?:[0-9A-Fa-f]{1,4}:){1,5}:(?:[0-9A-Fa-f]{1,4}:){0,4}[0-9A-Fa-f]{1,4}\b", 0, lambda m: _full("ipv6")),
+        ("mac", r"\b(?:[0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}\b", 0, lambda m: _full("mac")),
+        ("hostname", r"(://|@)(?:[A-Za-z0-9\-]{1,63}\.){1,10}(?:internal|corp|intranet|lan|localdomain|home\.arpa|local)\b", re.I, lambda m: m.group(1) + _full("hostname")),
+        # An internal host name on its own, for example in a DNS error. It must end the name: `jdk.internal.misc`
+        # and `com.acme.corp.Service` are Java packages, not hosts. `.local` is left out: it is also a file
+        # suffix (`.env.local`), so it is only redacted inside URLs. The rule is listed twice because a match
+        # consumes the character after it, which would hide a second host separated by a single space.
+        ("hostname", r"(^|[^A-Za-z0-9.\-_])(?:[A-Za-z0-9\-]{1,63}\.){1,10}(?:internal|corp|intranet|lan|localdomain|home\.arpa)($|[^A-Za-z0-9.\-_]|\.\s)", re.I, lambda m: m.group(1) + _full("hostname") + m.group(2)),
+        ("hostname", r"(^|[^A-Za-z0-9.\-_])(?:[A-Za-z0-9\-]{1,63}\.){1,10}(?:internal|corp|intranet|lan|localdomain|home\.arpa)($|[^A-Za-z0-9.\-_]|\.\s)", re.I, lambda m: m.group(1) + _full("hostname") + m.group(2)),
+        ("phone", r"\+[0-9]{1,3}[\s.\-]?\(?[0-9]{2,4}\)?[\s.\-]?[0-9]{3,4}[\s.\-]?[0-9]{3,4}\b", 0, lambda m: _full("phone")),
+        ("card", r"\b[3-6](?:[ \-]?[0-9]){12,18}\b", 0, _card),
+        ("home_path", r"(/home/|/Users/)[^/\s'\x22<>]+", 0, lambda m: m.group(1) + "<user>"),
+        ("home_path", r"([a-z]:\\Users\\)[^\\\s'\x22<>]+", re.I, lambda m: m.group(1) + "<user>"),
+        # The org rules come last: they match on the key, so every more specific kind has already had its turn.
+        ("org", r"(^|[^A-Za-z0-9_.\-])(" + _ORG_KEY + r"['\x22]?[ \t]*[=:][ \t]*)(['\x22])([^'\x22\r\n]{2,120})(['\x22])", re.I, _org_value(4, False)),
+        ("org", r"(^[ \t]*(?:-[ \t]+)?" + _ORG_KEY_LINE + r"['\x22]?[ \t]*[=:][ \t]*)([^\s'\x22<>][^\r\n]*?)([ \t]*\r?$)", re.I | re.M, _org_value(2, False)),
+        ("org", r"(^|[^A-Za-z0-9_.\-])(" + _ORG_KEY + r"['\x22]?[ \t]*[=:][ \t]*)([^\s'\x22<>,;]{2,80})", re.I, _org_value(3, True)),
+    ]
+]
+
+
+#: What an organisation's own colony keeps: the addresses and host names of its network, because which machine does
+#: what is what its agents need. Credentials and personal data are removed everywhere.
+NETWORK_KINDS = frozenset({"ip", "ipv6", "mac", "hostname"})
+
+
+def redact_text(text: str, report: Optional[Report] = None, keep_network: bool = False) -> str:
+    """Replace secrets and personal data in `text`, counting each kind in `report`. `keep_network` keeps addresses and
+    host names, for an organisation's private colony."""
+    report = {} if report is None else report
+    for kind, pattern, replace in _RULES:
+        if keep_network and kind in NETWORK_KINDS:
+            continue
+        if not pattern.search(text):
+            continue
+        hits = 0
+
+        def sub(m: re.Match) -> str:
+            nonlocal hits
+            out = replace(m)
+            if out is None:
+                return m.group(0)
+            hits += 1
+            return out
+
+        text = pattern.sub(sub, text)
+        if hits:
+            report[kind] = report.get(kind, 0) + hits
+    return text
+
+
+def redact_value(value: Any, report: Optional[Report] = None, keep_network: bool = False) -> Any:
+    """Deep copy of `value` with every string redacted."""
+    report = {} if report is None else report
+    if isinstance(value, str):
+        return redact_text(value, report, keep_network)
+    if isinstance(value, list):
+        return [redact_value(v, report, keep_network) for v in value]
+    if isinstance(value, dict):
+        return {k: redact_value(v, report, keep_network) for k, v in value.items()}
+    return value
+
+
+def possible_names(value: Any, limit: int = 10) -> List[str]:
+    """Runs of capitalised words that look like a name (`Acme Data Systems`), for a person to check before approving
+    a publication. This does not redact anything: a name looks like any other word, so the colony cannot remove one
+    by itself. A run at the start of a sentence loses its first word, which is capitalised anyway."""
+    found: Dict[str, None] = {}
+
+    def capitalised(word: str) -> bool:
+        return len(word) >= 2 and word[0] != word[0].lower()
+
+    def scan(text: str) -> None:
+        run: List[re.Match] = []
+
+        def flush() -> None:
+            nonlocal run
+            if run and re.search(r"(?:^|[.!?:]\s+|\n\s*)$", text[: run[0].start()]):
+                run = run[1:]
+            if len(run) >= 2:
+                found[text[run[0].start() : run[-1].end()]] = None
+            run = []
+
+        for m in re.finditer(r"[^\W\d_]+", text):
+            if not capitalised(m.group(0)):
+                flush()
+                continue
+            if run and not (text[run[-1].end() : m.start()] == " "):
+                flush()
+            run.append(m)
+        flush()
+
+    def walk(v: Any) -> None:
+        if isinstance(v, str):
+            scan(v)
+        elif isinstance(v, list):
+            for item in v:
+                walk(item)
+        elif isinstance(v, dict):
+            for item in v.values():
+                walk(item)
+
+    walk(value)
+    return list(found)[:limit]

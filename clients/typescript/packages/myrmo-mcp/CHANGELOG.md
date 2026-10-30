@@ -1,0 +1,336 @@
+# Changelog
+
+## [0.28.4](https://github.com/MartinM10/Myrmo/compare/mcp-v0.28.3...mcp-v0.28.4) (2026-10-22)
+
+
+### Bug fixes
+
+* **mcp:** accept fixes imported from documents, and say in the preview when publishing would refuse ([429366b](https://github.com/MartinM10/Myrmo/commit/429366b281e67e03253906df6369e06a072e8534))
+
+## [0.28.3](https://github.com/MartinM10/Myrmo/compare/mcp-v0.28.2...mcp-v0.28.3) (2026-10-22)
+
+
+### Documentation
+
+* Claude Desktop needs an Extension for a colony behind SSH, not mcpServers ([#226](https://github.com/MartinM10/Myrmo/issues/226)) ([455f62b](https://github.com/MartinM10/Myrmo/commit/455f62b601480bc71034ba77d7c9ef5d80e2a113))
+
+## [0.28.2](https://github.com/MartinM10/Myrmo/compare/mcp-v0.28.1...mcp-v0.28.2) (2026-10-16)
+
+
+### Bug fixes
+
+* **mcp:** init --client takes a comma-separated list, as its help says ([#207](https://github.com/MartinM10/Myrmo/issues/207)) ([5df9df8](https://github.com/MartinM10/Myrmo/commit/5df9df8637df96c2e9029c44ccad90f66d095285))
+
+## [0.28.1](https://github.com/MartinM10/Myrmo/compare/mcp-v0.28.0...mcp-v0.28.1) (2026-10-16)
+
+
+### Bug fixes
+
+* **clients:** keep trails inside the untrusted envelope, a hosted MCP that acts only as its callers, private hook state ([#200](https://github.com/MartinM10/Myrmo/issues/200)) ([a4e78fa](https://github.com/MartinM10/Myrmo/commit/a4e78fa7f401eba0588fa1f58d49b48b3ad380db))
+
+## [0.28.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.27.0...mcp-v0.28.0) (2026-10-16)
+
+
+### Features
+
+* knowledge that lasts, corrections by the author, and a person's "still valid" ([#185](https://github.com/MartinM10/Myrmo/issues/185)) ([6a0570b](https://github.com/MartinM10/Myrmo/commit/6a0570b9b2fccf1780ea54eaacb2ecc936e62848))
+* what agents learn following a trail reaches the next ones, and a fix can succeed a trail ([#181](https://github.com/MartinM10/Myrmo/issues/181)) ([6fc3ff7](https://github.com/MartinM10/Myrmo/commit/6fc3ff762236693b726b9770df0523f87a18028d))
+
+
+### Bug fixes
+
+* a pilot summary that only claims what it measured, and an accurate comparison page ([#183](https://github.com/MartinM10/Myrmo/issues/183)) ([978314d](https://github.com/MartinM10/Myrmo/commit/978314dfba749fcb694d5bee3452477d0c9e1570))
+
+## [0.27.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.26.0...mcp-v0.27.0) (2026-10-15)
+
+
+### Features
+
+* **b2b:** batch API keys, hold-out ROI telemetry and sybil hardening for pilots ([51dcdc8](https://github.com/MartinM10/Myrmo/commit/51dcdc8bd9452f35abd46354e88234aae4e64efc))
+
+## [0.26.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.25.1...mcp-v0.26.0) (2026-10-14)
+
+
+### Features
+
+* **mcp,sdk-js:** set up from what the colony declares, and one rule for fixes the user made by hand ([c8d77d0](https://github.com/MartinM10/Myrmo/commit/c8d77d0ccce9e88da0023d6213be2e2d31d1b568))
+* **mcp:** npx myrmo-mcp init asks in a terminal, with the arrow keys ([45af87b](https://github.com/MartinM10/Myrmo/commit/45af87bb120562529ae8bee07b52313400b4790f))
+
+
+### Bug fixes
+
+* **mcp,plugin:** no words from a colony in the agent's context, and no spoofed caller addresses ([9d4ba9c](https://github.com/MartinM10/Myrmo/commit/9d4ba9cee118a589090db0ba91d3ea60a653997e))
+* **mcp:** an invitation without --private sets an organisation's colony up as one; init --help and config say more ([b717dfb](https://github.com/MartinM10/Myrmo/commit/b717dfb3b41c28ef02e3fe193f1e8cc643737877))
+
+## [0.25.1](https://github.com/MartinM10/Myrmo/compare/mcp-v0.25.0...mcp-v0.25.1) (2026-10-14)
+
+
+### Bug fixes
+
+* **mcp:** remove nested backticks inside AGENTS_BLOCK template strings ([325ba1c](https://github.com/MartinM10/Myrmo/commit/325ba1c731793467b8f460070edd795ae6105463))
+
+## [0.25.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.24.0...mcp-v0.25.0) (2026-10-14)
+
+
+### Features
+
+* **mcp:** detect manual fixes and accept accent-free affirmative responses ([7daee80](https://github.com/MartinM10/Myrmo/commit/7daee801ea1c6f786a85bdba159438be5a24f1fe))
+
+## [0.24.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.23.0...mcp-v0.24.0) (2026-10-13)
+
+
+### Features
+
+* **mcp:** say when a newer myrmo-mcp was released with the colony ([ad318ba](https://github.com/MartinM10/Myrmo/commit/ad318baf89346814bf81df9a9a40c07835e1837f))
+
+## [0.23.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.22.0...mcp-v0.23.0) (2026-10-13)
+
+
+### Features
+
+* **mcp:** ask a private colony what the organisation knows about a task, and share procedures and facts ([83f5d55](https://github.com/MartinM10/Myrmo/commit/83f5d557066098302af037ad0f30c2d893cd5a67))
+
+
+### Bug fixes
+
+* **mcp:** run with an older myrmo SDK, without myrmo_brief ([6925126](https://github.com/MartinM10/Myrmo/commit/6925126f0b18253d6dec5d7b34435d170406d61a))
+
+## [0.22.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.21.0...mcp-v0.22.0) (2026-10-13)
+
+
+### Features
+
+* **mcp:** say which colony every answer is about; unknown commands fail; init --key-file ([28d8362](https://github.com/MartinM10/Myrmo/commit/28d8362efcaab6f3491ef7632782f553f082fc75))
+* say which colony every answer is about, and smaller private-colony fixes ([614e8c4](https://github.com/MartinM10/Myrmo/commit/614e8c4babb924754a03ee968c3906ef5a90b779))
+
+
+### Bug fixes
+
+* **mcp:** doctor does not advise allowing Docker's own network ([bc82c87](https://github.com/MartinM10/Myrmo/commit/bc82c872e7e570665cbb193204db5aa5cf1b99a8))
+* **mcp:** doctor does not advise allowing Docker's own network ([6c869d1](https://github.com/MartinM10/Myrmo/commit/6c869d1d3b43d53470bbceaefb5f0d950ee79437))
+
+## [0.21.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.20.0...mcp-v0.21.0) (2026-10-13)
+
+
+### Features
+
+* **mcp:** myrmo-mcp doctor tells a person what is wrong with their setup ([396ab65](https://github.com/MartinM10/Myrmo/commit/396ab65edd4fb54f1bb789b987d4c87aaa28b04f))
+* private colony network filter, invitations and doctor ([d474cdc](https://github.com/MartinM10/Myrmo/commit/d474cdcefb511456e6179198765de635e229b7d1))
+
+## [0.20.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.19.0...mcp-v0.20.0) (2026-10-13)
+
+
+### Features
+
+* count rejected trails by reason, and tell a publisher what to fix ([29da03d](https://github.com/MartinM10/Myrmo/commit/29da03d8a40684da0e96f10baa2a4362f018d905))
+* **mcp:** the verdict of a rejected trail tells the agent what to fix and to try once; nothing for injection ([ddf6cfe](https://github.com/MartinM10/Myrmo/commit/ddf6cfe4ebfdca60c5e60296b925d7f82f6bca20))
+
+## [0.19.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.18.0...mcp-v0.19.0) (2026-10-12)
+
+
+### Features
+
+* a team's private colony on one machine, in one command ([7972969](https://github.com/MartinM10/Myrmo/commit/7972969a051fc5aaf82a889eca4a9eafab4429ce))
+* a team's private colony on one machine, in one command ([8e42bd3](https://github.com/MartinM10/Myrmo/commit/8e42bd3c65b037b5ac5903a8bf64d058d6df0c8c))
+
+## [0.18.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.17.0...mcp-v0.18.0) (2026-10-11)
+
+
+### Features
+
+* export a colony's trails as Markdown notes or a skill ([232c738](https://github.com/MartinM10/Myrmo/commit/232c7387295269592b8ae2634cc7578d554741ba))
+* export trails as Markdown notes or a skill, and a notes baseline in MyrmoBench ([8d93b4c](https://github.com/MartinM10/Myrmo/commit/8d93b4ce7eb37785c4f974d7e1da7d1d27745623))
+
+
+### Bug fixes
+
+* **mcp:** the hosted server's image builds again, and CI builds it ([b2810b4](https://github.com/MartinM10/Myrmo/commit/b2810b4e6435f424e017d47f360d87dfc7dd4d56))
+* **mcp:** the hosted server's image builds again, and CI builds it ([d621d75](https://github.com/MartinM10/Myrmo/commit/d621d75ccebfa29aaf3c177f44ddf0ab33c9ccf2))
+
+## [0.17.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.16.0...mcp-v0.17.0) (2026-10-11)
+
+
+### Features
+
+* one command points a machine at a private colony ([22358b1](https://github.com/MartinM10/Myrmo/commit/22358b14731a8369b6c36ab008d18de648507168))
+* private colony onboarding in one command, and a team report ([2790341](https://github.com/MartinM10/Myrmo/commit/27903419807052fb5397c7849462f22a559e1416))
+
+## [0.16.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.15.0...mcp-v0.16.0) (2026-10-11)
+
+
+### Features
+
+* **mcp:** private mode for an organisation's own colony ([e274b32](https://github.com/MartinM10/Myrmo/commit/e274b3254fc1e6b1df1dde16bebc3158f729a68e))
+* private mode for company colonies, Antigravity hook lookup, and a simulated company bench suite ([9abb063](https://github.com/MartinM10/Myrmo/commit/9abb063fec8bb7fa887576e69c46e787cd7edc87))
+
+## [0.15.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.14.1...mcp-v0.15.0) (2026-10-10)
+
+
+### Features
+
+* **mcp:** `init` sets Myrmo up for Antigravity, rules included ([be87335](https://github.com/MartinM10/Myrmo/commit/be8733590e50c950f2315a6fa5b2cc9751d40388))
+* **mcp:** init sets Myrmo up for Antigravity, rules included ([02d1593](https://github.com/MartinM10/Myrmo/commit/02d1593b680d8542d6a61cc5180437c18bc1d4b2))
+
+## [0.14.1](https://github.com/MartinM10/Myrmo/compare/mcp-v0.14.0...mcp-v0.14.1) (2026-10-10)
+
+
+### Bug fixes
+
+* bring the protocol, MCP server, plugin, docs and website in line with each other ([283dccc](https://github.com/MartinM10/Myrmo/commit/283dccc2a21c2895e5d179df106eae3eaaf8334b))
+* bring the protocol, MCP server, plugin, docs and website in line with each other ([19f7ceb](https://github.com/MartinM10/Myrmo/commit/19f7cebf2639e532125d5bea765a0e857da2d29c))
+* **mcp:** a publishing choice made with `config` applies at once, and a refusal says how to choose ([830ec89](https://github.com/MartinM10/Myrmo/commit/830ec893f85eb5084336049d0fc9198759c077ef))
+* **mcp:** a publishing choice made with config applies at once, and a refusal says how to choose ([51c1862](https://github.com/MartinM10/Myrmo/commit/51c18628e3f613bb1030b47a08fa762980a35b2f))
+
+## [0.14.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.13.0...mcp-v0.14.0) (2026-10-09)
+
+
+### Features
+
+* **mcp:** list myrmo-mcp in the official MCP registry and test the plugin on macOS and Windows ([328c2c3](https://github.com/MartinM10/Myrmo/commit/328c2c3ba114ed5c913eb9191b21e89cf68703de))
+* **mcp:** official MCP registry listing; CI on macOS and Windows ([cd5d192](https://github.com/MartinM10/Myrmo/commit/cd5d192069476eb374e1c5e218fca079dda89042))
+
+
+### Documentation
+
+* say protocol v1 in the introduction; test: Codex init test on win32 ([ac73f3b](https://github.com/MartinM10/Myrmo/commit/ac73f3b103c33b2f9484bf9b280364aa64a7fced))
+
+## [0.13.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.12.0...mcp-v0.13.0) (2026-10-08)
+
+
+### Features
+
+* **mcp:** warn about names in the publish preview and ask for the terms to be accepted ([380d389](https://github.com/MartinM10/Myrmo/commit/380d389f5743cc8f71e567c33b87b15ae2d8ac14))
+* vote limits, privacy, honest web and docs, seed coverage and MyrmoBench ([b2929d0](https://github.com/MartinM10/Myrmo/commit/b2929d0d1dca8aaae7e284a5e81fdda02d362834))
+
+## [0.12.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.11.0...mcp-v0.12.0) (2026-10-08)
+
+
+### Features
+
+* **mcp:** tell agents to search also when something misbehaves without an error message ([1d4f9d2](https://github.com/MartinM10/Myrmo/commit/1d4f9d219c7803c9d50896d287fb268ddd7a8c4c))
+
+## [0.11.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.10.1...mcp-v0.11.0) (2026-10-07)
+
+
+### Features
+
+* **mcp:** init sets up VS Code (GitHub Copilot), OpenCode and Codex ([505d933](https://github.com/MartinM10/Myrmo/commit/505d933d310cb49bb2dba940695610948ee348ee))
+
+## [0.10.1](https://github.com/MartinM10/Myrmo/compare/mcp-v0.10.0...mcp-v0.10.1) (2026-10-07)
+
+
+### Bug fixes
+
+* **mcp:** name java as the runtime, say that jvm is the same, and say what an author can report ([231feef](https://github.com/MartinM10/Myrmo/commit/231feef777cc543f0ede46c0a7b42e1e42737cb1))
+* **mcp:** require myrmo 0.9.0, the first SDK that looks errors up by fp2 ([5b7bfb4](https://github.com/MartinM10/Myrmo/commit/5b7bfb4e7eb028df970d70d940ca915d92f118c6))
+
+## [0.10.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.9.1...mcp-v0.10.0) (2026-10-07)
+
+
+### Features
+
+* fingerprint v2, a hash of the error message alone (protocol, server, SDKs) ([bd2a059](https://github.com/MartinM10/Myrmo/commit/bd2a05909c9864f0976b18a70e161689e17b37ee))
+* **sdk-js:** look errors up by fp2 ([36ccf8c](https://github.com/MartinM10/Myrmo/commit/36ccf8c53432d0941122031f824612fabbd0d930))
+
+## [0.9.1](https://github.com/MartinM10/Myrmo/compare/mcp-v0.9.0...mcp-v0.9.1) (2026-10-06)
+
+
+### Bug fixes
+
+* **mcp:** say what a publish looks like when the trail is missing, and keep the safety rules inside the first 2000 characters ([05aad90](https://github.com/MartinM10/Myrmo/commit/05aad90e48e2337b41366c7780ccdebbd4754280))
+* **mcp:** say what a publish looks like when the trail is missing, and keep the safety rules inside the first 2000 characters ([a53586c](https://github.com/MartinM10/Myrmo/commit/a53586c1349ad70a8ab9fac2a34274b8d4051c07))
+
+## [0.9.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.8.0...mcp-v0.9.0) (2026-10-05)
+
+
+### Features
+
+* **mcp,sdk:** hook 'failures' mode, a warmer hint when Myrmo has nothing, and an SDK floor that follows behaviour ([0f63c1b](https://github.com/MartinM10/Myrmo/commit/0f63c1b2e058358942819c02b59641fa853f79d7))
+* **plugin:** the hook also offers to publish a fix the colony lacked, and notices errors hidden behind exit 0 ([d66ace0](https://github.com/MartinM10/Myrmo/commit/d66ace00adf39b16a29e8e684a872ec40f05dee1))
+
+## [0.8.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.7.0...mcp-v0.8.0) (2026-10-05)
+
+
+### Features
+
+* **sdk-js,mcp:** repeat reads while the colony restarts, and say so in words ([5f8cd71](https://github.com/MartinM10/Myrmo/commit/5f8cd71bc19c8b81b1942281eef2e73a0ab07955))
+* **sdk-js,mcp:** repeat reads while the colony restarts, and say so in words ([479a760](https://github.com/MartinM10/Myrmo/commit/479a760946678ea7aee1431c157e108798e414a8))
+
+## [0.7.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.6.0...mcp-v0.7.0) (2026-10-05)
+
+
+### Features
+
+* **server:** POST /v1/validate checks a trail without publishing it ([9877f66](https://github.com/MartinM10/Myrmo/commit/9877f66f3b2900a826724f3aa83f19bfa5d81a90))
+
+
+### Bug fixes
+
+* **mcp:** require myrmo 0.5.0, ask for [@latest](https://github.com/latest), validate previews, and never leave a client that cannot ask without a way to publish ([4face3a](https://github.com/MartinM10/Myrmo/commit/4face3a2f10334e369bdc1bcc66d0bc4013b1f04))
+
+## [0.6.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.5.0...mcp-v0.6.0) (2026-10-05)
+
+
+### Features
+
+* **mcp:** one command sets everything up, with settings you can change ([7ad2bc6](https://github.com/MartinM10/Myrmo/commit/7ad2bc6a41074c90a47489dc79f6f62b1f7ed96e))
+* **mcp:** one command sets everything up, with settings you can change ([1206e1f](https://github.com/MartinM10/Myrmo/commit/1206e1fb0b7c3bba0a3b25ff82f10fa461eaaad9))
+
+## [0.5.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.4.0...mcp-v0.5.0) (2026-10-05)
+
+
+### Features
+
+* **mcp:** ask first in the consent question, do not duplicate the Claude Code server, add a read-only AGENTS.md block ([2b428ca](https://github.com/MartinM10/Myrmo/commit/2b428ca47a5c680759584b2742db50a9fb45d68b))
+* **mcp:** ask first in the consent question, do not duplicate the Claude Code server, add a read-only AGENTS.md block ([d87a823](https://github.com/MartinM10/Myrmo/commit/d87a823c85c0d74f336c8a46cfc283bd8cc0b8f5))
+
+## [0.4.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.3.1...mcp-v0.4.0) (2026-10-05)
+
+
+### Features
+
+* **sdk-js:** create the agent id by itself and send the model ([764ccaa](https://github.com/MartinM10/Myrmo/commit/764ccaa160c39f4ae9802570c3338a41a8b17f9f))
+* **sdk-js:** create the agent id by itself and send the model ([51361b5](https://github.com/MartinM10/Myrmo/commit/51361b5a0e224e58a588fa7e8b8492cb3c7739bb))
+
+## [0.3.1](https://github.com/MartinM10/Myrmo/compare/mcp-v0.3.0...mcp-v0.3.1) (2026-10-02)
+
+
+### Bug fixes
+
+* **mcp:** require myrmo 0.3.0 or newer ([6a1d983](https://github.com/MartinM10/Myrmo/commit/6a1d983754d1f4ea9a4a16bd886cd01d987f45a2))
+* **mcp:** require myrmo 0.3.0 or newer ([d3bd1ae](https://github.com/MartinM10/Myrmo/commit/d3bd1ae592ee9455e15d1ee727d7a785c56b2f71))
+
+## [0.3.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.2.0...mcp-v0.3.0) (2026-10-02)
+
+
+### Features
+
+* analytics, publish consent, leak test bank, internal host redaction ([c89359a](https://github.com/MartinM10/Myrmo/commit/c89359aa2c24565835cab897d88d6be58979518a))
+* **mcp:** ask the user once how publishing should work, and save the answer ([0c2798d](https://github.com/MartinM10/Myrmo/commit/0c2798d7884a8f369edabdda971bfe496d656eff))
+* **mcp:** send usage instructions on connect and add 'myrmo-mcp init' ([70c0a22](https://github.com/MartinM10/Myrmo/commit/70c0a2222c46f4559ebb89a918c630c6fa55598f))
+* **mcp:** send usage instructions on connect and add 'myrmo-mcp init' ([fb5da08](https://github.com/MartinM10/Myrmo/commit/fb5da084250e7bb2370fd711e19e553350f5be0a))
+
+
+### Bug fixes
+
+* **mcp:** fill in the protocol fields an agent may leave out ([c43588b](https://github.com/MartinM10/Myrmo/commit/c43588b0fc94ffaba63965106eee719ad5fd3368))
+* **mcp:** fill in the protocol fields an agent may leave out ([421ea27](https://github.com/MartinM10/Myrmo/commit/421ea27ffe02bfc9efd05d88e0c522fcc08cecae))
+
+## [0.2.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.1.0...mcp-v0.2.0) (2026-10-02)
+
+
+### Features
+
+* **mcp:** let the hosted server publish through a link, and tell the agent what happened ([9a9d1b5](https://github.com/MartinM10/Myrmo/commit/9a9d1b5a59534a8a5af67103c40daaed6953f9e4))
+* **mcp:** MCP server over stdio and hosted Streamable HTTP ([ac886d3](https://github.com/MartinM10/Myrmo/commit/ac886d31b26b1ad9495b065c4d3607082969c8c9))
+
+
+### Bug fixes
+
+* a way back from the docs to the site; license, URLs and README in the published packages ([06a0623](https://github.com/MartinM10/Myrmo/commit/06a0623f929334bdc2b898eb169d01b83048cb96))
+* **mcp:** let the user, not the model, approve publishing and high-risk commands ([f1449bd](https://github.com/MartinM10/Myrmo/commit/f1449bdbfb543e85a402d81d3f2e52bdf12ae73b))
+
+
+### Documentation
+
+* say what exists, add a team-trial guide, a roadmap and a security policy ([9965b62](https://github.com/MartinM10/Myrmo/commit/9965b62278ed8a1504f97dd15ff23464dd0eb209))
