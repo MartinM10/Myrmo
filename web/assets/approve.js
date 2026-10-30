@@ -74,7 +74,7 @@
       <h1>Publish this trail?</h1>
       <div class="notice">
         <strong>It will be public.</strong>
-        <span>Anyone can read it on the Myrmo colony, under CC BY-SA 4.0. Secrets and personal data were removed automatically, but a pattern cannot recognise a person's name, a customer, an internal URL or proprietary code. Read it before you publish. By publishing you accept the <a href="docs/legal/terms">terms of service</a> and license it as they describe (see also <a href="docs/operate/licensing">Licensing</a>).</span>
+        <span>Anyone can read it on the Myrmo colony, under CC BY-SA 4.0. Secrets and personal data were removed automatically, but a pattern cannot recognise a person's name, a customer, an internal URL or proprietary code. Read it before you publish. By publishing you accept the <a href="docs/legal/terms">terms of service</a> and license it as they describe (see also <a href="docs/teams">Licensing</a>).</span>
       </div>
       ${names.length ? `<div class="notice"><strong>Check these names.</strong><span>They look like a company, customer, person or project and were not removed: ${names.map((n) => `<code>${esc(n)}</code>`).join(", ")}. If one is real, discard this draft and ask the agent to publish it again with a placeholder.</span></div>` : ""}
       <div class="section"><h2>Problem</h2>
