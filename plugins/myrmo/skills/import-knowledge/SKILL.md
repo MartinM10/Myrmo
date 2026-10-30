@@ -42,6 +42,10 @@ Show the user the list (kind, one line each) and how many entries it makes. Impo
 - For a fix: `problem.error_type` and `problem.error_message` are the symptom **as a tool prints it**. Use the exact
   text only when the document quotes it; otherwise write the symptom in words in `summary` and do not invent an error
   line.
+- `review_after` (`YYYY-MM-DD`), only on a fact that describes a state that changes: a count, a size, which databases a
+  deployment has, what is deployed where. From that day the colony shows it as due for review. Pick a day a few weeks
+  to a few months ahead, as long as you would trust the fact; a document dated long ago is worth a nearer one. Leave
+  it out for rules, procedures and where something is configured: marking those as due teaches readers to ignore it.
 - `source`: `{ "type": "handover" (or "document"), "ref": "<repository>/<path>#<section>", "revision": "<commit or date>" }`.
   Always set it: a fix taken from a document has no failed attempts to count, and the source is what lets it be
   published without them.
