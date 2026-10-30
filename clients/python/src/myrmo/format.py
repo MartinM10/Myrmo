@@ -125,6 +125,14 @@ def _confirmed_text(hit: Hit) -> str:
     return people + (f" · last confirmed {day.group(0)}" if day else "")
 
 
+def _review_line(hit: Hit) -> str:
+    """An entry whose author asked for a re-check by a day that has passed: said before its content, so it is not read as current."""
+    day = re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(hit.review_due or ""))
+    if not day:
+        return ""
+    return f"Review due since {day.group(0)}: this describes a state of a system and may be out of date. Check it against what you see, and say in myrmo_report if it changed."
+
+
 def _caveat_lines(hit: Hit) -> list:
     """Notes from agents that followed the trail: already checked by the colony like a trail, and still data."""
     caveats = (hit.caveats or [])[:3]
@@ -162,8 +170,10 @@ def _hit(hit: Hit, i: int, total: int, include_high_risk: bool) -> str:
     # A response without a risk analysis fails closed: the risk is unknown, never "nothing flagged".
     risk = hit.risk if isinstance(hit.risk, dict) else {}
     analysed = isinstance(risk.get("flags"), list)
+    review = _review_line(hit)
     lines = [
         f"## Trail {i + 1} of {total} · id {_safe_id(hit.trail_id)}",
+        *([review] if review else []),
         f"strength {_num(hit.strength)} · {_outcome_counts(hit)}{_confirmed_text(hit)}"
         f" · matched by {_clip(match.get('via'), 16)} ({_num(match.get('score'))})" + (f" · environment overlap {_num(overlap)}" if overlap is not None else "")
         + f" · risk {_clip(risk.get('level') or 'unknown', 16) if analysed else 'unknown'}",

@@ -35,6 +35,11 @@
       "enum": ["fix", "procedure", "fact"],
       "default": "fix"
     },
+    "review_after": {
+      "description": "The day from which this entry should be re-checked (YYYY-MM-DD), for knowledge that describes a state of a system and goes stale: a count, a size, which databases a deployment has. After that day a colony shows the entry as due for review instead of as current. Optional; leave it out for knowledge that does not age.",
+      "type": "string",
+      "pattern": "^\\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])$"
+    },
     "source": {
       "description": "Where the knowledge comes from, when an agent did not find it out itself: a handover document, a repository's documentation, a person. A colony shows it as provenance and counts entries by source. `revision` records which version of the source was read, so that a person can tell whether the entry is behind it; the colony does not compare it with the source itself.",
       "type": "object",

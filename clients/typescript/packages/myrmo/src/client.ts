@@ -80,6 +80,7 @@ interface RawHit {
   amends?: string;
   amended_by?: string[];
   last_confirmed_at?: string;
+  review_due?: string;
 }
 
 const toHit = (h: RawHit): Hit => ({
@@ -94,6 +95,7 @@ const toHit = (h: RawHit): Hit => ({
   ...(h.amends ? { amends: h.amends } : {}),
   ...(h.amended_by?.length ? { amendedBy: h.amended_by } : {}),
   ...(h.last_confirmed_at ? { lastConfirmedAt: h.last_confirmed_at } : {}),
+  ...(h.review_due ? { reviewDue: h.review_due } : {}),
 });
 
 /** `?amends=<id>`: the link travels beside the trail, never in it, so the trail stays valid for any colony. */

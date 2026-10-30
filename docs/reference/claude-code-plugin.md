@@ -102,7 +102,7 @@ organisation's needs no `--private` since protocol 1.7; for an older one add `--
   report the trails it relied on (not the ones it did not use). A turn with only failures nobody solved, or only
   questions, is not asked about. At most once every 30 minutes (`MYRMO_HARVEST_MINUTES`), three times a session, never
   twice for the same problems, and not for what the agent already published. Knowledge suggested when a task starts is
-  asked about only if the agent read it (`myrmo_brief` or `myrmo_search`), and is shown once per session.
+  asked about only if the agent read it (`myrmo_brief` or `myrmo_search`), and is shown once per session. An entry past its `review_after` day is marked "review due" in the suggestion and in the results, so it is not read as current.
 - **It suggests only what is clearly about the task.** The knowledge listed when a request arrives must score at least
   0.6 (`MYRMO_HOOK_BRIEF_MIN`) and be close to the best match; otherwise nothing is shown, since an unrelated
   suggestion teaches the agent to ignore the next one.

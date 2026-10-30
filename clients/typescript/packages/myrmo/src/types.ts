@@ -65,6 +65,8 @@ export interface Trail {
   protocol_version: string;
   kind?: "fix" | "procedure" | "fact";
   source?: Source;
+  /** `YYYY-MM-DD`: from this day a colony shows the entry as due for review. For knowledge about a state of a system. */
+  review_after?: string;
   agent_info: AgentInfo;
   environment: Environment & { os: string; runtime: { name: string; version: string }; packages: Package[] };
   problem: {
@@ -123,6 +125,8 @@ export interface Hit {
   trail: Trail;
   /** When it last proved itself (a success or a confirmation), or when it was published. Older colonies send none. */
   lastConfirmedAt?: string;
+  /** The day the entry's author asked for it to be re-checked (`review_after`), once that day has come. */
+  reviewDue?: string;
   /** Newest first; older colonies send none. */
   caveats?: Caveat[];
   /** The trail this one was published to amend. */
