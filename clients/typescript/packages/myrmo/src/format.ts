@@ -167,6 +167,11 @@ const outcomeCounts = (hit: Hit) => {
 
 const KIND_LABELS: Record<string, string> = { procedure: "Procedure", fact: "Fact", fix: "Fix" };
 /** Own keys only: a kind such as "constructor" must not print an inherited function. */
+/** An entry whose author asked for a re-check by a day that has passed: said before its content, so it is not read as current. */
+function reviewLine(hit: Hit): string {
+  const day = /^\d{4}-\d{2}-\d{2}$/.exec(String(hit.reviewDue ?? ""))?.[0];
+  return day ? `Review due since ${day}: this describes a state of a system and may be out of date. Check it against what you see, and say in myrmo_report if it changed.` : "";
+}
 const kindLabel = (kind: unknown) => (typeof kind === "string" && Object.hasOwn(KIND_LABELS, kind) ? KIND_LABELS[kind] : "Entry");
 
 function sourceLine(hit: Hit): string {
@@ -183,6 +188,8 @@ function formatKnowledge(hit: Hit, index: number, total: number, opts: FormatOpt
     `strength ${num(hit.strength)} · ${outcomeCounts(hit)}${confirmedText(hit)}`,
     `${kindLabel(hit.kind)}: ${clip(t.problem?.summary, 400)}`,
   ];
+  const review = reviewLine(hit);
+  if (review) lines.splice(2, 0, review);
   if (t.problem?.task_context) lines.push(`When it applies: ${clip(t.problem.task_context, 300)}`);
   const source = sourceLine(hit);
   if (source) lines.push(source);

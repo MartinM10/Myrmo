@@ -58,6 +58,8 @@ class Hit:
     amended_by: List[str] = field(default_factory=list)
     #: When it last proved itself (a success or a person's confirmation), or when it was published.
     last_confirmed_at: Optional[str] = None
+    #: The day the entry's author asked for it to be re-checked (`review_after`), once that day has come.
+    review_due: Optional[str] = None
 
     def safe_commands(self) -> List[Dict[str, Any]]:
         """Commands without a high-risk flag. Without a risk analysis none is known to be safe; an unknown level counts as high."""
@@ -100,7 +102,7 @@ def _same_names(exact: Optional["SearchResult"], error: str) -> Optional["Search
 
 def _hits(results: Sequence[Dict[str, Any]]) -> List[Hit]:
     return [
-        Hit(r["trail_id"], r["match"], r["strength"], r["outcomes"], r.get("risk") or {}, r["trail"], r.get("caveats") or [], r.get("amends"), r.get("amended_by") or [], r.get("last_confirmed_at"))
+        Hit(r["trail_id"], r["match"], r["strength"], r["outcomes"], r.get("risk") or {}, r["trail"], r.get("caveats") or [], r.get("amends"), r.get("amended_by") or [], r.get("last_confirmed_at"), r.get("review_due"))
         for r in results
     ]
 

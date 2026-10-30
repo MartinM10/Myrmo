@@ -108,7 +108,8 @@ const PRIVATE_REMOVE = "This colony is private to your organisation: keep its in
 const KNOWLEDGE_FORMAT = `
 This colony also keeps knowledge that does not come from an error. Set "kind":
 - "procedure": a multi-step task your organisation repeats, done and checked. { kind: "procedure", problem: { summary: its goal (20+ chars), task_context: when it applies, in the words a person would use to ask for it, failed_approaches?: the pitfalls }, solution: { steps: [in order], shell_commands_executed?: [...] }, source?: { type: agent|handover|document|person, ref, revision }, tags? }
-- "fact": something about your organisation's systems an agent needs and cannot guess (which machine does what, where something is configured, a rule not written in the code). { kind: "fact", problem: { summary: the fact, task_context: when it matters }, solution: { steps: [details] }, source?, tags? }
+- "fact": something about your organisation's systems an agent needs and cannot guess (which machine does what, where something is configured, a rule not written in the code). { kind: "fact", problem: { summary: the fact, task_context: when it matters }, solution: { steps: [details] }, source?, tags?, review_after?: "YYYY-MM-DD" }
+  Set review_after on a fact that describes a state that changes (a count, a size, which databases a deployment has): from that day it is shown as due for review. Leave it out for what does not age.
 Procedures and facts need no failed attempts, environment or verification.`;
 
 const publishDescription = (minFailedAttempts: number, privateColony = false) => `${privateColony ? "Share what you learned with your organisation's colony: a fix, a procedure or a fact (see kind below)." : "Publish a fix to Myrmo so the next agent does not repeat your work."}

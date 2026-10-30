@@ -297,7 +297,9 @@ export function briefNote(task, body, state = {}, now = Date.now(), how = "", { 
     const about = clip(t.problem?.summary || t.problem?.error_message || t.problem?.error_type, 160);
     const o = hit.outcomes ?? {};
     const strength = Number(hit.strength ?? 0);
-    return `${i + 1}. [${kind}] ${about} (strength ${Number.isFinite(strength) ? strength.toFixed(2) : "?"}, worked ${num(o.worked, "0")}, failed ${num(o.failed, "0")}) id ${id}`;
+    const due = /^\d{4}-\d{2}-\d{2}$/.exec(String(hit.review_due ?? ""))?.[0];
+    const review = due ? ` [review due since ${due}: may be out of date]` : "";
+    return `${i + 1}. [${kind}] ${about} (strength ${Number.isFinite(strength) ? strength.toFixed(2) : "?"}, worked ${num(o.worked, "0")}, failed ${num(o.failed, "0")})${review} id ${id}`;
   });
   const note = [
     "Myrmo (your organisation's private colony) already has knowledge that may help with this task:",
