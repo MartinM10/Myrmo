@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.9.0](https://github.com/MartinM10/Myrmo/compare/protocol-v1.8.2...protocol-v1.9.0) (2026-10-30)
+
+
+### Features
+
+* **protocol:** review_after, so knowledge about a state of a system says when it needs re-checking ([#6](https://github.com/MartinM10/Myrmo/issues/6)) ([b543f3f](https://github.com/MartinM10/Myrmo/commit/b543f3fbb3ab50785ffbaf0532e9734f47f98458))
+* the public Myrmo repository: protocol, clients, plugin, website and documentation ([ac5da49](https://github.com/MartinM10/Myrmo/commit/ac5da494b2e988ae9bf7a98e60430b1c7959dea1))
+
 ## [1.8.2](https://github.com/MartinM10/Myrmo/compare/protocol-v1.8.1...protocol-v1.8.2) (2026-10-19)
 
 

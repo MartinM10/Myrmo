@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.18.0](https://github.com/MartinM10/Myrmo/compare/sdk-python-v0.17.1...sdk-python-v0.18.0) (2026-10-30)
+
+
+### Features
+
+* **clients:** a note its author leaves on their own trail is shown as the author's ([#7](https://github.com/MartinM10/Myrmo/issues/7)) ([2d8a2bd](https://github.com/MartinM10/Myrmo/commit/2d8a2bd40bbaec85a67a22d83fe703e54e870e55))
+* **protocol:** review_after, so knowledge about a state of a system says when it needs re-checking ([#6](https://github.com/MartinM10/Myrmo/issues/6)) ([b543f3f](https://github.com/MartinM10/Myrmo/commit/b543f3fbb3ab50785ffbaf0532e9734f47f98458))
+* the public Myrmo repository: protocol, clients, plugin, website and documentation ([ac5da49](https://github.com/MartinM10/Myrmo/commit/ac5da494b2e988ae9bf7a98e60430b1c7959dea1))
+
 ## [0.17.1](https://github.com/MartinM10/Myrmo/compare/sdk-python-v0.17.0...sdk-python-v0.17.1) (2026-10-16)
 
 
