@@ -43,8 +43,11 @@ test("in a private colony the reminder to publish keeps internal names; on the p
 });
 
 test("the agent is asked to share what it learned once per batch of failures, and never outside a private colony", () => {
-  const failed = decide(failure("helm upgrade connector ./chart", "Error: UPGRADE FAILED: timed out waiting for the condition"), { env: PRIVATE, now: 0 }).state;
-  assert.equal(failed.failures, 1);
+  const unsolved = decide(failure("helm upgrade connector ./chart", "Error: UPGRADE FAILED: timed out waiting for the condition"), { env: PRIVATE, now: 0 }).state;
+  assert.equal(unsolved.failures, 1);
+  assert.equal(decideStop({}, { env: PRIVATE, state: unsolved, now: 1 }).reason, null, "a failure nobody solved: nothing to share");
+  const failed = decide(success("helm upgrade connector ./chart"), { env: PRIVATE, state: unsolved, now: 1 }).state;
+  assert.equal(failed.resolved, 1);
 
   assert.equal(decideStop({}, { env: {}, state: failed, now: 1 }).reason, null, "public colony: never");
   assert.equal(decideStop({}, { env: PRIVATE, state: {}, now: 1 }).reason, null, "no failure in the session: nothing to share");
@@ -59,20 +62,21 @@ test("the agent is asked to share what it learned once per batch of failures, an
   assert.equal(decideStop({}, { env: PRIVATE, state: asked.state, now: 2 }).reason, null, "the same failures are not asked about twice");
 
   // New failures, but too soon after the last time; then late enough.
-  const again = decide(failure("kubectl apply -f dsp.yaml", "error: resource mapping not found"), { env: PRIVATE, state: asked.state, now: 3 }).state;
+  let again = decide(failure("kubectl apply -f dsp.yaml", "error: resource mapping not found"), { env: PRIVATE, state: asked.state, now: 3 }).state;
+  again = decide(success("kubectl apply -f dsp.yaml"), { env: PRIVATE, state: again, now: 4 }).state;
   assert.equal(decideStop({}, { env: PRIVATE, state: again, now: 10 * 60_000 }).reason, null);
   assert.ok(decideStop({}, { env: PRIVATE, state: again, now: 31 * 60_000 }).reason);
   assert.equal(decideStop({}, { env: PRIVATE, state: { ...again, harvests: 3 }, now: 31 * 60_000 }).reason, null, "three times a session at most");
 });
 
-test("after a publish with no new failure, the stop hook asks only for the reports on what was shown", () => {
-  const state = { failures: 2, harvestedAt: 2, publishedTs: 5, brief: { ids: ["5d2c1b0a"] } };
+test("with nothing new solved, the stop hook asks only for the reports on what was read", () => {
+  const state = { failures: 2, harvestedAt: 2, resolved: 1, harvestedResolved: 1, publishedTs: 5, brief: { ids: ["5d2c1b0a"], used: true } };
   const asked = decideStop({}, { env: PRIVATE, state, now: 10 });
   assert.match(asked.reason, /myrmo_report for each entry it showed you for this task \(5d2c1b0a\)/);
   assert.doesNotMatch(asked.reason, /myrmo_publish/, "what was learned was already shared");
   assert.equal(decideStop({}, { env: PRIVATE, state: asked.state, now: 31 * 60_000 }).reason, null, "asked once");
-  const unpublished = decideStop({}, { env: PRIVATE, state: { ...state, publishedTs: undefined }, now: 10 });
-  assert.match(unpublished.reason, /myrmo_publish/, "without a publish the full request stays");
+  const solved = decideStop({}, { env: PRIVATE, state: { ...state, resolved: 2 }, now: 10 });
+  assert.match(solved.reason, /myrmo_publish/, "something new solved: the full request");
 });
 
 let colony;
@@ -132,7 +136,9 @@ test("Claude Code: after a failed command the hook looks it up in the private co
   assert.equal(sent.headers.authorization, "Bearer myk_test");
   assert.match(sent.body.query, /held by ci-runner-17/);
 
-  // Then the agent stops: it is asked once to share what it learned.
+  // The command works once the lock is released; then the agent stops and is asked once to share what it learned.
+  assert.equal(await runHook({ session_id: "s1", hook_event_name: "Stop", stop_hook_active: false }, env), null, "nothing solved yet");
+  await runHook({ session_id: "s1", ...success("acmectl db migrate") }, env);
   const stop = await runHook({ session_id: "s1", hook_event_name: "Stop", stop_hook_active: false }, env);
   assert.equal(stop.decision, "block");
   assert.match(stop.reason, /before you finish/);
@@ -189,11 +195,12 @@ test("Claude Code: a request is looked up in the private colony's task index, an
   assert.equal(sent.body.mode, "task");
   assert.equal(sent.headers.authorization, "Bearer myk_test");
 
-  // Without any failure, stopping asks once to report on what was shown, and to share procedures and facts.
+  // A suggestion the agent never opened is not asked about; once it reads it with myrmo_brief, stopping asks once.
+  assert.equal(await runHook({ session_id: "t1", hook_event_name: "Stop", stop_hook_active: false }, env), null, "never opened");
+  await runHook({ session_id: "t1", hook_event_name: "PostToolUse", tool_name: "mcp__plugin_myrmo_myrmo__myrmo_brief", tool_input: { task: "x" }, tool_response: "..." }, env);
   const stop = await runHook({ session_id: "t1", hook_event_name: "Stop", stop_hook_active: false }, env);
   assert.equal(stop.decision, "block");
-  assert.match(stop.reason, /Myrmo showed you knowledge for this task \(5d2c1b0a-9e8f-4a7b-8c6d-5e4f3a2b1c0d\)/);
-  assert.match(stop.reason, /kind "procedure"/);
+  assert.match(stop.reason, /myrmo_report for each entry it showed you for this task \(5d2c1b0a-9e8f-4a7b-8c6d-5e4f3a2b1c0d\)/);
   assert.equal(await runHook({ session_id: "t1", hook_event_name: "Stop", stop_hook_active: false }, env), null, "asked once");
 });
 

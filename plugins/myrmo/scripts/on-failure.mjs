@@ -51,6 +51,7 @@ const SHELLS = new Set(["Bash", "PowerShell"]);
 const SEARCH_TOOL = /^mcp__.*myrmo_search$/;
 const REPORT_TOOL = /^mcp__.*myrmo_report$/;
 const PUBLISH_TOOL = /^mcp__.*myrmo_publish$/;
+const BRIEF_TOOL = /^mcp__.*myrmo_brief$/;
 // The id each trail is listed under in a search reply (`## Trail 1 of 2 · id <uuid>`).
 const TRAIL_ID = /^## Trail \d+ of \d+ · id ([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i;
 
@@ -181,6 +182,29 @@ function segmentsWithPipes(text) {
   endWord();
   if (words.length) out.push(words);
   return out.map((w) => w.filter((x) => !/^\d*[<>]&?\d*$/.test(x) && !/^\d*>&\d+$/.test(x)));
+}
+
+// A tool saying it was called wrongly (a mistyped flag): the agent's own slip, fixed by reading the line, not knowledge to
+// look up or share.
+const USAGE_LINE = /\b(?:unknown (?:shorthand )?flag|unknown option|unrecognized option|invalid option|illegal option)\b|^\s*usage:/im;
+
+/** Whether the command ends in a test whose "false" is an answer: `... ; [ -f x ] && echo found`, also as the last
+ *  statement of a loop body. Exit 1 then says the condition did not hold, not that anything failed. */
+export function endsInTest(command) {
+  const body = String(command).trim().replace(/(?:\s*;?\s*\b(?:done|fi)\b)+\s*$/, "");
+  const last = body.split(/;|\n|\bdo\b|\bthen\b/).at(-1)?.trim() ?? "";
+  // After `||` or a pipe the exit code is another command's: `test -d x || mkdir x` failing is mkdir failing.
+  if (/\|/.test(last)) return false;
+  const isTest = (part) => /^(?:\[\[?|test\b)/.test(part);
+  const parts = last.split(/&&/).map((part) => part.trim());
+  // `[ ... ]` alone, `[ ... ] && echo yes`, or a chain whose test comes right before the final echo.
+  return isTest(parts[0]) && parts.length <= 2
+    || (parts.length >= 2 && isTest(parts.at(-2)) && /^(?:echo|printf|true|:)(?:\s|$)/.test(parts.at(-1)));
+}
+
+/** A line in the shape a program gives its messages, `program: what happened`, and not data such as `key=value`. */
+function toolMessage(line) {
+  return /^[\w.\/-]+:\s+\S/.test(line) && !/\w=\S/.test(line) ? line : "";
 }
 
 const HELP_LINE = /\[Help \d+\]|re-run maven|for more information about the errors|to see the full stack trace|^\[(?:ERROR|FATAL)\]\s*$/i;
@@ -323,6 +347,11 @@ export function decide(input, { now = Date.now(), state = {}, env = process.env,
     }
     return quiet(state);
   }
+  // The agent read the knowledge the hook suggested (myrmo_brief) or searched itself: only then may it be asked to report.
+  if (BRIEF_TOOL.test(String(tool)) || (SEARCH_TOOL.test(String(tool)) && state.brief && !state.brief.used)) {
+    if (state.brief && !state.brief.reported) state = { ...state, brief: { ...state.brief, used: true } };
+    if (BRIEF_TOOL.test(String(tool))) return quiet(state);
+  }
   // 4b. The agent reported: nothing left to remind. A trail that worked for the open problem: what it cost with help.
   if (REPORT_TOOL.test(String(tool))) {
     const brief = state.brief ? { ...state.brief, reported: true } : state.brief;
@@ -336,7 +365,7 @@ export function decide(input, { now = Date.now(), state = {}, env = process.env,
   }
   // The agent shared what it learned: the failures so far need no further asking when it stops.
   if (PUBLISH_TOOL.test(String(tool))) {
-    return quiet({ ...state, harvestedAt: Math.max(Number(state.harvestedAt ?? 0), Number(state.failures ?? 0)), publishedTs: now });
+    return quiet({ ...state, harvestedAt: Math.max(Number(state.harvestedAt ?? 0), Number(state.failures ?? 0)), harvestedResolved: Number(state.resolved ?? 0), publishedTs: now });
   }
   if (!SHELLS.has(tool)) return quiet(state);
 
@@ -357,10 +386,14 @@ export function decide(input, { now = Date.now(), state = {}, env = process.env,
   // 1. A command failed.
   if (failed) {
     if (input.is_interrupt === true || STOPPED.has(code) || isProbe(command) || answered(command, code)) return quiet(state);
+    if (code === 1 && endsInTest(command)) return quiet(state);
     const output = errorText.replace(/^Exit code \d+\r?\n?/, "");
-    // A company's own tools print errors in no known shape (`migrate: lock 'migrate' is held by ci-runner-17`), and those
-    // are what a private colony is for: for a command that failed, its last line is the best guess.
-    const line = lastErrorLine(output, { loose: true }) || lastLine(output);
+    // A company's own tools print errors in shapes no pattern knows (`migrate: lock 'migrate' is held by ci-runner-17`):
+    // the loose patterns take a line that says something failed, or else a last line in the shape tools give their
+    // messages (`program: message`). Nothing else is quoted or looked up: the last line of a loop that printed data
+    // (`bucket-a objects=95`) is not an error, and searching for it only teaches the agent to ignore the note.
+    const line = lastErrorLine(output, { loose: true }) || toolMessage(lastLine(output));
+    if (line && USAGE_LINE.test(line)) return quiet(state);
     const problem = openProblem(state, now) ?? (line ? { at: now, line } : null);
     const next = { ...state, failed: { key: commandKey(command), at: now, line }, failures: (state.failures ?? 0) + 1, problem };
     const sig = signature(line);
@@ -376,6 +409,11 @@ export function decide(input, { now = Date.now(), state = {}, env = process.env,
   }
 
   if (mode === "failures" || event === undefined || isProbe(command)) return quiet(state);
+
+  // A command that failed now works: something was solved, which is what the Stop hook may ask to share.
+  if (state.failed && !state.failed.resolved && commandKey(command) === state.failed.key && now - state.failed.at < PROBLEM_MS) {
+    state = { ...state, failed: { ...state.failed, resolved: true }, resolved: Number(state.resolved ?? 0) + 1 };
+  }
 
   // 3b. A command that failed earlier now works, and Myrmo had nothing: the agent may have solved something new.
   const nomatch = state.nomatch;
@@ -469,25 +507,27 @@ function askToReport(state, now) {
 }
 
 /**
- * 6. The agent is about to stop. In a private colony, after a turn in which commands failed, ask it once to share what
- * it learned before it finishes: Claude Code then continues with this as its next instruction. At most once every
- * MYRMO_HARVEST_MINUTES (default 30) and three times a session, never while it is already continuing because of this
- * hook, and only for failures that happened since the last time it was asked.
+ * 6. The agent is about to stop. In a private colony, after a turn in which a failed command was made to work, ask it once
+ * to share what it learned before it finishes: Claude Code then continues with this as its next instruction. At most once
+ * every MYRMO_HARVEST_MINUTES (default 30) and three times a session, never while it is already continuing because of this
+ * hook, and only for what was solved since the last time it was asked. Knowledge the hook suggested is asked about only
+ * if the agent read it (myrmo_brief or myrmo_search): a suggestion it never opened was not relied on.
  */
 export function decideStop(input, { now = Date.now(), state = {}, env = process.env, settings = {} } = {}) {
   const none = { reason: null, state };
   if (hookMode(env, settings) === "off" || env.MYRMO_HARVEST === "off") return none;
   if (input?.stop_hook_active === true) return none;
   if (!privateColony(env, settings)) return askToReport(state, now);
-  const failures = Number(state.failures ?? 0);
-  // Knowledge shown at the start of the task and not reported on yet: worth asking once, failures or not.
-  const shown = state.brief && !state.brief.reported && !state.brief.asked ? state.brief : null;
-  if (failures <= Number(state.harvestedAt ?? 0) && !shown) return none;
+  const resolved = Number(state.resolved ?? 0);
+  const solvedSince = resolved > Number(state.harvestedResolved ?? 0);
+  // Knowledge shown at the start of the task, read by the agent and not reported on yet: worth asking once.
+  const shown = state.brief && state.brief.used && !state.brief.reported && !state.brief.asked ? state.brief : null;
+  if (!solvedSince && !shown) return none;
   const minMs = Number(env.MYRMO_HARVEST_MINUTES ?? 30) * 60_000;
   if ((state.harvests ?? 0) >= 3 || (state.harvestedTs && now - state.harvestedTs < minMs)) return none;
   // Nothing new failed since this session last published: what is left is only reporting on what was shown, so ask that alone
   // instead of asking again to share what was learned.
-  if (state.publishedTs && failures <= Number(state.harvestedAt ?? 0) && shown) {
+  if (!solvedSince && shown) {
     const reason =
       `Myrmo: before you finish, call myrmo_report for each entry it showed you for this task (${shown.ids.join(", ")}) that you actually relied on ` +
       "(worked, partially_worked, or failed if it was wrong or out of date, saying what changed); skip the ones you did not use. If you used none, finish.";
@@ -506,7 +546,7 @@ export function decideStop(input, { now = Date.now(), state = {}, env = process.
     "what, where something is configured), publish it with kind \"fact\". Keep internal names and addresses as printed; never include credentials or personal data. " +
     "If nothing qualifies, say so in one line and finish.";
   const brief = shown ? { ...shown, asked: true } : state.brief;
-  return { reason, state: { ...state, brief, harvestedAt: failures, harvestedTs: now, harvests: (state.harvests ?? 0) + 1 } };
+  return { reason, state: { ...state, brief, harvestedAt: Number(state.failures ?? 0), harvestedResolved: resolved, harvestedTs: now, harvests: (state.harvests ?? 0) + 1 } };
 }
 
 /** Without the file (a folder that cannot be trusted, a full disk) the notes are simply not throttled. */
@@ -535,7 +575,9 @@ async function main() {
     const task = taskOf(input.prompt);
     if (!task || hookMode(process.env, settings) === "off" || !briefEnabled(process.env, settings)) return;
     const body = await lookupTask(task, { settings, agent: "myrmo-claude-code-hook/1" });
-    const out = briefNote(task, body, state);
+    // MYRMO_HOOK_BRIEF_MIN: the lowest score a suggestion may have (default 0.6).
+    const min = Number(process.env.MYRMO_HOOK_BRIEF_MIN);
+    const out = briefNote(task, body, state, Date.now(), "", Number.isFinite(min) && min > 0 ? { min } : {});
     save(file, state, out.state);
     if (out.note) process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: "UserPromptSubmit", additionalContext: out.note } }));
     return;

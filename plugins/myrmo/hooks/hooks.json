@@ -31,7 +31,7 @@
         ]
       },
       {
-        "matcher": "mcp__.*myrmo_(search|report|publish)",
+        "matcher": "mcp__.*myrmo_(search|report|publish|brief)",
         "hooks": [
           {
             "type": "command",
