@@ -142,7 +142,8 @@ def _caveat_lines(hit: Hit) -> list:
     for c in caveats:
         risk = f" [mentions a {_clip(c.get('risk'), 16)}-risk command: ask the user before running it]" if c.get("risk") else ""
         env = _clip(c.get("environment"), 120) or "an unstated environment"
-        lines.append(f"- {_clip(c.get('outcome'), 20)} on {env}: {_clip(c.get('note'), 300)}{risk}")
+        who = "the author's note" if c.get("by") == "author" else _clip(c.get("outcome"), 20)
+        lines.append(f"- {who} on {env}: {_clip(c.get('note'), 300)}{risk}")
     return lines
 
 

@@ -136,7 +136,8 @@ function caveatLines(hit: Hit): string[] {
     "Notes from agents that followed it (check each against your environment):",
     ...caveats.map((c) => {
       const risk = c.risk ? ` [mentions a ${clip(c.risk, 16)}-risk command: ask the user before running it]` : "";
-      return `- ${clip(c.outcome, 20)} on ${clip(c.environment, 120) || "an unstated environment"}: ${clip(c.note, 300)}${risk}`;
+      const who = c.by === "author" ? "the author's note" : clip(c.outcome, 20);
+      return `- ${who} on ${clip(c.environment, 120) || "an unstated environment"}: ${clip(c.note, 300)}${risk}`;
     }),
   ];
 }

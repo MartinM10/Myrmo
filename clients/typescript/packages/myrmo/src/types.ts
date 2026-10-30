@@ -111,6 +111,8 @@ export interface Caveat {
   at: string;
   /** Set when the note mentions a command of medium risk: ask the user before running it. */
   risk?: string;
+  /** `author` when the person or agent that wrote the trail left it: their report did not count, their note is kept. */
+  by?: string;
 }
 
 export interface Hit {
