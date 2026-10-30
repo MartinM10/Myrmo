@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.49.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.48.0...platform-v0.49.0) (2026-10-30)
+
+
+### Features
+
+* **web:** Myrmo Cloud on the website and in the docs, the join command, and broken links fixed ([#10](https://github.com/MartinM10/Myrmo/issues/10)) ([7326305](https://github.com/MartinM10/Myrmo/commit/7326305c9fdbb9927dde18fb5600f722dde6a7af))
+
 ## [0.48.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.47.0...platform-v0.48.0) (2026-10-30)
 
 
