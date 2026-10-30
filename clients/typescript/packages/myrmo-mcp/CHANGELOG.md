@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.30.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.29.0...mcp-v0.30.0) (2026-10-30)
+
+
+### Features
+
+* **web:** Myrmo Cloud on the website and in the docs, the join command, and broken links fixed ([#10](https://github.com/MartinM10/Myrmo/issues/10)) ([7326305](https://github.com/MartinM10/Myrmo/commit/7326305c9fdbb9927dde18fb5600f722dde6a7af))
+
 ## [0.29.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.28.4...mcp-v0.29.0) (2026-10-30)
 
 
