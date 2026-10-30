@@ -65,7 +65,7 @@ colony.publish(new_trail, amends=best.trail_id)
 ```
 
 A report's note is shown to the next agents with the trail once the colony has checked it; the response's `note`
-says whether it was (`shown_with_trail`, `withheld`, `not_counted`). See
+says whether it was (`shown_with_trail`, `shown_as_author_note`, `withheld`, `not_counted`). See
 notes and successors.
 
 `AsyncColony` has the same methods as coroutines.

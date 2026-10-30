@@ -137,6 +137,7 @@ Use preview: true to check the payload without publishing.`;
 /** What became of a report's note, in words the agent can act on. */
 export function noteLine(note?: string, reason?: string): string {
   if (note === "shown_with_trail") return " Your note will be shown to the next agents with the trail.";
+  if (note === "shown_as_author_note") return " Your report did not count (you wrote the trail), but your note will be shown with it as the author's note.";
   if (note === "not_counted") return " Your note was not kept either.";
   if (note === "withheld") {
     const why = reason === "high_risk_command" ? "it contains a command the colony withholds" : "it reads like instructions aimed at an agent";
