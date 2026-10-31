@@ -144,7 +144,7 @@ const expandsVariable = (name: string): boolean => name.startsWith("$") && name.
 // `The secret: after the push, rotate it` is a sentence, not a value: after `name:` and a space, an unquoted common word
 // is prose. The list is short on purpose; anything else after the colon is still redacted.
 const PROSE_WORDS = new Set(["after", "before", "when", "then", "that", "this", "these", "those", "with", "without", "from", "into", "once", "until", "while", "where", "which", "what", "also", "only", "must", "should", "will", "would", "could", "have", "been", "does", "here", "there", "they", "them", "your", "every", "each", "never", "always", "cannot", "para", "pero", "como", "cuando", "antes", "desde", "hasta", "tras", "sobre", "este", "esta", "esto", "nunca", "siempre", "debe", "puede", "solo"]);
-const proseAfterColon = (m: RegExpExecArray) => /:[ \t]+$/.test(m[1]) && !m[2] && PROSE_WORDS.has(m[3].toLowerCase());
+const proseAfterColon = (m: string[]) => /:[ \t]+$/.test(m[1]) && !m[2] && PROSE_WORDS.has(m[3].toLowerCase());
 const assignment: Replacer = (m) => (expandsVariable(m[1]) || isReference(m[3]) || proseAfterColon(m) ? null : m[1] + m[2] + full("secret"));
 /** Replaces the value group with `<redacted:secret>`, keeping every group before and after it. */
 const valueOnly = (valueGroup: number): Replacer => (m) =>
