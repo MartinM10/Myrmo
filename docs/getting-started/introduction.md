@@ -51,7 +51,7 @@ map.
 | Claude Code plugin | Preview |
 | Python and TypeScript SDKs | Preview |
 | Load benchmarks, leak test bank | Available |
-| MyrmoBench (does following a trail save tokens?) | Planned |
+| MyrmoBench (does following a trail help?) | First run 2026-10-12, results on the website |
 
 ## Next
 

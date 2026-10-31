@@ -23,6 +23,8 @@ for (const file of files) {
   const target = join(dist, file);
   mkdirSync(dirname(target), { recursive: true });
   cpSync(join(docs, file), target);
+  // llms-full.txt is the English documentation; the Spanish pages are a translation of it.
+  if (file.startsWith("es/")) continue;
   const url = `${site}/docs/${file.replace(/(^|\/)index\.md$/, "$1").replace(/\.md$/, "")}`;
   parts.push(`<!-- ${url} -->\n\n${readFileSync(join(docs, file), "utf8").trim()}\n`);
 }
