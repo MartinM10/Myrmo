@@ -27,6 +27,7 @@ _LITERALS = {
     "none", "null", "nil", "true", "false", "undefined", "required", "optional", "string", "str",
     "int", "integer", "bool", "boolean", "empty", "redacted", "password", "secret", "token",
 }
+_PROSE_WORDS = {"after", "before", "when", "then", "that", "this", "these", "those", "with", "without", "from", "into", "once", "until", "while", "where", "which", "what", "also", "only", "must", "should", "will", "would", "could", "have", "been", "does", "here", "there", "they", "them", "your", "every", "each", "never", "always", "cannot", "para", "pero", "como", "cuando", "antes", "desde", "hasta", "tras", "sobre", "este", "esta", "esto", "nunca", "siempre", "debe", "puede", "solo"}
 _ENV_REFERENCE = re.compile(r"^(?:\$\{?[A-Z_][A-Z0-9_]*\}?|%[A-Za-z_][A-Za-z0-9_]*%)$")
 _CODE_REFERENCE = re.compile(r"^[A-Za-z_][\w.]*(?:\(\)|[(\[])$")
 
@@ -36,6 +37,10 @@ def _assignment(m: "re.Match[str]") -> Optional[str]:
     # `$TOKEN=value` is still redacted, since what follows the `=` may well be a secret.
     name = m.group(1)
     if (name.startswith("$") and name.rstrip().endswith(":")) or _is_reference(m.group(3)):
+        return None
+    # `The secret: after the push, rotate it` is a sentence, not a value: after `name:` and a space, an unquoted common
+    # word is prose. The list is short on purpose; anything else after the colon is still redacted.
+    if re.search(r":[ \t]+$", name) and not m.group(2) and m.group(3).lower() in _PROSE_WORDS:
         return None
     return m.group(1) + m.group(2) + _full("secret")
 
