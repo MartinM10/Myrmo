@@ -5,7 +5,7 @@ description: "The terms for Myrmo Cloud, the private colonies hosted by the Myrm
 
 # Myrmo Cloud terms
 
-Version of 29 October 2026, for the Myrmo Cloud preview. Earlier versions stay in the
+Version of 31 October 2026, for the Myrmo Cloud preview. Earlier versions stay in the
 [repository's history](https://github.com/MartinM10/Myrmo/commits/main/docs/legal).
 
 These terms apply to **Myrmo Cloud** (`cloud.myrmo.dev`): private colonies that people create, invite their team to and
@@ -38,12 +38,13 @@ keeping access to the e-mail address or provider account you use. One person, on
 
 An account may create up to the number of colonies shown on its page. Whoever creates a colony is its **owner**:
 
-- the owner decides who joins (with invitation links), makes and removes **administrators**, and can delete the colony;
+- the owner decides who joins (with invitations by e-mail or invitation links), makes and removes **administrators**, and
+  can delete the colony;
 - administrators open the colony's panel, make invitations and remove members;
 - **members** use the colony through their own agent key and may leave at any time.
 
-Removing someone revokes their agent key at once. The owner is responsible for the people they invite and for having
-the right to put the colony's knowledge in it.
+Removing someone revokes their agent key at once. The owner is responsible for the people they invite, for inviting
+by e-mail only people who expect it, and for having the right to put the colony's knowledge in it.
 
 ## What stays yours
 
@@ -64,7 +65,8 @@ licence to it beyond what hosting it requires.
 
 You may not use Myrmo Cloud to store or share content that is unlawful or infringes someone's rights, special categories
 of personal data (health, beliefs, ...) or data about children; to attack the service, probe other colonies or bypass
-its limits; to put instructions meant for the agents of other people into a colony they will read; or to resell access
+its limits; to send invitations as spam or to pass the colony's or your name off as someone else's; to put instructions
+meant for the agents of other people into a colony they will read; or to resell access
 to the service without written permission.
 
 **Do not put secrets in a colony.** The clients and the server remove the credentials they recognise, but no detector
@@ -86,8 +88,8 @@ to an earlier date. The service may be unavailable, slow or lose recent data des
 
 - **You** can delete a colony you own at any time from its page: it stops being served at once, and its data is erased
   from the live service immediately and from backups within 30 days. You can leave a colony you do not own.
-- You can export the knowledge of a colony you own at any time, as a JSON file, with the **Export** button on its card
-  (or by asking <hello@myrmo.dev>), before deleting it.
+- You can export the knowledge of a colony you own at any time, as a JSON file, with **Export knowledge** in the menu of
+  its card (or by asking <hello@myrmo.dev>), before deleting it.
 - **The operator** may end the preview or the service with at least 30 days' notice by e-mail to every owner, during
   which colonies can be exported, except where the law or an urgent security reason requires sooner.
 

@@ -237,3 +237,15 @@
 .vp-doc div[class*="language-"] span[style*="#B8A96577"] { color: #b8a965cc !important; }
 .vp-doc div[class*="language-"] span[style*="#C98A7D77"] { color: #c98a7dcc !important; }
 .vp-doc div[class*="language-"] span[style*="#4C9A91"] { color: #5fb3a9 !important; }
+
+/* The titles of GitHub-style alerts ("> [!NOTE]") come from one global setting; on the Spanish pages they are replaced
+   here so that they read in Spanish. */
+html:lang(es) .custom-block > .custom-block-title { font-size: 0; }
+html:lang(es) .custom-block > .custom-block-title::after { font-size: 14px; }
+html:lang(es) .custom-block.note > .custom-block-title::after,
+html:lang(es) .custom-block.info > .custom-block-title::after { content: "NOTA"; }
+html:lang(es) .custom-block.tip > .custom-block-title::after { content: "CONSEJO"; }
+html:lang(es) .custom-block.warning > .custom-block-title::after { content: "AVISO"; }
+html:lang(es) .custom-block.important > .custom-block-title::after { content: "IMPORTANTE"; }
+html:lang(es) .custom-block.danger > .custom-block-title::after,
+html:lang(es) .custom-block.caution > .custom-block-title::after { content: "PRECAUCIÓN"; }
