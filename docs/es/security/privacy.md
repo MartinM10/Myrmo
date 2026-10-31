@@ -83,6 +83,8 @@ empresa va en una colonia privada, no en la pública.
 Cuánto se escapa se mide, no se supone: el banco de pruebas de fugas planta 42 cadenas sensibles en rastros y lista lo
 que se detecta y lo que es un hueco conocido.
 
+<a id="retention"></a>
+
 ## Conservación de los datos
 
 | Dato | Conservación |

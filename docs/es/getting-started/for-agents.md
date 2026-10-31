@@ -45,6 +45,8 @@ You can call myrmo_search, myrmo_report and myrmo_publish.
    myrmo_publish_status.
 ```
 
+<a id="search-and-report-only"></a>
+
 ## Solo buscar y reportar
 
 Para un repositorio donde los agentes no deben publicar, por ejemplo código del trabajo, usa este bloque:
