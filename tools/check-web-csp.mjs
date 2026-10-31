@@ -11,7 +11,11 @@ const fail = (message) => {
   failed = true;
 };
 
-const pages = readdirSync("web").filter((f) => f.endsWith(".html"));
+// The Spanish pages (web/es/) are built from the English ones and served under the same policy.
+const pages = [
+  ...readdirSync("web").filter((f) => f.endsWith(".html")),
+  ...readdirSync("web/es").filter((f) => f.endsWith(".html")).map((f) => `es/${f}`),
+];
 for (const page of pages) {
   const html = readFileSync(`web/${page}`, "utf8");
   for (const m of html.matchAll(/<script\b([^>]*)>/gi)) {

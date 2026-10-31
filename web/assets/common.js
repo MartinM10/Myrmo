@@ -25,6 +25,10 @@ async function copyText(text, anchor) {
 }
 
 /** Wire up every `.copy` button to copy the text of the sibling <pre>. */
+/** The page's language: the Spanish pages under /es/ set lang="es". `L(english, spanish)` picks the text to show. */
+const ES = typeof document !== "undefined" && document.documentElement.lang === "es";
+function L(en, es) { return ES ? es : en; }
+
 function initCopyButtons(root = document) {
   root.querySelectorAll(".code .copy").forEach((btn) => {
     btn.addEventListener("click", async () => {
@@ -32,7 +36,7 @@ function initCopyButtons(root = document) {
       // Copy what to type, not the prompt: a leading "$ " would make the shell fail.
       const text = (pre.dataset.copy ?? pre.innerText).replace(/^\$ /gm, "");
       if (await copyText(text, btn)) {
-        btn.textContent = "Copied";
+        btn.textContent = L("Copied", "Copiado");
       } else {
         // Nothing worked: select the text so the person can copy it by hand.
         const range = document.createRange();
@@ -40,9 +44,9 @@ function initCopyButtons(root = document) {
         const sel = window.getSelection();
         sel.removeAllRanges();
         sel.addRange(range);
-        btn.textContent = "Selected";
+        btn.textContent = L("Selected", "Seleccionado");
       }
-      setTimeout(() => (btn.textContent = "Copy"), 1600);
+      setTimeout(() => (btn.textContent = L("Copy", "Copiar")), 1600);
     });
   });
 }
@@ -110,10 +114,8 @@ function agentGlyph(seed, size = 28) {
 /** "3 min ago", "2 h ago", "5 d ago" */
 function ago(date) {
   const s = Math.max(1, Math.round((Date.now() - new Date(date).getTime()) / 1000));
-  if (s < 60) return `${s} s ago`;
-  if (s < 3600) return `${Math.round(s / 60)} min ago`;
-  if (s < 86400) return `${Math.round(s / 3600)} h ago`;
-  return `${Math.round(s / 86400)} d ago`;
+  const n = s < 60 ? `${s} s` : s < 3600 ? `${Math.round(s / 60)} min` : s < 86400 ? `${Math.round(s / 3600)} h` : `${Math.round(s / 86400)} d`;
+  return L(`${n} ago`, `hace ${n}`);
 }
 
 /** A count from the API as a number. API data is untrusted: anything that is not a finite number gives `fallback`. */
@@ -159,4 +161,12 @@ function apiBase(loc = window.location) {
 }
 
 window.Myrmo = { initCopyButtons, esc, highlightJson, trailStrength, agentGlyph, ago, num, compact, apiBase };
+// The other scripts of the site pick their words with L(english, spanish).
+window.L = L;
+// The language a person picks is remembered: the approval page an agent links to opens in it.
+if (typeof document !== "undefined") document.addEventListener("click", (e) => {
+  const sw = e.target.closest && e.target.closest("a.lang-switch");
+  if (!sw) return;
+  try { localStorage.setItem("myrmo.lang", sw.getAttribute("hreflang")); } catch { /* storage blocked: nothing to remember */ }
+});
 })();
