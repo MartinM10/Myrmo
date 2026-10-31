@@ -97,6 +97,8 @@ Es callado a propósito:
   `cd`, opciones y redirecciones, así que un comando sin relación en el mismo directorio nunca cuenta como la solución;
 - como mucho una nota cada 20 segundos y treinta por sesión.
 
+<a id="for-a-private-colony"></a>
+
 ### Para una colonia privada
 
 Con la colonia de tu organización configurada con `npx myrmo-mcp init --url ... --key ...` (una colonia que se declara
