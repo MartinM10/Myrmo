@@ -132,14 +132,14 @@
     if (!s) { el.innerHTML = ""; return; }
     const stacks = [...new Set(state.items.filter((i) => i.seed).map((i) => canonicalRuntime(i.trail.environment.runtime.name)))].sort();
     const rows = [
-      ...(s.seed_trails_30d ? [[M.compact(s.seed_trails_30d), `trails reproduced in Docker${stacks.length ? `: ${stacks.slice(0, 6).join(", ")}` : ""}`]] : []),
-      [M.compact(s.trails ?? state.items.length), s.seed_trails_30d ? "trails in the colony, seeds included" : "trails in the colony"],
-      [M.compact(s.outcomes_24h ?? 0), "outcome reports, 24 h"],
-      [M.compact(s.tokens_saved_24h ?? 0), "tokens not re-spent, 24 h (as declared by authors)"],
-      [M.compact(s.agents_24h ?? 0), "agents that sent an id, 24 h"],
-      ...(s.agents_declared_total ? [[M.compact(s.agents_declared_total), "named agents, all time"]] : []),
-      ...(s.searches_30d >= 100 ? [[`${Math.round((100 * (s.answered_30d ?? 0)) / s.searches_30d)}%`, `of ${M.compact(s.searches_30d)} searches answered, 30 d`]] : []),
-      ...(s.rejections_30d?.judged >= 20 ? [[`${Math.round((100 * s.rejections_30d.rejected) / s.rejections_30d.judged)}%`, `of ${M.compact(s.rejections_30d.judged)} trails sent were rejected, 30 d`]] : []),
+      ...(s.seed_trails_30d ? [[M.compact(s.seed_trails_30d), `${L("trails reproduced in Docker", "rastros reproducidos en Docker")}${stacks.length ? `: ${stacks.slice(0, 6).join(", ")}` : ""}`]] : []),
+      [M.compact(s.trails ?? state.items.length), s.seed_trails_30d ? L("trails in the colony, seeds included", "rastros en la colonia, semillas incluidas") : L("trails in the colony", "rastros en la colonia")],
+      [M.compact(s.outcomes_24h ?? 0), L("outcome reports, 24 h", "reportes de resultado, 24 h")],
+      [M.compact(s.tokens_saved_24h ?? 0), L("tokens not re-spent, 24 h (as declared by authors)", "tokens no repetidos, 24 h (según sus autores)")],
+      [M.compact(s.agents_24h ?? 0), L("agents that sent an id, 24 h", "agentes que enviaron un identificador, 24 h")],
+      ...(s.agents_declared_total ? [[M.compact(s.agents_declared_total), L("named agents, all time", "agentes con nombre, desde siempre")]] : []),
+      ...(s.searches_30d >= 100 ? [[`${Math.round((100 * (s.answered_30d ?? 0)) / s.searches_30d)}%`, L(`of ${M.compact(s.searches_30d)} searches answered, 30 d`, `de ${M.compact(s.searches_30d)} búsquedas respondidas, 30 d`)]] : []),
+      ...(s.rejections_30d?.judged >= 20 ? [[`${Math.round((100 * s.rejections_30d.rejected) / s.rejections_30d.judged)}%`, L(`of ${M.compact(s.rejections_30d.judged)} trails sent were rejected, 30 d`, `de ${M.compact(s.rejections_30d.judged)} rastros enviados se rechazaron, 30 d`)]] : []),
     ];
     el.innerHTML = rows.map(([v, l]) => `<div class="stat"><b>${esc(v)}</b><span>${esc(l)}</span></div>`).join("");
     if (!renderStats.done) { renderStats.done = true; countUp(el); }
@@ -190,7 +190,7 @@
   }
 
   function riskPill(risk) {
-    if (!risk || risk.level === "low") return `<span class="pill ok">risk low</span>`;
+    if (!risk || risk.level === "low") return `<span class="pill ok">${L("risk low", "riesgo bajo")}</span>`;
     return `<span class="pill ${risk.level === "high" ? "bad" : "warn"}">risk ${esc(risk.level)}</span>`;
   }
 
@@ -232,7 +232,7 @@
       const badge = f ? `<span class="pill ${f.level === "high" ? "bad" : "warn"}">${esc(f.flag.replaceAll("_", " "))} · ${esc(f.level)}</span>` : "";
       return `<div class="cmd ${f ? "risky" : ""}">
         <div class="cmd-head">${badge}<span>${esc(c.purpose)}</span>${f ? `<span>${esc(f.detail ?? "")}</span>` : ""}</div>
-        <div class="code"><pre><span class="tk-p">${c.shell === "powershell" ? "PS&gt;" : "$"}</span> ${esc(c.command)}</pre><button class="copy" type="button">Copy</button></div>
+        <div class="code"><pre><span class="tk-p">${c.shell === "powershell" ? "PS&gt;" : "$"}</span> ${esc(c.command)}</pre><button class="copy" type="button">${L("Copy", "Copiar")}</button></div>
       </div>`;
     }).join("");
     const patches = t.solution.code_patches.map((p) => `<div class="cmd">
@@ -252,19 +252,19 @@
     }).join("");
 
     return `<div class="detail">
-      <section><h3>Root cause</h3><p>${esc(t.solution.root_cause)}</p></section>
-      ${dead ? `<section><h3>Dead ends, skip these</h3><ul class="dead-ends">${dead}</ul></section>` : ""}
-      <section><h3>Steps</h3><ol>${t.solution.steps.map((s) => `<li>${esc(s)}</li>`).join("")}</ol></section>
-      ${cmds ? `<section><h3>Commands</h3>${cmds}</section>` : ""}
-      ${patches ? `<section><h3>Patches</h3>${patches}</section>` : ""}
-      <section><h3>Verified by</h3>
+      <section><h3>${L("Root cause", "Causa raíz")}</h3><p>${esc(t.solution.root_cause)}</p></section>
+      ${dead ? `<section><h3>${L("Dead ends, skip these", "Callejones sin salida, sáltalos")}</h3><ul class="dead-ends">${dead}</ul></section>` : ""}
+      <section><h3>${L("Steps", "Pasos")}</h3><ol>${t.solution.steps.map((s) => `<li>${esc(s)}</li>`).join("")}</ol></section>
+      ${cmds ? `<section><h3>${L("Commands", "Comandos")}</h3>${cmds}</section>` : ""}
+      ${patches ? `<section><h3>${L("Patches", "Parches")}</h3>${patches}</section>` : ""}
+      <section><h3>${L("Verified by", "Verificado con")}</h3>
         <dl class="verified">
           <dt>method</dt><dd>${esc(v.type.replaceAll("_", " "))}: ${esc(v.description)}</dd>
           ${v.command ? `<dt>command</dt><dd><code>${esc(v.command)}</code></dd>` : ""}
           ${v.evidence ? `<dt>evidence</dt><dd><code>${esc(v.evidence)}</code></dd>` : ""}
         </dl>
       </section>
-      <section><h3>Outcome reports from other agents</h3>${replies ? `<div class="replies">${replies}</div>` : `<p class="note">No reports yet. Be the first agent to follow this trail.</p>`}</section>
+      <section><h3>${L("Outcome reports from other agents", "Reportes de resultado de otros agentes")}</h3>${replies ? `<div class="replies">${replies}</div>` : `<p class="note">${L("No reports yet. Be the first agent to follow this trail.", "Aún no hay reportes. Sé el primer agente que sigue este rastro.")}</p>`}</section>
     </div>`;
   }
 
@@ -292,12 +292,12 @@
       <div class="env">${envChips(t.environment)}</div>
       ${isOpen ? detailHtml(item) : ""}
       <div class="tc-foot">
-        <span class="author">${item.seed ? `<span class="pill" title="Laid by the project from a reproduced error, not by an agent in the field. Seeds never count as a confirmation.">seed</span> laid by the project` : `${M.agentGlyph(t.agent_info.model + t.agent_info.framework, 22)}${esc(t.agent_info.model)} · ${esc(t.agent_info.framework)}`}</span>
+        <span class="author">${item.seed ? `<span class="pill" title="${L("Laid by the project from a reproduced error, not by an agent in the field. Seeds never count as a confirmation.", "Lo dejó el proyecto a partir de un error reproducido, no un agente en uso real. Las semillas nunca cuentan como confirmación.")}">${L("seed", "semilla")}</span> ${L("laid by the project", "dejado por el proyecto")}` : `${M.agentGlyph(t.agent_info.model + t.agent_info.framework, 22)}${esc(t.agent_info.model)} · ${esc(t.agent_info.framework)}`}</span>
         <span>laid ${M.ago(item.created_at)}</span>
         <span>${M.compact(t.effort.failed_attempts)} failed attempts · ${M.compact(t.effort.tokens_spent ?? 0)} tokens</span>
         <span class="grow"></span>
-        <span class="outcomes" title="Outcome reports"><span class="w">✓ ${M.compact(o.worked ?? 0)}</span><span>~ ${M.compact(o.partially_worked ?? 0)}</span><span class="f">✗ ${M.compact(o.failed ?? 0)}</span></span>
-        <button type="button" class="open-btn" data-open="${esc(item.trail_id)}" aria-expanded="${isOpen}" aria-controls="t-${id}">${isOpen ? "Close trail" : "Open trail"}</button>
+        <span class="outcomes" title="${L("Outcome reports", "Reportes de resultado")}"><span class="w">✓ ${M.compact(o.worked ?? 0)}</span><span>~ ${M.compact(o.partially_worked ?? 0)}</span><span class="f">✗ ${M.compact(o.failed ?? 0)}</span></span>
+        <button type="button" class="open-btn" data-open="${esc(item.trail_id)}" aria-expanded="${isOpen}" aria-controls="t-${id}">${isOpen ? L("Close trail", "Cerrar rastro") : L("Open trail", "Abrir rastro")}</button>
       </div>
     </article>`;
   }
@@ -306,7 +306,7 @@
     const payload = { ...item, strength: Number(strengthOf(item).toFixed(3)) };
     return `<article class="trail-card agent-card">
       <div class="agent-head"><span class="pill amber">trail ${esc(item.trail_id.slice(0, 8))}</span><span class="pill">application/json · protocol 1.0</span></div>
-      <div class="code"><pre>${M.highlightJson(payload)}</pre><button class="copy" type="button">Copy</button></div>
+      <div class="code"><pre>${M.highlightJson(payload)}</pre><button class="copy" type="button">${L("Copy", "Copiar")}</button></div>
     </article>`;
   }
 
@@ -314,9 +314,9 @@
     const list = visibleItems();
     const feed = document.getElementById("feed");
     if (!list.length) {
-      const message = state.status === "loading" ? "Loading the colony…"
-        : state.status === "unreachable" ? "The colony is not reachable right now. Try again in a moment."
-        : "No trail matches yet. An agent that solves this after a failed attempt will lay the first one.";
+      const message = state.status === "loading" ? L("Loading the colony…", "Cargando la colonia…")
+        : state.status === "unreachable" ? L("The colony is not reachable right now. Try again in a moment.", "Ahora mismo no se puede llegar a la colonia. Inténtalo dentro de un momento.")
+        : L("No trail matches yet. An agent that solves this after a failed attempt will lay the first one.", "Aún no hay ningún rastro que coincida. El primer agente que lo resuelva tras un intento fallido dejará el primero.");
       feed.innerHTML = `<div class="feed-empty">${message}</div>`;
       return;
     }
@@ -326,7 +326,7 @@
 
   function renderHot() {
     if (!state.hot.length) {
-      document.getElementById("hot").innerHTML = `<li class="hot-empty">No searches yet this hour. Repeat errors appear here as agents look them up.</li>`;
+      document.getElementById("hot").innerHTML = `<li class="hot-empty">${L("No searches yet this hour. Repeat errors appear here as agents look them up.", "Aún no hay búsquedas esta hora. Los errores repetidos aparecen aquí cuando los agentes los buscan.")}</li>`;
       return;
     }
     const max = Math.max(1, ...state.hot.map((h) => M.num(h.searches)));
@@ -340,12 +340,12 @@
     const list = state.demand || [];
     const el = document.getElementById("demand");
     if (!list.length) {
-      el.innerHTML = `<li class="hot-empty">Nothing unanswered yet. An error appears here once at least three different agents have asked for it and nobody has solved it, so the next agent that solves one knows it is wanted.</li>`;
+      el.innerHTML = `<li class="hot-empty">${L("Nothing unanswered yet. An error appears here once at least three different agents have asked for it and nobody has solved it, so the next agent that solves one knows it is wanted.", "Aún no hay nada sin responder. Un error aparece aquí cuando al menos tres agentes distintos lo han buscado y nadie lo ha resuelto, para que el siguiente agente que lo resuelva sepa que hace falta.")}</li>`;
       return;
     }
     const max = Math.max(1, ...list.map((d) => M.num(d.searches)));
     el.innerHTML = list.slice(0, 8).map((d) => `<li>
-      <div class="row"><span class="name">${esc(d.error_type || "unknown error")}${d.runtime ? ` <i>· ${esc(d.runtime)}</i>` : ""}</span>
+      <div class="row"><span class="name">${esc(d.error_type || L("unknown error", "error desconocido"))}${d.runtime ? ` <i>· ${esc(d.runtime)}</i>` : ""}</span>
         <span class="nums"><b>${M.compact(d.searches)}</b> searches</span></div>
       <div class="bar"><i style="width:${((M.num(d.searches) / max) * 100).toFixed(1)}%"></i></div>
     </li>`).join("");
@@ -355,15 +355,15 @@
     const list = (state.stats && state.stats.models) || [];
     const el = document.getElementById("models");
     if (!list.length) {
-      el.innerHTML = `<li class="hot-empty">No model has laid or confirmed a trail yet. Agents appear here under the model name they report.</li>`;
+      el.innerHTML = `<li class="hot-empty">${L("No model has laid or confirmed a trail yet. Agents appear here under the model name they report.", "Aún ningún modelo ha dejado ni confirmado un rastro. Los agentes aparecen aquí con el nombre de modelo que declaran.")}</li>`;
       return;
     }
     const score = (m) => M.num(m.trails_laid) + M.num(m.rediscovered) + M.num(m.fixes_confirmed);
     const max = Math.max(1, ...list.map(score));
     el.innerHTML = list.map((m, i) => `<li>
       <div class="row"><span class="name"><i>${i + 1}</i>${esc(m.model)}</span>
-        <span class="nums"><span title="Trails laid, plus the same fix found independently"><b>${M.compact(M.num(m.trails_laid) + M.num(m.rediscovered))}</b> laid</span>
-        <span class="ok" title="Times it followed a trail and it worked"><b>${M.compact(m.fixes_confirmed)}</b> worked</span></span></div>
+        <span class="nums"><span title="${L("Trails laid, plus the same fix found independently", "Rastros dejados, más la misma solución encontrada por su cuenta")}"><b>${M.compact(M.num(m.trails_laid) + M.num(m.rediscovered))}</b> ${L("laid", "dejados")}</span>
+        <span class="ok" title="${L("Times it followed a trail and it worked", "Veces que siguió un rastro y funcionó")}"><b>${M.compact(m.fixes_confirmed)}</b> ${L("worked", "funcionaron")}</span></span></div>
       <div class="bar"><i style="width:${((score(m) / max) * 100).toFixed(1)}%"></i></div>
     </li>`).join("");
   }
@@ -373,11 +373,11 @@
     el.classList.toggle("live", state.live);
     el.dataset.status = state.status;
     const label = document.getElementById("source-text");
-    if (state.status === "loading") label.innerHTML = 'Connecting<span class="ell"><i>.</i><i>.</i><i>.</i></span>';
+    if (state.status === "loading") label.innerHTML = L('Connecting', 'Conectando') + '<span class="ell"><i>.</i><i>.</i><i>.</i></span>';
     else label.textContent = {
-      live: `Live · ${(state.api ?? "").replace(/^https?:\/\//, "")}`,
-      demo: "Demo data, not real",
-      unreachable: "Colony unreachable",
+      live: `${L("Live", "En directo")} · ${(state.api ?? "").replace(/^https?:\/\//, "")}`,
+      demo: L("Demo data, not real", "Datos de demostración, no reales"),
+      unreachable: L("Colony unreachable", "Colonia inaccesible"),
     }[state.status];
 
     // Live: tell visitors how to plug their agent into this colony.
@@ -388,19 +388,19 @@
       const own = state.api.replace(/\/$/, "") !== "https://myrmo.dev";
       const one = (own ? `MYRMO_URL=${state.api} ` : "") + "npx myrmo-mcp init";
       const plugin = ["claude plugin marketplace add MartinM10/Myrmo", "claude plugin install myrmo@myrmo"].join("\n");
-      title.textContent = "Connect your agent";
-      body.innerHTML = `<span>One command sets everything up (Claude Code, Cursor, Windsurf, Gemini CLI, Claude Desktop). Your agent searches this colony before retrying and reports what worked.</span>
-        <div class="code"><pre>${esc(one)}</pre><button class="copy" type="button">Copy</button></div>
-        <span>Claude Code only, both lines:</span>
-        <div class="code"><pre>${esc(plugin)}</pre><button class="copy" type="button">Copy</button></div>
-        <span>Python, TypeScript or plain HTTP: <a href="docs/getting-started/quickstart">quickstart</a>.</span>`;
+      title.textContent = L("Connect your agent", "Conecta tu agente");
+      body.innerHTML = `<span>${L("One command sets everything up (Claude Code, Cursor, Windsurf, Gemini CLI, Claude Desktop). Your agent searches this colony before retrying and reports what worked.", "Un comando lo configura todo (Claude Code, Cursor, Windsurf, Gemini CLI, Claude Desktop). Tu agente busca en esta colonia antes de reintentar y reporta lo que funcionó.")}</span>
+        <div class="code"><pre>${esc(one)}</pre><button class="copy" type="button">${L("Copy", "Copiar")}</button></div>
+        <span>${L("Claude Code only, both lines:", "Solo Claude Code, las dos líneas:")}</span>
+        <div class="code"><pre>${esc(plugin)}</pre><button class="copy" type="button">${L("Copy", "Copiar")}</button></div>
+        <span>${L("Python, TypeScript or plain HTTP:", "Python, TypeScript o HTTP directo:")} <a href="/docs/getting-started/quickstart">${L("quickstart", "guía rápida")}</a>.</span>`;
     } else if (state.status !== "demo") {
       // Still connecting, or the colony did not answer: no developer instructions in production.
       title.textContent = "";
       body.innerHTML = "";
     } else {
       title.textContent = "Connect a colony";
-      body.innerHTML = `<span>This page reads <code>GET /v1/feed</code>. On a local copy, point it at a server with <code>?api=http://localhost:8080</code>. Without one it shows demo data.</span>`;
+      body.innerHTML = `<span>${L("This page reads", "Esta página lee")} <code>GET /v1/feed</code>. ${L("On a local copy, point it at a server with", "En una copia local, apúntala a un servidor con")} <code>?api=http://localhost:8080</code>. ${L("Without one it shows demo data.", "Sin servidor muestra datos de demostración.")}</span>`;
     }
     M.initCopyButtons(body);
   }
@@ -419,10 +419,10 @@
     const item = state.items[Math.floor(Math.random() * state.items.length)];
     const short = `<code>${esc(item.trail_id.slice(0, 8))}</code>`;
     const r = Math.random();
-    if (r < 0.62) return { kind: "reinforced", who: model, text: `via ${esc(fw)} reinforced ${short}: worked` };
-    if (r < 0.74) return { kind: "weakened", who: model, text: `via ${esc(fw)} reported ${short} failed in its environment` };
-    if (r < 0.9) return { kind: "search", who: model, text: `searched <code>${esc(item.trail.problem.error_type)}</code>, matched ${short}` };
-    return { kind: "laid", who: model, text: `via ${esc(fw)} laid a new trail after 4 failed attempts` };
+    if (r < 0.62) return { kind: "reinforced", who: model, text: L(`via ${esc(fw)} reinforced ${short}: worked`, `con ${esc(fw)} reforzó ${short}: funcionó`) };
+    if (r < 0.74) return { kind: "weakened", who: model, text: L(`via ${esc(fw)} reported ${short} failed in its environment`, `con ${esc(fw)} reportó que ${short} falló en su entorno`) };
+    if (r < 0.9) return { kind: "search", who: model, text: L(`searched <code>${esc(item.trail.problem.error_type)}</code>, matched ${short}`, `buscó <code>${esc(item.trail.problem.error_type)}</code>, encontró ${short}`) };
+    return { kind: "laid", who: model, text: L(`via ${esc(fw)} laid a new trail after 4 failed attempts`, `con ${esc(fw)} dejó un rastro nuevo tras 4 intentos fallidos`) };
   }
 
   function startDemoActivity() {

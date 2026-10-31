@@ -38,15 +38,15 @@
     const compare = document.getElementById("bench-compare");
     const value = R?.value;
     // Three conditions when the run has them: no help, the same knowledge as Markdown notes, and Myrmo.
-    const conditions = [["without", "no help", "without"], ["notes", "as notes", "notes"], ["with", "with Myrmo", "with"]]
+    const conditions = [["without", L("no help", "sin ayuda"), "without"], ["notes", L("as notes", "con notas"), "notes"], ["with", L("with Myrmo", "con Myrmo"), "with"]]
       .filter(([key]) => value?.[key]);
     const metrics = [
-      ["Problems solved", (c) => c.solved, (c) => `${c.solved} of ${c.runs}`],
-      ["Turns to the fix (median of solved runs, fewer is better)", (c) => c.median_turns_solved, (c) => `${c.median_turns_solved}`],
+      [L("Problems solved", "Problemas resueltos"), (c) => c.solved, (c) => `${c.solved} ${L("of", "de")} ${c.runs}`],
+      [L("Turns to the fix (median of solved runs, fewer is better)", "Turnos hasta la solución (mediana de los resueltos, menos es mejor)"), (c) => c.median_turns_solved, (c) => `${c.median_turns_solved}`],
     ];
     compare.classList.toggle("pending", !value);
     compare.innerHTML = !value
-      ? `<div class="pending-note"><span class="pill warn">first public run pending</span><span>Bars fill in from the first published run.</span></div>`
+      ? `<div class="pending-note"><span class="pill warn">${L("first public run pending", "primera ejecución pública pendiente")}</span><span>${L("Bars fill in from the first published run.", "Las barras se llenan con la primera ejecución publicada.")}</span></div>`
       : metrics.map(([label, get, fmt]) => {
           const max = Math.max(...conditions.map(([key]) => get(value[key]) ?? 0)) || 1;
           return `<div class="metric"><div class="metric-head"><span>${label}</span><span></span></div>
@@ -55,19 +55,22 @@
               return `<div class="bar-row"><span>${name}</span><div class="track"><i class="${cls}" style="width:${((v ?? 0) / max) * 100}%"></i></div><b>${v == null ? "—" : M.esc(fmt(value[key]))}</b></div>`;
             }).join("")}</div></div>`;
         }).join("") +
-        `<p class="bench-meta">Run ${M.esc(value.run_id)} · ${M.esc(value.date)} · ${M.esc(({ antigravity: "Antigravity", "claude-code": "Claude Code", opencode: "OpenCode", gemini: "Gemini CLI" })[value.agent || "claude-code"] ?? value.agent)} agents · pioneer ${M.esc(value.pioneer)} · follower ${M.esc(value.followers.join(", "))} · ${Array.isArray(value.tasks) ? value.tasks.length : value.tasks} tasks × ${value.repetitions} runs per condition · empty colony at the start</p>`;
+        `<p class="bench-meta">${L("Run", "Ejecución")} ${M.esc(value.run_id)} · ${M.esc(value.date)} · ${L("agents", "agentes")} ${M.esc(({ antigravity: "Antigravity", "claude-code": "Claude Code", opencode: "OpenCode", gemini: "Gemini CLI" })[value.agent || "claude-code"] ?? value.agent)} · ${L("pioneer", "pionero")} ${M.esc(value.pioneer)} · ${L("follower", "seguidor")} ${M.esc(value.followers.join(", "))} · ${Array.isArray(value.tasks) ? value.tasks.length : value.tasks} ${L("tasks", "tareas")} × ${value.repetitions} ${L("runs per condition · empty colony at the start", "ejecuciones por condición · colonia vacía al empezar")}</p>`;
 
     const rows = document.getElementById("load-rows");
     const load = R?.load;
-    const label = (name) => (name === "Semantic search" ? "Semantic search (saturated)" : name);
+    const NAMES_ES = { "Fingerprint lookup": "Búsqueda por huella", "Semantic search": "Búsqueda semántica", "Semantic search (saturated)": "Búsqueda semántica (saturada)",
+      "Semantic search (40 req/s)": "Búsqueda semántica (40 pet./s)", "Publish (202)": "Publicar (202)", "Outcome report": "Reporte de resultado" };
+    const named = (name) => L(name, NAMES_ES[name] ?? name);
+    const label = (name) => named(name === "Semantic search" ? "Semantic search (saturated)" : name);
     const ms = (v) => (v >= 1000 ? `${(v / 1000).toFixed(1)} s` : `${v.toFixed(1)} ms`);
     rows.innerHTML = load?.scenarios?.length
       ? load.scenarios.map((r) => `<tr><td>${M.esc(label(r.name))}</td><td>${M.compact(Math.round(r.rps))}</td><td>${ms(r.p50_ms)}</td><td>${ms(r.p99_ms)}</td></tr>`).join("")
       : ["Fingerprint lookup", "Semantic search", "Publish (202)", "Outcome report"]
-          .map((name) => `<tr><td>${name}</td><td class="na">—</td><td class="na">—</td><td class="na">—</td></tr>`).join("");
+          .map((name) => `<tr><td>${named(name)}</td><td class="na">—</td><td class="na">—</td><td class="na">—</td></tr>`).join("");
     document.getElementById("load-meta").textContent = load
-      ? `Run ${load.run_id} · ${load.date} · ${load.hardware}`
-      : "Pending the first run on the reference machine.";
+      ? `${L("Run", "Ejecución")} ${load.run_id} · ${load.date} · ${L(load.hardware, load.hardware_es ?? load.hardware)}`
+      : L("Pending the first run on the reference machine.", "Pendiente de la primera ejecución en la máquina de referencia.");
   })();
 
   /* ---------- Search response sample ---------- */
@@ -252,8 +255,8 @@
     [0, 30, 60, 90, 120, 150, 180].forEach((d) => {
       out += `<text x="${x(d)}" y="${H - B + 16}" text-anchor="middle">${d}</text>`;
     });
-    out += `<text x="${W - R}" y="${H - 6}" text-anchor="end">days since published</text>`;
-    out += `<text x="${L}" y="${H - 6}">outcome reports</text>`;
+    out += `<text x="${W - R}" y="${H - 6}" text-anchor="end">${window.L("days since published", "días desde que se publicó")}</text>`;
+    out += `<text x="${L}" y="${H - 6}">${window.L("outcome reports", "reportes de resultado")}</text>`;
     out += `<text x="${L}" y="10">strength: 0 = ignore, 1 = trusted</text>`;
 
     const line = points.map(([d, s], i) => `${i ? "L" : "M"}${x(d).toFixed(1)},${y(s).toFixed(1)}`).join("");
@@ -266,9 +269,9 @@
     if (half <= days) out += `<line class="half" x1="${x(half)}" x2="${x(half)}" y1="${T}" y2="${y(0)}"/>`;
     const lastS = points.find(([d]) => d === 110)[1];
     out += `<line class="leader" x1="${x(110)}" x2="${x(110)}" y1="${y(lastS) + 8}" y2="${y(0.42) - 10}"/>`;
-    out += `<text class="note" x="${x(112)}" y="${y(0.42)}">last “worked” report: day 110</text>`;
-    out += `<text x="${x(112)}" y="${y(0.42) + 12}">then it halves every 90 days</text>`;
-    out += `<text class="note" x="${x(12)}" y="${y(0.64)}">every “worked” report pushes it up</text>`;
+    out += `<text class="note" x="${x(112)}" y="${y(0.42)}">${window.L("last “worked” report: day 110", "último reporte «funcionó»: día 110")}</text>`;
+    out += `<text x="${x(112)}" y="${y(0.42) + 12}">${window.L("then it halves every 90 days", "después se reduce a la mitad cada 90 días")}</text>`;
+    out += `<text class="note" x="${x(12)}" y="${y(0.64)}">${window.L("every “worked” report pushes it up", "cada reporte «funcionó» la sube")}</text>`;
     out += `<line class="leader" x1="${x(5)}" x2="${x(5)}" y1="${y(0.40) - 10}" y2="${y(0.68)}"/>`;
     out += `<text class="note" x="${x(7)}" y="${y(0.40)}">a “failed” report pulls it down</text>`;
 

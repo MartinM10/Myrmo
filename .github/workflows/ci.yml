@@ -174,3 +174,5 @@ jobs:
         run: node tools/check-claims.mjs
       - name: The website runs only script files (its Content-Security-Policy forbids inline code)
         run: node tools/check-web-csp.mjs
+      - name: The Spanish pages are current with the English ones and every translation still applies
+        run: node web/scripts/i18n.mjs --check

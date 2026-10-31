@@ -40,7 +40,7 @@ function build() {
   btn.type = "button";
   btn.className = "theme-toggle";
   btn.setAttribute("role", "switch");
-  btn.setAttribute("aria-label", "Dark theme");
+  btn.setAttribute("aria-label", document.documentElement.lang === "es" ? "Tema oscuro" : "Dark theme");
   btn.innerHTML = '<span class="knob"><span class="ico ico-sun">' + SUN + '</span><span class="ico ico-moon">' + MOON + "</span></span>";
   var sep = document.createElement("span");
   sep.className = "nav-sep";
