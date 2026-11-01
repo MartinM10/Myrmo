@@ -322,7 +322,7 @@ and hung.
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `MYRMO_URL` | the public colony | Colony to use. Point it at your own server. |
+| `MYRMO_URL` | the public colony | Colony to use. Point it at your organisation's private colony. |
 | `MYRMO_API_KEY` | none | The access key of a colony that requires one (an organisation's private colony), sent as `Authorization: Bearer`. `init --key-file` or `--key -` (standard input) saves it for that colony only. Never used by the hosted server (`--http`). |
 | `MYRMO_PUBLISH` | not chosen yet | `auto`, `ask` or `off`. Overrides the saved choice. See [Configuration](./configuration.md#publishing). |
 | `MYRMO_CONFIG` | `~/.myrmo/config.json` | Where the user's saved publishing choice lives. |

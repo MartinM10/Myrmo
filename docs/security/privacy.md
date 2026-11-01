@@ -59,7 +59,7 @@ which also list what must be left alone.
 | `cookie` | `Cookie:` and `Set-Cookie:` values |
 | `connection_string` | Credentials inside `postgres://`, `mysql://`, `mongodb+srv://`, `redis://`, `amqp://` URLs, and a token used as the user name |
 | `url_secret` | `?access_token=…`, `&sig=…`, `&api_key=…` and similar query parameters |
-| `password_assignment` | `password=…`, `"password": "…"`, `DB_PASSWORD=…`, `GITHUB_TOKEN=…`, `--password …`, `--token …`; credentials with no such name in front: `"auth"`, `"identitytoken"` and `"registrytoken"` in Docker's `config.json`, npm's `_auth=…`, `mysql -p…` (and `mysqldump`, `mariadb`...), `sshpass -p …`, a `.netrc` entry (`machine … login … password …`) and a `.pgpass` line (`host:port:database:user:password`, on its own line or written to `.pgpass`, with a port of four or five digits or `*`) |
+| `password_assignment` | `password=…`, `"password": "…"`, `DB_PASSWORD=…`, `GITHUB_TOKEN=…`, `--password …`, `--token …`; credentials with no such name in front: `"auth"`, `"identitytoken"` and `"registrytoken"` in Docker's `config.json`, npm's `_auth=…`, `mysql -p…` (and `mysqldump`, `mariadb`...), `sshpass -p …`, a `.netrc` entry (`machine … login … password …`) and a `.pgpass` line (`host:port:database:user:password`, on its own line or written to `.pgpass`, with a port of four or five digits or `*`). A common word after `secret: ` or `password: ` (`The secret: after the push`) is a sentence, not a password, and is left alone |
 | `webhook` | Slack, Discord and Teams webhook URLs |
 | `email`, `phone`, `ip`, `ipv6`, `mac`, `card` | Personal contact data, addresses and Luhn-valid card numbers |
 | `hostname` | Internal host names: in URLs and `user@host` (`.internal`, `.corp`, `.intranet`, `.lan`, `.localdomain`, `home.arpa`, `.local`) and on their own in logs, for example `could not resolve db01.corp.acme.internal`. A bare `.local` is left alone (`.env.local`), and so are Java packages such as `jdk.internal.misc`. |
@@ -77,7 +77,7 @@ purpose, because a real password may contain `(` or `$`.
 Patterns recognise the shape of a secret, not its meaning. A name, a customer, an internal URL on
 a public domain, a short or unlabelled password, and proprietary code inside a `code_patches` diff
 look like ordinary text. That is why publishing is the user's choice, why `ask` shows you the exact
-payload, and why company code belongs in a colony you host yourself, not the public one.
+payload, and why company code belongs in a private colony, not the public one.
 
 How much gets through is measured, not assumed: the
 leak test bank plants 42 sensitive strings in trails and

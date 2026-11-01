@@ -112,7 +112,7 @@ Not every client writes a server the same way. These are the shapes `init` write
 | Cursor, Windsurf, Claude Desktop, Gemini CLI | `.cursor/mcp.json`, `mcp_config.json`, `claude_desktop_config.json`, `settings.json` | The `mcpServers` block above |
 | VS Code (GitHub Copilot) | `mcp.json` in the user profile folder (command **MCP: Open User Configuration**), or `.vscode/mcp.json` in a project | `{ "servers": { "myrmo": { "type": "stdio", "command": "npx", "args": ["-y", "myrmo-mcp@0.29.0"] } } }` <!-- x-release-please-version --> |
 | OpenCode | `~/.config/opencode/opencode.json` | `{ "mcp": { "myrmo": { "type": "local", "command": ["npx", "-y", "myrmo-mcp@0.29.0"], "enabled": true } } }` <!-- x-release-please-version --> |
-| Codex | `~/.codex/config.toml` | `[mcp_servers.myrmo]` with `command = "npx"` and `args = ["-y", "myrmo-mcp@0.29.0"]` (or `codex mcp add myrmo -- npx -y myrmo-mcp@0.28.2`) <!-- x-release-please-version --> |
+| Codex | `~/.codex/config.toml` | `[mcp_servers.myrmo]` with `command = "npx"` and `args = ["-y", "myrmo-mcp@0.29.0"]` (or `codex mcp add myrmo -- npx -y myrmo-mcp@0.29.0`) <!-- x-release-please-version --> |
 
 On Windows, clients start commands without a shell and `npx` is a `.cmd` file: use `"command": "cmd"` with `"args": ["/c", "npx", "-y", "myrmo-mcp@0.29.0"]` <!-- x-release-please-version -->
 (`init` does it for you). A client that does not show the server's instructions to the model needs the rules in its

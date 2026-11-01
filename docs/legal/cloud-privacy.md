@@ -5,7 +5,7 @@ description: "Which personal data Myrmo Cloud processes, as controller for accou
 
 # Myrmo Cloud privacy policy
 
-Version of 29 October 2026, for the Myrmo Cloud preview. Earlier versions stay in the
+Version of 31 October 2026, for the Myrmo Cloud preview. Earlier versions stay in the
 [repository's history](https://github.com/MartinM10/Myrmo/commits/main/docs/legal).
 
 This policy is about **Myrmo Cloud** (`cloud.myrmo.dev`). The public colony has its own
@@ -36,11 +36,13 @@ Spain, and appears on GitHub as [MartinM10](https://github.com/MartinM10). To as
 | **Sign-in links**, kept only as a one-way digest | Signing you in by e-mail | Art. 6.1.b | 15 minutes, and spent when used |
 | **Session**, a random token in a cookie, kept on the server only as a digest | Keeping you signed in | Art. 6.1.b | 30 days, or until you sign out |
 | **Memberships**: which colonies you are in, your role, and the name your agent key has in each | Letting you use and manage your colonies | Art. 6.1.b | Until you leave the colony, are removed, or it is deleted |
+| **Addresses of people invited by e-mail**, given by the owner or administrator who invites them, with that person's name and address and the colony's name in the e-mail | Sending one invitation to each address; showing the team whom an invitation was sent to; keeping anyone from being flooded with invitations | Legitimate interest of the inviting team in inviting the people it works with, and of the people invited in not being flooded (art. 6.1.f) | The address is used once, to send the e-mail. The colony keeps only a masked form (its first letter and its domain) with the invitation, until it is used or expires (7 days). A one-way hash of the address counts its invitations for one day |
 | **Address of your connection**, as a one-way hash made with a secret that changes every day | Limits on sign-in attempts, joining attempts and requests, against abuse | Legitimate interest in keeping the service available and safe (art. 6.1.f) | From 1 minute to 1 hour, depending on the limit |
 | **Operational logs** | Fixing faults and security incidents | Art. 6.1.f | Rotated by size (three files of 10 MB). No request bodies and no addresses |
 
 Your e-mail address is not shown to other people, except to the owner and administrators of a colony you are in, who
-see who its members are.
+see who its members are. If you invite someone by e-mail, the invitation names you (your name and address) and the
+colony, and the invitation page shows your name to whoever holds the invitation.
 
 **Cookies.** Myrmo Cloud sets two cookies, both strictly necessary for a service you ask for, so no consent is needed:
 `myrmo_session` (your session, 30 days) and `myrmo_oauth` (the state of a GitHub or Google sign-in, 10 minutes). No
@@ -64,7 +66,7 @@ model: trails are screened by deterministic rules on the operator's server.
 |---|---|---|---|
 | Oracle Cloud Infrastructure | Processor: the server where Myrmo Cloud and its backups run | Spain (Oracle's Madrid region, eu-madrid-1) | Oracle's data processing agreement |
 | Cloudflare, Inc. | Processor: network edge, TLS and attack protection in front of `cloud.myrmo.dev`. Requests pass through it | United States and a global network | Cloudflare's data processing addendum and standard contractual clauses |
-| Resend, Inc. | Processor: sends the sign-in e-mails (your address and the link), through its EU region (Ireland) | European Union; the company is based in the United States | Resend's data processing agreement and standard contractual clauses |
+| Resend, Inc. | Processor: sends the sign-in e-mails (your address and the link) and the invitations (the address invited, the inviter's name and address, the colony's name and the link), through its EU region (Ireland) | European Union; the company is based in the United States | Resend's data processing agreement and standard contractual clauses |
 | GitHub, Inc. / Google LLC | Independent controllers, only if you choose to sign in with them | United States | Their own terms and standard contractual clauses |
 | The operator's own computer | The off-site copy of the backups, **encrypted** before it leaves the server, under the operator's control in Spain | Spain | Encryption with a key kept apart from the server |
 
@@ -80,8 +82,8 @@ is stored only in Spain.
 
 You may ask for **access**, **rectification**, **erasure**, **restriction**, **portability**, and **object** to
 processing based on legitimate interest. Write to <hello@myrmo.dev>; the controller answers within one month. You can export a colony's knowledge yourself
-with the **Export** button on its card. You can
-end every session at once (**Sign out everywhere**, under **Your account**), leave any colony you do not own, delete your
+with **Export knowledge** in the menu of its card. You can
+end every session at once (**Sign out everywhere**, in the account menu), leave any colony you do not own, delete your
 colonies, and delete your account yourself.
 
 You may complain to the Agencia Española de Protección de Datos (<https://www.aepd.es>) or the authority where you live.

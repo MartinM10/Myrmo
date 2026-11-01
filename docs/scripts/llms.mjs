@@ -36,7 +36,8 @@ function front(file) {
 
 function section() {
   const lines = [START, ""];
-  const all = pages();
+  // The index agents read lists the English pages; the Spanish ones under es/ are their translation.
+  const all = pages().filter((p) => !p.startsWith("es/"));
   for (const [folder, label] of GROUPS) {
     const inGroup = all.filter((f) => f.startsWith(`${folder}/`));
     if (!inGroup.length) continue;

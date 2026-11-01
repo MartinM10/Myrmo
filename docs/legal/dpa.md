@@ -5,7 +5,7 @@ description: "The data processing agreement (article 28 GDPR) between the owner 
 
 # Data processing agreement
 
-Version of 29 October 2026, for the Myrmo Cloud preview. Earlier versions stay in the
+Version of 31 October 2026, for the Myrmo Cloud preview. Earlier versions stay in the
 [repository's history](https://github.com/MartinM10/Myrmo/commits/main/docs/legal).
 
 This agreement forms part of the [Myrmo Cloud terms](./cloud-terms.md) and applies to every colony. It is between the
@@ -21,8 +21,8 @@ Myrmo Cloud described in those terms (the **processor**), under article 28 of th
 | **Duration** | While the colony exists, and until its data is erased from backups (section 8) |
 | **Nature** | Storage, indexing (text embeddings computed on the processor's server), search, redaction and deterministic screening, backup, deletion |
 | **Purpose** | Only to provide the colony to its owner and members |
-| **Personal data** | Whatever the members' agents write into trails, procedures, facts and notes despite redaction (for example names of colleagues or customers in free text); the handles the colony knows its members by; counts of their activity, for the team as a whole or, if the owner chooses, per person |
-| **Data subjects** | The colony's members, and people mentioned in its knowledge |
+| **Personal data** | Whatever the members' agents write into trails, procedures, facts and notes despite redaction (for example names of colleagues or customers in free text); the handles the colony knows its members by; counts of their activity, for the team as a whole or, if the owner chooses, per person; the addresses of people invited by e-mail, used once to send the invitation and then kept only masked |
+| **Data subjects** | The colony's members, people mentioned in its knowledge, and people invited to it by e-mail |
 
 The controller should not put special categories of data (article 9 GDPR), data about criminal convictions, or data
 about children into a colony.
@@ -66,6 +66,7 @@ The controller authorises these sub-processors:
 |---|---|---|
 | Oracle Cloud Infrastructure | The server and its storage | Spain (Madrid region, eu-madrid-1) |
 | Cloudflare, Inc. | Network edge, TLS, attack protection: requests pass through it | United States and a global network |
+| Resend, Inc. | Sends the invitations an owner or administrator chooses to send by e-mail (the address invited, the inviter's name and address, the colony's name and the link) | European Union (Ireland region); the company is based in the United States |
 
 The processor imposes on each the same data protection obligations by their data processing terms, and remains liable
 for them. It announces a new or replaced sub-processor to owners by e-mail at least 30 days before it is used; an owner
@@ -90,8 +91,8 @@ the measures taken), and completes it as more is known.
 ## 8. Deletion at the end
 
 When the owner deletes the colony, it stops being served at once and its data is erased from the live service
-immediately, and from backups within 30 days. Before deleting, the owner can export the colony (the **Export** button
-on its card in Myrmo Cloud, or on request). The processor keeps
+immediately, and from backups within 30 days. Before deleting, the owner can export the colony (**Export knowledge** in
+the menu of its card in Myrmo Cloud, or on request). The processor keeps
 nothing afterwards, except where the law requires it.
 
 ## 9. Information and audits
@@ -105,4 +106,5 @@ notice, at the controller's cost, without access to other colonies' data.
 ## 10. Transfers
 
 Colony data is stored in Spain (Oracle's Madrid region, and the encrypted off-site copy). Requests pass through Cloudflare's network, which may be outside
-it; that transfer relies on Cloudflare's standard contractual clauses.
+it, and invitations by e-mail are sent by Resend, a company based in the United States; those transfers rely on each
+provider's standard contractual clauses.

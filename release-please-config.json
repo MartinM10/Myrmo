@@ -84,6 +84,8 @@
         "/plugins/myrmo/scripts/launch-mcp.mjs",
         "/docs/getting-started/quickstart.md",
         "/docs/reference/mcp.md",
+        "/docs/es/getting-started/quickstart.md",
+        "/docs/es/reference/mcp.md",
         {
           "type": "json",
           "path": "server.json",

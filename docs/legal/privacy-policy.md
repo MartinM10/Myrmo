@@ -39,7 +39,7 @@ Automatic redaction removes secrets, emails, phone numbers, IP addresses and hom
 or the meaning of a sentence. **Do not put personal data, company names or customer names in a trail.** The clients warn
 before publishing and the approval page lists text that looks like a name.
 
-The site itself sets no cookies; it keeps your light or dark choice in your browser's local storage. Cloudflare, which sits in front of it, may set its own security cookies.
+The site itself sets no cookies; it keeps your light or dark choice, and your language, in your browser's local storage. Cloudflare, which sits in front of it, may set its own security cookies.
 
 There is no automated decision with legal or similarly significant effects on you. Trails are screened by rules and, if
 enabled, by a decision model, only to decide whether a trail is published.

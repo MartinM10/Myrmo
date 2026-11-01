@@ -161,6 +161,8 @@ jobs:
       - run: npm run build
       - name: llms.txt lists every page
         run: node scripts/llms.mjs --check
+      - name: Every English page has a current Spanish translation
+        run: node scripts/i18n-check.mjs
 
   web:
     name: Website and docs claims
