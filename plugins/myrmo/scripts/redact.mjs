@@ -110,7 +110,11 @@ const CLI_NAMES = "password|passwd|pwd|pass|passphrase|secret|token|api[_-]?key|
 // `"$PWD:/src"` and `$PATH:/opt/bin` expand a shell variable and go on with more text: the name gives no value.
 // `$TOKEN=value` is still redacted, since what follows the `=` may well be a secret.
 const expandsVariable = (name) => name.startsWith("$") && name.trimEnd().endsWith(":");
-const assignment = (m) => (expandsVariable(m[1]) || isReference(m[3]) ? null : m[1] + m[2] + full("secret"));
+// `The secret: after the push, rotate it` is a sentence, not a value: after `name:` and a space, an unquoted common word
+// is prose. The list is short on purpose; anything else after the colon is still redacted.
+const PROSE_WORDS = new Set(["after", "before", "when", "then", "that", "this", "these", "those", "with", "without", "from", "into", "once", "until", "while", "where", "which", "what", "also", "only", "must", "should", "will", "would", "could", "have", "been", "does", "here", "there", "they", "them", "your", "every", "each", "never", "always", "cannot", "para", "pero", "como", "cuando", "antes", "desde", "hasta", "tras", "sobre", "este", "esta", "esto", "nunca", "siempre", "debe", "puede", "solo"]);
+const proseAfterColon = (m) => /:[ \t]+$/.test(m[1]) && !m[2] && PROSE_WORDS.has(m[3].toLowerCase());
+const assignment = (m) => (expandsVariable(m[1]) || isReference(m[3]) || proseAfterColon(m) ? null : m[1] + m[2] + full("secret"));
 /** Replaces the value group with `<redacted:secret>`, keeping every group before and after it. */
 const valueOnly = (valueGroup) => (m) => isReference(m[valueGroup])
     ? null

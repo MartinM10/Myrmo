@@ -1213,5 +1213,36 @@
     "input": "docker run -v \"$PWD:/src\" mysql:8",
     "output": "docker run -v \"$PWD:/src\" mysql:8",
     "kinds": {}
+  },
+  {
+    "input": "The secret: after the push, rotate it.",
+    "output": "The secret: after the push, rotate it.",
+    "kinds": {}
+  },
+  {
+    "input": "La password: antes de desplegar, cámbiala.",
+    "output": "La password: antes de desplegar, cámbiala.",
+    "kinds": {}
+  },
+  {
+    "input": "secret: afterparty2024",
+    "output": "secret: <redacted:secret>",
+    "kinds": {
+      "password_assignment": 1
+    }
+  },
+  {
+    "input": "password=after",
+    "output": "password=<redacted:secret>",
+    "kinds": {
+      "password_assignment": 1
+    }
+  },
+  {
+    "input": "secret: \"after\"",
+    "output": "secret: \"<redacted:secret>\"",
+    "kinds": {
+      "password_assignment": 1
+    }
   }
 ]
