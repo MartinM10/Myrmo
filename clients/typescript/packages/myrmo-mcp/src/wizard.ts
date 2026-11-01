@@ -6,6 +6,7 @@
 
 import { emitKeypressEvents } from "node:readline";
 import type { PublishMode } from "myrmo";
+import { t } from "./i18n.js";
 
 export type Key = { name?: string; sequence?: string; ctrl?: boolean };
 
@@ -87,13 +88,13 @@ export type WizardResult =
 const KEY_SHAPE = /^[\x21-\x7e]{8,256}$/;
 
 export async function wizard(ask: Asker, ctx: WizardContext): Promise<WizardResult> {
-  ask.say("Myrmo: a memory your coding agents share. A few questions (arrows and Enter; Ctrl+C to leave without changes).\n");
+  ask.say(t("Myrmo: a memory your coding agents share. A few questions (arrows and Enter; Ctrl+C to leave without changes).\n", "Myrmo: una memoria que comparten tus agentes de programación. Unas pocas preguntas (flechas y Enter; Ctrl+C para salir sin cambios).\n"));
 
   const where = await ask.select<"public" | "org">(
-    "Where should your agents look things up and share what they solve?",
+    t("Where should your agents look things up and share what they solve?", "¿Dónde deben buscar tus agentes y compartir lo que resuelven?"),
     [
-      { value: "public", label: "The public colony (myrmo.dev)", hint: "errors anyone can hit, shared with every agent; what is published is public" },
-      { value: "org", label: "My organisation's private colony", hint: "you were given its address and an access key" },
+      { value: "public", label: t("The public colony (myrmo.dev)", "La colonia pública (myrmo.dev)"), hint: t("errors anyone can hit, shared with every agent; what is published is public", "errores que cualquiera puede encontrarse, compartidos con todos los agentes; lo publicado es público") },
+      { value: "org", label: t("My organisation's private colony", "La colonia privada de mi organización"), hint: t("you were given its address and an access key", "te dieron su dirección y una clave de acceso") },
     ],
     ctx.savedUrl && !/myrmo\.dev/.test(ctx.savedUrl) ? 1 : 0,
   );
@@ -103,40 +104,40 @@ export async function wizard(ask: Asker, ctx: WizardContext): Promise<WizardResu
   if (where === "org") {
     for (;;) {
       url = (
-        await ask.text("Colony address (for example http://10.20.0.17:8080):", {
+        await ask.text(t("Colony address (for example http://10.20.0.17:8080):", "Dirección de la colonia (por ejemplo http://10.20.0.17:8080):"), {
           initial: ctx.savedUrl && !/myrmo\.dev/.test(ctx.savedUrl) ? ctx.savedUrl : "",
-          validate: (v) => (/^https?:\/\/\S+$/.test(v.trim()) ? (/\/\/(www\.)?myrmo\.dev(\/|$)/.test(v) ? "That is the public colony: choose it in the first question instead." : null) : "An address starting with http:// or https://"),
+          validate: (v) => (/^https?:\/\/\S+$/.test(v.trim()) ? (/\/\/(www\.)?myrmo\.dev(\/|$)/.test(v) ? t("That is the public colony: choose it in the first question instead.", "Esa es la colonia pública: elígela en la primera pregunta.") : null) : t("An address starting with http:// or https://", "Una dirección que empiece por http:// o https://")),
         })
       ).trim().replace(/\/+$/, "");
-      const how = await ask.select<"paste" | "file">("Your access key:", [
-        { value: "file", label: "Read it from a file", hint: "the invitation saved as a file works: the key stays out of your shell history" },
-        { value: "paste", label: "Paste it", hint: "it is not shown while you type" },
+      const how = await ask.select<"paste" | "file">(t("Your access key:", "Tu clave de acceso:"), [
+        { value: "file", label: t("Read it from a file", "Leerla de un fichero"), hint: t("the invitation saved as a file works: the key stays out of your shell history", "vale la invitación guardada como fichero: la clave no queda en el historial de la shell") },
+        { value: "paste", label: t("Paste it", "Pegarla"), hint: t("it is not shown while you type", "no se muestra mientras escribes") },
       ]);
       if (how === "paste") {
-        key = (await ask.text("Access key:", { secret: true, validate: (v) => (KEY_SHAPE.test(v.trim()) ? null : "That does not look like a key (myk_ and 64 characters).") })).trim();
+        key = (await ask.text(t("Access key:", "Clave de acceso:"), { secret: true, validate: (v) => (KEY_SHAPE.test(v.trim()) ? null : t("That does not look like a key (myk_ and 64 characters).", "Eso no parece una clave (myk_ y 64 caracteres).")) })).trim();
       } else {
         for (;;) {
-          const path = (await ask.text("Path of the file with the key:", { validate: (v) => (v.trim() ? null : "A path, please.") })).trim();
+          const path = (await ask.text(t("Path of the file with the key:", "Ruta del fichero con la clave:"), { validate: (v) => (v.trim() ? null : t("A path, please.", "Una ruta, por favor.")) })).trim();
           const found = ctx.readKeyFile(path);
           if (found) {
             key = found;
             break;
           }
-          ask.say("  No key found in that file (a key starts with myk_). Try another path.");
+          ask.say(t("  No key found in that file (a key starts with myk_). Try another path.", "  No hay ninguna clave en ese fichero (una clave empieza por myk_). Prueba con otra ruta."));
         }
       }
-      ask.say("  Checking the colony...");
+      ask.say(t("  Checking the colony...", "  Comprobando la colonia..."));
       const seen = await ctx.probe(url, key);
       if (seen.ok) {
-        const people = seen.people === "named" ? "it counts each person's activity by name" : seen.people === "aggregate" ? "it counts the team's activity as a whole, not per person" : "";
-        const what = seen.profile === "organisation" ? "your organisation's colony" : seen.profile === "public" ? "a colony that says it is public" : "a colony (its server is older and does not say what it is; private mode is set from your key)";
-        ask.say(`  ✓ Connected: ${what}${people ? `; ${people}` : ""}.`);
+        const people = seen.people === "named" ? t("it counts each person's activity by name", "cuenta la actividad de cada persona por su nombre") : seen.people === "aggregate" ? t("it counts the team's activity as a whole, not per person", "cuenta la actividad del equipo en conjunto, no por persona") : "";
+        const what = seen.profile === "organisation" ? t("your organisation's colony", "la colonia de tu organización") : seen.profile === "public" ? t("a colony that says it is public", "una colonia que dice ser pública") : t("a colony (its server is older and does not say what it is; private mode is set from your key)", "una colonia (su servidor es más antiguo y no dice qué es; el modo privado se activa con tu clave)");
+        ask.say(t(`  ✓ Connected: ${what}${people ? `; ${people}` : ""}.`, `  ✓ Conectado: ${what}${people ? `; ${people}` : ""}.`));
         break;
       }
-      ask.say(`  ✗ ${seen.detail ?? "It did not answer."}`);
-      const next = await ask.select<"retry" | "keep">("What now?", [
-        { value: "retry", label: "Enter the address and key again" },
-        { value: "keep", label: "Keep them anyway", hint: "for a colony that is not reachable from here right now" },
+      ask.say(`  ✗ ${seen.detail ?? t("It did not answer.", "No respondió.")}`);
+      const next = await ask.select<"retry" | "keep">(t("What now?", "¿Y ahora?"), [
+        { value: "retry", label: t("Enter the address and key again", "Introducir otra vez la dirección y la clave") },
+        { value: "keep", label: t("Keep them anyway", "Conservarlas igualmente"), hint: t("for a colony that is not reachable from here right now", "para una colonia a la que ahora mismo no se llega desde aquí") },
       ]);
       if (next === "keep") break;
     }
@@ -145,36 +146,36 @@ export async function wizard(ask: Asker, ctx: WizardContext): Promise<WizardResu
   let clients: string[] = [];
   for (;;) {
     clients = await ask.multi(
-      "Which agents should use it? (Space to change, a for all, Enter to go on)",
-      ctx.clients.map((c) => ({ value: c.id, label: c.name, hint: c.found ? "found on this machine" : "not found", picked: c.found })),
+      t("Which agents should use it? (Space to change, a for all, Enter to go on)", "¿Qué agentes deben usarla? (Espacio para cambiar, a para todos, Enter para seguir)"),
+      ctx.clients.map((c) => ({ value: c.id, label: c.name, hint: c.found ? t("found on this machine", "encontrado en esta máquina") : t("not found", "no encontrado"), picked: c.found })),
     );
     if (clients.length) break;
-    ask.say("  Choose at least one (Space marks it).");
+    ask.say(t("  Choose at least one (Space marks it).", "  Elige al menos uno (Espacio lo marca)."));
   }
 
   const publish = await ask.select<PublishMode>(
-    where === "org" ? "When your agents solve something the colony did not know:" : "When your agent solves an error nobody had published:",
+    where === "org" ? t("When your agents solve something the colony did not know:", "Cuando tus agentes resuelvan algo que la colonia no sabía:") : t("When your agent solves an error nobody had published:", "Cuando tu agente resuelva un error que nadie había publicado:"),
     where === "org"
       ? [
-          { value: "auto", label: "Share it with the team by itself", hint: "recommended for a team's colony: internal names are kept, credentials and personal data removed" },
-          { value: "ask", label: "Ask me each time", hint: "you see exactly what would be sent" },
-          { value: "off", label: "Never share, only look things up" },
+          { value: "auto", label: t("Share it with the team by itself", "Compartirlo con el equipo por su cuenta"), hint: t("recommended for a team's colony: internal names are kept, credentials and personal data removed", "recomendado para la colonia de un equipo: se conservan los nombres internos y se quitan las credenciales y los datos personales") },
+          { value: "ask", label: t("Ask me each time", "Preguntarme cada vez"), hint: t("you see exactly what would be sent", "ves exactamente lo que se enviaría") },
+          { value: "off", label: t("Never share, only look things up", "No compartir nunca, solo buscar") },
         ]
       : [
-          { value: "ask", label: "Ask me each time", hint: "recommended: you see exactly what would be published, and it is public" },
-          { value: "auto", label: "Publish it by itself", hint: "names of people, companies and internal systems are removed first" },
-          { value: "off", label: "Never publish, only look things up" },
+          { value: "ask", label: t("Ask me each time", "Preguntarme cada vez"), hint: t("recommended: you see exactly what would be published, and it is public", "recomendado: ves exactamente lo que se publicaría, y es público") },
+          { value: "auto", label: t("Publish it by itself", "Publicarlo por su cuenta"), hint: t("names of people, companies and internal systems are removed first", "antes se quitan los nombres de personas, empresas y sistemas internos") },
+          { value: "off", label: t("Never publish, only look things up", "No publicar nunca, solo buscar") },
         ],
   );
 
   const chosen = ctx.clients.filter((c) => clients.includes(c.id)).map((c) => c.name);
   ask.say("");
-  ask.say(`  Colony:     ${where === "org" ? `${url} (your organisation's)` : "https://myrmo.dev (public)"}`);
-  ask.say(`  Agents:     ${chosen.length ? chosen.join(", ") : "none"}`);
-  ask.say(`  Publishing: ${publish === "auto" ? "by itself" : publish === "ask" ? "ask each time" : "never"}`);
-  const go = await ask.select<boolean>("Set it up?", [
-    { value: true, label: "Yes, set it up" },
-    { value: false, label: "No, leave everything as it is" },
+  ask.say(t(`  Colony:     ${where === "org" ? `${url} (your organisation's)` : "https://myrmo.dev (public)"}`, `  Colonia:    ${where === "org" ? `${url} (de tu organización)` : "https://myrmo.dev (pública)"}`));
+  ask.say(t(`  Agents:     ${chosen.length ? chosen.join(", ") : "none"}`, `  Agentes:    ${chosen.length ? chosen.join(", ") : "ninguno"}`));
+  ask.say(t(`  Publishing: ${publish === "auto" ? "by itself" : publish === "ask" ? "ask each time" : "never"}`, `  Publicar:   ${publish === "auto" ? "por su cuenta" : publish === "ask" ? "preguntar cada vez" : "nunca"}`));
+  const go = await ask.select<boolean>(t("Set it up?", "¿Lo configuro?"), [
+    { value: true, label: t("Yes, set it up", "Sí, configúralo") },
+    { value: false, label: t("No, leave everything as it is", "No, deja todo como está") },
   ]);
   if (!go) return { cancelled: true };
   if (where === "org") return { cancelled: false, clients, url, key, publish };
@@ -219,7 +220,7 @@ export function terminal(stdin: NodeJS.ReadStream = process.stdin, stdout: NodeJ
         state = next;
         if (state.cancelled) {
           finish();
-          stdout.write(dim("Nothing was changed.\n"));
+          stdout.write(dim(t("Nothing was changed.\n", "No se ha cambiado nada.\n")));
           return reject(new Cancelled());
         }
         draw(render(state));
@@ -252,7 +253,7 @@ export function terminal(stdin: NodeJS.ReadStream = process.stdin, stdout: NodeJ
     async multi<T>(question: string, choices: (Choice<T> & { picked: boolean })[]) {
       const s = await run<MultiState>({ index: 0, picked: choices.map((c) => c.picked), done: false, cancelled: false }, multiKey, (st) =>
         st.done
-          ? [`${accent("?")} ${bold(question)} ${accent(choices.filter((_, i) => st.picked[i]).map((c) => c.label).join(", ") || "none")}`]
+          ? [`${accent("?")} ${bold(question)} ${accent(choices.filter((_, i) => st.picked[i]).map((c) => c.label).join(", ") || t("none", "ninguno"))}`]
           : [`${accent("?")} ${bold(question)}`, ...choices.map((c, i) => `${i === st.index ? accent("❯") : " "} ${st.picked[i] ? accent("◉") : "◯"} ${c.label}${c.hint ? dim(`  ${c.hint}`) : ""}`)],
       );
       return choices.filter((_, i) => s.picked[i]).map((c) => c.value);
@@ -263,7 +264,7 @@ export function terminal(stdin: NodeJS.ReadStream = process.stdin, stdout: NodeJ
       const s = await run<TextState>(
         { value: options.initial ?? "", done: false, cancelled: false },
         textKey,
-        (st) => (st.done ? [`${accent("?")} ${bold(question)} ${accent(shown(st.value))}`] : [`${accent("?")} ${bold(question)} ${shown(st.value)}`, error ? paint("31", `  ${error}`) : dim("  Enter to confirm")]),
+        (st) => (st.done ? [`${accent("?")} ${bold(question)} ${accent(shown(st.value))}`] : [`${accent("?")} ${bold(question)} ${shown(st.value)}`, error ? paint("31", `  ${error}`) : dim(t("  Enter to confirm", "  Enter para confirmar"))]),
         (st) => {
           error = options.validate?.(st.value) ?? "";
           return !error;

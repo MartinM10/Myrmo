@@ -20,6 +20,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { writeConfig, type PublishMode } from "myrmo";
 import { VERSION } from "./server.js";
+import { t as tx } from "./i18n.js";
 
 export const AGENTS_BLOCK = `<!-- myrmo:start -->
 ## Myrmo: shared memory of solved errors
@@ -327,10 +328,10 @@ export function claudeCodeSetUp(home: string): string | null {
     }
   };
   const plugins = read(join(home, ".claude", "plugins", "installed_plugins.json"))?.plugins;
-  if (plugins && typeof plugins === "object" && Object.keys(plugins).some((k) => k.startsWith("myrmo@"))) return "the Myrmo plugin is installed";
+  if (plugins && typeof plugins === "object" && Object.keys(plugins).some((k) => k.startsWith("myrmo@"))) return tx("the Myrmo plugin is installed", "el plugin de Myrmo está instalado");
   const config = read(join(home, ".claude.json"));
   const has = (servers: unknown) => !!servers && typeof servers === "object" && "myrmo" in (servers as object);
-  if (config && (has(config.mcpServers) || Object.values<any>(config.projects ?? {}).some((p) => has(p?.mcpServers)))) return 'a "myrmo" MCP server is already registered';
+  if (config && (has(config.mcpServers) || Object.values<any>(config.projects ?? {}).some((p) => has(p?.mcpServers)))) return tx('a "myrmo" MCP server is already registered', 'ya hay registrado un servidor MCP "myrmo"');
   return null;
 }
 
@@ -379,12 +380,12 @@ export function keyWarnings(opts: Pick<InitOptions, "url" | "key" | "keySource">
   if (!opts.key || !opts.url) return [];
   const lines: string[] = [];
   if (opts.keySource === "argument") {
-    lines.push("Note: a key given with --key stays in your shell's history and shows in the process list. Next time use --key-file <file> or --key - (reads it from standard input).");
+    lines.push(tx("Note: a key given with --key stays in your shell's history and shows in the process list. Next time use --key-file <file> or --key - (reads it from standard input).", "Nota: una clave pasada con --key queda en el historial de la shell y se ve en la lista de procesos. La próxima vez usa --key-file <file> o --key - (la lee de la entrada estándar)."));
   }
   try {
     const u = new URL(opts.url);
     if (u.protocol === "http:" && !nearbyHost(u.hostname)) {
-      lines.push(`Warning: ${u.origin} is plain http and not on this machine or a private network: the key would travel unencrypted. Use the colony's https address.`);
+      lines.push(tx(`Warning: ${u.origin} is plain http and not on this machine or a private network: the key would travel unencrypted. Use the colony's https address.`, `Aviso: ${u.origin} es http sin cifrar y no está en esta máquina ni en una red privada: la clave viajaría sin cifrar. Usa la dirección https de la colonia.`));
     }
   } catch {
     // parseInitArgs already refused an address that does not parse.
@@ -398,8 +399,8 @@ function setUpColony(opts: InitOptions, home: string, log: (l: string) => void, 
   const url = opts.url!.trim().replace(/\/+$/, "");
   const colony = { url, ...(opts.key ? { api_key: opts.key } : {}), ...(opts.private ? { private: true } : {}), ...(opts.publish ? { publish: opts.publish } : {}) };
   if (!opts.dryRun) writeConfig({ colony });
-  const what = [opts.key ? "its access key" : "", opts.private ? "private mode" : "", opts.publish ? `publish ${opts.publish}` : ""].filter(Boolean).join(", ");
-  log(`Colony: ${verb} save ${url}${what ? ` with ${what}` : ""} in the settings file; the key and the choices apply only to that colony`);
+  const what = [opts.key ? tx("its access key", "su clave de acceso") : "", opts.private ? tx("private mode", "el modo privado") : "", opts.publish ? `publish ${opts.publish}` : ""].filter(Boolean).join(", ");
+  log(tx(`Colony: ${verb} save ${url}${what ? ` with ${what}` : ""} in the settings file; the key and the choices apply only to that colony`, `Colonia: ${opts.dryRun ? "se guardaría" : "guardada"} ${url}${what ? ` con ${what}` : ""} en el fichero de configuración; la clave y las elecciones solo se aplican a esa colonia`));
 
   // Antigravity has no plugin: copy the hook next to the settings and register it, so that after a failed command it
   // looks the error up in this colony (and reminds the agent to report and to publish).
@@ -412,7 +413,7 @@ function setUpColony(opts: InitOptions, home: string, log: (l: string) => void, 
   const current = existsSync(file) ? readFileSync(file, "utf8") : undefined;
   const merged = mergeHooks(current, `node "${script}"`);
   if (!merged) {
-    log(`Antigravity: ${file} is not valid JSON, left untouched; the hook was not registered`);
+    log(tx(`Antigravity: ${file} is not valid JSON, left untouched; the hook was not registered`, `Antigravity: ${file} no es un JSON válido, no se ha tocado; el hook no se ha registrado`));
     return;
   }
   if (!opts.dryRun) {
@@ -423,7 +424,7 @@ function setUpColony(opts: InitOptions, home: string, log: (l: string) => void, 
       writeFileSync(file, merged.text);
     }
   }
-  log(`Antigravity: ${verb} install the hook in ${dir} and register it in ${file}`);
+  log(tx(`Antigravity: ${verb} install the hook in ${dir} and register it in ${file}`, `Antigravity: ${opts.dryRun ? "se instalaría" : "instalado"} el hook en ${dir} y ${opts.dryRun ? "se registraría" : "registrado"} en ${file}`));
 }
 
 /** A colony key anywhere in a text (the invitation message works as it is), or a text holding only the key. */
@@ -442,27 +443,27 @@ export function runInit(opts: InitOptions): { configured: string[]; skipped: str
   if (opts.url) setUpColony(opts, home, log, wanted);
 
   const alreadyThere = wanted(CLAUDE_CODE) ? claudeCodeSetUp(home) : null;
-  const slash = `In Claude Code's chat run: /plugin marketplace add ${MARKETPLACE}   then   /plugin install ${PLUGIN}`;
+  const slash = tx(`In Claude Code's chat run: /plugin marketplace add ${MARKETPLACE}   then   /plugin install ${PLUGIN}`, `En el chat de Claude Code ejecuta: /plugin marketplace add ${MARKETPLACE}   y después   /plugin install ${PLUGIN}`);
   if (alreadyThere) {
     configured.push("Claude Code");
-    log(`Claude Code: already set up (${alreadyThere}); adding the server as well would give the agent every tool twice`);
+    log(tx(`Claude Code: already set up (${alreadyThere}); adding the server as well would give the agent every tool twice`, `Claude Code: ya configurado (${alreadyThere}); añadir también el servidor le daría al agente cada herramienta dos veces`));
   } else if (wanted(CLAUDE_CODE)) {
     const bin = findClaudeCli(home, opts.env ?? process.env);
     const cmd = `claude plugin marketplace add ${MARKETPLACE} && claude plugin install ${PLUGIN}`;
     if (opts.dryRun) {
-      if (bin || opts.clients.includes(CLAUDE_CODE)) log(`Claude Code: ${verb} run: ${cmd}`);
+      if (bin || opts.clients.includes(CLAUDE_CODE)) log(tx(`Claude Code: ${verb} run: ${cmd}`, `Claude Code: se ejecutaría: ${cmd}`));
     } else if (bin) {
       const done = installPlugin(bin);
       if (done.ok) {
         configured.push("Claude Code");
-        log(`Claude Code: plugin installed (${cmd}); it carries the MCP server, a skill and the failure hook`);
+        log(tx(`Claude Code: plugin installed (${cmd}); it carries the MCP server, a skill and the failure hook`, `Claude Code: plugin instalado (${cmd}); lleva el servidor MCP, una skill y el hook de fallos`));
       } else {
         skipped.push("Claude Code");
-        log(`Claude Code: the plugin could not be installed (${done.said || "no output"}). ${slash}`);
+        log(tx(`Claude Code: the plugin could not be installed (${done.said || "no output"}). ${slash}`, `Claude Code: no se pudo instalar el plugin (${done.said || "sin salida"}). ${slash}`));
       }
     } else if (opts.clients.includes(CLAUDE_CODE) || existsSync(join(home, ".claude"))) {
       skipped.push("Claude Code");
-      log(`Claude Code: no "claude" command found (not on the PATH, and not in the VS Code extension). ${slash}`);
+      log(tx(`Claude Code: no "claude" command found (not on the PATH, and not in the VS Code extension). ${slash}`, `Claude Code: no se encontró el comando "claude" (ni en el PATH ni en la extensión de VS Code). ${slash}`));
     }
   }
 
@@ -475,14 +476,14 @@ export function runInit(opts: InitOptions): { configured: string[]; skipped: str
       skipped.push(t.name);
       const by =
         t.kind === "codex"
-          ? `add this to it: [mcp_servers.myrmo] command = ${JSON.stringify(entry.command)} args = ${JSON.stringify(entry.args)}`
-          : `add the "myrmo" server by hand: ${JSON.stringify({ [SHAPES[t.kind].key]: { myrmo: SHAPES[t.kind].value(entry) } })}`;
-      log(`${t.name}: ${t.file} cannot be edited safely (${t.kind === "codex" ? "it already defines myrmo in another form, or sets mcp_servers inline" : "it is not valid JSON"}), left untouched. ${by.charAt(0).toUpperCase() + by.slice(1)}`);
+          ? tx(`add this to it: [mcp_servers.myrmo] command = ${JSON.stringify(entry.command)} args = ${JSON.stringify(entry.args)}`, `añádele esto: [mcp_servers.myrmo] command = ${JSON.stringify(entry.command)} args = ${JSON.stringify(entry.args)}`)
+          : tx(`add the "myrmo" server by hand: ${JSON.stringify({ [SHAPES[t.kind].key]: { myrmo: SHAPES[t.kind].value(entry) } })}`, `añade a mano el servidor "myrmo": ${JSON.stringify({ [SHAPES[t.kind].key]: { myrmo: SHAPES[t.kind].value(entry) } })}`);
+      log(tx(`${t.name}: ${t.file} cannot be edited safely (${t.kind === "codex" ? "it already defines myrmo in another form, or sets mcp_servers inline" : "it is not valid JSON"}), left untouched. ${by.charAt(0).toUpperCase() + by.slice(1)}`, `${t.name}: ${t.file} no se puede editar con seguridad (${t.kind === "codex" ? "ya define myrmo de otra forma, o pone mcp_servers en línea" : "no es un JSON válido"}), no se ha tocado. ${by.charAt(0).toUpperCase() + by.slice(1)}`));
       continue;
     }
     if (!merged.changed) {
       configured.push(t.name);
-      log(`${t.name}: already set up (${t.file})`);
+      log(tx(`${t.name}: already set up (${t.file})`, `${t.name}: ya configurado (${t.file})`));
       continue;
     }
     if (!opts.dryRun) {
@@ -490,15 +491,15 @@ export function runInit(opts: InitOptions): { configured: string[]; skipped: str
       writeFileSync(t.file, merged.text);
     }
     configured.push(t.name);
-    log(`${t.name}: ${verb} add the "myrmo" server to ${t.file}`);
+    log(tx(`${t.name}: ${verb} add the "myrmo" server to ${t.file}`, `${t.name}: ${opts.dryRun ? "se añadiría" : "añadido"} el servidor "myrmo" a ${t.file}`));
   }
 
   if (opts.private && wanted("claude-desktop") && (configured.includes("Claude Desktop") || skipped.includes("Claude Desktop"))) {
     log(
-      `Claude Desktop: the current app (the one with Plugins, Extensions and Connectors in its own menus) does not read ${
-        targets(home).find((t) => t.id === "claude-desktop")?.file
-      } for a local server — this file only helps an older Claude Desktop. See the Claude Desktop section of ` +
-        `https://myrmo.dev/docs/reference/mcp#claude-desktop-when-the-colony-sits-behind-another-machine for how to add this colony there, and disable the public Myrmo plugin first if it is already enabled: with both on, a publish can go to the wrong one, silently.`,
+      tx(
+        `Claude Desktop: the current app (the one with Plugins, Extensions and Connectors in its own menus) does not read ${targets(home).find((d) => d.id === "claude-desktop")?.file} for a local server — this file only helps an older Claude Desktop. See the Claude Desktop section of https://myrmo.dev/docs/reference/mcp#claude-desktop-when-the-colony-sits-behind-another-machine for how to add this colony there, and disable the public Myrmo plugin first if it is already enabled: with both on, a publish can go to the wrong one, silently.`,
+        `Claude Desktop: la app actual (la que tiene Plugins, Extensions y Connectors en sus propios menús) no lee ${targets(home).find((d) => d.id === "claude-desktop")?.file} para un servidor local; este fichero solo sirve para un Claude Desktop antiguo. Mira la sección de Claude Desktop en https://myrmo.dev/docs/es/reference/mcp#claude-desktop-when-the-colony-sits-behind-another-machine para añadir allí esta colonia, y desactiva antes el plugin público de Myrmo si ya está activado: con los dos activados, una publicación puede ir al equivocado, en silencio.`,
+      ),
     );
   }
 
@@ -509,38 +510,38 @@ export function runInit(opts: InitOptions): { configured: string[]; skipped: str
       const current = existsSync(r.file) ? readFileSync(r.file, "utf8") : undefined;
       const next = upsertBlock(current, block);
       if (next === current) {
-        log(`${r.name}: the usage rules are already in ${r.file}`);
+        log(tx(`${r.name}: the usage rules are already in ${r.file}`, `${r.name}: las reglas de uso ya están en ${r.file}`));
         continue;
       }
       if (!opts.dryRun) {
         mkdirSync(dirname(r.file), { recursive: true });
         writeFileSync(r.file, next);
       }
-      log(`${r.name}: ${verb} write the usage rules to ${r.file}, between <!-- myrmo:start --> and <!-- myrmo:end -->`);
+      log(tx(`${r.name}: ${verb} write the usage rules to ${r.file}, between <!-- myrmo:start --> and <!-- myrmo:end -->`, `${r.name}: ${opts.dryRun ? "se escribirían" : "escritas"} las reglas de uso en ${r.file}, entre <!-- myrmo:start --> y <!-- myrmo:end -->`));
     }
   }
 
   if (opts.agentsMd) {
     const current = existsSync(opts.agentsMd) ? readFileSync(opts.agentsMd, "utf8") : undefined;
     const next = upsertBlock(current, block);
-    if (next === current) log(`${opts.agentsMd}: already has the Myrmo block`);
+    if (next === current) log(tx(`${opts.agentsMd}: already has the Myrmo block`, `${opts.agentsMd}: ya tiene el bloque de Myrmo`));
     else {
       if (!opts.dryRun) writeFileSync(opts.agentsMd, next);
-      log(`${opts.agentsMd}: ${verb} write the Myrmo block between <!-- myrmo:start --> and <!-- myrmo:end -->`);
+      log(tx(`${opts.agentsMd}: ${verb} write the Myrmo block between <!-- myrmo:start --> and <!-- myrmo:end -->`, `${opts.agentsMd}: ${opts.dryRun ? "se escribiría" : "escrito"} el bloque de Myrmo entre <!-- myrmo:start --> y <!-- myrmo:end -->`));
     }
   }
 
   if (configured.length === 0 && skipped.length === 0 && !opts.agentsMd) {
-    log(`No supported client found. Use --client ${CLIENT_IDS.join("|")} to choose one, or see https://myrmo.dev/docs/getting-started/quickstart`);
+    log(tx(`No supported client found. Use --client ${CLIENT_IDS.join("|")} to choose one, or see https://myrmo.dev/docs/getting-started/quickstart`, `No se encontró ningún cliente compatible. Usa --client ${CLIENT_IDS.join("|")} para elegir uno, o mira https://myrmo.dev/docs/es/getting-started/quickstart`));
   }
   log("");
-  log("Restart your client to load it. Agents learn how to use Myrmo from the server itself: no more setup is needed.");
+  log(tx("Restart your client to load it. Agents learn how to use Myrmo from the server itself: no more setup is needed.", "Reinicia tu cliente para cargarlo. Los agentes aprenden a usar Myrmo del propio servidor: no hace falta configurar nada más."));
   log(
     opts.url && opts.publish
-      ? `Nothing else to configure. Publishing to ${opts.url.replace(/\/+$/, "")} is "${opts.publish}" (change it with: npx myrmo-mcp init --url ... --publish auto|ask|off).`
-      : "Nothing else to configure. The first time an agent wants to publish, you are shown what would be sent and asked (\"ask\" is preselected).",
+      ? tx(`Nothing else to configure. Publishing to ${opts.url.replace(/\/+$/, "")} is "${opts.publish}" (change it with: npx myrmo-mcp init --url ... --publish auto|ask|off).`, `Nada más que configurar. La publicación en ${opts.url.replace(/\/+$/, "")} es "${opts.publish}" (cámbiala con: npx myrmo-mcp init --url ... --publish auto|ask|off).`)
+      : tx("Nothing else to configure. The first time an agent wants to publish, you are shown what would be sent and asked (\"ask\" is preselected).", "Nada más que configurar. La primera vez que un agente quiera publicar, verás lo que se enviaría y se te preguntará (\"ask\" viene preseleccionado)."),
   );
-  log("To change a default: npx myrmo-mcp config   (publishing, failed attempts before publishing, the Claude Code hook, anonymity)");
+  log(tx("To change a default: npx myrmo-mcp config   (publishing, failed attempts before publishing, the Claude Code hook, anonymity)", "Para cambiar un valor por defecto: npx myrmo-mcp config   (publicación, intentos fallidos antes de publicar, el hook de Claude Code, anonimato)"));
   return { configured, skipped };
 }
 
@@ -552,7 +553,7 @@ export function parseInitArgs(args: string[], readStdin: () => string = () => re
     else if (a === "--client") {
       // One id or several, comma-separated, as the help says; the flag may also be repeated.
       const ids = (args[++i] ?? "").split(",").map((id) => id.trim()).filter(Boolean);
-      if (!ids.length || ids.some((id) => !CLIENT_IDS.includes(id))) return `--client needs one of: ${CLIENT_IDS.join(", ")}`;
+      if (!ids.length || ids.some((id) => !CLIENT_IDS.includes(id))) return tx(`--client needs one of: ${CLIENT_IDS.join(", ")}`, `--client necesita uno de: ${CLIENT_IDS.join(", ")}`);
       for (const id of ids) if (!opts.clients.includes(id)) opts.clients.push(id);
     } else if (a === "--agents-md") {
       const next = args[i + 1];
@@ -563,15 +564,15 @@ export function parseInitArgs(args: string[], readStdin: () => string = () => re
     else if (a === "--key-file") {
       // The key stays out of the command line, so out of the shell's history and the process list.
       const file = args[++i];
-      if (!file || file.startsWith("--")) return "--key-file needs the path of a file that holds the key";
+      if (!file || file.startsWith("--")) return tx("--key-file needs the path of a file that holds the key", "--key-file necesita la ruta de un fichero que contenga la clave");
       try {
         // A colony key anywhere in the file (the invitation message works as it is), or a file holding only the key.
         const found = keyIn(readFileSync(file, "utf8"));
-        if (!found) return `${file} holds no key`;
+        if (!found) return tx(`${file} holds no key`, `${file} no contiene ninguna clave`);
         opts.key = found;
         opts.keySource = "file";
       } catch {
-        return `cannot read ${file}`;
+        return tx(`cannot read ${file}`, `no se puede leer ${file}`);
       }
     } else if (a === "--key" && args[i + 1] === "-") {
       // `--key -`: the key from standard input (a pipe, or typed and ended with Ctrl-D), out of the history.
@@ -580,10 +581,10 @@ export function parseInitArgs(args: string[], readStdin: () => string = () => re
       try {
         input = readStdin();
       } catch {
-        return "--key - reads the key from standard input, and there was none";
+        return tx("--key - reads the key from standard input, and there was none", "--key - lee la clave de la entrada estándar, y no había ninguna");
       }
       const found = keyIn(input);
-      if (!found) return "--key - found no key on standard input";
+      if (!found) return tx("--key - found no key on standard input", "--key - no encontró ninguna clave en la entrada estándar");
       opts.key = found;
       opts.keySource = "stdin";
     } else if (a === "--url" || a === "--key" || a === "--publish") {
@@ -595,10 +596,10 @@ export function parseInitArgs(args: string[], readStdin: () => string = () => re
         opts.keySource = "argument";
       }
       else if (value === "auto" || value === "ask" || value === "off") opts.publish = value;
-      else return "--publish takes auto, ask or off";
-    } else return `Unknown option ${a}. Usage: myrmo-mcp init [--client <id>]... [--agents-md [file] [--read-only]] [--url <colony> [--key <key> | --key - | --key-file <file>] [--private] [--publish auto|ask|off]] [--no-rules] [--dry-run]`;
+      else return tx("--publish takes auto, ask or off", "--publish acepta auto, ask u off");
+    } else return tx(`Unknown option ${a}.`, `Opción desconocida ${a}.`) + ` ${tx("Usage:", "Uso:")} myrmo-mcp init [--client <id>]... [--agents-md [file] [--read-only]] [--url <colony> [--key <key> | --key - | --key-file <file>] [--private] [--publish auto|ask|off]] [--no-rules] [--dry-run]`;
   }
-  if ((opts.key || opts.publish) && !opts.url) return "--key and --publish go with --url: they belong to one colony";
+  if ((opts.key || opts.publish) && !opts.url) return tx("--key and --publish go with --url: they belong to one colony", "--key y --publish van con --url: pertenecen a una colonia");
   if (opts.url) {
     let host = "";
     try {
@@ -606,12 +607,12 @@ export function parseInitArgs(args: string[], readStdin: () => string = () => re
       if (u.protocol !== "https:" && u.protocol !== "http:") throw new Error();
       host = u.hostname.toLowerCase();
     } catch {
-      return `--url needs a colony address such as https://myrmo.example.internal, not ${JSON.stringify(opts.url)}`;
+      return tx(`--url needs a colony address such as https://myrmo.example.internal, not ${JSON.stringify(opts.url)}`, `--url necesita la dirección de una colonia, como https://myrmo.example.internal, no ${JSON.stringify(opts.url)}`);
     }
-    if (PUBLIC_HOSTS.has(host) && (opts.private || opts.key)) return "--private and --key are for your own colony, not the public one";
+    if (PUBLIC_HOSTS.has(host) && (opts.private || opts.key)) return tx("--private and --key are for your own colony, not the public one", "--private y --key son para tu propia colonia, no para la pública");
   }
-  if (opts.readOnly && !opts.agentsMd) return "--read-only goes with --agents-md";
-  if (opts.readOnly && opts.private) return "--read-only and --private cannot go together";
+  if (opts.readOnly && !opts.agentsMd) return tx("--read-only goes with --agents-md", "--read-only va con --agents-md");
+  if (opts.readOnly && opts.private) return tx("--read-only and --private cannot go together", "--read-only y --private no pueden ir juntos");
   // A key for a colony of one's own is an organisation's colony: since protocol 1.7 the invitation needs no --private,
   // and without this the Antigravity hook and the organisation's rules would not be installed. If the colony says it is
   // public, its declaration still wins when the server starts.
