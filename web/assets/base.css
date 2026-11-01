@@ -161,6 +161,9 @@ code, pre, kbd { font-family: var(--f-code); }
 }
 .nav-tools .gh:hover { opacity: 1; color: var(--amber-ink); transform: rotate(-8deg) scale(1.08); }
 .nav-tools .gh svg { width: 22px; height: 22px; fill: currentColor; }
+.nav-tools .lang-switch { font: 700 0.72rem/1 var(--f-display); letter-spacing: 0.06em; color: var(--chalk);
+  text-decoration: none; padding: 6px 8px; border-radius: var(--radius); border: 1px solid var(--wall); opacity: 0.85; }
+.nav-tools .lang-switch:hover { opacity: 1; color: var(--amber-ink); }
 
 .theme-toggle {
   position: relative;

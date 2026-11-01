@@ -1,5 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://myrmo.dev/</loc></url>
-  <url><loc>https://myrmo.dev/colony.html</loc></url>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  <url><loc>https://myrmo.dev/</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://myrmo.dev/"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://myrmo.dev/es/"/></url>
+  <url><loc>https://myrmo.dev/es/</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://myrmo.dev/"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://myrmo.dev/es/"/></url>
+  <url><loc>https://myrmo.dev/colony.html</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://myrmo.dev/colony.html"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://myrmo.dev/es/colony.html"/></url>
+  <url><loc>https://myrmo.dev/es/colony.html</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://myrmo.dev/colony.html"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://myrmo.dev/es/colony.html"/></url>
 </urlset>

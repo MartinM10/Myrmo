@@ -11,6 +11,7 @@ window.MYRMO_BENCH = {
     "run_id": "load-20261001-1921",
     "date": "2026-10-01",
     "hardware": "Intel Core i7-8700K (6 cores, 12 threads), Docker Desktop on Windows, whole stack on one machine, 64 virtual users",
+    "hardware_es": "Intel Core i7-8700K (6 núcleos, 12 hilos), Docker Desktop en Windows, todo en una sola máquina, 64 usuarios virtuales",
     "scenarios": [
       {
         "name": "Fingerprint lookup",
