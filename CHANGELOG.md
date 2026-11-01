@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.49.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.48.0...platform-v0.49.0) (2026-11-01)
+
+
+### Features
+
+* **sdk:** a trail written for another major version of a package says so ([#16](https://github.com/MartinM10/Myrmo/issues/16)) ([50987cb](https://github.com/MartinM10/Myrmo/commit/50987cba3e910802380a3e5bf9f321fd5e7a8a51))
+* **web:** Myrmo Cloud on the website and in the docs, the join command, and broken links fixed ([#10](https://github.com/MartinM10/Myrmo/issues/10)) ([7326305](https://github.com/MartinM10/Myrmo/commit/7326305c9fdbb9927dde18fb5600f722dde6a7af))
+* **web:** the website in Spanish, under /es/ ([#13](https://github.com/MartinM10/Myrmo/issues/13)) ([8b49377](https://github.com/MartinM10/Myrmo/commit/8b493774a985ed5bb4b4a635afb349ebc29547b7))
+
+
+### Bug fixes
+
+* **redact:** a common word after "secret: " is a sentence, not a password ([#12](https://github.com/MartinM10/Myrmo/issues/12)) ([befc0e5](https://github.com/MartinM10/Myrmo/commit/befc0e59cae8b9409e8d6462435acfbeceef8062))
+
+
+### Documentation
+
+* the whole documentation in Spanish, under /docs/es/ ([#14](https://github.com/MartinM10/Myrmo/issues/14)) ([961ec8a](https://github.com/MartinM10/Myrmo/commit/961ec8a64fc2fec8520504ed3aa7940ca2765c80))
+
 ## [0.48.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.47.0...platform-v0.48.0) (2026-10-30)
 
 

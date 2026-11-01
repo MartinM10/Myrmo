@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.21.0](https://github.com/MartinM10/Myrmo/compare/sdk-js-v0.20.0...sdk-js-v0.21.0) (2026-11-01)
+
+
+### Features
+
+* **sdk:** a trail written for another major version of a package says so ([#16](https://github.com/MartinM10/Myrmo/issues/16)) ([50987cb](https://github.com/MartinM10/Myrmo/commit/50987cba3e910802380a3e5bf9f321fd5e7a8a51))
+
+
+### Bug fixes
+
+* **redact:** a common word after "secret: " is a sentence, not a password ([#12](https://github.com/MartinM10/Myrmo/issues/12)) ([befc0e5](https://github.com/MartinM10/Myrmo/commit/befc0e59cae8b9409e8d6462435acfbeceef8062))
+
 ## [0.20.0](https://github.com/MartinM10/Myrmo/compare/sdk-js-v0.19.0...sdk-js-v0.20.0) (2026-10-30)
 
 

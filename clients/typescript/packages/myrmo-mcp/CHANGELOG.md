@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.30.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.29.0...mcp-v0.30.0) (2026-11-01)
+
+
+### Features
+
+* **mcp:** the commands speak Spanish to a person whose system is in Spanish ([#15](https://github.com/MartinM10/Myrmo/issues/15)) ([e8b4cf5](https://github.com/MartinM10/Myrmo/commit/e8b4cf5a41aa99464c6442da16f9729fcf2fa99c))
+* **web:** Myrmo Cloud on the website and in the docs, the join command, and broken links fixed ([#10](https://github.com/MartinM10/Myrmo/issues/10)) ([7326305](https://github.com/MartinM10/Myrmo/commit/7326305c9fdbb9927dde18fb5600f722dde6a7af))
+
 ## [0.29.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.28.4...mcp-v0.29.0) (2026-10-30)
 
 

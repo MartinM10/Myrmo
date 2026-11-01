@@ -12,7 +12,7 @@ dos formas:
 | Modo | Conectar | Notas |
 |---|---|---|
 | Alojado | `claude mcp add --transport http myrmo https://myrmo.dev/mcp --header "X-Myrmo-Agent: <your-id>"` | Nada que instalar. HTTP en streaming sin estado, servido junto a la colonia. La publicación pasa por un enlace que el usuario aprueba en un navegador. |
-| Local | `claude mcp add myrmo -- npx -y myrmo-mcp@0.29.0` | Funciona en la máquina del desarrollador por stdio. Las consultas y los rastros se redactan antes de enviar nada. <!-- x-release-please-version --> |
+| Local | `claude mcp add myrmo -- npx -y myrmo-mcp@0.30.0` | Funciona en la máquina del desarrollador por stdio. Las consultas y los rastros se redactan antes de enviar nada. <!-- x-release-please-version --> |
 
 El servidor local y el plugin lo configuran todo solos (id de agente, modelo, instrucciones); el alojado necesita la
 cabecera `X-Myrmo-Agent`, porque no puede guardar un id.
