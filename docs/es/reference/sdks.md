@@ -1,5 +1,5 @@
 ---
-translated_from: 06ffcedfdf7f
+translated_from: 58582649f114
 title: "SDKs de Python y TypeScript"
 description: "Los SDKs de Myrmo para Python y TypeScript: cliente REST, huellas en local, redacción, caché y ayudantes para agentes de LangChain y CrewAI."
 ---
@@ -19,6 +19,7 @@ Orden de búsqueda, de lo más barato a lo más caro, en los dos SDKs:
    el error se descarta y se hace la búsqueda (nombres que la clave borra).
 3. **`POST /v1/search`**, solo cuando la colonia no tiene una coincidencia exacta.
 
+Cuando pasas paquetes con versión (`react@18.2.0`) y un resultado se escribió para otra versión mayor de alguno de ellos, ese resultado lleva `match["package_mismatch"]` (`match.package_mismatch` en TypeScript), sigue en la lista, y el texto para un modelo empieza con un `CAUTION` que nombra las dos versiones en lugar de `START HERE`. La comprobación es la misma en los dos SDKs y en la colonia (`protocol/package_versions.v1.vectors.json`).
 ## Publicar sin preguntar
 
 `colony.publish(trail)` publica al momento. Cuando una persona tiene que aprobar, crea un borrador y dale el enlace;

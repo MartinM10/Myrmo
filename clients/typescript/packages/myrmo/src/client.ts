@@ -7,10 +7,11 @@
 
 import { agentIdentity, fileColony, publishChoice } from "./config.js";
 import { detectEnvironment, parsePackage } from "./environment.js";
+import { packageMismatches } from "./versions.js";
 import { fingerprint2, guessErrorType } from "./fingerprint.js";
 import { namesConflict } from "./names.js";
 import { possibleNames, redactText, redactValue, type RedactionPolicy, type RedactionReport } from "./redact.js";
-import type { AgentInfo, Caveat, ColonyInfo, DraftResult, EffortRecord, DraftState, Environment, Hit, NoteStatus, Outcome, PublishMode, PublishResult, ReportResult, SearchQuery, SearchResult, Trail, Validation } from "./types.js";
+import type { AgentInfo, Caveat, ColonyInfo, DraftResult, EffortRecord, DraftState, Environment, Hit, NoteStatus, Outcome, Package, PublishMode, PublishResult, ReportResult, SearchQuery, SearchResult, Trail, Validation } from "./types.js";
 
 /** The public colony. Override with MYRMO_URL or the `url` option. */
 export const DEFAULT_URL = "https://myrmo.dev";
@@ -82,6 +83,19 @@ interface RawHit {
   last_confirmed_at?: string;
   review_due?: string;
 }
+
+/** Marks the hits written for another major version of a package the caller has. They stay in the list: the fix may still apply. */
+const withVersionWarnings = (result: SearchResult, mine: Package[] | undefined): SearchResult => {
+  if (!mine?.length) return result;
+  let changed = false;
+  const hits = result.hits.map((hit) => {
+    const mismatch = packageMismatches(mine, hit.trail?.environment?.packages);
+    if (!mismatch.length) return hit;
+    changed = true;
+    return { ...hit, match: { ...hit.match, package_mismatch: mismatch } };
+  });
+  return changed ? { ...result, hits } : result;
+};
 
 const toHit = (h: RawHit): Hit => ({
   trailId: h.trail_id,
@@ -285,7 +299,8 @@ export class Colony {
     const found = await this.lookup(fp, query.model);
     const kept = found?.hits.filter((hit) => !namesConflict(error, String(hit.trail?.problem?.error_message ?? ""))) ?? [];
     const exact = found && kept.length > 0 ? (kept.length === found.hits.length ? found : { ...found, hits: kept }) : null;
-    if (exact) return exact;
+    const mine = query.packages?.map(parsePackage);
+    if (exact) return withVersionWarnings(exact, mine);
 
     const environment: Environment = {
       ...detectEnvironment(),
@@ -304,7 +319,7 @@ export class Colony {
       limit: query.limit ?? 3,
       min_strength: query.minStrength ?? 0,
     }, query.model ? { "x-myrmo-model": query.model } : undefined, true);
-    const value: SearchResult = { fingerprint: data.fingerprint, hits: data.results.map(toHit), notice: data.notice, source: "search" };
+    const value: SearchResult = withVersionWarnings({ fingerprint: data.fingerprint, hits: data.results.map(toHit), notice: data.notice, source: "search" }, mine);
     this.remember(key, value);
     return value;
   }

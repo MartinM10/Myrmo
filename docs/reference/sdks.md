@@ -15,6 +15,7 @@ Lookup order, cheapest first, in both SDKs:
 2. **`GET /v1/trails/by-fingerprint/{fp}`**, computed locally from the error line (`fingerprint2`) and cacheable by any CDN. A colony that predates fp2 answers `400`, which the SDKs treat as "no exact answer". Since 0.10.1 an exact hit that names another module, image or repository than the error asked about is dropped and the search runs (names the key erases).
 3. **`POST /v1/search`**, only when the colony has no exact match.
 
+When you pass packages with a version (`react@18.2.0`) and a hit was written for another major version of one of them, the hit carries `match["package_mismatch"]` (`match.package_mismatch` in TypeScript), stays in the list, and the text for a model opens with a `CAUTION` that names both versions instead of `START HERE`. The check is the same in both SDKs and in the colony (`protocol/package_versions.v1.vectors.json`).
 ## Publishing without a prompt
 
 `colony.publish(trail)` publishes at once. When a person has to approve, create a draft instead and

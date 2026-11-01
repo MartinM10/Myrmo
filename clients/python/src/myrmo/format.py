@@ -99,6 +99,14 @@ def _error_line(error_type, message) -> str:
     return msg if msg.startswith(f"{error_type}:") else f"{error_type}: {msg}"
 
 
+def _mismatch_phrase(match) -> str:
+    """`react 17.0.2 (you have 18.2.0)`, for the packages a trail was written for in another major version."""
+    found = match.get("package_mismatch") if isinstance(match, dict) else None
+    if not isinstance(found, list):
+        return ""
+    return ", ".join(f"{_clip(m.get('name'), 40)} {_clip(m.get('trail'), 24)} (you have {_clip(m.get('yours'), 24)})" for m in found[:4] if isinstance(m, dict))
+
+
 def start_here(hits) -> str:
     """One line that says which trail to try first, or that none is an exact match. Small models compare several trails
     poorly and follow a near miss (the same cause in another package) as readily as the right one."""
@@ -107,6 +115,11 @@ def start_here(hits) -> str:
     best = hits[0]
     match = best.match if isinstance(best.match, dict) else {}
     overlap = match.get("environment_overlap")
+    # The same error, written for another major version of a package the caller has: it may not apply as it is.
+    mismatch = _mismatch_phrase(match)
+    if mismatch:
+        return (f"CAUTION: trail 1 matches your error but was written for {mismatch}. It may not apply as it is: "
+                "check its steps against the versions you have before following it.")
     if match.get("via") == "fingerprint":
         return ("START HERE: trail 1 was found by your exact error message. Check that its environment is close to yours, "
                 "then follow its steps, checking each command as its Risk line says.")
@@ -178,6 +191,7 @@ def _hit(hit: Hit, i: int, total: int, include_high_risk: bool) -> str:
         f"strength {_num(hit.strength)} · {_outcome_counts(hit)}{_confirmed_text(hit)}"
         f" · matched by {_clip(match.get('via'), 16)} ({_num(match.get('score'))})" + (f" · environment overlap {_num(overlap)}" if overlap is not None else "")
         + f" · risk {_clip(risk.get('level') or 'unknown', 16) if analysed else 'unknown'}",
+        *([f"Version warning: written for {_mismatch_phrase(match)}; it may not apply as it is."] if _mismatch_phrase(match) else []),
         "Environment: " + " · ".join(x for x in (_clip(v, 64) for v in [env.get("os"), env.get("os_version"), env.get("arch"), f"{rt.get('name', '')} {rt.get('version', '')}"]) if x),
         f"Error: {_error_line(t['problem']['error_type'], t['problem'].get('error_message'))}",
         f"Do first: {_clip((t['solution'].get('steps') or [''])[0], 300)}",
