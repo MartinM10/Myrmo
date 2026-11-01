@@ -119,7 +119,13 @@ export interface Hit {
   trailId: string;
   /** What the trail holds; older colonies do not say, which means a fix. */
   kind: "fix" | "procedure" | "fact";
-  match: { via: "fingerprint" | "semantic" | "task"; score: number; environment_overlap: number | null };
+  match: {
+    via: "fingerprint" | "semantic" | "task";
+    score: number;
+    environment_overlap: number | null;
+    /** Packages the caller has that the trail was written for in another major version (set by the client). */
+    package_mismatch?: { name: string; yours: string; trail: string }[];
+  };
   strength: number;
   /** `confirmed`: times a person confirmed in the panel that it still holds. */
   outcomes: { worked: number; partially_worked: number; failed: number; not_applicable?: number; confirmed?: number };

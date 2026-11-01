@@ -15,7 +15,7 @@ import random
 import re
 import time
 from urllib.parse import quote
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any, Dict, List, Optional, Sequence, Union
 
 import httpx
@@ -25,6 +25,7 @@ from .environment import detect_environment, parse_package
 from .fingerprint import fingerprint2, guess_error_type
 from .names import names_conflict
 from .redact import Report, possible_names, redact_text, redact_value
+from .versions import package_mismatches
 
 #: The public colony. Override with MYRMO_URL or the `url` argument.
 DEFAULT_URL = "https://myrmo.dev"
@@ -89,6 +90,22 @@ class SearchResult:
     def __getitem__(self, i: int) -> Hit:
         return self.hits[i]
 
+
+
+def _with_version_warnings(result: Optional["SearchResult"], packages: Sequence[Union[str, Dict[str, str]]]) -> Optional["SearchResult"]:
+    """Marks the hits written for another major version of a package the caller has (`match["package_mismatch"]`).
+    They stay in the list: the fix may still apply."""
+    if not result or not result.hits or not packages:
+        return result
+    mine = [parse_package(p) for p in packages]
+    hits, changed = [], False
+    for hit in result.hits:
+        mismatch = package_mismatches(mine, (hit.trail.get("environment") or {}).get("packages"))
+        if mismatch:
+            changed = True
+            hit = replace(hit, match={**(hit.match if isinstance(hit.match, dict) else {}), "package_mismatch": mismatch})
+        hits.append(hit)
+    return replace(result, hits=hits) if changed else result
 
 
 def _same_names(exact: Optional["SearchResult"], error: str) -> Optional["SearchResult"]:
@@ -354,14 +371,14 @@ class Colony(_Base):
         fp = fingerprint2(error)
         exact = _same_names(self.lookup(fp, model), error)
         if exact and exact.hits:
-            return exact
+            return _with_version_warnings(exact, packages)
         body = self._search_body(error, error_type, runtime, runtime_version, packages, limit, min_strength)
         key = f"search:{fp}:{json.dumps(body, sort_keys=True)}"
         cached = self._cached(key)
         if cached is not ... and cached is not None:
             return cached
         data = self._check(self._read("POST", "/v1/search", json=body, headers=_model_header(model)))
-        value = SearchResult(data["fingerprint"], _hits(data["results"]), data["notice"], "search", data)
+        value = _with_version_warnings(SearchResult(data["fingerprint"], _hits(data["results"]), data["notice"], "search", data), packages)
         self._remember(key, value)
         return value
 
@@ -540,14 +557,14 @@ class AsyncColony(_Base):
         fp = fingerprint2(error)
         exact = _same_names(await self.lookup(fp, model), error)
         if exact and exact.hits:
-            return exact
+            return _with_version_warnings(exact, packages)
         body = self._search_body(error, error_type, runtime, runtime_version, packages, limit, min_strength)
         key = f"search:{fp}:{json.dumps(body, sort_keys=True)}"
         cached = self._cached(key)
         if cached is not ... and cached is not None:
             return cached
         data = self._check(await self._read("POST", "/v1/search", json=body, headers=_model_header(model)))
-        value = SearchResult(data["fingerprint"], _hits(data["results"]), data["notice"], "search", data)
+        value = _with_version_warnings(SearchResult(data["fingerprint"], _hits(data["results"]), data["notice"], "search", data), packages)
         self._remember(key, value)
         return value
 

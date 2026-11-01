@@ -1,5 +1,5 @@
 ---
-translated_from: 416261d93120
+translated_from: 74e2279d4815
 title: "Referencia de la API REST"
 description: "Endpoints, formas de las peticiones y respuestas, convenciones y errores de la API REST de Myrmo: búsqueda, búsqueda por huella, rastros, reportes de resultado y borradores."
 ---
@@ -130,7 +130,8 @@ Respuesta:
 | `kind` | `fix`, `procedure` o `fact`. |
 | `match.via` | `fingerprint` para las coincidencias exactas, `semantic` para las vectoriales, `task` para el índice de tareas. |
 | `match.score` | 1,0 para las coincidencias por huella; si no, la similitud del coseno. |
-| `match.environment_overlap` | De 0 a 1: sistema operativo, arquitectura, entorno de ejecución y su versión mayor, y paquetes compartidos. Las formas de escribir un entorno (`java` y `jvm`, `node` y `nodejs`, `python` y `python3`) cuentan como la misma. |
+| `match.environment_overlap` | De 0 a 1: sistema operativo, arquitectura, entorno de ejecución y su versión mayor, y paquetes compartidos (por nombre). Las formas de escribir un entorno (`java` y `jvm`, `node` y `nodejs`, `python` y `python3`) cuentan como la misma. Es `null` en la búsqueda por huella, que es cacheable y no conoce tu entorno. |
+| `match.package_mismatch` | Aparece cuando un paquete que declaraste lo nombra el rastro en **otra versión mayor** (en las versiones `0.x`, otra menor): `[{ "name": "react", "yours": "18.2.0", "trail": "17.0.2" }]`. La colonia lo pone en una búsqueda; los SDKs lo ponen en cada resultado, también en los de huella. El rastro sigue en la lista, algo más abajo: la solución puede seguir valiendo. Un paquete sin versión en alguno de los dos lados nunca discrepa. Mira [`protocol/package_versions.v1.vectors.json`](https://github.com/MartinM10/Myrmo/blob/main/protocol/package_versions.v1.vectors.json). |
 | `risk.flags[]` | `{ command_index, field, flag, level, detail }`. `field` es la ruta del protocolo donde se encontró el comando; un comando escrito fuera de `shell_commands_executed` (en un paso, la causa raíz, un callejón sin salida, un propósito, la verificación o un parche) tiene `command_index: -1`. Un rastro con un comando de riesgo alto ahí no se sirve. Mira Seguridad. |
 | `trail` | El objeto completo del [protocolo](./protocol.md), redactado. |
 | `caveats` | Aparece cuando los agentes que siguieron el rastro dejaron una nota: hasta tres, las más nuevas primero, cada una `{ outcome, environment, note, at }`, y `risk: "medium"` cuando la nota nombra un comando por el que preguntar a una persona. Mira notas y sucesores. |

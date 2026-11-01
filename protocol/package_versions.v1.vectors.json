@@ -1,0 +1,288 @@
+{
+  "description": "Which versions of a package an environment tells apart. A version is told apart by its major (18.2.0 -> 18); while the major is 0 by major.minor (0.20.1 -> 0.20), since a 0.x release may break. A leading v, ^, ~, =, < or > is ignored, and a version with no number (latest) tells nothing. Two packages mismatch when both name the same package (names compare without regard to case) and both give a version whose major differs. A package without a version on either side never mismatches. All three implementations (colony, Python SDK, TypeScript SDK) must reproduce this file exactly.",
+  "major": [
+    {
+      "version": "18.2.0",
+      "major": "18"
+    },
+    {
+      "version": "v17.0.2",
+      "major": "17"
+    },
+    {
+      "version": "^18",
+      "major": "18"
+    },
+    {
+      "version": "~1.4.2",
+      "major": "1"
+    },
+    {
+      "version": ">=2.0,<3",
+      "major": "2"
+    },
+    {
+      "version": "==3.11.4",
+      "major": "3"
+    },
+    {
+      "version": "0.20.1",
+      "major": "0.20"
+    },
+    {
+      "version": "0.0.5",
+      "major": "0.0"
+    },
+    {
+      "version": "0",
+      "major": "0"
+    },
+    {
+      "version": "2024.1.2",
+      "major": "2024"
+    },
+    {
+      "version": "1.x",
+      "major": "1"
+    },
+    {
+      "version": "18.0.0-rc.1",
+      "major": "18"
+    },
+    {
+      "version": "007.1",
+      "major": "7"
+    },
+    {
+      "version": " 3.12.4 ",
+      "major": "3"
+    },
+    {
+      "version": "latest",
+      "major": null
+    },
+    {
+      "version": "",
+      "major": null
+    },
+    {
+      "version": "*",
+      "major": null
+    },
+    {
+      "version": null,
+      "major": null
+    }
+  ],
+  "mismatch": [
+    {
+      "why": "another major of the same package",
+      "yours": [
+        {
+          "name": "react",
+          "version": "18.2.0"
+        }
+      ],
+      "trail": [
+        {
+          "name": "react",
+          "version": "17.0.2"
+        }
+      ],
+      "expected": [
+        {
+          "name": "react",
+          "yours": "18.2.0",
+          "trail": "17.0.2"
+        }
+      ]
+    },
+    {
+      "why": "same major, other minor",
+      "yours": [
+        {
+          "name": "react",
+          "version": "18.3.1"
+        }
+      ],
+      "trail": [
+        {
+          "name": "react",
+          "version": "18.2.0"
+        }
+      ],
+      "expected": []
+    },
+    {
+      "why": "names compare without regard to case",
+      "yours": [
+        {
+          "name": "React",
+          "version": "18.2.0"
+        }
+      ],
+      "trail": [
+        {
+          "name": "react",
+          "version": "17.0.2"
+        }
+      ],
+      "expected": [
+        {
+          "name": "React",
+          "yours": "18.2.0",
+          "trail": "17.0.2"
+        }
+      ]
+    },
+    {
+      "why": "the trail names no version",
+      "yours": [
+        {
+          "name": "react",
+          "version": "18.2.0"
+        }
+      ],
+      "trail": [
+        {
+          "name": "react"
+        }
+      ],
+      "expected": []
+    },
+    {
+      "why": "the caller names no version",
+      "yours": [
+        {
+          "name": "react"
+        }
+      ],
+      "trail": [
+        {
+          "name": "react",
+          "version": "17.0.2"
+        }
+      ],
+      "expected": []
+    },
+    {
+      "why": "another package",
+      "yours": [
+        {
+          "name": "vue",
+          "version": "3.4.0"
+        }
+      ],
+      "trail": [
+        {
+          "name": "react",
+          "version": "17.0.2"
+        }
+      ],
+      "expected": []
+    },
+    {
+      "why": "a version with no number",
+      "yours": [
+        {
+          "name": "react",
+          "version": "latest"
+        }
+      ],
+      "trail": [
+        {
+          "name": "react",
+          "version": "17.0.2"
+        }
+      ],
+      "expected": []
+    },
+    {
+      "why": "0.x releases differ by minor",
+      "yours": [
+        {
+          "name": "tokio",
+          "version": "0.21.0"
+        }
+      ],
+      "trail": [
+        {
+          "name": "tokio",
+          "version": "0.20.4"
+        }
+      ],
+      "expected": [
+        {
+          "name": "tokio",
+          "yours": "0.21.0",
+          "trail": "0.20.4"
+        }
+      ]
+    },
+    {
+      "why": "only the mismatching ones, in the caller's order",
+      "yours": [
+        {
+          "name": "numpy",
+          "version": "2.0.1"
+        },
+        {
+          "name": "pandas",
+          "version": "2.2.0"
+        },
+        {
+          "name": "react",
+          "version": "18.2.0"
+        }
+      ],
+      "trail": [
+        {
+          "name": "react",
+          "version": "17.0.2"
+        },
+        {
+          "name": "pandas",
+          "version": "2.1.0"
+        },
+        {
+          "name": "numpy",
+          "version": "1.26.4"
+        }
+      ],
+      "expected": [
+        {
+          "name": "numpy",
+          "yours": "2.0.1",
+          "trail": "1.26.4"
+        },
+        {
+          "name": "react",
+          "yours": "18.2.0",
+          "trail": "17.0.2"
+        }
+      ]
+    },
+    {
+      "why": "nothing given",
+      "yours": [],
+      "trail": [
+        {
+          "name": "react",
+          "version": "17.0.2"
+        }
+      ],
+      "expected": []
+    },
+    {
+      "why": "no package list on the trail",
+      "yours": [
+        {
+          "name": "react",
+          "version": "18.2.0"
+        }
+      ],
+      "trail": null,
+      "expected": []
+    }
+  ]
+}

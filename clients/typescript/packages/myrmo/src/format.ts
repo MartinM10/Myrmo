@@ -71,6 +71,11 @@ function errorLine(errorType: string | undefined, message: string | undefined): 
   return msg.startsWith(`${type}:`) ? msg : `${type}: ${msg}`;
 }
 
+/** `react 17.0.2 (you have 18.2.0)`, for the packages a trail was written for in another major version. */
+function versionsPhrase(mismatch: NonNullable<Hit["match"]["package_mismatch"]>): string {
+  return mismatch.slice(0, 4).map((m) => `${clip(String(m.name), 40)} ${clip(String(m.trail), 24)} (you have ${clip(String(m.yours), 24)})`).join(", ");
+}
+
 /**
  * One line that says which trail to try first, or that none is an exact match. Small models compare several trails
  * poorly and follow a near miss (a trail about the same cause in another package) as readily as the right one; measured
@@ -79,6 +84,11 @@ function errorLine(errorType: string | undefined, message: string | undefined): 
 export function startHere(hits: Hit[]): string {
   const best = hits[0];
   if (!best) return "";
+  // The same error, written for another major version of a package the caller has: it may not apply as it is.
+  const mismatch = best.match?.package_mismatch;
+  if (Array.isArray(mismatch) && mismatch.length) {
+    return `CAUTION: trail 1 matches your error but was written for ${versionsPhrase(mismatch)}. It may not apply as it is: check its steps against the versions you have before following it.`;
+  }
   const overlap = best.match?.environment_overlap;
   if (best.match?.via === "fingerprint") {
     return "START HERE: trail 1 was found by your exact error message. Check that its environment is close to yours, then follow its steps, checking each command as its Risk line says.";
@@ -220,6 +230,7 @@ function formatHit(hit: Hit, index: number, total: number, opts: FormatOptions):
   lines.push(
     `## Trail ${index + 1} of ${total} · id ${safeId(hit.trailId)}`,
     `strength ${num(hit.strength)} · ${outcomeCounts(hit)}${confirmedText(hit)} · matched by ${clip(String(match.via), 16)} (${num(match.score)})${overlap} · risk ${risk}`,
+    ...(Array.isArray(match.package_mismatch) && match.package_mismatch.length ? [`Version warning: written for ${versionsPhrase(match.package_mismatch)}; it may not apply as it is.`] : []),
     `Environment: ${[t.environment.os, t.environment.os_version, t.environment.arch, t.environment.container && t.environment.container !== "none" ? `in ${t.environment.container}` : "", `${t.environment.runtime.name} ${t.environment.runtime.version}`].map((x) => clip(x, 64)).filter(Boolean).join(" · ")}`,
     `Error: ${errorLine(t.problem.error_type, t.problem.error_message)}`,
     `Do first: ${clip(t.solution.steps[0], 300)}`,
