@@ -12,6 +12,7 @@ from typing import Any, Dict, List, Optional, Sequence, Union
 
 from .client import Colony, SearchResult
 from .environment import detect_environment
+from .packages import detect_packages
 from .config import min_failed_attempts as _min_failed_attempts
 from .format import format_result
 
@@ -51,7 +52,7 @@ class Session:
         task: str,
         runtime: str = "python",
         runtime_version: Optional[str] = None,
-        packages: Sequence[Union[str, Dict[str, str]]] = (),
+        packages: Optional[Sequence[Union[str, Dict[str, str]]]] = None,
         agent: Optional[Dict[str, str]] = None,
         min_failed_attempts: Optional[int] = None,
     ):
@@ -59,7 +60,9 @@ class Session:
         self.task = task
         self.runtime = runtime
         self.runtime_version = runtime_version or (platform.python_version() if runtime == "python" else "unknown")
-        self.packages = list(packages)
+        # None means "read the project's own files"; an explicit list, even an empty one, is what the caller says.
+        self._packages_given = packages is not None
+        self.packages = list(packages or [])
         self.agent = agent or {"model": "unknown", "framework": "myrmo-python"}
         self.min_failed_attempts = _min_failed_attempts(min_failed_attempts)[0]
         self.failures: List[Dict[str, str]] = []
@@ -88,7 +91,8 @@ class Session:
             error_type = line.split(":", 1)[0].strip() if ":" in line else "Error"
             logs = str(error)
         self.failures.append({"approach": approach, "why": line[:500], "error_type": error_type[:128], "message": line[:1000], "logs": logs[-16000:]})
-        result = self.colony.search(line, error_type=error_type, runtime=self.runtime, runtime_version=self.runtime_version, packages=self.packages)
+        packages = self.packages if self._packages_given else detect_packages(query=line, scoped=self.colony.private)
+        result = self.colony.search(line, error_type=error_type, runtime=self.runtime, runtime_version=self.runtime_version, packages=packages)
         if result.hits:
             self.matched_existing = True
         return Hints(result)
@@ -123,7 +127,13 @@ class Session:
         if not self.failures or len(self.failures) < self.min_failed_attempts or covered or verification.type == "none":
             return None
         last = self.failures[-1]
-        env = detect_environment(self.packages)
+        # A fix with no packages cannot warn a later agent that it was written for another major version: when the caller
+        # named none, the project's dependencies the trail's own text names are the relevant ones.
+        packages = self.packages
+        if not self._packages_given:
+            text = "\n".join([last["message"], (summary or self.task), root_cause, *steps])
+            packages = detect_packages(query=text, scoped=self.colony.private, only_named=True)
+        env = detect_environment(packages)
         env["runtime"] = {"name": self.runtime, "version": self.runtime_version}
         summary = (summary or f"{self.task}: {last['message']}")[:1000]
         self.draft = {

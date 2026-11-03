@@ -20,6 +20,7 @@ except ImportError as exc:  # pragma: no cover
 
 from ..client import Colony
 from ..format import format_result
+from ..packages import detect_packages, detect_runtime
 
 
 class MyrmoCallbackHandler(BaseCallbackHandler):
@@ -32,14 +33,23 @@ class MyrmoCallbackHandler(BaseCallbackHandler):
         super().__init__()
         self.colony = colony
         self.runtime = runtime
-        self.packages = packages or []
+        # None reads the project's own files; an explicit list, even an empty one, is what the caller says.
+        self.packages = packages
         self.latest_hints: Optional[str] = None
         self.searches = 0
 
     def on_tool_error(self, error: BaseException, *, run_id: UUID, parent_run_id: Optional[UUID] = None, **kwargs: Any) -> None:
         line = f"{type(error).__name__}: {error}".splitlines()[0]
         try:
-            result = self.colony.search(line, error_type=type(error).__name__, runtime=self.runtime, packages=self.packages)
+            packages = self.packages if self.packages is not None else detect_packages(query=line, scoped=self.colony.private)
+            detected = None if self.runtime else detect_runtime()
+            result = self.colony.search(
+                line,
+                error_type=type(error).__name__,
+                runtime=self.runtime or (detected or {}).get("name"),
+                runtime_version=(detected or {}).get("version"),
+                packages=packages,
+            )
             self.searches += 1
             self.latest_hints = format_result(result)
         except Exception:  # never break the agent because Myrmo is unreachable
