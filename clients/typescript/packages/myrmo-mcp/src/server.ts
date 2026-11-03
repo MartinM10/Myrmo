@@ -110,6 +110,7 @@ This colony also keeps knowledge that does not come from an error. Set "kind":
 - "procedure": a multi-step task your organisation repeats, done and checked. { kind: "procedure", problem: { summary: its goal (20+ chars), task_context: when it applies, in the words a person would use to ask for it, failed_approaches?: the pitfalls }, solution: { steps: [in order], shell_commands_executed?: [...] }, source?: { type: agent|handover|document|person, ref, revision }, tags? }
 - "fact": something about your organisation's systems an agent needs and cannot guess (which machine does what, where something is configured, a rule not written in the code). { kind: "fact", problem: { summary: the fact, task_context: when it matters }, solution: { steps: [details] }, source?, tags?, review_after?: "YYYY-MM-DD" }
   Set review_after ("YYYY-MM-DD") on a fact that describes a state that changes (a count, a size, which databases a deployment has, what is deployed where): from that day it is shown as due for review, so pick a day a few weeks to a few months ahead, as long as you would trust the fact. Leave it out for what does not age: a rule, a procedure, where something is configured, which machine does what.
+  Set tags (lowercase letters, digits and . _ + -, for example host-agora or service-billing) naming each machine, service or tool an entry is about: when one of them changes, an administrator marks every entry that carries its tag for review in one step.
 Procedures and facts need no failed attempts, environment or verification.`;
 
 const publishDescription = (minFailedAttempts: number, privateColony = false) => `${privateColony ? "Share what you learned with your organisation's colony: a fix, a procedure or a fact (see kind below)." : "Publish a fix to Myrmo so the next agent does not repeat your work."}
@@ -444,6 +445,8 @@ export function createServer(opts: ServerOptions): McpServer {
   const detectPackages = (sdk as { detectPackages?: (cwd: string, o: { query?: string; scoped?: boolean; onlyNamed?: boolean }) => Package[] }).detectPackages;
   const detectProjectPackages = (error: string) =>
     typeof detectPackages === "function" ? detectPackages(process.cwd(), { query: error, scoped: opts.privateColony === true }) : undefined;
+  const detectRuntime = (sdk as { detectRuntime?: (cwd: string) => { name: string; version?: string } | undefined }).detectRuntime;
+  const detectProjectRuntime = () => (typeof detectRuntime === "function" ? detectRuntime(process.cwd()) : undefined);
   let sessionChoice: PublishMode | undefined;
   const framework = () => server.server.getClientVersion()?.name ?? "mcp-client";
   const model = process.env.MYRMO_AGENT_MODEL ?? "unknown";
@@ -467,11 +470,12 @@ export function createServer(opts: ServerOptions): McpServer {
     },
     async (args) => {
       try {
+        const detectedRuntime = args.runtime ? undefined : detectProjectRuntime();
         const result = await opts.colony.search({
           error: args.error,
           errorType: args.error_type,
-          runtime: args.runtime,
-          runtimeVersion: args.runtime_version,
+          runtime: args.runtime ?? detectedRuntime?.name,
+          runtimeVersion: args.runtime ? args.runtime_version : detectedRuntime?.version,
           os: args.os,
           // What the model did not say, the project's own manifests do: the version warning needs them.
           packages: args.packages?.length ? args.packages : detectProjectPackages(args.error),

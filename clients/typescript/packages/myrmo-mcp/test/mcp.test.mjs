@@ -223,6 +223,7 @@ test("a search carries the project's own dependencies when the model names none,
   await client.callTool({ name: "myrmo_search", arguments: { error: "Warning: something in react nobody has seen" } });
   const auto = requests.filter((r) => r.url === "/v1/search").at(-1);
   assert.deepEqual(auto.body.environment.packages, [{ name: "react", version: "^18.2.0" }], "a scoped name stays out of a colony that is not private");
+  assert.deepEqual(auto.body.environment.runtime, { name: "node" }, "the runtime comes from the project's manifest");
   await client.callTool({ name: "myrmo_search", arguments: { error: "Warning: another thing nobody has seen", packages: ["vue@3.4.0"] } });
   const named = requests.filter((r) => r.url === "/v1/search").at(-1);
   assert.deepEqual(named.body.environment.packages, [{ name: "vue", version: "3.4.0" }]);

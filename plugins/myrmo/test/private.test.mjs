@@ -264,12 +264,16 @@ test("the lookup sends the project's own dependencies, and the opt-out sends non
   const fetcher = async (url, init) => (sent.push(JSON.parse(init.body)), { ok: true, json: async () => ({}) });
   const settings = { url: "https://myrmo.example.internal", apiKey: "myk_saved", private: true };
   await lookup("TypeError: x is not a function in react", { env: {}, settings, fetcher, cwd: dir });
-  assert.deepEqual(sent[0].environment, { packages: [{ name: "react", version: "^18.2.0" }, { name: "@acme/ui", version: "1.0.0" }] });
+  assert.deepEqual(sent[0].environment.packages, [{ name: "react", version: "^18.2.0" }, { name: "@acme/ui", version: "1.0.0" }]);
+  assert.deepEqual(sent[0].environment.runtime, { name: "node" });
+  assert.ok(sent[0].environment.os && sent[0].environment.arch, "this machine's system and architecture go too");
   assert.equal(sent[0].limit, 3);
   await lookup("TypeError: x", { env: { MYRMO_DETECT_PACKAGES: "0" }, settings, fetcher, cwd: dir });
-  assert.equal("environment" in sent[1], false);
+  assert.equal(sent[1].environment.packages, undefined);
+  assert.equal(sent[1].environment.runtime, undefined, "the opt-out leaves the project out");
   await lookup("TypeError: x", { env: {}, settings, fetcher, cwd: tmpdir() });
-  assert.equal("environment" in sent[2], false, "a directory without manifests sends no environment");
+  assert.equal(sent[2].environment.packages, undefined, "a directory without manifests sends no packages");
+  assert.equal(sent[2].environment.runtime, undefined);
 });
 
 test("a trail written for another major version of a package the project has comes with a caution", async () => {

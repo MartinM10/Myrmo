@@ -10,7 +10,7 @@
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
-import { detectPackages } from "./packages.mjs";
+import { detectPackages, detectRuntime } from "./packages.mjs";
 import { redactText } from "./redact.mjs";
 
 const PUBLIC_HOSTS = new Set(["myrmo.dev", "www.myrmo.dev"]);
@@ -125,19 +125,27 @@ export function redactFor(colony, text) {
   return redactText(String(text ?? ""), {}, { keepNetwork: colony?.private === true });
 }
 
+const OS = { linux: "linux", darwin: "macos", win32: "windows", freebsd: "freebsd" };
+const ARCH = { x64: "x86_64", arm64: "arm64", ia32: "x86", arm: "arm", riscv64: "riscv64" };
+
 /**
- * The packages the project in `cwd` declares, for a search: the colony marks a trail written for another major version of
- * one of them. Names and versions only. This runs only against the organisation's own colony, so scoped names go too;
- * MYRMO_DETECT_PACKAGES=0 turns it off.
+ * What the colony ranks a trail by: this machine's system and architecture, the project's runtime and the packages it
+ * declares (the colony also marks a trail written for another major version of one of them). Names and versions only.
+ * This runs only against the organisation's own colony, so scoped names go too; MYRMO_DETECT_PACKAGES=0 turns the
+ * project's part off.
  */
 function environmentOf(line, cwd, env) {
-  if (env.MYRMO_DETECT_PACKAGES === "0") return {};
+  const environment = { os: OS[process.platform] ?? "other", arch: ARCH[process.arch] ?? "other" };
+  if (env.MYRMO_DETECT_PACKAGES === "0") return { environment };
   try {
+    const runtime = detectRuntime(cwd);
+    if (runtime) environment.runtime = runtime;
     const packages = detectPackages(cwd, { query: line, scoped: true });
-    return packages.length ? { environment: { packages } } : {};
+    if (packages.length) environment.packages = packages;
   } catch {
-    return {};
+    // Best effort: a search without them is still a search.
   }
+  return { environment };
 }
 
 /** Search the colony for an error line; null when it cannot be reached. */
