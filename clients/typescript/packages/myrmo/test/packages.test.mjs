@@ -105,3 +105,10 @@ test("the runtime comes from the manifests, the release only from a version file
   assert.equal(detectRuntime(project({ "package.json": {}, "requirements.txt": "numpy\n" })), undefined);
   assert.equal(detectRuntime(project({ "notes.txt": "x" })), undefined);
 });
+
+test("detectPackages and detectRuntime reproduce the shared vectors (protocol/project_packages.v1.vectors.json)", async () => {
+  const { readFileSync } = await import("node:fs");
+  const vectors = JSON.parse(readFileSync(new URL("../../../../../protocol/project_packages.v1.vectors.json", import.meta.url), "utf8"));
+  for (const c of vectors.packages) assert.deepEqual(detectPackages(project(c.files), c.options), c.expected, c.why);
+  for (const c of vectors.runtime) assert.deepEqual(detectRuntime(project(c.files)) ?? null, c.expected, c.why);
+});
