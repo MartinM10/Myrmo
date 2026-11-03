@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.51.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.50.0...platform-v0.51.0) (2026-11-03)
+
+
+### Features
+
+* **mcp:** detected dependencies on publish, runtime and system in searches, tags asked for ([#20](https://github.com/MartinM10/Myrmo/issues/20)) ([99bee1b](https://github.com/MartinM10/Myrmo/commit/99bee1bc8da2d31e9f4292bf36e06745bcc5c44b))
+
 ## [0.50.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.49.0...platform-v0.50.0) (2026-11-03)
 
 

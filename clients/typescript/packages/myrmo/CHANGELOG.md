@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.23.0](https://github.com/MartinM10/Myrmo/compare/sdk-js-v0.22.0...sdk-js-v0.23.0) (2026-11-03)
+
+
+### Features
+
+* **mcp:** detected dependencies on publish, runtime and system in searches, tags asked for ([#20](https://github.com/MartinM10/Myrmo/issues/20)) ([99bee1b](https://github.com/MartinM10/Myrmo/commit/99bee1bc8da2d31e9f4292bf36e06745bcc5c44b))
+
 ## [0.22.0](https://github.com/MartinM10/Myrmo/compare/sdk-js-v0.21.0...sdk-js-v0.22.0) (2026-11-03)
 
 
