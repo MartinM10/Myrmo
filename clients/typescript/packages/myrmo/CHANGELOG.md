@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.22.0](https://github.com/MartinM10/Myrmo/compare/sdk-js-v0.21.0...sdk-js-v0.22.0) (2026-11-03)
+
+
+### Features
+
+* **mcp:** read the project's dependencies and send them with every search ([#18](https://github.com/MartinM10/Myrmo/issues/18)) ([77773e9](https://github.com/MartinM10/Myrmo/commit/77773e96a3a759c60ef2da024903323ae747013f))
+
 ## [0.21.0](https://github.com/MartinM10/Myrmo/compare/sdk-js-v0.20.0...sdk-js-v0.21.0) (2026-11-01)
 
 
