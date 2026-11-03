@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.20.0](https://github.com/MartinM10/Myrmo/compare/sdk-python-v0.19.0...sdk-python-v0.20.0) (2026-11-03)
+
+
+### Features
+
+* **sdk-python:** read the project's packages and runtime, as the TypeScript SDK and the hook do ([#22](https://github.com/MartinM10/Myrmo/issues/22)) ([fd7a53c](https://github.com/MartinM10/Myrmo/commit/fd7a53ca95abf6ae120bb8df47631226ff5ff69b))
+
 ## [0.19.0](https://github.com/MartinM10/Myrmo/compare/sdk-python-v0.18.0...sdk-python-v0.19.0) (2026-11-01)
 
 
