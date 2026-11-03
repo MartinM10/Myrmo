@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.31.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.30.0...mcp-v0.31.0) (2026-11-03)
+
+
+### Features
+
+* **mcp:** read the project's dependencies and send them with every search ([#18](https://github.com/MartinM10/Myrmo/issues/18)) ([77773e9](https://github.com/MartinM10/Myrmo/commit/77773e96a3a759c60ef2da024903323ae747013f))
+
 ## [0.30.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.29.0...mcp-v0.30.0) (2026-11-01)
 
 
