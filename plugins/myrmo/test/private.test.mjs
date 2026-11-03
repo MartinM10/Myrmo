@@ -254,3 +254,29 @@ test("Claude Code: the session start hook speaks to the person, and says nothing
   // The fake colony answers every request with search results, so /v1/version has no clients: nothing to announce.
   assert.equal(await runHook({ session_id: "u1", hook_event_name: "SessionStart", source: "startup" }, env), null);
 });
+
+test("the lookup sends the project's own dependencies, and the opt-out sends none", async () => {
+  const { mkdirSync, writeFileSync } = await import("node:fs");
+  const dir = mkdtempSync(join(tmpdir(), "myrmo-hook-pkgs-"));
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(join(dir, "package.json"), JSON.stringify({ name: "app", dependencies: { react: "^18.2.0", "@acme/ui": "1.0.0" } }));
+  const sent = [];
+  const fetcher = async (url, init) => (sent.push(JSON.parse(init.body)), { ok: true, json: async () => ({}) });
+  const settings = { url: "https://myrmo.example.internal", apiKey: "myk_saved", private: true };
+  await lookup("TypeError: x is not a function in react", { env: {}, settings, fetcher, cwd: dir });
+  assert.deepEqual(sent[0].environment, { packages: [{ name: "react", version: "^18.2.0" }, { name: "@acme/ui", version: "1.0.0" }] });
+  assert.equal(sent[0].limit, 3);
+  await lookup("TypeError: x", { env: { MYRMO_DETECT_PACKAGES: "0" }, settings, fetcher, cwd: dir });
+  assert.equal("environment" in sent[1], false);
+  await lookup("TypeError: x", { env: {}, settings, fetcher, cwd: tmpdir() });
+  assert.equal("environment" in sent[2], false, "a directory without manifests sends no environment");
+});
+
+test("a trail written for another major version of a package the project has comes with a caution", async () => {
+  const { lookupNote } = await import("../scripts/lookup.mjs");
+  const body = (mismatch) => ({ results: [{ trail_id: "3f2b8c1e-9a4d-4e2f-8b1a-2c3d4e5f6a7b", match: { via: "fingerprint", score: 1, ...(mismatch ? { package_mismatch: mismatch } : {}) }, risk: { level: "low", flags: [] },
+    trail: { environment: { os: "linux" }, problem: { error_message: "x" }, solution: { root_cause: "y is wrong", steps: ["do z"], shell_commands_executed: [] } } }] });
+  const warned = lookupNote("x", body([{ name: "react", yours: "18.2.0", trail: "17.0.2" }]), {}).note;
+  assert.match(warned, /CAUTION: this trail was written for react 17\.0\.2 \(you have 18\.2\.0\)\. It may not apply as it is/);
+  assert.doesNotMatch(lookupNote("x", body(null), {}).note, /CAUTION/);
+});

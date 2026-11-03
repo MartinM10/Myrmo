@@ -16,6 +16,8 @@ Lookup order, cheapest first, in both SDKs:
 3. **`POST /v1/search`**, only when the colony has no exact match.
 
 When you pass packages with a version (`react@18.2.0`) and a hit was written for another major version of one of them, the hit carries `match["package_mismatch"]` (`match.package_mismatch` in TypeScript), stays in the list, and the text for a model opens with a `CAUTION` that names both versions instead of `START HERE`. The check is the same in both SDKs and in the colony (`protocol/package_versions.v1.vectors.json`).
+
+You do not have to pass the packages yourself. `myrmo-mcp` and the Claude Code plugin's failure hook read the direct dependencies of the project they run in (`package.json` with `package-lock.json`; `requirements*.txt`, `pyproject.toml` with `poetry.lock` or `uv.lock`) and send their names and versions with the search, up to 30, those named by the error first. Packages the model names itself are never replaced. Only names and versions leave the project; scoped npm names (`@scope/name`) are sent only to a private colony, and `MYRMO_DETECT_PACKAGES=0` turns it off. In TypeScript the same reading is `detectPackages(cwd)`; the Python SDK does not read manifests yet.
 ## Publishing without a prompt
 
 `colony.publish(trail)` publishes at once. When a person has to approve, create a draft instead and

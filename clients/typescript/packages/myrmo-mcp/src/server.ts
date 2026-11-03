@@ -3,7 +3,7 @@
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import * as sdk from "myrmo";
-import { Colony, MyrmoError, detectEnvironment, formatResult, writeConfig, type Outcome, type PublishMode, type RejectionDetail, type Trail } from "myrmo";
+import { Colony, MyrmoError, detectEnvironment, formatResult, writeConfig, type Outcome, type Package, type PublishMode, type RejectionDetail, type Trail } from "myrmo";
 import { z } from "zod";
 import { checkTrail } from "./check.js";
 import { buildInstructions } from "./instructions.js";
@@ -440,6 +440,10 @@ export function createServer(opts: ServerOptions): McpServer {
     if (line) toldUpdate = true;
     return line ? `${answer}\n${line}` : answer;
   };
+  // An SDK older than this server has no detector (a tree that kept an earlier myrmo): then nothing is added.
+  const detectPackages = (sdk as { detectPackages?: (cwd: string, o: { query?: string; scoped?: boolean }) => Package[] }).detectPackages;
+  const detectProjectPackages = (error: string) =>
+    typeof detectPackages === "function" ? detectPackages(process.cwd(), { query: error, scoped: opts.privateColony === true }) : undefined;
   let sessionChoice: PublishMode | undefined;
   const framework = () => server.server.getClientVersion()?.name ?? "mcp-client";
   const model = process.env.MYRMO_AGENT_MODEL ?? "unknown";
@@ -469,7 +473,8 @@ export function createServer(opts: ServerOptions): McpServer {
           runtime: args.runtime,
           runtimeVersion: args.runtime_version,
           os: args.os,
-          packages: args.packages,
+          // What the model did not say, the project's own manifests do: the version warning needs them.
+          packages: args.packages?.length ? args.packages : detectProjectPackages(args.error),
           model: args.model,
         });
         const includeHighRisk = (args.include_high_risk ?? false) && (opts.allowHighRisk ?? false);
