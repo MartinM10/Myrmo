@@ -127,7 +127,8 @@ jobs:
 
   python:
     name: SDK (Python ${{ matrix.python }})
-    runs-on: ubuntu-latest
+    # Not ubuntu-latest: since it moved to Ubuntu 26.04 there is no Python 3.9 build for it, and 3.9 is the SDK's floor.
+    runs-on: ubuntu-24.04
     strategy:
       matrix:
         python: ["3.9", "3.13"]

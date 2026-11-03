@@ -364,7 +364,7 @@ export function mergeHooks(current: string | undefined, command: string): { text
  * which apply only to that colony), and for Antigravity installs the hook that looks errors up there.
  */
 /** The scripts the hooks are made of, copied together (scripts/copy-hooks.mjs puts them in dist/hooks). */
-export const HOOK_SCRIPTS = ["antigravity-hook.mjs", "on-failure.mjs", "lookup.mjs", "effort.mjs", "state.mjs", "redact.mjs"];
+export const HOOK_SCRIPTS = ["antigravity-hook.mjs", "on-failure.mjs", "lookup.mjs", "effort.mjs", "state.mjs", "redact.mjs", "packages.mjs"];
 
 /** This machine or a private network: where plain http does not carry a key across the internet. */
 export function nearbyHost(hostname: string): boolean {
