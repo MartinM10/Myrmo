@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { detectPackages } from "../dist/index.js";
+import { detectPackages, detectRuntime } from "../dist/index.js";
 
 const project = (files) => {
   const dir = mkdtempSync(join(tmpdir(), "myrmo-pkgs-"));
@@ -89,4 +89,19 @@ test("the Claude Code plugin's hook reads dependencies with this very code (scri
   const copy = readFileSync(new URL("../../../../../plugins/myrmo/scripts/packages.mjs", import.meta.url), "utf8");
   const built = readFileSync(new URL("../dist/packages.js", import.meta.url), "utf8");
   assert.equal(lf(copy), lf(packagesCopy(built)), "out of date: run npm run build && node scripts/sync-plugin-redact.mjs in clients/typescript");
+});
+
+test("onlyNamed keeps the packages the text names and nothing else", () => {
+  const dir = project({ "package.json": { dependencies: { react: "^18.2.0", lodash: "4.17.21", vue: "3.4.0" } } });
+  assert.deepEqual(detectPackages(dir, { query: "TypeError thrown by react while rendering", onlyNamed: true }), [{ name: "react", version: "^18.2.0" }]);
+  assert.deepEqual(detectPackages(dir, { query: "nothing here", onlyNamed: true }), []);
+});
+
+test("the runtime comes from the manifests, the release only from a version file, and a mixed project says nothing", () => {
+  assert.deepEqual(detectRuntime(project({ "package.json": {} })), { name: "node" });
+  assert.deepEqual(detectRuntime(project({ "package.json": {}, ".nvmrc": "v20.11.0\n" })), { name: "node", version: "20.11.0" });
+  assert.deepEqual(detectRuntime(project({ "package.json": {}, ".nvmrc": "20\n" })), { name: "node" }, "a bare major is no release");
+  assert.deepEqual(detectRuntime(project({ "pyproject.toml": "[project]\nname='x'\n", ".python-version": "3.12\n" })), { name: "python", version: "3.12" });
+  assert.equal(detectRuntime(project({ "package.json": {}, "requirements.txt": "numpy\n" })), undefined);
+  assert.equal(detectRuntime(project({ "notes.txt": "x" })), undefined);
 });

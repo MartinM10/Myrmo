@@ -128,5 +128,25 @@ export function detectPackages(cwd = process.cwd(), options = {}) {
     const text = (options.query ?? "").toLowerCase();
     // `pkg-3` is not named by a text about `pkg-37`: the name must stand alone.
     const named = (p) => text.length > 0 && new RegExp(`(^|[^a-z0-9._@/-])${p.name.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}($|[^a-z0-9._-])`).test(text);
-    return [...all.filter(named), ...all.filter((p) => !named(p))].slice(0, max);
+    return [...all.filter(named), ...(options.onlyNamed ? [] : all.filter((p) => !named(p)))].slice(0, max);
+}
+/** The first line of a version file, when it is a release with a minor (`20.11.0`, `3.12`): a bare major is no match for one. */
+const versionFile = (path) => {
+    const first = (read(path) ?? "").split(/\r?\n/)[0]?.trim().replace(/^v/i, "") ?? "";
+    return /^\d+\.\d+(\.\d+)?$/.test(first) ? first : undefined;
+};
+/**
+ * The language runtime of the project in `cwd`: `node` when it has a `package.json`, `python` when it has Python
+ * manifests, and nothing when it has both or neither (a guess would be wrong half the time). The release only when the
+ * project pins one in `.nvmrc`, `.node-version` or `.python-version`.
+ */
+export function detectRuntime(cwd = process.cwd()) {
+    if (process.env.MYRMO_DETECT_PACKAGES === "0")
+        return undefined;
+    const isNode = existsSync(join(cwd, "package.json"));
+    const isPython = ["pyproject.toml", "requirements.txt", "Pipfile", "setup.py"].some((f) => existsSync(join(cwd, f)));
+    if (isNode === isPython)
+        return undefined;
+    const version = isNode ? (versionFile(join(cwd, ".nvmrc")) ?? versionFile(join(cwd, ".node-version"))) : versionFile(join(cwd, ".python-version"));
+    return { name: isNode ? "node" : "python", ...(version ? { version } : {}) };
 }

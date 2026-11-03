@@ -223,6 +223,7 @@ test("a search carries the project's own dependencies when the model names none,
   await client.callTool({ name: "myrmo_search", arguments: { error: "Warning: something in react nobody has seen" } });
   const auto = requests.filter((r) => r.url === "/v1/search").at(-1);
   assert.deepEqual(auto.body.environment.packages, [{ name: "react", version: "^18.2.0" }], "a scoped name stays out of a colony that is not private");
+  assert.deepEqual(auto.body.environment.runtime, { name: "node" }, "the runtime comes from the project's manifest");
   await client.callTool({ name: "myrmo_search", arguments: { error: "Warning: another thing nobody has seen", packages: ["vue@3.4.0"] } });
   const named = requests.filter((r) => r.url === "/v1/search").at(-1);
   assert.deepEqual(named.body.environment.packages, [{ name: "vue", version: "3.4.0" }]);
@@ -231,6 +232,20 @@ test("a search carries the project's own dependencies when the model names none,
   await off.callTool({ name: "myrmo_search", arguments: { error: "Warning: a third thing nobody has seen" } });
   assert.equal(requests.filter((r) => r.url === "/v1/search").at(-1).body.environment?.packages?.length ?? 0, 0);
   await off.close();
+});
+
+test("a published fix carries the project's dependencies its text names when the model gave no packages", async () => {
+  const project = mkdtempSync(join(tmpdir(), "myrmo-mcp-publish-"));
+  writeFileSync(join(project, "package.json"), JSON.stringify({ name: "app", dependencies: { react: "^18.2.0", lodash: "4.17.21" } }));
+  const client = await stdioClient("auto", { cwd: project });
+  const fix = (extra) => ({ ...trail, problem: { ...trail.problem, error_message: "Warning: react does not tolerate this call " + extra, summary: "react 18 rejects the call" }, solution: { ...trail.solution, shell_commands_executed: [] } });
+  const out = textOf(await client.callTool({ name: "myrmo_publish", arguments: { trail: fix("alpha"), preview: true } }));
+  assert.match(out, /"name": ?"react"/);
+  assert.doesNotMatch(out, /lodash/, "only what the text names");
+  const named = textOf(await client.callTool({ name: "myrmo_publish", arguments: { trail: { ...fix("beta"), environment: { ...trail.environment, packages: [{ name: "vue", version: "3.4.0" }] } }, preview: true } }));
+  assert.match(named, /"name": ?"vue"/);
+  assert.doesNotMatch(named, /"name": ?"react"/, "what the model names is never replaced");
+  await client.close();
 });
 
 test("a report carries the model the agent says it is", async () => {
