@@ -90,3 +90,9 @@ test("the Claude Code plugin's hook reads dependencies with this very code (scri
   const built = readFileSync(new URL("../dist/packages.js", import.meta.url), "utf8");
   assert.equal(lf(copy), lf(packagesCopy(built)), "out of date: run npm run build && node scripts/sync-plugin-redact.mjs in clients/typescript");
 });
+
+test("onlyNamed keeps the packages the text names and nothing else", () => {
+  const dir = project({ "package.json": { dependencies: { react: "^18.2.0", lodash: "4.17.21", vue: "3.4.0" } } });
+  assert.deepEqual(detectPackages(dir, { query: "TypeError thrown by react while rendering", onlyNamed: true }), [{ name: "react", version: "^18.2.0" }]);
+  assert.deepEqual(detectPackages(dir, { query: "nothing here", onlyNamed: true }), []);
+});

@@ -128,5 +128,5 @@ export function detectPackages(cwd = process.cwd(), options = {}) {
     const text = (options.query ?? "").toLowerCase();
     // `pkg-3` is not named by a text about `pkg-37`: the name must stand alone.
     const named = (p) => text.length > 0 && new RegExp(`(^|[^a-z0-9._@/-])${p.name.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}($|[^a-z0-9._-])`).test(text);
-    return [...all.filter(named), ...all.filter((p) => !named(p))].slice(0, max);
+    return [...all.filter(named), ...(options.onlyNamed ? [] : all.filter((p) => !named(p)))].slice(0, max);
 }

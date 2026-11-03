@@ -441,7 +441,7 @@ export function createServer(opts: ServerOptions): McpServer {
     return line ? `${answer}\n${line}` : answer;
   };
   // An SDK older than this server has no detector (a tree that kept an earlier myrmo): then nothing is added.
-  const detectPackages = (sdk as { detectPackages?: (cwd: string, o: { query?: string; scoped?: boolean }) => Package[] }).detectPackages;
+  const detectPackages = (sdk as { detectPackages?: (cwd: string, o: { query?: string; scoped?: boolean; onlyNamed?: boolean }) => Package[] }).detectPackages;
   const detectProjectPackages = (error: string) =>
     typeof detectPackages === "function" ? detectPackages(process.cwd(), { query: error, scoped: opts.privateColony === true }) : undefined;
   let sessionChoice: PublishMode | undefined;
@@ -622,6 +622,12 @@ export function createServer(opts: ServerOptions): McpServer {
         t.solution.shell_commands_executed ??= [];
       }
       if (t.environment && typeof t.environment === "object") t.environment.packages ??= [];
+      // A fix with no packages cannot warn a later agent that it was written for another major version. When the model
+      // named none, the project's own dependencies that the trail's text mentions are the relevant ones.
+      if (!knowledge && t.environment && Array.isArray(t.environment.packages) && t.environment.packages.length === 0 && typeof detectPackages === "function") {
+        const text = [t.problem?.error_message, t.problem?.summary, t.solution?.root_cause, ...(Array.isArray(t.solution?.steps) ? t.solution.steps : [])].filter((x) => typeof x === "string").join("\n");
+        t.environment.packages = detectPackages(process.cwd(), { query: text, scoped: opts.privateColony === true, onlyNamed: true });
+      }
       const attempts = Number(trail.effort?.failed_attempts ?? 0);
       // Only a fix an agent found has to have cost something: a procedure or a fact is worth sharing because it is needed
       // again, and a fix taken from a handover or a runbook was worth writing down already (it has no attempts to count).

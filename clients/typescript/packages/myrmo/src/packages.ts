@@ -15,6 +15,8 @@ export interface DetectOptions {
   max?: number;
   /** Scoped npm names (`@scope/name`) are often private packages: left out unless the colony is the organisation's own. */
   scoped?: boolean;
+  /** Only the packages `query` names, for a trail: its packages are the ones relevant to the problem, not a lockfile. */
+  onlyNamed?: boolean;
 }
 
 const read = (path: string): string | null => {
@@ -129,5 +131,5 @@ export function detectPackages(cwd: string = process.cwd(), options: DetectOptio
   const text = (options.query ?? "").toLowerCase();
   // `pkg-3` is not named by a text about `pkg-37`: the name must stand alone.
   const named = (p: Package) => text.length > 0 && new RegExp(`(^|[^a-z0-9._@/-])${p.name.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}($|[^a-z0-9._-])`).test(text);
-  return [...all.filter(named), ...all.filter((p) => !named(p))].slice(0, max);
+  return [...all.filter(named), ...(options.onlyNamed ? [] : all.filter((p) => !named(p)))].slice(0, max);
 }

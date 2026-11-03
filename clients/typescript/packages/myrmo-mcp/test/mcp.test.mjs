@@ -233,6 +233,20 @@ test("a search carries the project's own dependencies when the model names none,
   await off.close();
 });
 
+test("a published fix carries the project's dependencies its text names when the model gave no packages", async () => {
+  const project = mkdtempSync(join(tmpdir(), "myrmo-mcp-publish-"));
+  writeFileSync(join(project, "package.json"), JSON.stringify({ name: "app", dependencies: { react: "^18.2.0", lodash: "4.17.21" } }));
+  const client = await stdioClient("auto", { cwd: project });
+  const fix = (extra) => ({ ...trail, problem: { ...trail.problem, error_message: "Warning: react does not tolerate this call " + extra, summary: "react 18 rejects the call" }, solution: { ...trail.solution, shell_commands_executed: [] } });
+  const out = textOf(await client.callTool({ name: "myrmo_publish", arguments: { trail: fix("alpha"), preview: true } }));
+  assert.match(out, /"name": ?"react"/);
+  assert.doesNotMatch(out, /lodash/, "only what the text names");
+  const named = textOf(await client.callTool({ name: "myrmo_publish", arguments: { trail: { ...fix("beta"), environment: { ...trail.environment, packages: [{ name: "vue", version: "3.4.0" }] } }, preview: true } }));
+  assert.match(named, /"name": ?"vue"/);
+  assert.doesNotMatch(named, /"name": ?"react"/, "what the model names is never replaced");
+  await client.close();
+});
+
 test("a report carries the model the agent says it is", async () => {
   const client = await stdioClient();
   await client.callTool({ name: "myrmo_report", arguments: { trail_id: TRAIL_ID, outcome: "worked", model: "claude-opus-5-5" } });
