@@ -135,11 +135,11 @@ const textOf = (r) => r.content.map((c) => c.text).join("\n");
  * `answer` makes the client elicitation-capable, like a real MCP host: it is called with the
  * request shown to the user and returns what the user chose (`{ action, content }`).
  */
-async function stdioClient(publish = "ask", { answer, env = {} } = {}) {
+async function stdioClient(publish = "ask", { answer, env = {}, cwd } = {}) {
   const client = new Client({ name: "test-client", version: "1.0.0" }, answer ? { capabilities: { elicitation: {} } } : undefined);
   if (answer) client.setRequestHandler(ElicitRequestSchema, async (req) => answer(req.params));
   await client.connect(
-    new StdioClientTransport({ command: process.execPath, args: [ENTRY], env: { ...process.env, MYRMO_URL: colonyUrl, MYRMO_PUBLISH: publish, MYRMO_CONFIG: join(sandbox, "default.json"), ...env } }),
+    new StdioClientTransport({ command: process.execPath, args: [ENTRY], ...(cwd ? { cwd } : {}), env: { ...process.env, MYRMO_URL: colonyUrl, MYRMO_PUBLISH: publish, MYRMO_CONFIG: join(sandbox, "default.json"), ...env } }),
   );
   return client;
 }
@@ -214,6 +214,23 @@ test("search falls back to semantic search and says when nothing matches", async
   assert.match(out, /No trail in the Myrmo colony matches/);
   assert.ok(requests.some((r) => r.url === "/v1/search"));
   await client.close();
+});
+
+test("a search carries the project's own dependencies when the model names none, and never overrides the ones it names", async () => {
+  const project = mkdtempSync(join(tmpdir(), "myrmo-mcp-project-"));
+  writeFileSync(join(project, "package.json"), JSON.stringify({ name: "app", dependencies: { react: "^18.2.0", "@acme/ui": "1.0.0" } }));
+  const client = await stdioClient("ask", { cwd: project });
+  await client.callTool({ name: "myrmo_search", arguments: { error: "Warning: something in react nobody has seen" } });
+  const auto = requests.filter((r) => r.url === "/v1/search").at(-1);
+  assert.deepEqual(auto.body.environment.packages, [{ name: "react", version: "^18.2.0" }], "a scoped name stays out of a colony that is not private");
+  await client.callTool({ name: "myrmo_search", arguments: { error: "Warning: another thing nobody has seen", packages: ["vue@3.4.0"] } });
+  const named = requests.filter((r) => r.url === "/v1/search").at(-1);
+  assert.deepEqual(named.body.environment.packages, [{ name: "vue", version: "3.4.0" }]);
+  await client.close();
+  const off = await stdioClient("ask", { cwd: project, env: { MYRMO_DETECT_PACKAGES: "0" } });
+  await off.callTool({ name: "myrmo_search", arguments: { error: "Warning: a third thing nobody has seen" } });
+  assert.equal(requests.filter((r) => r.url === "/v1/search").at(-1).body.environment?.packages?.length ?? 0, 0);
+  await off.close();
 });
 
 test("a report carries the model the agent says it is", async () => {

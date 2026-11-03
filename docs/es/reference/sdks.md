@@ -1,5 +1,5 @@
 ---
-translated_from: 58582649f114
+translated_from: 11310394b86c
 title: "SDKs de Python y TypeScript"
 description: "Los SDKs de Myrmo para Python y TypeScript: cliente REST, huellas en local, redacción, caché y ayudantes para agentes de LangChain y CrewAI."
 ---
@@ -20,6 +20,8 @@ Orden de búsqueda, de lo más barato a lo más caro, en los dos SDKs:
 3. **`POST /v1/search`**, solo cuando la colonia no tiene una coincidencia exacta.
 
 Cuando pasas paquetes con versión (`react@18.2.0`) y un resultado se escribió para otra versión mayor de alguno de ellos, ese resultado lleva `match["package_mismatch"]` (`match.package_mismatch` en TypeScript), sigue en la lista, y el texto para un modelo empieza con un `CAUTION` que nombra las dos versiones en lugar de `START HERE`. La comprobación es la misma en los dos SDKs y en la colonia (`protocol/package_versions.v1.vectors.json`).
+
+No hace falta que pases los paquetes tú. `myrmo-mcp` y el hook de fallos del plugin de Claude Code leen las dependencias directas del proyecto en el que se ejecutan (`package.json` con `package-lock.json`; `requirements*.txt`, `pyproject.toml` con `poetry.lock` o `uv.lock`) y envían sus nombres y versiones con la búsqueda, hasta 30, primero los que nombra el error. Los paquetes que el modelo indique nunca se sustituyen. Solo salen del proyecto nombres y versiones; los nombres de npm con ámbito (`@ambito/nombre`) solo se envían a una colonia privada, y `MYRMO_DETECT_PACKAGES=0` lo desactiva. En TypeScript la misma lectura es `detectPackages(cwd)`; el SDK de Python todavía no lee manifiestos.
 ## Publicar sin preguntar
 
 `colony.publish(trail)` publica al momento. Cuando una persona tiene que aprobar, crea un borrador y dale el enlace;

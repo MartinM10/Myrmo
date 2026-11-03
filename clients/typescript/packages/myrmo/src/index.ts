@@ -6,6 +6,7 @@ export { possibleNames, redactText, redactValue, type RedactionPolicy, type Reda
 export { DEFAULT_MIN_FAILED_ATTEMPTS, SETTINGS, agentIdentity, configPath, fileColony, minFailedAttempts, publishChoice, readConfig, setSetting, settingsReport, writeConfig, type AgentIdSource, type ColonySettings, type HookMode, type MyrmoConfig, type SettingRow, type SettingSource } from "./config.js";
 export { detectEnvironment, parsePackage } from "./environment.js";
 export { majorOf, packageMismatches, type PackageMismatch } from "./versions.js";
+export { detectPackages, MAX_DETECTED_PACKAGES, type DetectOptions } from "./packages.js";
 export { attemptsPhrase, formatBrief, formatResult, startHere, type FormatOptions } from "./format.js";
 export type * from "./types.js";
 

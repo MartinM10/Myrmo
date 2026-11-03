@@ -1,6 +1,7 @@
 // The Claude Code plugin's hooks run with plain node and no packages, and still redact what they send to a colony with
-// the SDK's own rules: plugins/myrmo/scripts/redact.mjs is the SDK's built redact.js with a header. Run this after
-// changing packages/myrmo/src/redact.ts and building; the SDK's tests fail while the copy differs.
+// the SDK's own rules: plugins/myrmo/scripts/redact.mjs is the SDK's built redact.js with a header. The same goes for
+// packages.mjs, which reads the project's dependencies for a search. Run this after changing
+// packages/myrmo/src/redact.ts or packages.ts and building; the SDK's tests fail while a copy differs.
 //
 //   npm run build && node scripts/sync-plugin-redact.mjs
 
@@ -9,12 +10,17 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
-export const HEADER =
-  "// Generated from clients/typescript/packages/myrmo/src/redact.ts by clients/typescript/scripts/sync-plugin-redact.mjs.\n" +
+const header = (source) =>
+  `// Generated from clients/typescript/packages/myrmo/src/${source} by clients/typescript/scripts/sync-plugin-redact.mjs.\n` +
   "// Do not edit: change the SDK, build it and run that script. The SDK's tests check that this copy is current.\n";
+export const HEADER = header("redact.ts");
 
 export function pluginCopy(built) {
   return HEADER + built;
+}
+
+export function packagesCopy(built) {
+  return header("packages.ts") + built;
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
@@ -22,4 +28,8 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   const target = join(here, "..", "..", "..", "plugins", "myrmo", "scripts", "redact.mjs");
   writeFileSync(target, pluginCopy(built));
   console.log(`wrote ${target}`);
+  const packages = join(here, "..", "packages", "myrmo", "dist", "packages.js");
+  const packagesTarget = join(here, "..", "..", "..", "plugins", "myrmo", "scripts", "packages.mjs");
+  writeFileSync(packagesTarget, packagesCopy(readFileSync(packages, "utf8")));
+  console.log(`wrote ${packagesTarget}`);
 }
