@@ -143,15 +143,16 @@ test("the launcher starts the exact myrmo-mcp that this repository releases, nev
   assert.equal(pinned[1], json(join(repo, "clients", "typescript", "packages", "myrmo-mcp", "package.json")).version);
   assert.doesNotMatch(launcher, /myrmo-mcp@latest/);
   assert.match(launcher, /shell: process\.platform === "win32"/, "the Windows fix stays");
-  const config = json(join(repo, "release-please-config.json"));
-  assert.ok(config.packages["clients/typescript/packages/myrmo-mcp"]["extra-files"].includes("/plugins/myrmo/scripts/launch-mcp.mjs"));
+  // Only where the clients are released from: the private repository keeps a copy of them and releases the server only.
+  const mcp = json(join(repo, "release-please-config.json")).packages["clients/typescript/packages/myrmo-mcp"];
+  if (mcp) assert.ok(mcp["extra-files"].includes("/plugins/myrmo/scripts/launch-mcp.mjs"));
 });
 
 test("the plugin manifest has a version that release-please keeps", () => {
   const manifest = json(join(root, ".claude-plugin", "plugin.json"));
   assert.match(manifest.version, /^\d+\.\d+\.\d+$/);
-  const config = json(join(repo, "release-please-config.json"));
-  assert.ok(config.packages["."]["extra-files"].some((f) => f.path === "plugins/myrmo/.claude-plugin/plugin.json" && f.jsonpath === "$.version"));
+  const platform = json(join(repo, "release-please-config.json")).packages["."];
+  if (platform) assert.ok(platform["extra-files"].some((f) => f.path === "plugins/myrmo/.claude-plugin/plugin.json" && f.jsonpath === "$.version"));
   assert.equal(manifest.version, json(join(repo, ".release-please-manifest.json"))["."]);
 });
 
