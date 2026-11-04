@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.52.1](https://github.com/MartinM10/Myrmo/compare/platform-v0.52.0...platform-v0.52.1) (2026-11-04)
+
+
+### Bug fixes
+
+* **mcp:** update the dependencies that have known vulnerabilities ([#24](https://github.com/MartinM10/Myrmo/issues/24)) ([91cdbf7](https://github.com/MartinM10/Myrmo/commit/91cdbf75bfd4aa7ce979d5e2c18f267d78e5f2c2))
+
 ## [0.52.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.51.0...platform-v0.52.0) (2026-11-03)
 
 
