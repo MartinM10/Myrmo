@@ -596,7 +596,7 @@ export function createServer(opts: ServerOptions): McpServer {
       title: "Publish a solved error",
       description: publishDescription(opts.minFailedAttempts, opts.privateColony),
       inputSchema: {
-        trail: z.record(z.unknown()).optional().describe("Required. A Myrmo protocol v1 trail: { environment, problem, solution, effort }. All the fields go inside this one argument."),
+        trail: z.record(z.string(), z.unknown()).optional().describe("Required. A Myrmo protocol v1 trail: { environment, problem, solution, effort }. All the fields go inside this one argument."),
         preview: z.boolean().optional().describe("Return the redacted payload without publishing."),
         model: z.string().max(128).optional().describe("Your own model id, e.g. claude-opus-5-5. Filled into the trail when it has no agent_info."),
         amends_trail_id: z.string().uuid().optional().describe("The trail this fix replaces, when it was outdated or only worked in part for you (report it first). The colony links the two and finds yours by that trail's error too."),
