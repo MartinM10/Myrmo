@@ -450,8 +450,12 @@
     "<div><strong>La solución llega en el momento del fallo</strong><p>Cuando falla un comando, el agente ve lo que el agente de un compañero ya resolvió. En la medición de arriba, con cuatro problemas de una empresa simulada, un modelo barato pasó de 5 a 21 resueltos de 40, en 9 turnos en lugar de 17.</p></div>"
    ],
    [
-    "<div><strong>Yours, and you can leave</strong><p>A colony's knowledge is never published, never used to train anything and never sent to an external AI model; it is stored in Spain. Export it as a file whenever you like, and delete it for good in one click.</p></div>",
-    "<div><strong>Tuyo, y puedes irte</strong><p>El conocimiento de una colonia nunca se publica, nunca se usa para entrenar nada y nunca se envía a un modelo de IA externo; se guarda en España. Expórtalo como fichero cuando quieras y bórralo para siempre con un clic.</p></div>"
+    "<div><strong>Yours, and you can leave</strong><p>A colony's knowledge is never published, never used to train anything and never sent to an external AI model; where it is stored is in the privacy policy. Export it as a file whenever you like, and delete it for good in one click.</p></div>",
+    "<div><strong>Tuyo, y puedes irte</strong><p>El conocimiento de una colonia nunca se publica, nunca se usa para entrenar nada y nunca se envía a un modelo de IA externo; dónde se guarda lo dice la política de privacidad. Expórtalo como fichero cuando quieras y bórralo para siempre con un clic.</p></div>"
+   ],
+   [
+    "<strong>Kept apart from every other colony.</strong> Each colony has its own database and its own part of the search index, every request is confined to it, and the project tests on every change that one colony cannot reach another. Keys are personal and revocable, secrets are stripped before anything is stored, and it is encrypted. It is stored on our server and not end-to-end encrypted: <a href=\"docs/getting-started/myrmo-cloud#security-and-isolation\">what that means, in plain words</a>.",
+    "<strong>Separada de las demás colonias.</strong> Cada colonia tiene su propia base de datos y su propia parte del índice de búsqueda, cada petición queda confinada a ella, y el proyecto comprueba en cada cambio que una colonia no puede llegar a otra. Las claves son personales y revocables, los secretos se quitan antes de guardar nada, y todo va cifrado. Se guarda en nuestro servidor y no tiene cifrado de extremo a extremo: <a href=\"docs/getting-started/myrmo-cloud#security-and-isolation\">qué significa eso, en claro</a>."
    ],
    [
     "Create a colony <span class=\"arrow\" aria-hidden=\"true\">→</span>",
@@ -506,8 +510,8 @@
     "<li>Propietarios y administradores gestionan los miembros; quitar a alguien desactiva su clave al momento</li>"
    ],
    [
-    "<li>Your knowledge stays yours: never published, licensed or used to train anything, and stored in Spain; export it or delete it any time</li>",
-    "<li>Tu conocimiento sigue siendo tuyo: nunca se publica, se licencia ni se usa para entrenar nada, y se guarda en España; expórtalo o bórralo cuando quieras</li>"
+    "<li>Your knowledge stays yours: never published, licensed or used to train anything, and its storage location is stated in the privacy policy; export it or delete it any time</li>",
+    "<li>Tu conocimiento sigue siendo tuyo: nunca se publica, se licencia ni se usa para entrenar nada, y dónde se guarda lo dice la política de privacidad; expórtalo o bórralo cuando quieras</li>"
    ],
    [
     "<li>Today: up to three colonies per account, no cap on members. A paid plan would be announced by e-mail at least 30 days before it applies to your colonies. See the <a href=\"docs/legal/cloud-terms\">terms</a></li>",

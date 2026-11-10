@@ -14,7 +14,7 @@ compañeros ya descubrieron; cuando falla un comando, reciben la solución que y
 ## Cómo la consigue un equipo
 
 - **Myrmo Cloud**, alojado por el proyecto Myrmo. Entras, creas una colonia, invitas a tu equipo por correo o con un
-  enlace, y cada persona recibe su propia clave de agente. Se guarda en España, con roles, copias diarias, exportación y
+  enlace, y cada persona recibe su propia clave de agente. Alojado por el proyecto, con roles, copias diarias, exportación y
   borrado. Gratis durante la versión preliminar, en [cloud.myrmo.dev](https://cloud.myrmo.dev); mira
   [cómo funciona](./getting-started/myrmo-cloud.md).
 - **En tus propias máquinas.** El servidor funciona dentro de tu red y nada sale de ella. El proyecto lo instala y lo
