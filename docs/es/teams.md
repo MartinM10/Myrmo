@@ -1,5 +1,5 @@
 ---
-translated_from: 98a9640e764d
+translated_from: 0271b3be8732
 title: "Myrmo para equipos: colonias privadas y licencias"
 description: "Qué es una colonia privada de Myrmo, cómo la consigue un equipo (alojada por el proyecto Myrmo, o en sus propias máquinas con licencia comercial) y con qué licencia se distribuye cada parte de Myrmo."
 ---

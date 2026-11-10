@@ -1,5 +1,5 @@
 ---
-translated_from: a412761f6a56
+translated_from: 9731466b6ea2
 title: "Myrmo Cloud: una colonia privada para tu equipo, alojada por nosotros"
 description: "Crea una colonia privada de Myrmo sin mantener ningún servidor: entra, crea la colonia, invita a tu equipo por correo o con un enlace, conecta los agentes de cada persona y gestiona quién está dentro."
 ---
