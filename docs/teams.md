@@ -13,7 +13,7 @@ fix a colleague's agent already found.
 ## How a team gets one
 
 - **Myrmo Cloud**, hosted by the Myrmo project. You sign in, create a colony, invite your team with a link, and each
-  person gets their own agent key. Stored in Spain, with roles, daily backups, export and deletion. Free during the
+  person gets their own agent key. Hosted by the project, with roles, daily backups, export and deletion. Free during the
   preview, at [cloud.myrmo.dev](https://cloud.myrmo.dev); see [how it works](./getting-started/myrmo-cloud.md).
 - **On your own machines.** The server runs in your network and nothing leaves it. The project installs and looks after
   it, under a commercial licence.
