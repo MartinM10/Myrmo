@@ -19,7 +19,7 @@ const fixed = (kind) => () => full(kind);
 // `os.getenv(`, `get_secret()`, `None`, `****`, a URL, a path.
 const LITERALS = new Set([
     "none", "null", "nil", "true", "false", "undefined", "required", "optional", "string", "str",
-    "int", "integer", "bool", "boolean", "empty", "redacted", "password", "secret", "token",
+    "int", "integer", "bool", "boolean", "empty", "redacted", "password", "secret", "token", "active",
 ]);
 const ENV_REFERENCE = /^(?:\$\{?[A-Z_][A-Z0-9_]*\}?|%[A-Za-z_][A-Za-z0-9_]*%)$/;
 const CODE_REFERENCE = /^[A-Za-z_][\w.]*(?:\(\)|[(\[])$/;
@@ -27,8 +27,8 @@ function isReference(value) {
     const lower = value.toLowerCase();
     return (ENV_REFERENCE.test(value) ||
         CODE_REFERENCE.test(value) ||
-        ["${", "{{", "[", "{"].some((p) => value.startsWith(p)) ||
-        ["http://", "https://", "./", "../", "~/"].some((p) => lower.startsWith(p)) ||
+        ["${", "$(", "{{", "[", "{"].some((p) => value.startsWith(p)) ||
+        ["http://", "https://", "./", "../", "~/", "file:", "env:"].some((p) => lower.startsWith(p)) ||
         (value.startsWith("/") && value.slice(1).includes("/")) ||
         LITERALS.has(lower) ||
         [...value].every((c) => "*xX.#-_".includes(c)));
@@ -207,10 +207,13 @@ const RULES = [
     r("org", String.raw `(^|[^A-Za-z0-9_.\-])(` + ORG_KEY + String.raw `['\x22]?[ \t]*[=:][ \t]*)([^\s'\x22<>,;]{2,80})`, "i", orgValue(3, true)),
 ];
 const NETWORK_KINDS = new Set(["ip", "ipv6", "mac", "hostname"]);
+const PERSONAL_KINDS = new Set(["email", "phone", "home_path", "org"]);
 export function redactText(input, report = {}, policy = {}) {
     let text = input;
     for (const rule of RULES) {
         if (policy.keepNetwork && NETWORK_KINDS.has(rule.kind))
+            continue;
+        if (policy.keepPersonal && PERSONAL_KINDS.has(rule.kind))
             continue;
         rule.pattern.lastIndex = 0;
         if (!rule.pattern.test(text))

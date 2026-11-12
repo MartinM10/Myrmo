@@ -25,7 +25,7 @@ def _full(kind: str) -> str:
 # `os.getenv(`, `get_secret()`, `None`, `****`, a URL, a path.
 _LITERALS = {
     "none", "null", "nil", "true", "false", "undefined", "required", "optional", "string", "str",
-    "int", "integer", "bool", "boolean", "empty", "redacted", "password", "secret", "token",
+    "int", "integer", "bool", "boolean", "empty", "redacted", "password", "secret", "token", "active",
 }
 _PROSE_WORDS = {"after", "before", "when", "then", "that", "this", "these", "those", "with", "without", "from", "into", "once", "until", "while", "where", "which", "what", "also", "only", "must", "should", "will", "would", "could", "have", "been", "does", "here", "there", "they", "them", "your", "every", "each", "never", "always", "cannot", "para", "pero", "como", "cuando", "antes", "desde", "hasta", "tras", "sobre", "este", "esta", "esto", "nunca", "siempre", "debe", "puede", "solo"}
 _ENV_REFERENCE = re.compile(r"^(?:\$\{?[A-Z_][A-Z0-9_]*\}?|%[A-Za-z_][A-Za-z0-9_]*%)$")
@@ -61,8 +61,8 @@ def _is_reference(value: str) -> bool:
     lower = value.lower()
     return (
         bool(_ENV_REFERENCE.match(value) or _CODE_REFERENCE.match(value))
-        or value.startswith(("${", "{{", "[", "{"))
-        or lower.startswith(("http://", "https://", "./", "../", "~/"))
+        or value.startswith(("${", "$(", "{{", "[", "{"))
+        or lower.startswith(("http://", "https://", "./", "../", "~/", "file:", "env:"))
         or (value.startswith("/") and "/" in value[1:])
         or lower in _LITERALS
         or set(value) <= set("*xX.#-_")

@@ -30,7 +30,7 @@ const fixed = (kind: string): Replacer => () => full(kind);
 // `os.getenv(`, `get_secret()`, `None`, `****`, a URL, a path.
 const LITERALS = new Set([
   "none", "null", "nil", "true", "false", "undefined", "required", "optional", "string", "str",
-  "int", "integer", "bool", "boolean", "empty", "redacted", "password", "secret", "token",
+  "int", "integer", "bool", "boolean", "empty", "redacted", "password", "secret", "token", "active",
 ]);
 const ENV_REFERENCE = /^(?:\$\{?[A-Z_][A-Z0-9_]*\}?|%[A-Za-z_][A-Za-z0-9_]*%)$/;
 const CODE_REFERENCE = /^[A-Za-z_][\w.]*(?:\(\)|[(\[])$/;
@@ -40,8 +40,8 @@ function isReference(value: string): boolean {
   return (
     ENV_REFERENCE.test(value) ||
     CODE_REFERENCE.test(value) ||
-    ["${", "{{", "[", "{"].some((p) => value.startsWith(p)) ||
-    ["http://", "https://", "./", "../", "~/"].some((p) => lower.startsWith(p)) ||
+    ["${", "$(", "{{", "[", "{"].some((p) => value.startsWith(p)) ||
+    ["http://", "https://", "./", "../", "~/", "file:", "env:"].some((p) => lower.startsWith(p)) ||
     (value.startsWith("/") && value.slice(1).includes("/")) ||
     LITERALS.has(lower) ||
     [...value].every((c) => "*xX.#-_".includes(c))
@@ -244,18 +244,22 @@ const RULES: Rule[] = [
 /**
  * What is removed. The public colony removes everything; an organisation's private colony keeps the addresses and host
  * names of its own network (`keepNetwork`), because which machine does what is exactly what its agents need. Credentials,
- * personal data and customer names are removed in both. The colony applies the same policy again on arrival.
+ * personal data and customer names are removed in both, unless the colony says it keeps people's and customers' names
+ * (`keepPersonal`). Credentials are removed in every case. The colony applies the same policy again on arrival.
  */
 export interface RedactionPolicy {
   keepNetwork?: boolean;
+  keepPersonal?: boolean;
 }
 
 const NETWORK_KINDS = new Set(["ip", "ipv6", "mac", "hostname"]);
+const PERSONAL_KINDS = new Set(["email", "phone", "home_path", "org"]);
 
 export function redactText(input: string, report: RedactionReport = {}, policy: RedactionPolicy = {}): string {
   let text = input;
   for (const rule of RULES) {
     if (policy.keepNetwork && NETWORK_KINDS.has(rule.kind)) continue;
+    if (policy.keepPersonal && PERSONAL_KINDS.has(rule.kind)) continue;
     rule.pattern.lastIndex = 0;
     if (!rule.pattern.test(text)) continue;
     rule.pattern.lastIndex = 0;
