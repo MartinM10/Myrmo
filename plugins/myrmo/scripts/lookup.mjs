@@ -32,6 +32,8 @@ export function cleanDeclared(value) {
     profile: value.profile,
     effort: value.effort === true,
     task_search: value.task_search === true,
+    keep_personal: value.keep_personal === true,
+    worklog_scopes: Array.isArray(value.worklog_scopes) ? value.worklog_scopes.filter((r) => typeof r === "string").slice(0, 50) : [],
     people_detail: value.people_detail === "named" || value.people_detail === "aggregate" ? value.people_detail : null,
     holdout_percent: Number.isInteger(value.holdout_percent) && value.holdout_percent >= 0 && value.holdout_percent <= 20 ? value.holdout_percent : 0,
   };
@@ -122,7 +124,8 @@ export const num = (value, missing = "?") => {
  * colony keeps its network's addresses and host names, as the MCP server does.
  */
 export function redactFor(colony, text) {
-  return redactText(String(text ?? ""), {}, { keepNetwork: colony?.private === true });
+  const keepNetwork = colony?.private === true;
+  return redactText(String(text ?? ""), {}, { keepNetwork, keepPersonal: keepNetwork && colony?.declared?.keep_personal === true });
 }
 
 const OS = { linux: "linux", darwin: "macos", win32: "windows", freebsd: "freebsd" };
@@ -253,9 +256,21 @@ export function lookupNote(line, body, state, now = Date.now(), how = "") {
 /** Short replies and commands that continue a conversation rather than start a task. */
 const FOLLOW_UP = /^(?:s[ií]|no|ok(?:ay)?|vale|venga|dale|perfecto|gracias|thanks?(?: you)?|yes|yep|go(?: ahead| on)?|adelante|contin[uú]a|continue|sigue|hazlo|do it|listo|done|correcto|right|exacto)\b[\s.!,]*$/i;
 
+/**
+ * What the person wrote, without what their client wraps around it: an opened file, a selection, a reminder. A turn the
+ * client started by itself (a background task that ended) is nobody's request, so it comes back empty. Pasted text is
+ * the person's, so only its tags go.
+ */
+const CLIENT_WRAPPERS = /<(ide_opened_file|ide_selection|ide_diagnostics|system-reminder|command-[a-z-]+|local-command-[a-z-]+)>[\s\S]*?<\/\1>/g;
+export function personalText(prompt) {
+  const text = String(prompt ?? "");
+  if (/^\s*<task-notification>/.test(text)) return "";
+  return text.replace(CLIENT_WRAPPERS, " ").replace(/<\/?pasted_content[^>]*>/g, " ");
+}
+
 /** The request text worth looking up, or "" when it is a follow-up, a slash command or too short to say what the task is. */
 export function taskOf(prompt) {
-  let text = String(prompt ?? "");
+  let text = personalText(prompt);
   const tagged = /<USER_REQUEST>([\s\S]*?)(?:<\/USER_REQUEST>|$)/.exec(text);
   if (tagged) text = tagged[1];
   text = text.replace(/\s+/g, " ").trim();
