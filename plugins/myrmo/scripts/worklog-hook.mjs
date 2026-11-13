@@ -7,7 +7,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { taskOf } from "./lookup.mjs";
 import { readSettings } from "./on-failure.mjs";
-import { DIGEST_SOURCES, digestMatters, digestNote, isContinuation, logExchange, recallEvents, recallNote, worklogTarget } from "./worklog.mjs";
+import { DIGEST_SOURCES, digestMatters, digestNote, isContinuation, isPrivate, logExchange, recallEvents, recallNote, worklogTarget } from "./worklog.mjs";
 
 const dir = () => process.env.MYRMO_WORKLOG_STATE_DIR || join(homedir(), ".myrmo", "worklog-state");
 const fileOf = (session) => join(dir(), `${String(session ?? "none").replace(/[^A-Za-z0-9_-]/g, "").slice(0, 64)}.txt`);
@@ -27,6 +27,11 @@ async function main() {
     return;
   }
   if (input.hook_event_name === "UserPromptSubmit") {
+    // The person marked this one private: nothing is kept for the Stop hook to log, and nothing is asked of the colony.
+    if (isPrivate(input.prompt)) {
+      rmSync(file, { force: true });
+      return;
+    }
     mkdirSync(dir(), { recursive: true, mode: 0o700 });
     writeFileSync(file, String(input.prompt ?? ""), { mode: 0o600 });
     const task = taskOf(input.prompt);

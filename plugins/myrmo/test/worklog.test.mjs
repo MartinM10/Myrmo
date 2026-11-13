@@ -184,3 +184,42 @@ test("a session that starts gets the digest through the hook, but not after a co
     server.close();
   }
 });
+
+test("a request that starts with //privado or //private is the person's own: it is marked private", async () => {
+  const { isPrivate } = await import("../scripts/worklog.mjs");
+  for (const yes of ["//privado mejora mi currículum", "  // private rewrite my cv", "//PRIVATE", "//privada: una nota", "<ide_opened_file>x</ide_opened_file>//privado qué tal"]) {
+    assert.equal(isPrivate(yes), true, yes);
+  }
+  for (const no of ["fix the deploy of the connector", "see https://private.example.com", "// a comment about private things", "private //privado", "", undefined]) {
+    assert.equal(isPrivate(no), false, String(no));
+  }
+});
+
+test("a private request is neither logged nor searched, and the next one is logged again", async () => {
+  const requests = [];
+  const server = createServer((req, res) => {
+    requests.push(req.url);
+    req.resume();
+    res.setHeader("content-type", "application/json");
+    res.end(JSON.stringify({ events: [], held_out: false }));
+  });
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const script = join(dirname(fileURLToPath(import.meta.url)), "..", "scripts", "worklog-hook.mjs");
+  const home = mkdtempSync(join(tmpdir(), "worklog-private-"));
+  const env = { ...process.env, HOME: home, MYRMO_WORKLOG: "1", MYRMO_WORKLOG_SCOPES: "*", MYRMO_URL: `http://127.0.0.1:${server.address().port}`, MYRMO_API_KEY: "k", MYRMO_PRIVATE: "1", MYRMO_WORKLOG_STATE_DIR: join(home, "state") };
+  const run = (input) => new Promise((resolve) => {
+    const child = spawn("node", [script], { env });
+    child.on("close", resolve);
+    child.stdin.end(JSON.stringify({ session_id: "s1", cwd: home, last_assistant_message: "Done, here is the new version.", ...input }));
+  });
+  try {
+    await run({ hook_event_name: "UserPromptSubmit", prompt: "//privado rewrite my cv so that it highlights my cloud work" });
+    await run({ hook_event_name: "Stop" });
+    assert.deepEqual(requests, [], "nothing about a private request leaves the machine");
+    await run({ hook_event_name: "UserPromptSubmit", prompt: "why does the deploy of the connector fail" });
+    await run({ hook_event_name: "Stop" });
+    assert.ok(requests.some((r) => r.endsWith("/v1/worklog/exchanges")), "the next request is logged as usual");
+  } finally {
+    server.close();
+  }
+});

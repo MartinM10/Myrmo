@@ -42,7 +42,7 @@ import { join } from "node:path";
 import { measureAndSend } from "./effort.mjs";
 import { briefEnabled, briefNote, lookup, lookupEnabled, lookupNote, lookupTask, privateColony, taskOf, updateNotice } from "./lookup.mjs";
 import { readState, stateFile, writeState } from "./state.mjs";
-import { DIGEST_SOURCES, digestMatters, digestNote, isContinuation, logExchange, recallEvents, recallNote, worklogTarget } from "./worklog.mjs";
+import { DIGEST_SOURCES, digestMatters, digestNote, isContinuation, isPrivate, logExchange, recallEvents, recallNote, worklogTarget } from "./worklog.mjs";
 
 // Commands that fail or print errors as part of normal work: a probe that found nothing, a diff that differs, a log
 // being read. Their output is not a problem of the user's.
@@ -581,6 +581,12 @@ async function main() {
   if (input.hook_event_name === "UserPromptSubmit") {
     const task = taskOf(input.prompt);
     if (hookMode(process.env, settings) === "off") return;
+    // The person said this one is private: nothing is kept for the Stop hook to log, and nothing is asked of the colony.
+    if (isPrivate(input.prompt)) {
+      const { worklogPrompt, ...rest } = state;
+      save(file, state, rest);
+      return;
+    }
     // The work log: this request is kept for the Stop hook, and what colleagues recorded about it comes back.
     const target = worklogTarget(input, { settings });
     const withPrompt = target ? { ...state, worklogPrompt: String(input.prompt ?? "") } : state;

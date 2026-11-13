@@ -188,6 +188,15 @@ export async function logExchange(input, target, prompt, options) {
   }, options);
 }
 
+// A request the person marks as private by starting it with "//privado" or "//private": nothing about it leaves the machine.
+// It is not logged, the work log is not asked about it and the colony is not asked what it knows about the task.
+const PRIVATE_MARK = /^\s*\/\/\s*(?:privad[oa]|private)\b/i;
+
+/** Whether the person marked this request as private. */
+export function isPrivate(prompt) {
+  return PRIVATE_MARK.test(personalText(prompt));
+}
+
 // "Keep going", "where were we", "what is left": a request that names nothing to search by, so what the person was doing
 // last has to answer it.
 const CONTINUE = /^[¿¡"'\s]*(?:y\s+)?(?:(?:sigue|sigamos|seguimos|continúa|continua|continuemos|retoma|retomemos|reanuda|reanudemos|vuelve)\b|(?:en\s+qu[eé]\s+qued[oó]|d[oó]nde\s+(?:est[aá]bamos|nos\s+quedamos|qued[oó])|qu[eé]\s+(?:falta|queda|hab[ií]amos\s+hecho)|lo\s+de\s+ayer|lo\s+del\s+otro\s+d[ií]a)|(?:continue|keep\s+going|carry\s+on|resume|pick\s+up|where\s+(?:were|did)\s+we|what(?:'s|\s+is)\s+left|what\s+was\s+i\s+doing)\b)/i;
