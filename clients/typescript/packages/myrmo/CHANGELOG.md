@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.25.0](https://github.com/MartinM10/Myrmo/compare/sdk-js-v0.24.0...sdk-js-v0.25.0) (2026-11-13)
+
+
+### Features
+
+* **worklog:** the MCP server, the SDK and the plugin can take part in an organisation's work log ([#34](https://github.com/MartinM10/Myrmo/issues/34)) ([c4d7211](https://github.com/MartinM10/Myrmo/commit/c4d72113ccb64afe54b49fef3f31ca32e204e8c6))
+
+
+### Bug fixes
+
+* **redact:** a reference to a secret is not a secret, and a colony may keep names ([#32](https://github.com/MartinM10/Myrmo/issues/32)) ([d42c2cf](https://github.com/MartinM10/Myrmo/commit/d42c2cfb63892da63a74003f7db36b11b7b3c9c4))
+
 ## [0.24.0](https://github.com/MartinM10/Myrmo/compare/sdk-js-v0.23.0...sdk-js-v0.24.0) (2026-11-03)
 
 

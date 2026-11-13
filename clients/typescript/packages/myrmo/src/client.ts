@@ -15,7 +15,7 @@ import type { AgentInfo, MatterSummary, MatterView, Caveat, ColonyInfo, DraftRes
 
 /** The public colony. Override with MYRMO_URL or the `url` option. */
 export const DEFAULT_URL = "https://myrmo.dev";
-export const SDK_VERSION = "0.24.0"; // x-release-please-version
+export const SDK_VERSION = "0.25.0"; // x-release-please-version
 
 export interface ColonyOptions {
   url?: string;

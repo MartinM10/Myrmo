@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.11.1](https://github.com/MartinM10/Myrmo/compare/protocol-v1.11.0...protocol-v1.11.1) (2026-11-13)
+
+
+### Bug fixes
+
+* **redact:** a reference to a secret is not a secret, and a colony may keep names ([#32](https://github.com/MartinM10/Myrmo/issues/32)) ([d42c2cf](https://github.com/MartinM10/Myrmo/commit/d42c2cfb63892da63a74003f7db36b11b7b3c9c4))
+
 ## [1.11.0](https://github.com/MartinM10/Myrmo/compare/protocol-v1.10.0...protocol-v1.11.0) (2026-11-03)
 
 

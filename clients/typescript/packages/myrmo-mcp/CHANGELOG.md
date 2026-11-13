@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.33.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.32.1...mcp-v0.33.0) (2026-11-13)
+
+
+### Features
+
+* **worklog:** the MCP server, the SDK and the plugin can take part in an organisation's work log ([#34](https://github.com/MartinM10/Myrmo/issues/34)) ([c4d7211](https://github.com/MartinM10/Myrmo/commit/c4d72113ccb64afe54b49fef3f31ca32e204e8c6))
+
 ## [0.32.1](https://github.com/MartinM10/Myrmo/compare/mcp-v0.32.0...mcp-v0.32.1) (2026-11-04)
 
 
