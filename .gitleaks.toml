@@ -11,4 +11,5 @@ paths = [
   '''protocol/redact\.v1\.vectors\.json''',
   '''clients/python/tests/''',
   '''clients/typescript/packages/myrmo/test/''',
+  '''plugins/myrmo/test/worklog\.test\.mjs''',
 ]
