@@ -9,7 +9,7 @@ import { checkTrail } from "./check.js";
 import { buildInstructions } from "./instructions.js";
 import { MATTER_DESCRIPTION, MATTERS_DESCRIPTION, formatMatter, formatMatters } from "./worklog.js";
 
-export const VERSION = "0.32.1"; // x-release-please-version
+export const VERSION = "0.33.0"; // x-release-please-version
 
 export interface ServerOptions {
   colony: Colony;
