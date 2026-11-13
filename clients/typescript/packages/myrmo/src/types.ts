@@ -256,3 +256,42 @@ export interface EffortRecord {
   };
   agent_info?: { model: string; framework: string };
 }
+
+/** A matter in the team's work log, as listed. */
+export interface MatterSummary {
+  matter: string;
+  last_at: string;
+  people: string[];
+  repos: string[];
+  events: number;
+  failed_attempts: number;
+  state: string | null;
+}
+
+/** One event of a matter. */
+export interface MatterEvent {
+  text: string;
+  person?: string;
+  at?: string;
+  repo?: string;
+}
+
+/** A matter read for continuing it. `found: false` lists the matters the name could have meant. */
+export type MatterView =
+  | { found: false; matters: string[] }
+  | {
+      found: true;
+      matter: string;
+      repos: string[];
+      people: string[];
+      last_at: string;
+      state: MatterEvent | null;
+      /** How many earlier states were left out, or the states themselves when everything was asked for. */
+      earlier_states: number | MatterEvent[];
+      /** Things that were fixed or finished and verified. */
+      resolved?: MatterEvent[];
+      decisions: MatterEvent[];
+      failed_attempts: MatterEvent[];
+      conclusions: MatterEvent[];
+      facts: MatterEvent[];
+    };

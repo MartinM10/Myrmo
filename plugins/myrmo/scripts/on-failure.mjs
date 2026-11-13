@@ -42,6 +42,7 @@ import { join } from "node:path";
 import { measureAndSend } from "./effort.mjs";
 import { briefEnabled, briefNote, lookup, lookupEnabled, lookupNote, lookupTask, privateColony, taskOf, updateNotice } from "./lookup.mjs";
 import { readState, stateFile, writeState } from "./state.mjs";
+import { DIGEST_SOURCES, digestMatters, digestNote, isContinuation, isPrivate, logExchange, recallEvents, recallNote, worklogTarget } from "./worklog.mjs";
 
 // Commands that fail or print errors as part of normal work: a probe that found nothing, a diff that differs, a log
 // being read. Their output is not a problem of the user's.
@@ -567,23 +568,52 @@ async function main() {
     if (hookMode(process.env, settings) === "off") return;
     const cacheFile = join(process.env.MYRMO_HOOK_STATE_DIR || join(homedir(), ".myrmo"), "update-check.json");
     const notice = await updateNotice({ settings, cacheFile });
-    if (notice) process.stdout.write(JSON.stringify({ systemMessage: notice }));
+    // The work log: what colleagues recorded since this person's last session, for the agent.
+    const target = worklogTarget(input, { settings });
+    const digest = target && DIGEST_SOURCES.includes(input.source ?? "startup") ? digestNote(await digestMatters(input, target)) : null;
+    const out = {};
+    if (notice) out.systemMessage = notice;
+    if (digest) out.hookSpecificOutput = { hookEventName: "SessionStart", additionalContext: digest };
+    if (Object.keys(out).length) process.stdout.write(JSON.stringify(out));
     return;
   }
   // 6. The user sent a request: what does the organisation already know about this task?
   if (input.hook_event_name === "UserPromptSubmit") {
     const task = taskOf(input.prompt);
-    if (!task || hookMode(process.env, settings) === "off" || !briefEnabled(process.env, settings)) return;
+    if (hookMode(process.env, settings) === "off") return;
+    // The person said this one is private: nothing is kept for the Stop hook to log, and nothing is asked of the colony.
+    if (isPrivate(input.prompt)) {
+      const { worklogPrompt, ...rest } = state;
+      save(file, state, rest);
+      return;
+    }
+    // The work log: this request is kept for the Stop hook, and what colleagues recorded about it comes back.
+    const target = worklogTarget(input, { settings });
+    const withPrompt = target ? { ...state, worklogPrompt: String(input.prompt ?? "") } : state;
+    const logged = target && (task || isContinuation(input.prompt)) ? recallNote(await recallEvents(input, target, task)) : null;
+    if (!task || !briefEnabled(process.env, settings)) {
+      save(file, state, withPrompt);
+      if (logged) process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: "UserPromptSubmit", additionalContext: logged } }));
+      return;
+    }
     const body = await lookupTask(task, { settings, agent: "myrmo-claude-code-hook/1" });
     // MYRMO_HOOK_BRIEF_MIN: the lowest score a suggestion may have (default 0.6).
     const min = Number(process.env.MYRMO_HOOK_BRIEF_MIN);
-    const out = briefNote(task, body, state, Date.now(), "", Number.isFinite(min) && min > 0 ? { min } : {});
+    const out = briefNote(task, body, withPrompt, Date.now(), "", Number.isFinite(min) && min > 0 ? { min } : {});
     save(file, state, out.state);
-    if (out.note) process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: "UserPromptSubmit", additionalContext: out.note } }));
+    const note = [out.note, logged].filter(Boolean).join("\n\n");
+    if (note) process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: "UserPromptSubmit", additionalContext: note } }));
     return;
   }
   if (input.hook_event_name === "Stop") {
     const stop = decideStop(input, { state, settings });
+    // The work log: the exchange that just ended, once. It costs no tokens and never holds the agent back.
+    const prompt = stop.state?.worklogPrompt;
+    if (prompt) {
+      const target = worklogTarget(input, { settings });
+      if (target) await logExchange(input, target, prompt);
+      delete stop.state.worklogPrompt;
+    }
     save(file, state, stop.state);
     if (stop.reason) process.stdout.write(JSON.stringify({ decision: "block", reason: stop.reason }));
     return;

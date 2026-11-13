@@ -7,6 +7,7 @@ import { Colony, MyrmoError, detectEnvironment, formatResult, writeConfig, type 
 import { z } from "zod";
 import { checkTrail } from "./check.js";
 import { buildInstructions } from "./instructions.js";
+import { MATTER_DESCRIPTION, MATTERS_DESCRIPTION, formatMatter, formatMatters } from "./worklog.js";
 
 export const VERSION = "0.32.1"; // x-release-please-version
 
@@ -45,6 +46,8 @@ export interface ServerOptions {
    * names and policies stay in what agents publish, and nothing is said to be public. See `privateMode`.
    */
   privateColony?: boolean;
+  /** The private colony keeps people's and customers' names (GET /v1/version). Credentials still go. */
+  keepPersonal?: boolean;
   /** What the colony says it is (GET /v1/version), once known: myrmo_status tells the person what it keeps about them. */
   colonyDescription?: () => { profile?: string; people_detail?: string | null; holdout_percent?: number; effort?: boolean } | undefined;
 }
@@ -113,7 +116,9 @@ This colony also keeps knowledge that does not come from an error. Set "kind":
   Set tags (lowercase letters, digits and . _ + -, for example host-agora or service-billing) naming each machine, service or tool an entry is about: when one of them changes, an administrator marks every entry that carries its tag for review in one step.
 Procedures and facts need no failed attempts, environment or verification.`;
 
-const publishDescription = (minFailedAttempts: number, privateColony = false) => `${privateColony ? "Share what you learned with your organisation's colony: a fix, a procedure or a fact (see kind below)." : "Publish a fix to Myrmo so the next agent does not repeat your work."}
+const PRIVATE_REMOVE_NAMED = "This colony is private to your organisation and keeps names: keep its internal tool, service, machine and policy names, its network addresses, and people's and customers' names as printed, but remove credentials: say where they are kept, not their value.";
+
+const publishDescription = (minFailedAttempts: number, privateColony = false, keepPersonal = false) => `${privateColony ? "Share what you learned with your organisation's colony: a fix, a procedure or a fact (see kind below)." : "Publish a fix to Myrmo so the next agent does not repeat your work."}
 Use only when ALL are true: you solved an error after ${minFailedAttempts === 1 ? "at least one failed attempt" : `at least ${minFailedAttempts} failed attempts`}, you verified the fix, and either myrmo_search found no matching trail or the trails it found failed or only partly worked for you (report them with myrmo_report first, then publish your own fix as an alternative).
 Do not publish a fix that an existing trail already gave you. If yours replaces a trail that was outdated or only partly worked, pass amends_trail_id; a small difference in your environment is a note in myrmo_report, not a new trail.
 "trail" follows Myrmo protocol v1 (fields marked ? may be left out):
@@ -124,7 +129,7 @@ Do not publish a fix that an existing trail already gave you. If yours replaces 
   solution: { root_cause (10+ chars), steps: [..], shell_commands_executed?: [{ command, purpose }], code_patches?: [{ file_path (relative), diff (unified) }],
               verification_method: { type: test_suite|command_exit_zero|rerun_task|http_check|build_success|manual_inspection, description, command, evidence } },
   effort: { failed_attempts, tokens_spent? } }
-Describe the environment where the error happened, not the one you run in: if it happened inside a container, say so and give that container's OS and runtime. ${privateColony ? PRIVATE_REMOVE : PUBLIC_REMOVE} Secrets are also redacted automatically.${privateColony ? KNOWLEDGE_FORMAT : ""}
+Describe the environment where the error happened, not the one you run in: if it happened inside a container, say so and give that container's OS and runtime. ${privateColony ? (keepPersonal ? PRIVATE_REMOVE_NAMED : PRIVATE_REMOVE) : PUBLIC_REMOVE} Secrets are also redacted automatically.${privateColony ? KNOWLEDGE_FORMAT : ""}
 Publishing is the user's decision, and you cannot make it for them. The first time, your MCP client asks them once whether agents may publish for them (always, ask each time, or never) and remembers the answer. After that, depending on their choice, the trail is published at once or they are asked about each one. On a hosted server you get a link instead: give it to the user, who opens it, reads the exact payload and presses Publish. Afterwards you learn whether the colony accepted the trail; myrmo_publish_status checks it later.`;
 
 // A model that puts the fields next to `trail` instead of inside it would otherwise only hear "Required".
@@ -430,7 +435,7 @@ async function heldForApproval(opts: ServerOptions, trail: Trail, why = "", amen
 export function createServer(opts: ServerOptions): McpServer {
   const server = new McpServer(
     { name: "myrmo", version: VERSION },
-    { instructions: buildInstructions({ hosted: opts.hosted ?? false, minFailedAttempts: opts.minFailedAttempts, privateColony: opts.privateColony }) },
+    { instructions: buildInstructions({ hosted: opts.hosted ?? false, minFailedAttempts: opts.minFailedAttempts, privateColony: opts.privateColony, keepPersonal: opts.keepPersonal }) },
   );
   const privateUrl = opts.privateColony ? opts.colony.url : undefined;
   const where = () => destinationLine(opts.colony.url, opts.privateColony === true, opts.identity);
@@ -518,6 +523,57 @@ export function createServer(opts: ServerOptions): McpServer {
     );
   }
 
+  // The team's work log, for an agent that picks up work or wants to know what the others are doing. An SDK or a colony
+  // without it answers that there is none.
+  const colonyWorklog = opts.colony as { listMatters?: Colony["listMatters"]; readMatter?: Colony["readMatter"] };
+  if (opts.privateColony && typeof colonyWorklog.listMatters === "function" && typeof colonyWorklog.readMatter === "function") {
+    const failed = (err: unknown) =>
+      err instanceof MyrmoError && err.code === "not_enrolled"
+        ? text("You are not enrolled in this colony's work log: ask its administrator.", true)
+        : text(errorText(err), true);
+    server.registerTool(
+      "myrmo_matters",
+      {
+        title: "What is the team working on?",
+        description: MATTERS_DESCRIPTION,
+        inputSchema: {
+          query: z.string().max(200).optional().describe("Only matters about this, in the user's words."),
+          others: z.boolean().optional().describe("Only matters somebody else worked on: what the rest of the team is doing."),
+          mine: z.boolean().optional().describe("Only matters this person worked on."),
+          hours: z.number().int().min(1).max(720).optional().describe("Only matters with activity in the last this many hours."),
+          limit: z.number().int().min(1).max(50).optional().describe("How many to list (default 15)."),
+        },
+        annotations: { readOnlyHint: true, openWorldHint: false },
+      },
+      async (args) => {
+        try {
+          return text(withUpdate(`${formatMatters(await colonyWorklog.listMatters!({ q: args.query, others: args.others, mine: args.mine, hours: args.hours, limit: args.limit }))}\n${where()}`));
+        } catch (err) {
+          return failed(err);
+        }
+      },
+    );
+    server.registerTool(
+      "myrmo_matter",
+      {
+        title: "Read a matter to continue it",
+        description: MATTER_DESCRIPTION,
+        inputSchema: {
+          name: z.string().min(2).max(200).describe("The matter's name, as listed by myrmo_matters (a part of it is enough)."),
+          everything: z.boolean().optional().describe("Every event and every earlier state, not only the recent ones."),
+        },
+        annotations: { readOnlyHint: true, openWorldHint: false },
+      },
+      async (args) => {
+        try {
+          return text(withUpdate(`${formatMatter(await colonyWorklog.readMatter!(args.name, args.everything))}\n${where()}`));
+        } catch (err) {
+          return failed(err);
+        }
+      },
+    );
+  }
+
   server.registerTool(
     "myrmo_status",
     {
@@ -531,7 +587,7 @@ export function createServer(opts: ServerOptions): McpServer {
         [
           where(),
           `Publishing: ${opts.hosted ? "this hosted server never publishes (a person approves by link)" : opts.publishMode}${opts.publishChosen === false ? " (nobody has chosen yet: the first publish asks the user)" : ""}.`,
-          opts.privateColony ? "Private mode: keep internal tool and service names, still leave out credentials, people's names, e-mail addresses and customer data." : "Public rules: leave out anything specific to a person or a company.",
+          opts.privateColony ? (opts.keepPersonal ? "Private mode: keep internal names, people and customers, still leave out credentials." : "Private mode: keep internal tool and service names, still leave out credentials, people's names, e-mail addresses and customer data.") : "Public rules: leave out anything specific to a person or a company.",
           describeColony(opts.colonyDescription?.()),
           `myrmo-mcp ${VERSION}.`,
           updateLine(opts.latestVersion?.()),

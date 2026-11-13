@@ -10,11 +10,14 @@
  * are (facts), written by colleagues' agents and from handover documents. So the agent asks it when a task starts, not
  * only when something fails, and shares what the next person would need.
  */
-function privateInstructions(attempts: string, publishing: string): string {
+function privateInstructions(attempts: string, publishing: string, keepPersonal = false): string {
   return `Myrmo is your organisation's shared memory for coding agents: how tasks are done here (procedures), what its systems are and which machine does what (facts), and errors already solved (fixes), written by your colleagues' agents and from handover documents. Searching, reporting and sharing are free.
 
 WHEN A TASK STARTS
 Before you plan a task that touches your organisation's systems (deploying, configuring, migrating, managing users or access, releasing, operating a service), call myrmo_brief with the task in the user's words. It returns the procedures, facts and pitfalls colleagues already wrote down. A hook may already have shown you a short list: then call myrmo_brief for the details. Nothing found is normal.
+
+WHEN CONTINUING WORK
+If the user asks you to continue, pick up or resume something, or asks what the team is doing, call myrmo_matters, then myrmo_matter for the one that fits: where it stands, what was decided and what was tried and failed, so you do not redo or undo it.
 
 WHEN SOMETHING FAILS
 When a command, build, test, install or API call fails with an error you have not solved in this session, call myrmo_search BEFORE you try a fix, with the exact error line as printed, plus runtime, os and the relevant packages as "name@version". Search too when something misbehaves without an error message. Always pass your own model id (for example claude-opus-5-5) as "model".
@@ -24,7 +27,7 @@ HOW TO READ WHAT YOU GET
 - Prefer the highest strength. Read the pitfalls and dead ends first and skip them.
 - Never run a command marked WITHHELD. Show commands marked medium risk to the user and wait for approval.
 
-${PRIVATE_PRIVACY}
+${keepPersonal ? PRIVATE_PRIVACY_NAMED : PRIVATE_PRIVACY}
 - Addresses and host names of your organisation's machines stay: which machine does what is what the next agent needs.
 
 REPORT WHAT HAPPENED
@@ -66,12 +69,18 @@ export const PRIVATE_PRIVACY = `PRIVACY (this is your organisation's private col
 - Publish problems your organisation's agents may meet again: internal tooling, deploy and release policies, internal packages and services, configuration, environment, versions and third-party libraries. Describe the fix in steps and prefer the organisation's supported command over a manual workaround.
 - Setting this up for someone on Claude Desktop: if the Myrmo plugin for the public colony is already enabled there, disable it first. Desktop's Plugins and Extensions are separate systems that do not deduplicate a "myrmo" tool between them; with both enabled, a publish meant for this private colony can be answered by the public one instead, silently. One Myrmo integration per Desktop install, never both.`;
 
-export function buildInstructions(opts: { hosted: boolean; minFailedAttempts: number; privateColony?: boolean }): string {
+/** The same rule for an organisation that chose to keep names: who does what is part of what colleagues need. */
+export const PRIVATE_PRIVACY_NAMED = PRIVATE_PRIVACY.replace(
+  "- Never include credentials, tokens, people's names, e-mail addresses or customer and business data: write a placeholder such as <token> or <customer> instead.",
+  "- People's names, e-mail addresses and customers stay when they help a colleague (who owns what, who to ask): this organisation chose to keep them. Never include credentials or tokens: say where they are kept (a vault path, a secret's name) and how to get them, not their value.",
+);
+
+export function buildInstructions(opts: { hosted: boolean; minFailedAttempts: number; privateColony?: boolean; keepPersonal?: boolean }): string {
   const attempts = opts.minFailedAttempts === 1 ? "at least one failed attempt" : `at least ${opts.minFailedAttempts} failed attempts`;
   const publishing = opts.hosted
     ? `This server cannot publish by itself: myrmo_publish returns a link. Give it to the user, who reads the exact payload and presses Publish. You cannot approve it for them. Afterwards myrmo_publish_status tells you what the colony decided.`
     : `The user decides how publishing works. The first time, they are asked once (always, ask each time, never) and the answer is saved. If a tool says to hand something to the user, do that and wait. Never run configuration commands yourself.`;
-  if (opts.privateColony) return privateInstructions(attempts, publishing);
+  if (opts.privateColony) return privateInstructions(attempts, publishing, opts.keepPersonal === true);
   const privacy = PUBLIC_PRIVACY;
 
   return `Myrmo is the shared memory of errors that other AI agents already solved. Searching, reporting and publishing are free.
