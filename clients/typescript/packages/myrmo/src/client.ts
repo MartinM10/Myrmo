@@ -11,7 +11,7 @@ import { packageMismatches } from "./versions.js";
 import { fingerprint2, guessErrorType } from "./fingerprint.js";
 import { namesConflict } from "./names.js";
 import { possibleNames, redactText, redactValue, type RedactionPolicy, type RedactionReport } from "./redact.js";
-import type { AgentInfo, Caveat, ColonyInfo, DraftResult, EffortRecord, DraftState, Environment, Hit, NoteStatus, Outcome, Package, PublishMode, PublishResult, ReportResult, SearchQuery, SearchResult, Trail, Validation } from "./types.js";
+import type { AgentInfo, MatterSummary, MatterView, Caveat, ColonyInfo, DraftResult, EffortRecord, DraftState, Environment, Hit, NoteStatus, Outcome, Package, PublishMode, PublishResult, ReportResult, SearchQuery, SearchResult, Trail, Validation } from "./types.js";
 
 /** The public colony. Override with MYRMO_URL or the `url` option. */
 export const DEFAULT_URL = "https://myrmo.dev";
@@ -46,6 +46,8 @@ export interface ColonyOptions {
    * what is sent, and procedures and facts may be published. Ignored for the public colony.
    */
   private?: boolean;
+  /** The private colony said it keeps people's and customers' names (GET /v1/version). Credentials still go. */
+  keepPersonal?: boolean;
 }
 
 /** What a colony that is restarting or overloaded answers with. */
@@ -133,6 +135,7 @@ export class Colony {
   private readonly cache = new Map<string, { at: number; value: SearchResult | null }>();
   /** An organisation's own colony: see `ColonyOptions.private`. */
   readonly isPrivate: boolean;
+  private readonly keepPersonal: boolean;
 
   constructor(options: ColonyOptions = {}) {
     // An explicit URL or MYRMO_URL first, then the colony in the settings file; its key only goes to its own URL.
@@ -152,11 +155,12 @@ export class Colony {
     this.retries = Math.max(0, options.retries ?? 3);
     this.retryDelaysMs = options.retryDelaysMs?.length ? options.retryDelaysMs : DEFAULT_RETRY_DELAYS_MS;
     this.isPrivate = (options.private ?? false) && !/^https?:\/\/(www\.)?myrmo\.dev(\/|$)/i.test(this.url);
+    this.keepPersonal = options.keepPersonal ?? false;
   }
 
   /** What this colony removes before anything is sent. */
   private get policy(): RedactionPolicy {
-    return { keepNetwork: this.isPrivate };
+    return { keepNetwork: this.isPrivate, keepPersonal: this.isPrivate && this.keepPersonal };
   }
 
   /**
@@ -188,6 +192,29 @@ export class Colony {
     const value: SearchResult = { fingerprint: "", hits: (data.results ?? []).map(toHit), notice: data.notice, source: "search" };
     this.remember(key, value);
     return value;
+  }
+
+  /**
+   * The matters a private colony's work log holds, newest first, each with who worked on it and where it stands. Null when
+   * the colony keeps no work log (the public one, an older server, or one with it off).
+   */
+  async listMatters(options: { q?: string; limit?: number; mine?: boolean; others?: boolean; hours?: number } = {}): Promise<{ matters: MatterSummary[] } | null> {
+    const query = new URLSearchParams();
+    if (options.q) query.set("q", redactText(options.q, {}, this.policy).slice(0, 200));
+    if (options.limit) query.set("limit", String(options.limit));
+    if (options.mine) query.set("mine", "true");
+    if (options.others) query.set("others", "true");
+    if (options.hours) query.set("hours", String(options.hours));
+    const { status, data } = await this.request<{ matters: MatterSummary[] }>("GET", `/v1/worklog/matters${query.size ? `?${query}` : ""}`, undefined, undefined, true);
+    return status === 404 ? null : data;
+  }
+
+  /** One matter read for continuing it: where it stands, what was decided, tried and failed, concluded and learnt. */
+  async readMatter(name: string, everything = false): Promise<MatterView | null> {
+    const query = new URLSearchParams({ name: redactText(name, {}, this.policy).slice(0, 200) });
+    if (everything) query.set("all", "true");
+    const { status, data } = await this.request<MatterView>("GET", `/v1/worklog/matter?${query}`, undefined, undefined, true);
+    return status === 404 && !(data as { found?: boolean } | null)?.found && !(data as { matters?: unknown } | null)?.matters ? null : data;
   }
 
   /**

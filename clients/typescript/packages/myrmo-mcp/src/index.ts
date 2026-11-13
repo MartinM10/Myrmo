@@ -380,11 +380,12 @@ if (flag("--http")) {
   const privacy = privateMode(colonyUrl, process.env, savedColony?.private === true, declared, Boolean(colonyKey));
   // In a private colony the network's addresses and host names stay in what is sent (the colony keeps them too).
   // It says which client it is, so an operator sees in the admin panel who runs an old one.
-  const colony = new Colony({ publish: publishMode, private: privacy.on, headers: { "x-myrmo-client": `myrmo-mcp/${VERSION}` } });
+  const colony = new Colony({ publish: publishMode, private: privacy.on, keepPersonal: declared?.keep_personal === true, headers: { "x-myrmo-client": `myrmo-mcp/${VERSION}` } });
   if (privacy.warning) console.error(`myrmo-mcp: ${privacy.warning}`);
   const server = createServer({
     colony,
     privateColony: privacy.on,
+    keepPersonal: declared?.keep_personal === true,
     identity: (() => {
       const key = colonyKey;
       if (key) return `key ${createHash("sha256").update(key).digest("hex").slice(0, 8)}`;
