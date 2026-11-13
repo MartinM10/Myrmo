@@ -1244,5 +1244,39 @@
     "kinds": {
       "password_assignment": 1
     }
+  },
+  {
+    "input": "kubectl exec db -- sh -c 'PGPASSWORD=$(cat $POSTGRES_PASSWORD_FILE) psql'",
+    "output": "kubectl exec db -- sh -c 'PGPASSWORD=$(cat $POSTGRES_PASSWORD_FILE) psql'",
+    "kinds": {}
+  },
+  {
+    "input": "openssl enc -d -in x.enc -pass file:phrase.txt",
+    "output": "openssl enc -d -in x.enc -pass file:phrase.txt",
+    "kinds": {}
+  },
+  {
+    "input": "openssl enc -d -in x.enc -pass env:PHRASE",
+    "output": "openssl enc -d -in x.enc -pass env:PHRASE",
+    "kinds": {}
+  },
+  {
+    "input": "openssl enc -d -in x.enc -pass pass:Sup3rSecreta",
+    "output": "openssl enc -d -in x.enc -pass <redacted:secret>",
+    "kinds": {
+      "password_assignment": 1
+    }
+  },
+  {
+    "input": "kubectl get secret -l sealedsecrets.bitnami.com/sealed-secrets-key=active",
+    "output": "kubectl get secret -l sealedsecrets.bitnami.com/sealed-secrets-key=active",
+    "kinds": {}
+  },
+  {
+    "input": "PGPASSWORD=Sup3rSecreta psql",
+    "output": "PGPASSWORD=<redacted:secret> psql",
+    "kinds": {
+      "password_assignment": 1
+    }
   }
 ]
