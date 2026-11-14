@@ -223,3 +223,16 @@ test("a private request is neither logged nor searched, and the next one is logg
     server.close();
   }
 });
+
+test("a reminder says how recent it is, and the digest puts first what waits on this person", async () => {
+  const { whenSaid, digestNote, recallNote } = await import("../scripts/worklog.mjs");
+  const now = Date.parse("2026-11-14T12:00:00Z");
+  assert.equal(whenSaid("2026-11-14T11:35:00Z", now), "25 min ago");
+  assert.equal(whenSaid("2026-11-14T09:00:00Z", now), "3 h ago");
+  assert.equal(whenSaid("2026-11-09T10:00:00Z", now), "2026-11-09");
+  assert.equal(whenSaid("not a date", now), "notadate".slice(0, 0) + "");
+  const note = digestNote([{ matter: "image", for_you: true, people: ["ana"], last_at: "2026-11-14T11:00:00Z", kind: "state", text: "waiting for the new image" }], now);
+  assert.match(note, /- image WAITS ON THIS PERSON \(ana, 1 h ago\): waiting for the new image/);
+  assert.match(recallNote([{ kind: "decision", person: "bruno", at: "2026-11-14T11:50:00Z", matter: "deploy", text: "staging first" }], now), /\[decided, bruno, 10 min ago\] deploy/);
+});
+
