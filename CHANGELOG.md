@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.54.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.53.0...platform-v0.54.0) (2026-11-14)
+
+
+### Features
+
+* **worklog:** reminders say how recent they are, and the digest puts first what waits on the person ([#36](https://github.com/MartinM10/Myrmo/issues/36)) ([1e30f6e](https://github.com/MartinM10/Myrmo/commit/1e30f6e00b281fea9b2fe81f556e81f292a92c61))
+
 ## [0.53.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.52.1...platform-v0.53.0) (2026-11-13)
 
 
