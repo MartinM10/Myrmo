@@ -221,9 +221,20 @@ export async function recallEvents(input, target, task, options) {
 const LABEL = { decision: "decided", fact: "fact", conclusion: "concluded", failed_attempt: "tried and failed", state: "state", resolved: "resolved" };
 
 /** At most three lines for the agent, as untrusted data. */
-export function recallNote(events) {
+/** "25 min ago" or "3 h ago" for what happened today, else the date: an agent should know when a colleague is on it now. */
+export function whenSaid(at, now = Date.now()) {
+  const t = Date.parse(String(at ?? ""));
+  const date = String(at ?? "").slice(0, 10).replace(/[^0-9-]/g, "");
+  if (!Number.isFinite(t)) return date;
+  const minutes = Math.max(0, Math.round((now - t) / 60_000));
+  if (minutes < 60) return `${minutes} min ago`;
+  if (minutes < 24 * 60) return `${Math.round(minutes / 60)} h ago`;
+  return date;
+}
+
+export function recallNote(events, now = Date.now()) {
   const lines = events.slice(0, 3).map((e) => {
-    const when = String(e.at ?? "").slice(0, 10).replace(/[^0-9-]/g, "");
+    const when = whenSaid(e.at, now);
     return `- [${LABEL[e.kind] ?? "note"}, ${clip(e.person, 40)}, ${when}] ${clip(e.matter, 80)}: ${clip(e.text, 300)}`;
   });
   if (!lines.length) return null;
@@ -247,9 +258,10 @@ export async function digestMatters(input, target, options) {
 export const DIGEST_SOURCES = ["startup", "resume", "clear"];
 
 /** The lines for the agent, as untrusted data, or null when there is nothing to say. */
-export function digestNote(matters) {
+export function digestNote(matters, now = Date.now()) {
   const lines = (matters ?? []).slice(0, 3).map((m) => {
-    const when = String(m.last_at ?? "").slice(0, 10).replace(/[^0-9-]/g, "");
+    const when = whenSaid(m.last_at, now);
+    if (m.for_you) return `- ${clip(m.matter, 70)} WAITS ON THIS PERSON (${clip((m.people ?? [])[0], 30)}, ${when}): ${clip(m.text, 200)}`;
     const who = (Array.isArray(m.people) ? m.people : []).slice(0, 3).map((p) => clip(p, 30)).join(", ");
     const more = Number(m.new_events) > 1 ? `, ${Number(m.new_events)} new` : "";
     return `- ${clip(m.matter, 70)} (${who}, ${when}${more}) ${LABEL[m.kind] ?? "note"}: ${clip(m.text, 160)}`;
