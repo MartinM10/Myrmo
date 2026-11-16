@@ -14,11 +14,11 @@
 // a table would break).
 
 import { spawnSync } from "node:child_process";
-import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { chmodSync, copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { writeConfig, type PublishMode } from "myrmo";
+import { readConfig, writeConfig, type PublishMode } from "myrmo";
 import { VERSION } from "./server.js";
 import { t as tx } from "./i18n.js";
 
@@ -243,6 +243,7 @@ export interface InitOptions {
   agentsMd?: string; // a markdown file to put the block in
   readOnly?: boolean; // the block for repositories where agents must not publish
   private?: boolean; // the rules and hooks for an organisation's private colony
+  worklog?: boolean; // also keep this person's work log from Cline (the hooks for it); Claude Code's plugin has its own switch
   url?: string; // another colony to use, saved in the settings file with what goes with it
   key?: string; // that colony's access key
   keySource?: "argument" | "file" | "stdin"; // where the key came from: on the command line it is in the shell's history
@@ -364,7 +365,73 @@ export function mergeHooks(current: string | undefined, command: string): { text
  * which apply only to that colony), and for Antigravity installs the hook that looks errors up there.
  */
 /** The scripts the hooks are made of, copied together (scripts/copy-hooks.mjs puts them in dist/hooks). */
-export const HOOK_SCRIPTS = ["antigravity-hook.mjs", "on-failure.mjs", "lookup.mjs", "worklog.mjs", "effort.mjs", "state.mjs", "redact.mjs", "packages.mjs"];
+export const HOOK_SCRIPTS = ["cline-hook.mjs", "antigravity-hook.mjs", "on-failure.mjs", "lookup.mjs", "worklog.mjs", "effort.mjs", "state.mjs", "redact.mjs", "packages.mjs"];
+
+/** The events Cline runs a hook for that the work log uses. Cline looks for an executable named after the event. */
+export const CLINE_HOOK_EVENTS = ["UserPromptSubmit", "PostToolUse", "TaskComplete", "TaskCancel"];
+const CLINE_MARK = "myrmo-work-log (written by myrmo-mcp init)";
+
+/** Cline's global hooks folder, where it looks on every project (Cline 4.1: ~/Documents/Cline/Hooks). */
+export const clineHooksDir = (home: string) => join(home, "Documents", "Cline", "Hooks");
+
+/** Whether Cline is on this machine: its data folder, its documents folder or its VS Code extension. */
+export function clineInstalled(home: string): boolean {
+  if (existsSync(join(home, ".cline")) || existsSync(join(home, "Documents", "Cline"))) return true;
+  for (const dir of [join(home, ".vscode", "extensions"), join(home, ".vscode-server", "extensions")]) {
+    try {
+      if (readdirSync(dir).some((n) => n.startsWith("saoudrizwan.claude-dev"))) return true;
+    } catch {
+      /* no such folder */
+    }
+  }
+  return false;
+}
+
+/**
+ * What goes in the file Cline runs for an event. The node that runs init is written in as an absolute path: VS Code starts
+ * a hook with the PATH of the desktop session, which often lacks the node that nvm or conda put in a terminal's PATH.
+ * MYRMO_WORKLOG=1 is set here, because Cline passes the hook no environment of the person's shell.
+ */
+export function clineWrapper(node: string, script: string, platform: NodeJS.Platform = process.platform): string {
+  if (platform === "win32") return `# ${CLINE_MARK}\r\n$env:MYRMO_WORKLOG = '1'\r\n$input | & "${node}" "${script}"\r\n`;
+  const q = (v: string) => `'${v.replace(/'/g, `'\\''`)}'`;
+  return `#!/bin/sh\n# ${CLINE_MARK}\nMYRMO_WORKLOG=1 exec ${q(node)} ${q(script)}\n`;
+}
+
+/** Installs the work log's hooks for Cline, or says how to. Only with --worklog, and never over a hook the person wrote. */
+export function installClineHooks(opts: InitOptions, home: string, log: (l: string) => void): void {
+  if (!opts.private || !clineInstalled(home)) return;
+  if (!opts.worklog) {
+    log(tx("Cline: found. To keep your work log from Cline as well, run this again with --worklog (what the hooks do: https://myrmo.dev/docs)", "Cline: encontrado. Para guardar también tu registro de trabajo desde Cline, ejecuta esto otra vez con --worklog (qué hacen los hooks: https://myrmo.dev/docs)"));
+    return;
+  }
+  const win = process.platform === "win32";
+  const dir = clineHooksDir(home);
+  const scripts = join(home, ".myrmo", "hooks");
+  const source = opts.hooksSource ?? join(dirname(fileURLToPath(import.meta.url)), "hooks");
+  const script = join(scripts, "cline-hook.mjs");
+  const verb = opts.dryRun ? "would" : "did";
+  const kept: string[] = [];
+  const written: string[] = [];
+  for (const event of CLINE_HOOK_EVENTS) {
+    const file = join(dir, win ? `${event}.ps1` : event);
+    if (existsSync(file) && !readFileSync(file, "utf8").includes(CLINE_MARK)) {
+      kept.push(event);
+      continue;
+    }
+    written.push(event);
+    if (opts.dryRun) continue;
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(file, clineWrapper(process.execPath, script), { mode: 0o755 });
+    if (!win) chmodSync(file, 0o755);
+  }
+  if (!opts.dryRun && written.length) {
+    mkdirSync(scripts, { recursive: true });
+    for (const name of HOOK_SCRIPTS) copyFileSync(join(source, name), join(scripts, name));
+  }
+  if (written.length) log(tx(`Cline: ${verb} install the work log hooks (${written.join(", ")}) in ${dir}; restart VS Code so Cline picks them up`, `Cline: ${opts.dryRun ? "se instalarían" : "instalados"} los hooks del registro de trabajo (${written.join(", ")}) en ${dir}; reinicia VS Code para que Cline los recoja`));
+  if (kept.length) log(tx(`Cline: ${kept.join(", ")} in ${dir} are hooks of your own, left untouched; the work log will not see those events`, `Cline: ${kept.join(", ")} en ${dir} son hooks tuyos, no se han tocado; el registro de trabajo no verá esos eventos`));
+}
 
 /** This machine or a private network: where plain http does not carry a key across the internet. */
 export function nearbyHost(hostname: string): boolean {
@@ -397,10 +464,16 @@ function setUpColony(opts: InitOptions, home: string, log: (l: string) => void, 
   const verb = opts.dryRun ? "would" : "did";
   for (const line of keyWarnings(opts)) log(line);
   const url = opts.url!.trim().replace(/\/+$/, "");
-  const colony = { url, ...(opts.key ? { api_key: opts.key } : {}), ...(opts.private ? { private: true } : {}), ...(opts.publish ? { publish: opts.publish } : {}) };
+  // Running init again for the same colony (to add --worklog, say) keeps what is saved for it: the colony is written as a
+  // whole, and without this a run with no --key would drop the key and the publish choice.
+  const saved = readConfig().colony;
+  const kept = saved && typeof saved.url === "string" && saved.url.trim().replace(/\/+$/, "") === url ? saved : {};
+  const colony = { ...kept, url, ...(opts.key ? { api_key: opts.key } : {}), ...(opts.private ? { private: true } : {}), ...(opts.publish ? { publish: opts.publish } : {}) };
   if (!opts.dryRun) writeConfig({ colony });
   const what = [opts.key ? tx("its access key", "su clave de acceso") : "", opts.private ? tx("private mode", "el modo privado") : "", opts.publish ? `publish ${opts.publish}` : ""].filter(Boolean).join(", ");
   log(tx(`Colony: ${verb} save ${url}${what ? ` with ${what}` : ""} in the settings file; the key and the choices apply only to that colony`, `Colonia: ${opts.dryRun ? "se guardaría" : "guardada"} ${url}${what ? ` con ${what}` : ""} en el fichero de configuración; la clave y las elecciones solo se aplican a esa colonia`));
+
+  installClineHooks(opts, home, log);
 
   // Antigravity has no plugin: copy the hook next to the settings and register it, so that after a failed command it
   // looks the error up in this colony (and reminds the agent to report and to publish).
@@ -441,6 +514,12 @@ export function runInit(opts: InitOptions): { configured: string[]; skipped: str
   const skipped: string[] = [];
   const verb = opts.dryRun ? "would" : "did";
   if (opts.url) setUpColony(opts, home, log, wanted);
+  else if (opts.worklog) {
+    // `init --worklog` on a machine already pointed at its organisation's colony: only the Cline hooks are added.
+    const saved = readConfig().colony;
+    if (saved?.url && (saved.private === true || Boolean(saved.api_key))) installClineHooks({ ...opts, private: true }, home, log);
+    else log(tx("--worklog needs your organisation's colony: run init with --url and --key first", "--worklog necesita la colonia de tu organización: ejecuta antes init con --url y --key"));
+  }
 
   const alreadyThere = wanted(CLAUDE_CODE) ? claudeCodeSetUp(home) : null;
   const slash = tx(`In Claude Code's chat run: /plugin marketplace add ${MARKETPLACE}   then   /plugin install ${PLUGIN}`, `En el chat de Claude Code ejecuta: /plugin marketplace add ${MARKETPLACE}   y después   /plugin install ${PLUGIN}`);
@@ -561,6 +640,7 @@ export function parseInitArgs(args: string[], readStdin: () => string = () => re
     } else if (a === "--read-only") opts.readOnly = true;
     else if (a === "--no-rules") opts.rules = false;
     else if (a === "--private") opts.private = true;
+    else if (a === "--worklog") opts.worklog = true;
     else if (a === "--key-file") {
       // The key stays out of the command line, so out of the shell's history and the process list.
       const file = args[++i];
@@ -597,7 +677,7 @@ export function parseInitArgs(args: string[], readStdin: () => string = () => re
       }
       else if (value === "auto" || value === "ask" || value === "off") opts.publish = value;
       else return tx("--publish takes auto, ask or off", "--publish acepta auto, ask u off");
-    } else return tx(`Unknown option ${a}.`, `Opción desconocida ${a}.`) + ` ${tx("Usage:", "Uso:")} myrmo-mcp init [--client <id>]... [--agents-md [file] [--read-only]] [--url <colony> [--key <key> | --key - | --key-file <file>] [--private] [--publish auto|ask|off]] [--no-rules] [--dry-run]`;
+    } else return tx(`Unknown option ${a}.`, `Opción desconocida ${a}.`) + ` ${tx("Usage:", "Uso:")} myrmo-mcp init [--client <id>]... [--agents-md [file] [--read-only]] [--url <colony> [--key <key> | --key - | --key-file <file>] [--private] [--publish auto|ask|off]] [--no-rules] [--worklog] [--dry-run]`;
   }
   if ((opts.key || opts.publish) && !opts.url) return tx("--key and --publish go with --url: they belong to one colony", "--key y --publish van con --url: pertenecen a una colonia");
   if (opts.url) {
