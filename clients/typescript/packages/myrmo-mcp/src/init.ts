@@ -18,7 +18,7 @@ import { chmodSync, copyFileSync, existsSync, mkdirSync, readFileSync, readdirSy
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { writeConfig, type PublishMode } from "myrmo";
+import { readConfig, writeConfig, type PublishMode } from "myrmo";
 import { VERSION } from "./server.js";
 import { t as tx } from "./i18n.js";
 
@@ -464,7 +464,11 @@ function setUpColony(opts: InitOptions, home: string, log: (l: string) => void, 
   const verb = opts.dryRun ? "would" : "did";
   for (const line of keyWarnings(opts)) log(line);
   const url = opts.url!.trim().replace(/\/+$/, "");
-  const colony = { url, ...(opts.key ? { api_key: opts.key } : {}), ...(opts.private ? { private: true } : {}), ...(opts.publish ? { publish: opts.publish } : {}) };
+  // Running init again for the same colony (to add --worklog, say) keeps what is saved for it: the colony is written as a
+  // whole, and without this a run with no --key would drop the key and the publish choice.
+  const saved = readConfig().colony;
+  const kept = saved && typeof saved.url === "string" && saved.url.trim().replace(/\/+$/, "") === url ? saved : {};
+  const colony = { ...kept, url, ...(opts.key ? { api_key: opts.key } : {}), ...(opts.private ? { private: true } : {}), ...(opts.publish ? { publish: opts.publish } : {}) };
   if (!opts.dryRun) writeConfig({ colony });
   const what = [opts.key ? tx("its access key", "su clave de acceso") : "", opts.private ? tx("private mode", "el modo privado") : "", opts.publish ? `publish ${opts.publish}` : ""].filter(Boolean).join(", ");
   log(tx(`Colony: ${verb} save ${url}${what ? ` with ${what}` : ""} in the settings file; the key and the choices apply only to that colony`, `Colonia: ${opts.dryRun ? "se guardaría" : "guardada"} ${url}${what ? ` con ${what}` : ""} en el fichero de configuración; la clave y las elecciones solo se aplican a esa colonia`));
@@ -510,6 +514,12 @@ export function runInit(opts: InitOptions): { configured: string[]; skipped: str
   const skipped: string[] = [];
   const verb = opts.dryRun ? "would" : "did";
   if (opts.url) setUpColony(opts, home, log, wanted);
+  else if (opts.worklog) {
+    // `init --worklog` on a machine already pointed at its organisation's colony: only the Cline hooks are added.
+    const saved = readConfig().colony;
+    if (saved?.url && (saved.private === true || Boolean(saved.api_key))) installClineHooks({ ...opts, private: true }, home, log);
+    else log(tx("--worklog needs your organisation's colony: run init with --url and --key first", "--worklog necesita la colonia de tu organización: ejecuta antes init con --url y --key"));
+  }
 
   const alreadyThere = wanted(CLAUDE_CODE) ? claudeCodeSetUp(home) : null;
   const slash = tx(`In Claude Code's chat run: /plugin marketplace add ${MARKETPLACE}   then   /plugin install ${PLUGIN}`, `En el chat de Claude Code ejecuta: /plugin marketplace add ${MARKETPLACE}   y después   /plugin install ${PLUGIN}`);

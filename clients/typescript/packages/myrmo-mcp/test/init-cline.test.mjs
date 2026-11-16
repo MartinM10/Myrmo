@@ -94,3 +94,31 @@ test("the wrapper quotes paths with spaces and has a Windows form", () => {
   assert.match(win, /\$env:MYRMO_WORKLOG = '1'/);
   assert.match(win, /\$input \| &/);
 });
+
+test("running init again for the same colony keeps its key and publish choice", () => {
+  const m = machine();
+  run(m, { publish: "ask" });
+  runInit({ clients: [], dryRun: false, home: m.home, log: m.log, url: "https://myrmo.example.internal/", private: true, hooksSource: HOOKS, worklog: true });
+  const saved = JSON.parse(readFileSync(process.env.MYRMO_CONFIG, "utf8")).colony;
+  assert.equal(saved.api_key, KEY);
+  assert.equal(saved.publish, "ask");
+  assert.ok(existsSync(join(m.home, "Documents", "Cline", "Hooks", "TaskComplete")));
+});
+
+test("another colony's url does not inherit the saved key", () => {
+  const m = machine();
+  run(m);
+  runInit({ clients: [], dryRun: false, home: m.home, log: m.log, url: "https://other.example.internal", hooksSource: HOOKS });
+  assert.equal(JSON.parse(readFileSync(process.env.MYRMO_CONFIG, "utf8")).colony.api_key, undefined);
+});
+
+test("init --worklog alone uses the colony already saved, and refuses without one", () => {
+  const m = machine();
+  run(m);
+  runInit({ clients: [], dryRun: false, home: m.home, log: m.log, hooksSource: HOOKS, worklog: true });
+  assert.ok(existsSync(join(m.home, "Documents", "Cline", "Hooks", "UserPromptSubmit")));
+  const bare = machine();
+  runInit({ clients: [], dryRun: false, home: bare.home, log: bare.log, hooksSource: HOOKS, worklog: true });
+  assert.equal(existsSync(join(bare.home, "Documents", "Cline", "Hooks")), false);
+  assert.match(bare.out.join("\n"), /needs your organisation's colony/);
+});
