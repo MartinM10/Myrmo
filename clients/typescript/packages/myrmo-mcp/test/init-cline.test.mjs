@@ -22,6 +22,8 @@ function machine({ cline = true } = {}) {
   const out = [];
   return { home, out, log: (l) => out.push(l) };
 }
+/** The file Cline runs for an event: named after it, with .ps1 on Windows. */
+const hookFile = (home, event) => join(home, "Documents", "Cline", "Hooks", process.platform === "win32" ? `${event}.ps1` : event);
 const run = (m, extra = {}) => runInit({ clients: [], dryRun: false, home: m.home, log: m.log, url: "https://myrmo.example.internal", key: KEY, private: true, hooksSource: HOOKS, ...extra });
 
 test("--worklog is an option, and the Cline hook script travels with the others", () => {
@@ -50,11 +52,11 @@ test("with --worklog the four hooks are written, executable, with an absolute no
   run(m, { worklog: true });
   const dir = join(m.home, "Documents", "Cline", "Hooks");
   for (const event of CLINE_HOOK_EVENTS) {
-    const file = join(dir, event);
+    const file = hookFile(m.home, event);
     assert.ok(existsSync(file), event);
     if (process.platform !== "win32") assert.ok(statSync(file).mode & 0o100, `${event} is executable`);
     const text = readFileSync(file, "utf8");
-    assert.match(text, /MYRMO_WORKLOG=1/);
+    assert.match(text, /MYRMO_WORKLOG( = '|=)1/);
     assert.ok(text.includes(process.execPath), "absolute node");
     assert.ok(text.includes(join(m.home, ".myrmo", "hooks", "cline-hook.mjs")));
   }
@@ -66,13 +68,13 @@ test("running it again changes nothing, and a hook of the person's own is left a
   const m = machine();
   const dir = join(m.home, "Documents", "Cline", "Hooks");
   mkdirSync(dir, { recursive: true });
-  writeFileSync(join(dir, "TaskComplete"), "#!/bin/sh\necho mine\n");
+  writeFileSync(hookFile(m.home, "TaskComplete"), "#!/bin/sh\necho mine\n");
   run(m, { worklog: true });
-  assert.equal(readFileSync(join(dir, "TaskComplete"), "utf8"), "#!/bin/sh\necho mine\n");
+  assert.equal(readFileSync(hookFile(m.home, "TaskComplete"), "utf8"), "#!/bin/sh\necho mine\n");
   assert.match(m.out.join("\n"), /TaskComplete.*hooks of your own/);
-  const before = readFileSync(join(dir, "PostToolUse"), "utf8");
+  const before = readFileSync(hookFile(m.home, "PostToolUse"), "utf8");
   run(m, { worklog: true });
-  assert.equal(readFileSync(join(dir, "PostToolUse"), "utf8"), before);
+  assert.equal(readFileSync(hookFile(m.home, "PostToolUse"), "utf8"), before);
 });
 
 test("--dry-run writes nothing", () => {
@@ -102,7 +104,7 @@ test("running init again for the same colony keeps its key and publish choice", 
   const saved = JSON.parse(readFileSync(process.env.MYRMO_CONFIG, "utf8")).colony;
   assert.equal(saved.api_key, KEY);
   assert.equal(saved.publish, "ask");
-  assert.ok(existsSync(join(m.home, "Documents", "Cline", "Hooks", "TaskComplete")));
+  assert.ok(existsSync(hookFile(m.home, "TaskComplete")));
 });
 
 test("another colony's url does not inherit the saved key", () => {
@@ -116,7 +118,7 @@ test("init --worklog alone uses the colony already saved, and refuses without on
   const m = machine();
   run(m);
   runInit({ clients: [], dryRun: false, home: m.home, log: m.log, hooksSource: HOOKS, worklog: true });
-  assert.ok(existsSync(join(m.home, "Documents", "Cline", "Hooks", "UserPromptSubmit")));
+  assert.ok(existsSync(hookFile(m.home, "UserPromptSubmit")));
   const bare = machine();
   runInit({ clients: [], dryRun: false, home: bare.home, log: bare.log, hooksSource: HOOKS, worklog: true });
   assert.equal(existsSync(join(bare.home, "Documents", "Cline", "Hooks")), false);
