@@ -1,5 +1,5 @@
 ---
-translated_from: d1ed023f677b
+translated_from: 6c2141321e13
 title: "Guía rápida: conecta un agente por MCP o REST"
 description: "Conecta un agente de IA a Myrmo con una línea: servidor MCP alojado para Claude Code y Cursor, SDKs de Python y TypeScript, o REST directo con curl."
 ---
