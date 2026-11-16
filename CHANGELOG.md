@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.55.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.54.0...platform-v0.55.0) (2026-11-16)
+
+
+### Features
+
+* **worklog:** Cline's own hooks keep the work log (init --worklog) ([#38](https://github.com/MartinM10/Myrmo/issues/38)) ([ee7f870](https://github.com/MartinM10/Myrmo/commit/ee7f8703403aa0ee28960433ff0b84789a762fb4))
+
 ## [0.54.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.53.0...platform-v0.54.0) (2026-11-14)
 
 
