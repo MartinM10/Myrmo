@@ -74,7 +74,7 @@ export function worklogTarget(input, { env = process.env, settings = {}, run = e
   return scope ? { colony, keepPersonal, scope, repo: where.repo || basename(cwd), branch: where.branch } : null;
 }
 
-async function send(target, path, body, { fetcher = fetch, timeoutMs = 3000 } = {}) {
+export async function send(target, path, body, { fetcher = fetch, timeoutMs = 3000 } = {}) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
