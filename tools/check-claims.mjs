@@ -1,6 +1,7 @@
 // Claims the website and the docs once made that the code does not back. A phrase on this list must not come back
 // until the code does what it says. Run from the repository root:
 //   node tools/check-claims.mjs
+import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 
 const files = [
@@ -38,5 +39,24 @@ for (const file of files) {
     }
   }
 }
+// Release Please rewrites only the first version on a line marked x-release-please-version: a second one on the same
+// line stays behind at every release, and the docs then show two versions of the same package.
+const VERSION = /\d+\.\d+\.\d+/g;
+for (const file of execFileSync("git", ["ls-files"], { encoding: "utf8" }).split("\n").filter(Boolean)) {
+  let text;
+  try {
+    text = readFileSync(file, "utf8");
+  } catch {
+    continue;
+  }
+  if (!text.includes("x-release-please-version")) continue;
+  text.split("\n").forEach((line, i) => {
+    if (line.includes("x-release-please-version") && (line.match(VERSION) ?? []).length > 1) {
+      console.error(`${file}:${i + 1}: more than one version on a line marked x-release-please-version -> Release Please updates only the first; put one version per marked line`);
+      failed = true;
+    }
+  });
+}
+
 if (failed) process.exit(1);
 console.log(`no stale claims in ${files.length} files`);
