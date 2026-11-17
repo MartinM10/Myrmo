@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.56.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.55.0...platform-v0.56.0) (2026-11-17)
+
+
+### Features
+
+* **mcp:** doctor says, agent by agent, whether the work log records it; init --worklog turns it on for Claude Code too ([#42](https://github.com/MartinM10/Myrmo/issues/42)) ([2fa4f5f](https://github.com/MartinM10/Myrmo/commit/2fa4f5fbbaf974c81c81c19e920c0781594a4124))
+
+
+### Documentation
+
+* **quickstart:** one version on the Codex line, and CI catches a second one ([#40](https://github.com/MartinM10/Myrmo/issues/40)) ([30b5548](https://github.com/MartinM10/Myrmo/commit/30b55488eb0199737c3fac355edfa3ebed361037))
+
 ## [0.55.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.54.0...platform-v0.55.0) (2026-11-16)
 
 
