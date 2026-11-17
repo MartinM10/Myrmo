@@ -124,3 +124,38 @@ test("init --worklog alone uses the colony already saved, and refuses without on
   assert.equal(existsSync(join(bare.home, "Documents", "Cline", "Hooks")), false);
   assert.match(bare.out.join("\n"), /needs your organisation's colony/);
 });
+
+const withClaude = (m, settings) => {
+  mkdirSync(join(m.home, ".claude", "plugins"), { recursive: true });
+  writeFileSync(join(m.home, ".claude", "plugins", "installed_plugins.json"), JSON.stringify({ plugins: { "myrmo@myrmo": [{}] } }));
+  if (settings !== undefined) writeFileSync(join(m.home, ".claude", "settings.json"), settings);
+};
+
+test("--worklog turns the work log on for Claude Code in its settings, keeping a copy and the rest of the file", () => {
+  const m = machine();
+  withClaude(m, JSON.stringify({ model: "x", env: { OTHER: "1" } }));
+  run(m, { worklog: true });
+  const s = JSON.parse(readFileSync(join(m.home, ".claude", "settings.json"), "utf8"));
+  assert.equal(s.env.MYRMO_WORKLOG, "1");
+  assert.equal(s.env.OTHER, "1");
+  assert.equal(s.model, "x");
+  assert.ok(existsSync(join(m.home, ".claude", "settings.json.before-myrmo-worklog")));
+  assert.match(m.out.join("\n"), /Claude Code: turned the work log on/);
+});
+
+test("Claude Code is left alone with a work log hook of its own, with a broken settings file, or without --worklog", () => {
+  const hooked = machine();
+  const hookText = JSON.stringify({ hooks: { Stop: [{ hooks: [{ type: "command", command: "MYRMO_WORKLOG=1 node /x/worklog-hook.mjs" }] }] } });
+  withClaude(hooked, hookText);
+  run(hooked, { worklog: true });
+  assert.equal(readFileSync(join(hooked.home, ".claude", "settings.json"), "utf8"), hookText);
+  assert.match(hooked.out.join("\n"), /its own hook/);
+  const broken = machine();
+  withClaude(broken, "{ not json");
+  run(broken, { worklog: true });
+  assert.equal(readFileSync(join(broken.home, ".claude", "settings.json"), "utf8"), "{ not json");
+  const plain = machine();
+  withClaude(plain, "{}");
+  run(plain);
+  assert.equal(readFileSync(join(plain.home, ".claude", "settings.json"), "utf8"), "{}");
+});

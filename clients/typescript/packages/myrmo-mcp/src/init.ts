@@ -369,7 +369,7 @@ export const HOOK_SCRIPTS = ["cline-hook.mjs", "antigravity-hook.mjs", "on-failu
 
 /** The events Cline runs a hook for that the work log uses. Cline looks for an executable named after the event. */
 export const CLINE_HOOK_EVENTS = ["UserPromptSubmit", "PostToolUse", "TaskComplete", "TaskCancel"];
-const CLINE_MARK = "myrmo-work-log (written by myrmo-mcp init)";
+export const CLINE_MARK = "myrmo-work-log (written by myrmo-mcp init)";
 
 /** Cline's global hooks folder, where it looks on every project (Cline 4.1: ~/Documents/Cline/Hooks). */
 export const clineHooksDir = (home: string) => join(home, "Documents", "Cline", "Hooks");
@@ -396,6 +396,46 @@ export function clineWrapper(node: string, script: string, platform: NodeJS.Plat
   if (platform === "win32") return `# ${CLINE_MARK}\r\n$env:MYRMO_WORKLOG = '1'\r\n$input | & "${node}" "${script}"\r\n`;
   const q = (v: string) => `'${v.replace(/'/g, `'\\''`)}'`;
   return `#!/bin/sh\n# ${CLINE_MARK}\nMYRMO_WORKLOG=1 exec ${q(node)} ${q(script)}\n`;
+}
+
+/** Whether ~/.claude/settings.json registers the work log's own hook (tools/worklog/install.mjs), which already records. */
+export function claudeWorkLogHook(settingsText: string): boolean {
+  return /worklog-hook\.mjs/.test(settingsText);
+}
+
+/**
+ * Turns the work log on for Claude Code: the plugin records it when MYRMO_WORKLOG=1, and the `env` block of
+ * ~/.claude/settings.json is the one place Claude Code reads it however it is started. Left alone when the settings
+ * file is not valid JSON, when it is already on, and when a work log hook of its own is registered there (both would
+ * send every exchange). A copy of the file is kept next to it before the first change.
+ */
+export function enableClaudeWorkLog(opts: InitOptions, home: string, log: (l: string) => void): void {
+  if (!opts.private || !opts.worklog || !claudeCodeSetUp(home)) return;
+  const file = join(home, ".claude", "settings.json");
+  const text = existsSync(file) ? readFileSync(file, "utf8") : "{}";
+  let settings: Record<string, any>;
+  try {
+    settings = JSON.parse(text || "{}");
+    if (!settings || typeof settings !== "object" || Array.isArray(settings)) throw new Error("not an object");
+  } catch {
+    log(tx(`Claude Code: ${file} is not valid JSON, left untouched; add "env": { "MYRMO_WORKLOG": "1" } to it by hand`, `Claude Code: ${file} no es un JSON válido, no se ha tocado; añádele a mano "env": { "MYRMO_WORKLOG": "1" }`));
+    return;
+  }
+  if (claudeWorkLogHook(text)) {
+    log(tx("Claude Code: the work log already records through its own hook in ~/.claude/settings.json; left as it is", "Claude Code: el registro de trabajo ya se guarda con su propio hook en ~/.claude/settings.json; se deja como está"));
+    return;
+  }
+  if (String(settings.env?.MYRMO_WORKLOG ?? "") === "1") {
+    log(tx("Claude Code: the work log is already on (MYRMO_WORKLOG=1 in ~/.claude/settings.json)", "Claude Code: el registro de trabajo ya está activado (MYRMO_WORKLOG=1 en ~/.claude/settings.json)"));
+    return;
+  }
+  if (!opts.dryRun) {
+    if (existsSync(file) && !existsSync(`${file}.before-myrmo-worklog`)) copyFileSync(file, `${file}.before-myrmo-worklog`);
+    settings.env = { ...(settings.env && typeof settings.env === "object" ? settings.env : {}), MYRMO_WORKLOG: "1" };
+    mkdirSync(dirname(file), { recursive: true });
+    writeFileSync(file, JSON.stringify(settings, null, 2) + "\n");
+  }
+  log(tx(`Claude Code: ${opts.dryRun ? "would turn" : "turned"} the work log on (MYRMO_WORKLOG=1 in ${file}); restart Claude Code`, `Claude Code: ${opts.dryRun ? "se activaría" : "activado"} el registro de trabajo (MYRMO_WORKLOG=1 en ${file}); reinicia Claude Code`));
 }
 
 /** Installs the work log's hooks for Cline, or says how to. Only with --worklog, and never over a hook the person wrote. */
@@ -474,6 +514,7 @@ function setUpColony(opts: InitOptions, home: string, log: (l: string) => void, 
   log(tx(`Colony: ${verb} save ${url}${what ? ` with ${what}` : ""} in the settings file; the key and the choices apply only to that colony`, `Colonia: ${opts.dryRun ? "se guardaría" : "guardada"} ${url}${what ? ` con ${what}` : ""} en el fichero de configuración; la clave y las elecciones solo se aplican a esa colonia`));
 
   installClineHooks(opts, home, log);
+  enableClaudeWorkLog(opts, home, log);
 
   // Antigravity has no plugin: copy the hook next to the settings and register it, so that after a failed command it
   // looks the error up in this colony (and reminds the agent to report and to publish).
@@ -517,7 +558,10 @@ export function runInit(opts: InitOptions): { configured: string[]; skipped: str
   else if (opts.worklog) {
     // `init --worklog` on a machine already pointed at its organisation's colony: only the Cline hooks are added.
     const saved = readConfig().colony;
-    if (saved?.url && (saved.private === true || Boolean(saved.api_key))) installClineHooks({ ...opts, private: true }, home, log);
+    if (saved?.url && (saved.private === true || Boolean(saved.api_key))) {
+      installClineHooks({ ...opts, private: true }, home, log);
+      enableClaudeWorkLog({ ...opts, private: true }, home, log);
+    }
     else log(tx("--worklog needs your organisation's colony: run init with --url and --key first", "--worklog necesita la colonia de tu organización: ejecuta antes init con --url y --key"));
   }
 

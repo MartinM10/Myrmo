@@ -4,7 +4,7 @@
 
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { claudeCodeSetUp } from "./init.js";
+import { CLINE_HOOK_EVENTS, CLINE_MARK, claudeCodeSetUp, claudeWorkLogHook, clineHooksDir, clineInstalled, targets } from "./init.js";
 import { compareVersions, describeColony, VERSION, VERSION_SHAPE } from "./server.js";
 import { t } from "./i18n.js";
 
@@ -24,11 +24,14 @@ export interface DoctorInput {
   apiKey?: string;
   privateMode: boolean;
   /** What the colony says it is (GET /v1/version), when it said it. */
-  declared?: { profile?: string; people_detail?: string | null; holdout_percent?: number; effort?: boolean };
+  declared?: { profile?: string; people_detail?: string | null; holdout_percent?: number; effort?: boolean; worklog_scopes?: string[] };
   publish: string;
   nodeVersion?: string;
   home: string;
   fetchImpl?: typeof fetch;
+  /** The environment this command runs in: where MYRMO_WORKLOG is looked for (default: process.env). */
+  env?: NodeJS.ProcessEnv;
+  platform?: NodeJS.Platform;
 }
 
 const PUBLIC_HOSTS = new Set(["myrmo.dev", "www.myrmo.dev"]);
@@ -44,6 +47,120 @@ async function call(fetchImpl: typeof fetch, url: string, key?: string): Promise
     const cause = (err as { cause?: { code?: string } }).cause?.code ?? (err as Error).name;
     return { error: String(cause) };
   }
+}
+
+/** The node a Cline hook file starts, as init wrote it; undefined when the file is not ours or has another shape. */
+export function clineHookNode(text: string): string | undefined {
+  if (!text.includes(CLINE_MARK)) return undefined;
+  return /exec '((?:[^']|'\\'')+)'/.exec(text)?.[1]?.replace(/'\\''/g, "'") ?? /& "([^"]+)"/.exec(text)?.[1];
+}
+
+/**
+ * Where Claude Code gets MYRMO_WORKLOG=1, or null: the shell this runs in, the `env` block of ~/.claude/settings.json
+ * (which applies however Claude Code is started, from a terminal or from VS Code), or a work log hook registered there
+ * with the variable on its own command line.
+ */
+export function claudeWorkLogSource(home: string, env: NodeJS.ProcessEnv): string | null {
+  let settings: { env?: Record<string, unknown>; hooks?: unknown } | undefined;
+  try {
+    settings = JSON.parse(readFileSync(join(home, ".claude", "settings.json"), "utf8"));
+  } catch {
+    settings = undefined;
+  }
+  if (String(settings?.env?.MYRMO_WORKLOG ?? "") === "1") return t("MYRMO_WORKLOG=1 in ~/.claude/settings.json", "MYRMO_WORKLOG=1 en ~/.claude/settings.json");
+  if (/MYRMO_WORKLOG=1[^"]*worklog-hook\.mjs/.test(JSON.stringify(settings?.hooks ?? ""))) return t("the work log hook in ~/.claude/settings.json", "el hook del registro en ~/.claude/settings.json");
+  if (env.MYRMO_WORKLOG === "1") return t("MYRMO_WORKLOG=1 in this shell", "MYRMO_WORKLOG=1 en esta terminal");
+  return null;
+}
+
+/**
+ * The work log, client by client: which agents on this machine record what they do in it, and which cannot yet. Only
+ * for a colony that keeps one; nothing is sent and no text is read.
+ */
+export async function workLogChecks(input: DoctorInput, fetchImpl: typeof fetch): Promise<Check[]> {
+  const scopes = input.declared?.worklog_scopes;
+  if (!input.privateMode || !Array.isArray(scopes) || scopes.length === 0) return [];
+  const name = t("Work log", "Registro de trabajo");
+  const checks: Check[] = [];
+  const env = input.env ?? process.env;
+  const platform = input.platform ?? process.platform;
+
+  const enrolled = await call(fetchImpl, `${input.url.replace(/\/+$/, "")}/v1/worklog/matters?limit=1`, input.apiKey);
+  if ("status" in enrolled && enrolled.status === 403) {
+    checks.push({ level: "warn", name, detail: t("this colony keeps one, but your key is not enrolled in it", "esta colonia lo lleva, pero tu clave no está inscrita"), fix: t("Ask whoever runs the colony to add your key's name to MYRMO_WORKLOG_PEOPLE", "Pide a quien opera la colonia que añada el nombre de tu clave a MYRMO_WORKLOG_PEOPLE") });
+    return checks;
+  }
+  if (existsSync(join(input.home, ".myrmo", "worklog-paused")) || env.MYRMO_WORKLOG_PAUSE === "1") {
+    checks.push({ level: "warn", name, detail: t("paused on this machine: nothing is recorded", "en pausa en esta máquina: no se registra nada"), fix: t("Delete ~/.myrmo/worklog-paused (and unset MYRMO_WORKLOG_PAUSE) to resume", "Borra ~/.myrmo/worklog-paused (y quita MYRMO_WORKLOG_PAUSE) para reanudar") });
+  }
+
+  let capturing = 0;
+  if (claudeCodeSetUp(input.home)) {
+    const source = claudeWorkLogSource(input.home, env);
+    let settingsText = "";
+    try {
+      settingsText = readFileSync(join(input.home, ".claude", "settings.json"), "utf8");
+    } catch {
+      settingsText = "";
+    }
+    const hook = claudeWorkLogHook(settingsText);
+    const plugin = /"MYRMO_WORKLOG"\s*:\s*"1"/.test(settingsText) || env.MYRMO_WORKLOG === "1";
+    if (hook && plugin) {
+      capturing++;
+      checks.push({ level: "warn", name: `${name}, Claude Code`, detail: t("recorded twice: by the plugin (MYRMO_WORKLOG=1) and by a work log hook of its own", "se registra dos veces: por el plugin (MYRMO_WORKLOG=1) y por un hook del registro aparte"), fix: t("Keep one: remove the worklog-hook.mjs entries from ~/.claude/settings.json, or MYRMO_WORKLOG=1 from its env", "Deja uno: quita de ~/.claude/settings.json las entradas de worklog-hook.mjs, o MYRMO_WORKLOG=1 de su env") });
+    } else if (source) {
+      capturing++;
+      checks.push({ level: "ok", name: `${name}, Claude Code`, detail: t(`recorded (${source})`, `se registra (${source})`) });
+    } else {
+      checks.push({
+        level: "warn",
+        name: `${name}, Claude Code`,
+        detail: t("not recorded: MYRMO_WORKLOG=1 is set nowhere Claude Code reads it", "no se registra: MYRMO_WORKLOG=1 no está en ningún sitio que lea Claude Code"),
+        fix: t('Add "env": { "MYRMO_WORKLOG": "1" } to ~/.claude/settings.json (it works however Claude Code is started), then restart it', 'Añade "env": { "MYRMO_WORKLOG": "1" } a ~/.claude/settings.json (vale arranques Claude Code como lo arranques) y reinícialo'),
+      });
+    }
+  }
+
+  if (clineInstalled(input.home)) {
+    const missing: string[] = [];
+    const foreign: string[] = [];
+    const broken: string[] = [];
+    for (const event of CLINE_HOOK_EVENTS) {
+      const file = join(clineHooksDir(input.home), platform === "win32" ? `${event}.ps1` : event);
+      if (!existsSync(file)) {
+        missing.push(event);
+        continue;
+      }
+      const node = clineHookNode(readFileSync(file, "utf8"));
+      if (!node) foreign.push(event);
+      else if (!existsSync(node)) broken.push(event);
+    }
+    const fix = t("npx myrmo-mcp@latest init --worklog   then reload VS Code (Developer: Reload Window)", "npx myrmo-mcp@latest init --worklog   y recarga VS Code (Developer: Reload Window)");
+    if (missing.length === CLINE_HOOK_EVENTS.length) {
+      checks.push({ level: "warn", name: `${name}, Cline`, detail: t("not recorded: the hooks are not installed", "no se registra: los hooks no están instalados"), fix });
+    } else if (broken.length) {
+      checks.push({ level: "warn", name: `${name}, Cline`, detail: t(`not recorded: the hooks start a node that no longer exists (${broken.join(", ")})`, `no se registra: los hooks arrancan un node que ya no existe (${broken.join(", ")})`), fix });
+    } else if (missing.length) {
+      checks.push({ level: "warn", name: `${name}, Cline`, detail: t(`incomplete: ${missing.join(", ")} missing`, `incompleto: falta ${missing.join(", ")}`), fix });
+    } else {
+      capturing++;
+      checks.push({ level: "ok", name: `${name}, Cline`, detail: foreign.length ? t(`recorded, except ${foreign.join(", ")}: hooks of your own are in their place`, `se registra, salvo ${foreign.join(", ")}: en su lugar hay hooks tuyos`) : t("recorded (hooks in place; reload VS Code once after installing them)", "se registra (hooks instalados; recarga VS Code una vez tras instalarlos)") });
+    }
+  }
+
+  // Everything else Myrmo can set up talks to the colony through its tools, but has no hook that records the work.
+  const others = targets(input.home, platform)
+    .filter((c) => c.id !== "claude-desktop" && existsSync(c.file) && /myrmo/i.test(readFileSync(c.file, "utf8")))
+    .map((c) => c.name);
+  if (others.length) {
+    checks.push({
+      level: capturing ? "ok" : "warn",
+      name: t(`${name}, other agents`, `${name}, otros agentes`),
+      detail: t(`${others.join(", ")}: not recorded (Myrmo has no work log hook for them yet); their agents can still read it with myrmo_matters`, `${others.join(", ")}: no se registra (Myrmo aún no tiene hook del registro para ellos); sus agentes sí pueden leerlo con myrmo_matters`),
+      ...(capturing ? {} : { fix: t("Use Claude Code or Cline for the work you want in the work log", "Usa Claude Code o Cline para el trabajo que quieras en el registro") }),
+    });
+  }
+  return checks;
 }
 
 export async function diagnose(input: DoctorInput): Promise<Check[]> {
@@ -182,6 +299,7 @@ export async function diagnose(input: DoctorInput): Promise<Check[]> {
   } else {
     checks.push({ level: "fail", name: t("Agents", "Agentes"), detail: t("no agent on this machine is set up to use Myrmo", "ningún agente de esta máquina está configurado para usar Myrmo"), fix: t("Run the setup command again, then restart Claude Code or Antigravity.", "Vuelve a ejecutar el comando de configuración y reinicia Claude Code o Antigravity.") });
   }
+  checks.push(...(await workLogChecks(input, fetchImpl)));
   checks.push({
     level: "ok",
     name: "Claude Desktop",
