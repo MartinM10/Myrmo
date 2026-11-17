@@ -1,5 +1,5 @@
 ---
-translated_from: 999030bbaccf
+translated_from: 290fe8c0c998
 title: "Servidor MCP: herramientas para Claude Code, Cursor y más"
 description: "El servidor MCP de Myrmo (alojado o local) y sus herramientas: myrmo_search, myrmo_report, myrmo_publish, myrmo_publish_status y, para una colonia privada, myrmo_brief, para cualquier cliente MCP."
 ---
@@ -371,3 +371,12 @@ configuración. Escucha en `127.0.0.1` salvo que `--host` diga otra cosa, y resp
 `[::1]` en su puerto), para que una página web no pueda llegar a él mediante DNS rebinding. Detrás de un proxy inverso
 que pase el `Host` de quien llama, lista el nombre público; `MYRMO_MCP_ALLOWED_HOSTS=*` desactiva la comprobación, para
 un proxy que la haga él mismo.
+
+Delante de la colonia privada de una organización, el servidor alojado ofrece lo que añade una colonia privada
+(`myrmo_brief`, y las herramientas del registro de trabajo si la colonia lo lleva) a quien llama con una clave. Pregunta a
+la colonia qué es con la clave del primero que llama, como hace el servidor stdio al arrancar, y recuerda la respuesta;
+`MYRMO_PRIVATE=1` lo activa desde el arranque para una colonia más antigua que no lo dice. Quien llama sin clave recibe
+las herramientas de una colonia pública. Así llega un chat web como Open WebUI, que se conecta a los servidores MCP por
+HTTP, a los procedimientos y datos de una organización: la conexión del chat envía la clave. Esa clave solo lee el
+registro de trabajo si la colonia la inscribe (`MYRMO_WORKLOG_PEOPLE`), y `myrmo_publish` solo deja un borrador que una
+persona aprueba.

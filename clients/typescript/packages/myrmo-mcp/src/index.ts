@@ -438,6 +438,26 @@ function sendJson(res: ServerResponse, status: number, body: unknown) {
 async function serveHttp(port: number, host: string) {
   const hosts = allowedHosts(port);
   const url = hostedColonyUrl();
+  // What the colony says it is decides private mode, as in the stdio client. A private colony tells only callers with a
+  // key, and this server has none of its own: it asks with the first caller's key and remembers the answer for everyone.
+  // MYRMO_PRIVATE=1 still turns it on from the start. A caller without a key never gets private mode from a declaration.
+  let declared: ColonyDescription | undefined;
+  let asking: Promise<void> | undefined;
+  const learn = (key: string) =>
+    (asking ??= fetch(`${url.replace(/\/+$/, "")}/v1/version`, {
+      headers: { accept: "application/json", "x-myrmo-client": `myrmo-mcp/${VERSION}`, authorization: `Bearer ${key}` },
+      signal: AbortSignal.timeout(2000),
+    })
+      .then(async (r) => {
+        const said = r.ok ? clean(((await r.json()) as { colony?: unknown }).colony) : undefined;
+        if (said) declared = said;
+        else asking = undefined; // a wrong key or an older colony: ask again with the next caller
+      })
+      .catch(() => {
+        asking = undefined;
+      }));
+  const warned = privateMode(url, process.env, false, undefined, false).warning;
+  if (warned) console.error(`myrmo-mcp: ${warned}`);
   const http = createHttpServer(async (req, res) => {
     const path = (req.url ?? "/").split("?")[0];
     if (path === "/healthz") return sendJson(res, 200, { status: "ok", version: VERSION });
@@ -455,18 +475,24 @@ async function serveHttp(port: number, host: string) {
     if (forwarded) headers["x-forwarded-for"] = forwarded;
     const agent = req.headers["x-myrmo-agent"];
     if (typeof agent === "string") headers["x-myrmo-agent"] = agent;
+    // The caller's own key or none: never MYRMO_API_KEY or a key saved on this machine, which anyone who can reach
+    // this port would otherwise use.
+    const key = callerKey(req.headers.authorization);
+    if (key && !declared) await learn(key);
+    const privacy = privateMode(url, process.env, false, declared, Boolean(key));
+    const keepPersonal = declared?.keep_personal === true;
     const colony = new Colony({
       url,
       headers,
-      // The caller's own key or none: never MYRMO_API_KEY or a key saved on this machine, which anyone who can reach
-      // this port would otherwise use.
-      apiKey: callerKey(req.headers.authorization),
+      apiKey: key,
+      private: privacy.on,
+      keepPersonal,
       publish: "off",
       cacheTtlMs: 0,
       // The hosted server has no identity of its own: it forwards the header of whoever is calling.
       agentId: false,
     });
-    const server = createServer({ colony, publishMode: "off", minFailedAttempts, fillLocalEnvironment: false, hosted: true });
+    const server = createServer({ colony, publishMode: "off", minFailedAttempts, fillLocalEnvironment: false, hosted: true, privateColony: privacy.on, keepPersonal });
     // A web page can make a browser send requests to this port under a name it controls (DNS rebinding): only the
     // Host names this server is meant for are answered (MYRMO_MCP_ALLOWED_HOSTS).
     const transport = new StreamableHTTPServerTransport({
