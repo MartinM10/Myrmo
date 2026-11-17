@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.35.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.34.0...mcp-v0.35.0) (2026-11-17)
+
+
+### Features
+
+* **mcp:** doctor says, agent by agent, whether the work log records it; init --worklog turns it on for Claude Code too ([#42](https://github.com/MartinM10/Myrmo/issues/42)) ([2fa4f5f](https://github.com/MartinM10/Myrmo/commit/2fa4f5fbbaf974c81c81c19e920c0781594a4124))
+
 ## [0.34.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.33.0...mcp-v0.34.0) (2026-11-16)
 
 
