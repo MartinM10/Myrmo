@@ -84,6 +84,8 @@ let colony;
 let colonyUrl;
 /** The myrmo-mcp version the fake colony says it was released with; null answers 404 like an older colony. */
 let announced = null;
+/** What the fake colony says it is in /v1/version; when set, only callers with a key are told, like a private colony. */
+let declaredColony = null;
 
 before(async () => {
   colony = createServer(async (req, res) => {
@@ -93,6 +95,11 @@ before(async () => {
     const send = (status, data) => res.writeHead(status, { "content-type": "application/json" }).end(JSON.stringify(data));
     if (req.method === "GET" && req.url === `/v1/trails/by-fingerprint/${KNOWN_FP}`) return send(200, { fingerprint: KNOWN_FP, results: [result], notice: "untrusted" });
     if (req.method === "GET" && req.url.startsWith("/v1/trails/by-fingerprint/")) return send(404, { error: { code: "not_found", message: "none" } });
+    if (req.method === "GET" && req.url === "/v1/version" && declaredColony) {
+      return req.headers.authorization === "Bearer myk_callerkey_0000000000"
+        ? send(200, { server: "9.9.9", clients: {}, colony: declaredColony })
+        : send(401, { error: { code: "unauthorized", message: "This colony is private" } });
+    }
     if (req.method === "GET" && req.url === "/v1/version") return announced ? send(200, { server: "9.9.9", clients: { mcp: announced, plugin: "9.9.9" } }) : send(404, { error: { code: "not_found", message: "old colony" } });
     if (req.method === "POST" && req.url === "/v1/search" && JSON.parse(body || "{}").mode === "task") return send(200, { mode: "task", results: [factHit], notice: "untrusted" });
     if (req.method === "POST" && req.url === "/v1/search") return send(200, { fingerprint: "fp1_0000000000000000", results: [], notice: "untrusted" });
@@ -857,6 +864,72 @@ test("the hosted HTTP transport serves the same tools statelessly", async () => 
     await client.close();
   } finally {
     proc.kill();
+  }
+});
+
+/** The names of the tools the hosted server lists, for a caller with this key (or none). */
+async function hostedTools(port, key) {
+  const client = new Client({ name: "http-client", version: "1.0.0" });
+  const opts = key ? { requestInit: { headers: { authorization: `Bearer ${key}` } } } : undefined;
+  await client.connect(new StreamableHTTPClientTransport(new URL(`http://127.0.0.1:${port}/mcp`), opts));
+  const { tools } = await client.listTools();
+  const instructions = client.getInstructions() ?? "";
+  return { names: tools.map((t) => t.name), instructions, client };
+}
+
+test("the hosted server asks a private colony what the organisation knows when MYRMO_PRIVATE is set", async () => {
+  const { port, proc } = await hosted({ MYRMO_PRIVATE: "1" });
+  try {
+    const { names, instructions, client } = await hostedTools(port);
+    assert.ok(names.includes("myrmo_brief"), "myrmo_brief is offered");
+    assert.match(instructions, /WHEN A TASK STARTS[\s\S]*myrmo_brief/);
+    const answer = textOf(await client.callTool({ name: "myrmo_brief", arguments: { task: "Da de alta a una persona en LLDAP" } }));
+    assert.match(answer, /10\.40\.2\.17/, "the organisation's own addresses are shown");
+    await client.close();
+  } finally {
+    proc.kill();
+  }
+});
+
+test("the hosted server learns that the colony is private from what it declares to a caller with a key", async () => {
+  declaredColony = { profile: "organisation", keys_required: true };
+  const { port, proc } = await hosted();
+  try {
+    const anonymous = await hostedTools(port);
+    assert.ok(!anonymous.names.includes("myrmo_brief"), "a caller without a key is not told the colony is private");
+    await anonymous.client.close();
+    const keyed = await hostedTools(port, "myk_callerkey_0000000000");
+    assert.ok(keyed.names.includes("myrmo_brief"), "a caller with a key gets myrmo_brief");
+    await keyed.client.close();
+    const asked = requests.filter((r) => r.url === "/v1/version").at(-1);
+    assert.equal(asked.headers.authorization, "Bearer myk_callerkey_0000000000", "the colony is asked with the caller's own key");
+    const versionCalls = requests.filter((r) => r.url === "/v1/version").length;
+    const again = await hostedTools(port, "myk_callerkey_0000000000");
+    assert.ok(again.names.includes("myrmo_brief"));
+    await again.client.close();
+    assert.equal(requests.filter((r) => r.url === "/v1/version").length, versionCalls, "the answer is remembered");
+  } finally {
+    proc.kill();
+    declaredColony = null;
+  }
+});
+
+test("the hosted server offers no myrmo_brief for a colony that is not private, or for the public one", async () => {
+  const plain = await hosted();
+  try {
+    const { names, client } = await hostedTools(plain.port, "myk_callerkey_0000000000");
+    assert.ok(!names.includes("myrmo_brief"));
+    await client.close();
+  } finally {
+    plain.proc.kill();
+  }
+  const pub = await hosted({ MYRMO_URL: "https://myrmo.dev", MYRMO_PRIVATE: "1" });
+  try {
+    const { names, client } = await hostedTools(pub.port);
+    assert.ok(!names.includes("myrmo_brief"), "MYRMO_PRIVATE is ignored for the public colony");
+    await client.close();
+  } finally {
+    pub.proc.kill();
   }
 });
 

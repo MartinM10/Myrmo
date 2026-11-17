@@ -356,3 +356,11 @@ the caller sends one (`Authorization: Bearer`), never `MYRMO_API_KEY` or a key s
 for example `myrmo.dev`; by default `localhost`, `127.0.0.1` and `[::1]` on its port), so that a web page cannot reach
 it through DNS rebinding. Behind a reverse proxy that passes the caller's `Host` through, list the public name;
 `MYRMO_MCP_ALLOWED_HOSTS=*` turns the check off, for a proxy that checks it itself.
+
+In front of an organisation's private colony, the hosted server offers what a private colony adds (`myrmo_brief`, and
+the work log tools when the colony keeps one) to callers that send a key. It asks the colony what it is with the first
+caller's key, as the stdio server does at start, and remembers the answer; `MYRMO_PRIVATE=1` turns it on from the start
+for an older colony that does not say. A caller without a key gets the tools of a public colony. This is how a web chat
+such as Open WebUI, which connects to MCP servers over HTTP, reaches an organisation's procedures and facts: the chat's
+connection sends the key. Such a key reads the work log only if the colony enrolls it (`MYRMO_WORKLOG_PEOPLE`), and
+`myrmo_publish` only leaves a draft that a person approves.
