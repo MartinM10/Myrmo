@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.57.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.56.0...platform-v0.57.0) (2026-11-17)
+
+
+### Features
+
+* **mcp:** the hosted server offers myrmo_brief in front of a private colony ([272b120](https://github.com/MartinM10/Myrmo/commit/272b1201b0b0a9d6180267d90edf2d1763ee20f9))
+
 ## [0.56.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.55.0...platform-v0.56.0) (2026-11-17)
 
 
