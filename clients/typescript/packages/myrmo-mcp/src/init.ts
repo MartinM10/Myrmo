@@ -93,6 +93,17 @@ You can call myrmo_brief, myrmo_search, myrmo_report and myrmo_publish. The colo
 6. Keep internal tool, service, machine and command names, network addresses, policy ids, error codes and
    internal package names exactly as printed. Never include credentials, tokens, people's names, e-mail
    addresses or customer and business data: write a placeholder such as <token>.
+7. If the user asks to continue or resume something, or what the team is doing, call myrmo_matters, then
+   myrmo_matter for the one that fits, so you do not redo or undo what a colleague did. Matters come from
+   the team's work log, which hooks on each person's machine record by themselves: never write one with
+   myrmo_publish. If the user asks why their own work does not appear, or how to turn it on, suggest
+   \`npx myrmo-mcp@latest doctor\` (it says, agent by agent, whether it is recorded), then
+   \`npx myrmo-mcp@latest init --worklog\` and restarting the agent.
+8. If the user wants more say or privacy, tell them what they can choose: //privado (or //private) at the
+   start of a message records nothing; the file ~/.myrmo/worklog-paused pauses recording until it is
+   deleted; "Ask me first" on the colony's /team page keeps their matters theirs until they share one;
+   \`npx myrmo-mcp config publish ask\` (or off) shows every publication before it is sent; and
+   \`npx myrmo-mcp config\` lists the other settings.
 <!-- myrmo:end -->
 `;
 
@@ -243,7 +254,7 @@ export interface InitOptions {
   agentsMd?: string; // a markdown file to put the block in
   readOnly?: boolean; // the block for repositories where agents must not publish
   private?: boolean; // the rules and hooks for an organisation's private colony
-  worklog?: boolean; // also keep this person's work log from Cline (the hooks for it); Claude Code's plugin has its own switch
+  worklog?: boolean; // also keep this person's work log from Cline and Gemini CLI (their hooks) and Claude Code (MYRMO_WORKLOG=1)
   url?: string; // another colony to use, saved in the settings file with what goes with it
   key?: string; // that colony's access key
   keySource?: "argument" | "file" | "stdin"; // where the key came from: on the command line it is in the shell's history
@@ -365,7 +376,7 @@ export function mergeHooks(current: string | undefined, command: string): { text
  * which apply only to that colony), and for Antigravity installs the hook that looks errors up there.
  */
 /** The scripts the hooks are made of, copied together (scripts/copy-hooks.mjs puts them in dist/hooks). */
-export const HOOK_SCRIPTS = ["cline-hook.mjs", "antigravity-hook.mjs", "on-failure.mjs", "lookup.mjs", "worklog.mjs", "effort.mjs", "state.mjs", "redact.mjs", "packages.mjs"];
+export const HOOK_SCRIPTS = ["cline-hook.mjs", "gemini-hook.mjs", "antigravity-hook.mjs", "on-failure.mjs", "lookup.mjs", "worklog.mjs", "effort.mjs", "state.mjs", "redact.mjs", "packages.mjs"];
 
 /** The events Cline runs a hook for that the work log uses. Cline looks for an executable named after the event. */
 export const CLINE_HOOK_EVENTS = ["UserPromptSubmit", "PostToolUse", "TaskComplete", "TaskCancel"];
@@ -473,6 +484,84 @@ export function installClineHooks(opts: InitOptions, home: string, log: (l: stri
   if (kept.length) log(tx(`Cline: ${kept.join(", ")} in ${dir} are hooks of your own, left untouched; the work log will not see those events`, `Cline: ${kept.join(", ")} en ${dir} son hooks tuyos, no se han tocado; el registro de trabajo no verá esos eventos`));
 }
 
+/** The Gemini CLI events the work log uses, and the name its hooks carry in ~/.gemini/settings.json (how init finds its own). */
+export const GEMINI_HOOK_EVENTS = ["SessionStart", "BeforeAgent", "AfterTool", "AfterAgent", "SessionEnd"];
+export const GEMINI_HOOK_NAME = "myrmo-work-log";
+
+/** Whether Gemini CLI is (or was) used on this machine: it keeps its settings, history and sessions in ~/.gemini. */
+export function geminiInstalled(home: string): boolean {
+  return ["settings.json", "tmp", "history"].some((n) => existsSync(join(home, ".gemini", n)));
+}
+
+/**
+ * The command Gemini CLI runs for the work log. It runs it through bash, or PowerShell on Windows, with a sanitized
+ * environment: MYRMO_WORKLOG=1 is set in the command itself, and node is written as the absolute path that runs init.
+ */
+export function geminiCommand(node: string, script: string, platform: NodeJS.Platform = process.platform): string {
+  if (platform === "win32") {
+    const p = (v: string) => `'${v.replace(/'/g, "''")}'`;
+    return `$env:MYRMO_WORKLOG = '1'; & ${p(node)} ${p(script)}`;
+  }
+  const q = (v: string) => `'${v.replace(/'/g, `'\\''`)}'`;
+  return `MYRMO_WORKLOG=1 ${q(node)} ${q(script)}`;
+}
+
+/** Whether a hook definition of Gemini CLI's settings is the work log's (written by init). */
+const geminiMine = (definition: any) => Array.isArray(definition?.hooks) && definition.hooks.some((h: any) => h?.name === GEMINI_HOOK_NAME);
+
+/**
+ * Gemini CLI's settings with the work log's hooks in them: one definition per event, named GEMINI_HOOK_NAME, put in place of
+ * an earlier one of ours and next to the person's own, which are kept. `changed` is false when they were already there.
+ */
+export function mergeGeminiHooks(settings: Record<string, any>, command: string): { settings: Record<string, any>; changed: boolean } {
+  const hooks = settings.hooks && typeof settings.hooks === "object" && !Array.isArray(settings.hooks) ? { ...settings.hooks } : {};
+  let changed = false;
+  for (const event of GEMINI_HOOK_EVENTS) {
+    const current: any[] = Array.isArray(hooks[event]) ? hooks[event] : [];
+    const mine = {
+      hooks: [{ name: GEMINI_HOOK_NAME, type: "command", command, timeout: 15000, description: "Myrmo: the team's work log (myrmo-mcp init --worklog)" }],
+    };
+    const others = current.filter((d) => !geminiMine(d));
+    const next = [...others, mine];
+    if (JSON.stringify(next) !== JSON.stringify(current)) changed = true;
+    hooks[event] = next;
+  }
+  return { settings: { ...settings, hooks }, changed };
+}
+
+/** Installs the work log's hooks for Gemini CLI, or says how to. Only with --worklog; hooks of the person's own are kept. */
+export function installGeminiHooks(opts: InitOptions, home: string, log: (l: string) => void, wanted: (id: string) => boolean = () => true): void {
+  if (!opts.private || !wanted("gemini") || !(geminiInstalled(home) || opts.clients.includes("gemini"))) return;
+  if (!opts.worklog) {
+    log(tx("Gemini CLI: found. To keep your work log from Gemini CLI as well, run this again with --worklog (what the hooks do: https://myrmo.dev/docs)", "Gemini CLI: encontrado. Para guardar también tu registro de trabajo desde Gemini CLI, ejecuta esto otra vez con --worklog (qué hacen los hooks: https://myrmo.dev/docs)"));
+    return;
+  }
+  const file = join(home, ".gemini", "settings.json");
+  const scripts = join(home, ".myrmo", "hooks");
+  const source = opts.hooksSource ?? join(dirname(fileURLToPath(import.meta.url)), "hooks");
+  let settings: Record<string, any>;
+  try {
+    const text = existsSync(file) ? readFileSync(file, "utf8") : "";
+    settings = text.trim() ? JSON.parse(text) : {};
+    if (!settings || typeof settings !== "object" || Array.isArray(settings)) throw new Error("not an object");
+  } catch {
+    log(tx(`Gemini CLI: ${file} is not valid JSON, left untouched; the work log hooks were not installed`, `Gemini CLI: ${file} no es un JSON válido, no se ha tocado; los hooks del registro de trabajo no se han instalado`));
+    return;
+  }
+  const merged = mergeGeminiHooks(settings, geminiCommand(process.execPath, join(scripts, "gemini-hook.mjs")));
+  if (!opts.dryRun) {
+    mkdirSync(scripts, { recursive: true });
+    for (const name of HOOK_SCRIPTS) copyFileSync(join(source, name), join(scripts, name));
+    if (merged.changed) {
+      if (existsSync(file) && !existsSync(`${file}.before-myrmo-worklog`)) copyFileSync(file, `${file}.before-myrmo-worklog`);
+      mkdirSync(dirname(file), { recursive: true });
+      writeFileSync(file, JSON.stringify(merged.settings, null, 2) + "\n");
+    }
+  }
+  if (!merged.changed) log(tx(`Gemini CLI: the work log hooks are already in ${file}`, `Gemini CLI: los hooks del registro de trabajo ya están en ${file}`));
+  else log(tx(`Gemini CLI: ${opts.dryRun ? "would install" : "installed"} the work log hooks (${GEMINI_HOOK_EVENTS.join(", ")}) in ${file}; restart Gemini CLI`, `Gemini CLI: ${opts.dryRun ? "se instalarían" : "instalados"} los hooks del registro de trabajo (${GEMINI_HOOK_EVENTS.join(", ")}) en ${file}; reinicia Gemini CLI`));
+}
+
 /** This machine or a private network: where plain http does not carry a key across the internet. */
 export function nearbyHost(hostname: string): boolean {
   const h = hostname.toLowerCase().replace(/^\[|\]$/g, "");
@@ -514,6 +603,7 @@ function setUpColony(opts: InitOptions, home: string, log: (l: string) => void, 
   log(tx(`Colony: ${verb} save ${url}${what ? ` with ${what}` : ""} in the settings file; the key and the choices apply only to that colony`, `Colonia: ${opts.dryRun ? "se guardaría" : "guardada"} ${url}${what ? ` con ${what}` : ""} en el fichero de configuración; la clave y las elecciones solo se aplican a esa colonia`));
 
   installClineHooks(opts, home, log);
+  installGeminiHooks(opts, home, log, wanted);
   enableClaudeWorkLog(opts, home, log);
 
   // Antigravity has no plugin: copy the hook next to the settings and register it, so that after a failed command it
@@ -556,10 +646,11 @@ export function runInit(opts: InitOptions): { configured: string[]; skipped: str
   const verb = opts.dryRun ? "would" : "did";
   if (opts.url) setUpColony(opts, home, log, wanted);
   else if (opts.worklog) {
-    // `init --worklog` on a machine already pointed at its organisation's colony: only the Cline hooks are added.
+    // `init --worklog` on a machine already pointed at its organisation's colony: only the work log's hooks are added.
     const saved = readConfig().colony;
     if (saved?.url && (saved.private === true || Boolean(saved.api_key))) {
       installClineHooks({ ...opts, private: true }, home, log);
+      installGeminiHooks({ ...opts, private: true }, home, log, wanted);
       enableClaudeWorkLog({ ...opts, private: true }, home, log);
     }
     else log(tx("--worklog needs your organisation's colony: run init with --url and --key first", "--worklog necesita la colonia de tu organización: ejecuta antes init con --url y --key"));
