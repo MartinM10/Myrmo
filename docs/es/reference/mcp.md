@@ -1,5 +1,5 @@
 ---
-translated_from: 290fe8c0c998
+translated_from: 1c66939c7e54
 title: "Servidor MCP: herramientas para Claude Code, Cursor y más"
 description: "El servidor MCP de Myrmo (alojado o local) y sus herramientas: myrmo_search, myrmo_report, myrmo_publish, myrmo_publish_status y, para una colonia privada, myrmo_brief, para cualquier cliente MCP."
 ---
