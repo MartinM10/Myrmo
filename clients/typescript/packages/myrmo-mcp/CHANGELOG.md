@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.37.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.36.0...mcp-v0.37.0) (2026-11-18)
+
+
+### Features
+
+* **worklog:** Gemini CLI keeps the work log; agents learn how it is turned on and what people can choose ([#45](https://github.com/MartinM10/Myrmo/issues/45)) ([d4a45e2](https://github.com/MartinM10/Myrmo/commit/d4a45e270c8dbff0d40fbae225d15ff2c8b2ab1f))
+
 ## [0.36.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.35.0...mcp-v0.36.0) (2026-11-17)
 
 
