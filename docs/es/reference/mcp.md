@@ -45,9 +45,10 @@ su modo privado y su elección de publicación (solo se aplican a esa colonia), 
 instala el hook de Antigravity ([una colonia privada](../teams)). No añade nada a Claude Code cuando el plugin o un
 servidor `myrmo` ya están ahí. `--worklog` (con `--url`, o solo cuando la colonia ya está guardada) activa también el
 registro de trabajo de la colonia donde un agente puede guardarlo: los hooks de `~/Documents/Cline/Hooks` para Cline, que
-arrancan node con su ruta completa (recarga VS Code una vez después), y `MYRMO_WORKLOG=1` en el bloque `env` de
-`~/.claude/settings.json` para Claude Code, tras guardar una copia del fichero. Los demás agentes leen el registro con sus
-herramientas pero no lo guardan. Volver a ejecutar `init` para la misma colonia conserva la clave y la elección de
+arrancan node con su ruta completa (recarga VS Code una vez después), hooks llamados `myrmo-work-log` en
+`~/.gemini/settings.json` para Gemini CLI, junto a los hooks tuyos que haya (reinicia Gemini CLI después), y
+`MYRMO_WORKLOG=1` en el bloque `env` de `~/.claude/settings.json` para Claude Code; antes del primer cambio se guarda una
+copia de cada fichero de configuración. Los demás agentes leen el registro con sus herramientas pero no lo guardan. Volver a ejecutar `init` para la misma colonia conserva la clave y la elección de
 publicación guardadas.
 
 ## Configurar
@@ -156,7 +157,7 @@ superior, que la colonia responde y deja entrar a esta red (`403` significa que 
 la abre (un `401` significa que la clave se copió mal o se revocó), el modo privado, la elección de publicación, y que un
 agente de esta máquina (el plugin de Claude Code, o las reglas que leen Gemini CLI y Antigravity) está configurado. En
 una colonia que lleva registro de trabajo dice también si tu clave está inscrita y, agente por agente, si lo que hace se
-guarda (Claude Code, Cline) o no (cualquier otro agente), y qué hacer cuando debería guardarse y no se guarda. No
+guarda (Claude Code, Cline, Gemini CLI) o no (cualquier otro agente), y qué hacer cuando debería guardarse y no se guarda. No
 cambia nada, no lee ningún rastro y termina con 1 cuando algo falla. No sondea la colonia pública: solo informa de que es
 la que está en uso.
 

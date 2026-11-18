@@ -42,7 +42,10 @@ ${manualFixRule(true)}
 ${publishing}
 
 IF MYRMO FAILS
-If Myrmo is unreachable or returns an error, continue without it. Never block your task on it.`;
+If Myrmo is unreachable or returns an error, continue without it. Never block your task on it.
+
+THE WORK LOG AND THE USER'S CHOICES
+Matters come from hooks on each person's machine, never from myrmo_publish. If the user's work does not appear, suggest \`npx myrmo-mcp@latest doctor\`, then \`npx myrmo-mcp@latest init --worklog\` (Claude Code, Cline, Gemini CLI). For more say or privacy: //privado at the start of a message records nothing; the file ~/.myrmo/worklog-paused pauses recording; "Ask me first" on the colony's /team page keeps their matters theirs until they share one; \`npx myrmo-mcp config publish ask\` (or off) shows every publication first; \`npx myrmo-mcp config\` lists the rest.`;
 }
 
 /**

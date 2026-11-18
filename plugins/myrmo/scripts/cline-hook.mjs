@@ -44,10 +44,10 @@ export function promptOf(text) {
 
 const oneLine = (text, max) => String(text ?? "").replace(/\s+/g, " ").trim().slice(0, max);
 
-/** One short line for a tool call: its name and what it was asked to do. */
+/** One short line for a tool call: its name and what it was asked to do (Cline's and Gemini CLI's argument names). */
 export function toolLine(name, parameters) {
-  let p = parameters ?? {};
-  const target = p.commands ?? p.command ?? p.file_path ?? p.path ?? p.paths ?? p.pattern ?? p.query ?? p.url ?? p.description ?? "";
+  const p = parameters ?? {};
+  const target = p.commands ?? p.command ?? p.file_path ?? p.absolute_path ?? p.path ?? p.dir_path ?? p.paths ?? p.pattern ?? p.query ?? p.url ?? p.description ?? "";
   let text = typeof target === "string" ? target : JSON.stringify(target);
   try {
     const list = JSON.parse(text);

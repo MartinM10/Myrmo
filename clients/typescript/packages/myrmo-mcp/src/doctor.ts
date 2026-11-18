@@ -4,7 +4,7 @@
 
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { CLINE_HOOK_EVENTS, CLINE_MARK, claudeCodeSetUp, claudeWorkLogHook, clineHooksDir, clineInstalled, targets } from "./init.js";
+import { CLINE_HOOK_EVENTS, CLINE_MARK, GEMINI_HOOK_EVENTS, GEMINI_HOOK_NAME, claudeCodeSetUp, claudeWorkLogHook, clineHooksDir, clineInstalled, geminiInstalled, targets } from "./init.js";
 import { compareVersions, describeColony, VERSION, VERSION_SHAPE } from "./server.js";
 import { t } from "./i18n.js";
 
@@ -47,6 +47,11 @@ async function call(fetchImpl: typeof fetch, url: string, key?: string): Promise
     const cause = (err as { cause?: { code?: string } }).cause?.code ?? (err as Error).name;
     return { error: String(cause) };
   }
+}
+
+/** The node a Gemini CLI hook command starts, as init wrote it (the first quoted path); undefined for another shape. */
+export function geminiHookNode(command: string): string | undefined {
+  return /(?:MYRMO_WORKLOG=1|&)\s+'([^']+)'/.exec(command)?.[1];
 }
 
 /** The node a Cline hook file starts, as init wrote it; undefined when the file is not ours or has another shape. */
@@ -148,16 +153,55 @@ export async function workLogChecks(input: DoctorInput, fetchImpl: typeof fetch)
     }
   }
 
+  let geminiChecked = false;
+  if (geminiInstalled(input.home)) {
+    const file = join(input.home, ".gemini", "settings.json");
+    let settings: any = {};
+    try {
+      settings = JSON.parse(readFileSync(file, "utf8"));
+    } catch {
+      /* missing or damaged: no hooks */
+    }
+    const commands = new Map<string, string>();
+    for (const event of GEMINI_HOOK_EVENTS) {
+      const defs: any[] = Array.isArray(settings?.hooks?.[event]) ? settings.hooks[event] : [];
+      const hook = defs.flatMap((d) => (Array.isArray(d?.hooks) ? d.hooks : [])).find((h: any) => h?.name === GEMINI_HOOK_NAME);
+      if (typeof hook?.command === "string") commands.set(event, hook.command);
+    }
+    const uses = /myrmo/i.test(JSON.stringify(settings?.mcpServers ?? {}));
+    if (commands.size || uses) {
+      geminiChecked = true;
+      const missing = GEMINI_HOOK_EVENTS.filter((e) => !commands.has(e));
+      const broken = [...commands].filter(([, c]) => {
+        const node = geminiHookNode(c);
+        return node !== undefined && !existsSync(node);
+      }).map(([e]) => e);
+      const fix = t("npx myrmo-mcp@latest init --worklog   then restart Gemini CLI", "npx myrmo-mcp@latest init --worklog   y reinicia Gemini CLI");
+      if (missing.length === GEMINI_HOOK_EVENTS.length) {
+        checks.push({ level: "warn", name: `${name}, Gemini CLI`, detail: t("not recorded: the hooks are not installed", "no se registra: los hooks no están instalados"), fix });
+      } else if (broken.length) {
+        checks.push({ level: "warn", name: `${name}, Gemini CLI`, detail: t(`not recorded: the hooks start a node that no longer exists (${broken.join(", ")})`, `no se registra: los hooks arrancan un node que ya no existe (${broken.join(", ")})`), fix });
+      } else if (missing.length) {
+        checks.push({ level: "warn", name: `${name}, Gemini CLI`, detail: t(`incomplete: ${missing.join(", ")} missing`, `incompleto: falta ${missing.join(", ")}`), fix });
+      } else if (settings?.hooksConfig?.enabled === false) {
+        checks.push({ level: "warn", name: `${name}, Gemini CLI`, detail: t("not recorded: hooks are turned off in Gemini CLI (hooksConfig.enabled: false)", "no se registra: los hooks están desactivados en Gemini CLI (hooksConfig.enabled: false)"), fix: t("Remove hooksConfig.enabled: false from ~/.gemini/settings.json, or run /hooks enable-all", "Quita hooksConfig.enabled: false de ~/.gemini/settings.json, o ejecuta /hooks enable-all") });
+      } else {
+        capturing++;
+        checks.push({ level: "ok", name: `${name}, Gemini CLI`, detail: t("recorded (hooks in place; restart Gemini CLI once after installing them)", "se registra (hooks instalados; reinicia Gemini CLI una vez tras instalarlos)") });
+      }
+    }
+  }
+
   // Everything else Myrmo can set up talks to the colony through its tools, but has no hook that records the work.
   const others = targets(input.home, platform)
-    .filter((c) => c.id !== "claude-desktop" && existsSync(c.file) && /myrmo/i.test(readFileSync(c.file, "utf8")))
+    .filter((c) => c.id !== "claude-desktop" && !(geminiChecked && c.id === "gemini") && existsSync(c.file) && /myrmo/i.test(readFileSync(c.file, "utf8")))
     .map((c) => c.name);
   if (others.length) {
     checks.push({
       level: capturing ? "ok" : "warn",
       name: t(`${name}, other agents`, `${name}, otros agentes`),
       detail: t(`${others.join(", ")}: not recorded (Myrmo has no work log hook for them yet); their agents can still read it with myrmo_matters`, `${others.join(", ")}: no se registra (Myrmo aún no tiene hook del registro para ellos); sus agentes sí pueden leerlo con myrmo_matters`),
-      ...(capturing ? {} : { fix: t("Use Claude Code or Cline for the work you want in the work log", "Usa Claude Code o Cline para el trabajo que quieras en el registro") }),
+      ...(capturing ? {} : { fix: t("Use Claude Code, Cline or Gemini CLI for the work you want in the work log", "Usa Claude Code, Cline o Gemini CLI para el trabajo que quieras en el registro") }),
     });
   }
   return checks;
