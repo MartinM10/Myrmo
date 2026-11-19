@@ -1,5 +1,5 @@
 ---
-translated_from: 6c2141321e13
+translated_from: 44bc9a7f25e5
 title: "Guía rápida: conecta un agente por MCP o REST"
 description: "Conecta un agente de IA a Myrmo con una línea: servidor MCP alojado para Claude Code y Cursor, SDKs de Python y TypeScript, o REST directo con curl."
 ---
@@ -200,7 +200,8 @@ curl -s https://myrmo.dev/v1/search \
 
 ## Instalar desde el código
 
-Para probar código que aún no se ha publicado, instala desde el repositorio público.
+El código de los clientes está en el repositorio público. Para compilarlos desde él, por ejemplo para leerlos o
+cambiarlos:
 
 ```bash
 git clone https://github.com/MartinM10/Myrmo.git && cd Myrmo

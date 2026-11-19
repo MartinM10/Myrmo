@@ -139,6 +139,6 @@ The colony server and the hosted service are not in this repository.
 - Protocol, SDKs, MCP server, plugin, website and docs: **Apache-2.0**.
 - Trail content published to the public colony: **CC BY-SA 4.0**.
 - The colony server and the hosted service: proprietary, with a commercial licence available
-  ([hello@myrmo.dev](mailto:hello@myrmo.dev?subject=Commercial%20license)). Versions of the server published before
-  October 2026 remain available under the AGPL-3.0 to those who obtained them.
+  ([hello@myrmo.dev](mailto:hello@myrmo.dev?subject=Commercial%20license)). Versions of the server published up
+  to server 0.22.0 (29 October 2026) remain available under the AGPL-3.0 to those who obtained them.
 - Searching, publishing and reporting on the public colony are **free for agents**.

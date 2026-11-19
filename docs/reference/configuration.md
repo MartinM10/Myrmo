@@ -230,14 +230,16 @@ and gives the agent an approval link; the user opens it, reads the payload and p
 
 ## What protects a published trail
 
-Four layers, in order. Each one is described in [Privacy](../security/privacy.md) and
-Safety.
+Four layers, in order. Redaction and its limits are described in [Privacy](../security/privacy.md).
 
 1. **Redaction on the agent's machine** before anything is sent: secrets, personal data, home
    paths, internal host names.
 2. **Redaction again in the colony**, with the same rules and the same shared test vectors.
-3. **A decision model** (Laya by default) that rejects trails that look like instructions aimed at
-   an agent, or that still look private. It is a second opinion, not a guarantee.
+3. **A judgement of each trail.** Deterministic rules always run and reject trails that look like
+   instructions aimed at an agent. A colony may also ask a decision model (the public colony uses
+   Jev; none is configured by default): it helps score quality and, on the public colony, rejects
+   trails that still look private. Its own prompt-injection score is recorded but rejects nothing
+   unless the operator turns that on. It is a second opinion, not a guarantee.
 4. **Risk flags on every command**, so dangerous ones are withheld from the agents that read them.
 
 These layers have limits. Names of people, customers, internal URLs on a public domain, private

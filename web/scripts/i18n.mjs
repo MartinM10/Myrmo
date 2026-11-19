@@ -7,7 +7,9 @@
 //
 // es.json maps each page to [english, spanish] pairs, applied in order, every occurrence. A pair should carry enough
 // markup around its text (`>Docs</a>`) to match only where it is meant to. Links are rewritten so the Spanish pages
-// work from /es/: assets and the docs from the site root, the other pages to their Spanish version.
+// work from /es/: assets from the site root, the docs to their Spanish pages under /docs/es/ (the English page where
+// there is no Spanish one), the other pages to their Spanish version. An anchor in a docs link is not translated: the
+// Spanish pair in es.json must carry the Spanish page's anchor.
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -18,9 +20,19 @@ const translations = JSON.parse(readFileSync(join(web, "i18n", "es.json"), "utf8
 const SITE = "https://myrmo.dev";
 const PAGES = Object.keys(translations.pages);
 
+// A docs page in Spanish when docs/es/ has it, the English one otherwise. `path` is what follows docs/ in the link.
+const docsDir = join(web, "..", "docs");
+function docsLink(path) {
+  const [page, hash] = path.split("#");
+  const bare = page.replace(/\/$/, "");
+  const spanish = [bare ? `${bare}.md` : "index.md", join(bare, "index.md")].some((md) => existsSync(join(docsDir, "es", md)));
+  return `/docs/${spanish ? "es/" : ""}${page}${hash === undefined ? "" : `#${hash}`}`;
+}
+
 function links(html) {
   return html
-    .replace(/((?:href|src|poster)=")(assets\/|llms\.txt|docs\/?)/g, "$1/$2")
+    .replace(/((?:href|src|poster)=")(assets\/|llms\.txt)/g, "$1/$2")
+    .replace(/href="\/?docs(?:\/([^"]*))?"/g, (_, path = "") => `href="${docsLink(path)}"`)
     .replace(/href="index\.html(#[^"]*)?"/g, (_, hash = "") => `href="/es/${hash}"`)
     .replace(new RegExp(`href="(${PAGES.filter((p) => p !== "index.html").map((p) => p.replace(".", "\\.")).join("|")})(#[^"]*)?"`, "g"),
       (_, page, hash = "") => `href="/es/${page}${hash}"`)

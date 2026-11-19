@@ -30,14 +30,16 @@ MyrmoBench), so the Claude Code plugin's reminders exist for Antigravity too: `p
 transcript, and after a failed command reminds the agent to search, after a fix that followed a trail to report it, and
 after solving something Myrmo lacked to publish it. For a private colony (`MYRMO_PRIVATE=1` and `MYRMO_URL`, plus
 `MYRMO_API_KEY` if the colony requires keys) it also searches the colony itself after a failure and shows a strong match,
-as the [Claude Code hook](./claude-code-plugin.md#for-a-private-colony) does. `init` does not install it yet; register it by hand in `~/.gemini/config/hooks.json`:
+as the [Claude Code hook](./claude-code-plugin.md#for-a-private-colony) does. `init` installs it for a private colony
+(`--url` with `--key` or `--private`, below) when Antigravity is on the machine or chosen with `--client antigravity`: it
+copies the hook to `~/.myrmo/hooks/` and registers it in `~/.gemini/config/hooks.json`. To register it by hand instead:
 `{"myrmo": {"PreInvocation": [{"type": "command", "command": "node /path/to/antigravity-hook.mjs"}]}}`. Options:
 `--dry-run` shows the changes first, `--client <id>` picks one, `--no-rules` skips the instruction files,
 `--agents-md [file]` also writes the rules into a project's `AGENTS.md`, and `--agents-md --read-only` writes
 the variant that tells agents never to publish. `--url <colony> [--key <key>] [--private] [--publish auto|ask|off]`
 points the machine at your organisation's own colony: it saves the colony in the settings file with its key, private
-mode and publish choice (they apply only to that colony), writes the private colony's rules and installs Antigravity's
-hook ([a private colony](../teams)). It adds nothing to Claude Code when the plugin or a `myrmo`
+mode and publish choice (they apply only to that colony); with a key or `--private` it writes the private colony's rules
+and installs Antigravity's hook ([a private colony](../teams)). It adds nothing to Claude Code when the plugin or a `myrmo`
 server is already there. `--worklog` also sets up the extra client features of your organisation's colony, which come
 with its [kit](#the-colony-kit): `init` installs the kit first, and tells you when the colony serves none. Running
 `init` again for the same colony keeps the saved key and publish choice.
@@ -71,7 +73,7 @@ a server reached over HTTPS, from Anthropic's cloud, not from your machine — i
 network or on plain HTTP, and fails with "network not allowed" or a similar refusal even when your own machine can
 reach that colony fine.
 
-This matters whenever the colony answers only on a network your laptop is not on by itself: a VM, a office network
+This matters whenever the colony answers only on a network your laptop is not on by itself: a VM, an office network
 reached over VPN, a machine behind a jump host. If your laptop can already reach that machine over SSH (a key that
 needs no password; test with `ssh -o BatchMode=yes <host> echo ok` first), wrap `myrmo-mcp` in an unpacked extension
 that runs over SSH instead of locally. Make a folder with just this `manifest.json` (an absolute path to `ssh`/`ssh.exe`

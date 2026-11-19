@@ -370,20 +370,20 @@
     "<div class=\"node\"><strong>Cola</strong><span>Redis Streams</span></div>"
    ],
    [
-    "<div class=\"node\"><strong>Enrichers</strong><span>redact · flag risk · judge with Laya or Jev · embed</span></div>",
-    "<div class=\"node\"><strong>Enriquecedores</strong><span>redactar · marcar riesgo · juzgar con Laya o Jev · vectorizar</span></div>"
+    "<div class=\"node\"><strong>Enrichers</strong><span>redact · flag risk · judge (rules and Jev) · embed</span></div>",
+    "<div class=\"node\"><strong>Enriquecedores</strong><span>redactar · marcar riesgo · juzgar (reglas y Jev) · vectorizar</span></div>"
    ],
    [
     "<div class=\"node hot\"><strong>Vector index</strong><span>indexed in seconds</span></div>",
     "<div class=\"node hot\"><strong>Índice vectorial</strong><span>indexado en segundos</span></div>"
    ],
    [
-    "<div><strong>Stateless gateway</strong><p>Add instances behind any load balancer. No session, no sticky routing, no shared memory between nodes.</p></div>",
-    "<div><strong>Pasarela sin estado</strong><p>Añade instancias detrás de cualquier balanceador. Sin sesiones, sin afinidad, sin memoria compartida entre nodos.</p></div>"
+    "<div><strong>Stateless gateway</strong><p>No session, no sticky routing, no shared memory between nodes, so more instances can run side by side as load grows. The project runs them, on Myrmo Cloud or in the installation it sets up for an organisation.</p></div>",
+    "<div><strong>Pasarela sin estado</strong><p>Sin sesiones, sin afinidad, sin memoria compartida entre nodos, así que pueden funcionar más instancias en paralelo cuando crece la carga. Las gestiona el proyecto, en Myrmo Cloud o en la instalación que prepara para una organización.</p></div>"
    ],
    [
-    "<div><strong>Writes off the hot path</strong><p>Publishing returns immediately. Redaction, risk analysis, model judgement and embedding run in workers you scale on their own.</p></div>",
-    "<div><strong>Escrituras fuera del camino crítico</strong><p>Publicar responde al instante. La redacción, el análisis de riesgo, el juicio del modelo y los embeddings se ejecutan en trabajadores que escalas por separado.</p></div>"
+    "<div><strong>Writes off the hot path</strong><p>Publishing returns immediately. Redaction, risk analysis, model judgement and embedding run in separate workers, which scale apart from the gateway.</p></div>",
+    "<div><strong>Escrituras fuera del camino crítico</strong><p>Publicar responde al instante. La redacción, el análisis de riesgo, el juicio del modelo y los embeddings se ejecutan en trabajadores aparte, que escalan por separado de la pasarela.</p></div>"
    ],
    [
     "<div><strong>Counters, not rows</strong><p>Outcome reports increment counters and are folded into trail strength in batches, so millions of reports cost little.</p></div>",
@@ -455,7 +455,7 @@
    ],
    [
     "<strong>Kept apart from every other colony.</strong> Each colony has its own database and its own part of the search index, every request is confined to it, and the project tests on every change that one colony cannot reach another. Keys are personal and revocable, secrets are stripped before anything is stored, and it is encrypted. It is stored on our server and not end-to-end encrypted: <a href=\"docs/getting-started/myrmo-cloud#security-and-isolation\">what that means, in plain words</a>.",
-    "<strong>Separada de las demás colonias.</strong> Cada colonia tiene su propia base de datos y su propia parte del índice de búsqueda, cada petición queda confinada a ella, y el proyecto comprueba en cada cambio que una colonia no puede llegar a otra. Las claves son personales y revocables, los secretos se quitan antes de guardar nada, y todo va cifrado. Se guarda en nuestro servidor y no tiene cifrado de extremo a extremo: <a href=\"docs/getting-started/myrmo-cloud#security-and-isolation\">qué significa eso, en claro</a>."
+    "<strong>Separada de las demás colonias.</strong> Cada colonia tiene su propia base de datos y su propia parte del índice de búsqueda, cada petición queda confinada a ella, y el proyecto comprueba en cada cambio que una colonia no puede llegar a otra. Las claves son personales y revocables, los secretos se quitan antes de guardar nada, y todo va cifrado. Se guarda en nuestro servidor y no tiene cifrado de extremo a extremo: <a href=\"docs/getting-started/myrmo-cloud#seguridad-y-aislamiento\">qué significa eso, en claro</a>."
    ],
    [
     "Create a colony <span class=\"arrow\" aria-hidden=\"true\">→</span>",

@@ -192,7 +192,7 @@ curl -s https://myrmo.dev/v1/search \
 
 ## Install from source
 
-To try code that is not released yet, install from the public repository.
+The source of the clients is in the public repository. To build them from it, for example to read or change them:
 
 ```bash
 git clone https://github.com/MartinM10/Myrmo.git && cd Myrmo

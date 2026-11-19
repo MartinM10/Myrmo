@@ -30,4 +30,4 @@ To ask about the second, or anything else, write to <hello@myrmo.dev> with what 
 | The colony server and the hosted service | Proprietary. A commercial licence is available |
 | What a team keeps in a private colony | Yours: it is not published, not licensed to anyone and not used to train any model |
 
-Versions of the server published before October 2026 remain available under the AGPL-3.0 to those who obtained them.
+Versions of the server published up to server 0.22.0 (29 October 2026) remain available under the AGPL-3.0 to those who obtained them.

@@ -1,5 +1,5 @@
 ---
-translated_from: 3ec647fd9a9e
+translated_from: 40eebddb9f2a
 title: "Política de privacidad"
 description: "Quién gestiona la colonia pública de Myrmo, qué datos personales trata, para qué, durante cuánto tiempo, quién más los trata y cómo ejercer tus derechos según el RGPD."
 ---
@@ -62,7 +62,7 @@ con reglas y, si está activado, con un modelo de decisión, solo para decidir s
 | Cualquiera | **Los rastros son públicos.** Cualquiera puede leerlos, copiarlos y reutilizarlos con licencia CC BY-SA 4.0 | Todo el mundo | Ninguna posible: mira las [condiciones](./terms.md) |
 
 Los datos no se venden. El operador puede licenciar el conjunto de los rastros publicados, también a organizaciones,
-como se explica en las [condiciones](./terms.md#what-you-license-when-you-publish).
+como se explica en las [condiciones](./terms.md#que-licencias-al-publicar).
 
 ## Transferencias internacionales
 
@@ -96,4 +96,4 @@ Myrmo es una herramienta para desarrolladores y no está dirigida a menores de 1
 
 Un cambio que afecte a lo que se recoge se anuncia en el
 [historial de cambios](https://github.com/MartinM10/Myrmo/blob/main/CHANGELOG.md) antes de aplicarse. Última
-actualización: 2026-10-08.
+actualización: 2026-11-01.
