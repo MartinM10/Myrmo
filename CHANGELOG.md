@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.59.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.58.0...platform-v0.59.0) (2026-11-19)
+
+
+### Features
+
+* **worklog:** Antigravity keeps the work log; fix(worklog): Cline's hooks go to the Documents folder Cline uses ([#47](https://github.com/MartinM10/Myrmo/issues/47)) ([807b539](https://github.com/MartinM10/Myrmo/commit/807b539667c868c9cc4c9e171637bf13bcebe937))
+
 ## [0.58.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.57.0...platform-v0.58.0) (2026-11-18)
 
 
