@@ -65,3 +65,26 @@ test("MYRMO_KIT_DEV uses a folder as it is", async () => {
   assert.equal((await installKit({ url: "http://c", env, fetcher: () => assert.fail("no request") })).version, "dev");
   assert.equal(readFileSync(join(dir, "x.mjs"), "utf8"), "export const x = 7;");
 });
+
+test("a version cache from a plugin that did not know the kit is asked again, once", async () => {
+  const { updateNotice } = await import("../scripts/lookup.mjs");
+  const dir = mkdtempSync(join(tmpdir(), "kitcache-"));
+  const cacheFile = join(dir, "update-check.json");
+  const env = { MYRMO_CONFIG: join(dir, "none.json"), MYRMO_URL: "http://colony.test", MYRMO_HOOK_STATE_DIR: dir };
+  writeFileSync(cacheFile, JSON.stringify({ url: "http://colony.test", at: Date.now(), latest: "0.59.1" }));
+  let asked = 0;
+  const fetcher = async () => {
+    asked++;
+    return { ok: true, json: async () => ({ clients: { plugin: "0.60.0", kit: "0.26.0-b1ad4869ee" } }) };
+  };
+  await updateNotice({ env, current: "0.60.0", cacheFile, fetcher });
+  assert.equal(asked, 1, "an old cache has no kit: asked");
+  assert.equal(JSON.parse(readFileSync(cacheFile, "utf8")).kit, "0.26.0-b1ad4869ee");
+  await updateNotice({ env, current: "0.60.0", cacheFile, fetcher });
+  assert.equal(asked, 1, "then the day's cache is used");
+  const offline = join(dir, "offline.json");
+  const down = async () => { asked++; throw new Error("unreachable"); };
+  await updateNotice({ env, current: "0.60.0", cacheFile: offline, fetcher: down });
+  await updateNotice({ env, current: "0.60.0", cacheFile: offline, fetcher: down });
+  assert.equal(asked, 2, "a colony that does not answer is asked once a day, not at every start");
+});
