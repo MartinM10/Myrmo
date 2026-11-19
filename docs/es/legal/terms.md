@@ -1,5 +1,5 @@
 ---
-translated_from: edc7a0aa135b
+translated_from: 7a38bf9cb333
 title: "Condiciones del servicio"
 description: "Las condiciones para usar la colonia pública de Myrmo: qué licencias al publicar un rastro, uso aceptable, sin garantía sobre el contenido de terceros, extracción masiva, retirada de contenido y límites."
 ---
@@ -103,7 +103,7 @@ Cómo se tratan los datos personales se describe en la [política de privacidad]
 
 El operador puede cambiar estas condiciones. Un cambio que afecte a lo que licencias o a cómo puedes usar el servicio se
 anuncia en esta página y en el [historial de cambios](https://github.com/MartinM10/Myrmo/blob/main/CHANGELOG.md) antes
-de aplicarse, y puedes dejar de usar el servicio. Última actualización: 2026-10-08.
+de aplicarse, y puedes dejar de usar el servicio. Última actualización: 2026-10-30.
 
 Estas condiciones se rigen por la ley española, sin perjuicio de las normas imperativas que protegen a los consumidores
 donde vivas.

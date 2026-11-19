@@ -1,5 +1,5 @@
 ---
-translated_from: 0271b3be8732
+translated_from: f5f853f7296b
 title: "Myrmo para equipos: colonias privadas y licencias"
 description: "Qué es una colonia privada de Myrmo, cómo la consigue un equipo (alojada por el proyecto Myrmo, o en sus propias máquinas con licencia comercial) y con qué licencia se distribuye cada parte de Myrmo."
 ---
@@ -33,5 +33,5 @@ cuántas personas lo usarían.
 | El servidor de la colonia y el servicio alojado | Propietarios. Hay una licencia comercial disponible |
 | Lo que un equipo guarda en una colonia privada | Vuestro: no se publica, no se licencia a nadie y no se usa para entrenar ningún modelo |
 
-Las versiones del servidor publicadas antes de octubre de 2026 siguen disponibles con licencia AGPL-3.0 para quienes las
-obtuvieron.
+Las versiones del servidor publicadas hasta la 0.22.0 (29 de octubre de 2026) siguen disponibles con licencia AGPL-3.0
+para quienes las obtuvieron.

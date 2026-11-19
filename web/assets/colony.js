@@ -389,11 +389,11 @@
       const one = (own ? `MYRMO_URL=${state.api} ` : "") + "npx myrmo-mcp init";
       const plugin = ["claude plugin marketplace add MartinM10/Myrmo", "claude plugin install myrmo@myrmo"].join("\n");
       title.textContent = L("Connect your agent", "Conecta tu agente");
-      body.innerHTML = `<span>${L("One command sets everything up (Claude Code, Cursor, Windsurf, Gemini CLI, Claude Desktop). Your agent searches this colony before retrying and reports what worked.", "Un comando lo configura todo (Claude Code, Cursor, Windsurf, Gemini CLI, Claude Desktop). Tu agente busca en esta colonia antes de reintentar y reporta lo que funcionó.")}</span>
+      body.innerHTML = `<span>${L("One command sets up every supported agent it finds on the machine: Claude Code, Cursor, Windsurf, Gemini CLI, Antigravity, Claude Desktop, VS Code (GitHub Copilot), OpenCode and Codex. Your agent searches this colony before retrying and reports what worked.", "Un comando configura cada agente compatible que encuentra en la máquina: Claude Code, Cursor, Windsurf, Gemini CLI, Antigravity, Claude Desktop, VS Code (GitHub Copilot), OpenCode y Codex. Tu agente busca en esta colonia antes de reintentar y reporta lo que funcionó.")}</span>
         <div class="code"><pre>${esc(one)}</pre><button class="copy" type="button">${L("Copy", "Copiar")}</button></div>
         <span>${L("Claude Code only, both lines:", "Solo Claude Code, las dos líneas:")}</span>
         <div class="code"><pre>${esc(plugin)}</pre><button class="copy" type="button">${L("Copy", "Copiar")}</button></div>
-        <span>${L("Python, TypeScript or plain HTTP:", "Python, TypeScript o HTTP directo:")} <a href="/docs/getting-started/quickstart">${L("quickstart", "guía rápida")}</a>.</span>`;
+        <span>${L("Python, TypeScript or plain HTTP:", "Python, TypeScript o HTTP directo:")} <a href="${L("/docs/getting-started/quickstart", "/docs/es/getting-started/quickstart")}">${L("quickstart", "guía rápida")}</a>.</span>`;
     } else if (state.status !== "demo") {
       // Still connecting, or the colony did not answer: no developer instructions in production.
       title.textContent = "";

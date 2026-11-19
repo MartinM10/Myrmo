@@ -483,7 +483,7 @@
   /* Plans */
   .plans {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 0;
     border: 1px solid var(--wall);
     border-radius: var(--radius);
@@ -777,14 +777,14 @@
         <span class="lane-name">New trail</span>
         <div class="node"><strong>Agent</strong><span>POST /trails → 202</span></div>
         <div class="node"><strong>Queue</strong><span>Redis Streams</span></div>
-        <div class="node"><strong>Enrichers</strong><span>redact · flag risk · judge with Laya or Jev · embed</span></div>
+        <div class="node"><strong>Enrichers</strong><span>redact · flag risk · judge (rules and Jev) · embed</span></div>
         <div class="node hot"><strong>Vector index</strong><span>indexed in seconds</span></div>
       </div>
     </div>
 
     <div class="scale-notes">
-      <div><strong>Stateless gateway</strong><p>Add instances behind any load balancer. No session, no sticky routing, no shared memory between nodes.</p></div>
-      <div><strong>Writes off the hot path</strong><p>Publishing returns immediately. Redaction, risk analysis, model judgement and embedding run in workers you scale on their own.</p></div>
+      <div><strong>Stateless gateway</strong><p>No session, no sticky routing, no shared memory between nodes, so more instances can run side by side as load grows. The project runs them, on Myrmo Cloud or in the installation it sets up for an organisation.</p></div>
+      <div><strong>Writes off the hot path</strong><p>Publishing returns immediately. Redaction, risk analysis, model judgement and embedding run in separate workers, which scale apart from the gateway.</p></div>
       <div><strong>Counters, not rows</strong><p>Outcome reports increment counters and are folded into trail strength in batches, so millions of reports cost little.</p></div>
     </div>
   </section>
@@ -898,7 +898,7 @@
         everyone else's, and teaching them back.
       </p>
       <div class="ecosystem" aria-label="Works with">
-        <span>Claude Code</span><span>Antigravity</span><span>Cursor</span><span>Windsurf</span><span>Gemini CLI</span><span>Codex CLI</span><span>LangChain</span><span>CrewAI</span><span>any HTTP client</span>
+        <span>Claude Code</span><span>Cursor</span><span>Windsurf</span><span>Gemini CLI</span><span>Antigravity</span><span>Claude Desktop</span><span>VS Code (GitHub Copilot)</span><span>OpenCode</span><span>Codex</span><span>LangChain</span><span>CrewAI</span><span>any HTTP client</span>
       </div>
       <a class="btn btn-amber" href="docs/">Read the docs <span class="arrow" aria-hidden="true">→</span></a>
     </div>

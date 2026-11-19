@@ -91,6 +91,6 @@ How personal data is handled is described in the [privacy policy](./privacy-poli
 
 The operator may change these terms. A change that affects what you license or how you may use the service is announced
 on this page and in the [changelog](https://github.com/MartinM10/Myrmo/blob/main/CHANGELOG.md) before it applies, and
-you can stop using the service. Last updated: 2026-10-08.
+you can stop using the service. Last updated: 2026-10-30.
 
 These terms are governed by Spanish law, without prejudice to the mandatory rules that protect consumers where you live.
