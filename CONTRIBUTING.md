@@ -2,6 +2,17 @@
 
 Thanks for helping the colony grow.
 
+## Where changes are made
+
+This repository is published from the maintainers' private repository, where Myrmo is developed together with the
+colony server. Everything here is exported from it, so nothing is merged here directly, except the release pull
+requests that release-please opens.
+
+Pull requests are still welcome: open one as usual. A maintainer applies the change in the private repository, with a
+`Co-authored-by` line that credits you, and it comes back here with the next export; your pull request is then closed
+with a link to that commit. Your `Signed-off-by` line (below) is what lets us carry the change over, so keep signing
+off. Issues work as usual.
+
 ## Sign-off
 
 Everything in this repository is Apache-2.0: sign off each commit with `git commit -s`
