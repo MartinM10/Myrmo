@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.60.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.59.1...platform-v0.60.0) (2026-11-19)
+
+
+### Features
+
+* **plugin:** an organisation's colony serves its own client features as a signed kit, which the plugin and myrmo-mcp install ([#54](https://github.com/MartinM10/Myrmo/issues/54)) ([52db4db](https://github.com/MartinM10/Myrmo/commit/52db4db45e870f8d9002ff54b4990121c4e54c95))
+
+
+### Bug fixes
+
+* **plugin:** after an update the plugin asks the colony for its kit at once, not after the day's cache runs out ([#55](https://github.com/MartinM10/Myrmo/issues/55)) ([5673023](https://github.com/MartinM10/Myrmo/commit/56730239ba2baee597c9595954e60b52f75116e8))
+
+
+### Documentation
+
+* CONTRIBUTING says the public repository is exported and how a pull request there is taken in ([#51](https://github.com/MartinM10/Myrmo/issues/51)) ([8cc3197](https://github.com/MartinM10/Myrmo/commit/8cc319797117c5d60a2e9144e5423f0fab5909bb))
+
 ## [0.59.1](https://github.com/MartinM10/Myrmo/compare/platform-v0.59.0...platform-v0.59.1) (2026-11-19)
 
 
