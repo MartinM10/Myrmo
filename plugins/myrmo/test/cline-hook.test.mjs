@@ -87,3 +87,38 @@ test("TaskCancel drops what was kept", async () => {
   await handle(base("TaskCancel"), deps);
   assert.equal(readdirSync(dir).filter((f) => f.endsWith(".json")).length, 0);
 });
+
+test("the installation's version is read from version.txt, and the plugin wins when present", async () => {
+  const { writeFileSync } = await import("node:fs");
+  const versionFile = join(fresh(), "version.txt");
+  writeFileSync(versionFile, "0.37.0\n");
+  const { installVersion, pluginVersion, clientIdentity } = await import("../scripts/lookup.mjs");
+  // The installation's version is what init writes next to the hooks; the hooks send it as myrmo-mcp/<version>
+  // when there is no Claude Code plugin (the case for Cline/Gemini/Antigravity).
+  assert.equal(installVersion(versionFile), "0.37.0");
+  assert.equal(installVersion(join(fresh(), "nope.txt")), null, "missing file -> null");
+  // Inside the repository the plugin manifest exists, so clientIdentity prefers it (the Claude Code case).
+  const id = clientIdentity();
+  if (pluginVersion()) {
+    assert.equal(id?.name, "myrmo-plugin");
+    assert.equal(id?.version, pluginVersion());
+  } else {
+    assert.equal(id?.name, "myrmo-mcp");
+    assert.equal(id?.version, "0.37.0");
+  }
+});
+
+test("machineAgentId is stable per machine and honours MYRMO_AGENT_ID", async () => {
+  const { mkdtempSync } = await import("node:fs");
+  const stateDir = mkdtempSync(join(tmpdir(), "myrmo-agent-"));
+  const { machineAgentId } = await import("../scripts/lookup.mjs");
+  const env = { MYRMO_HOOK_STATE_DIR: stateDir };
+  const first = machineAgentId({ env });
+  const second = machineAgentId({ env });
+  assert.ok(first, "a machine id is generated");
+  assert.equal(first, second, "it is stable across calls (same machine)");
+  // A provider-agnostic id: not tied to any provider's name.
+  assert.match(first, /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
+  // MYRMO_AGENT_ID, when the person set one, wins.
+  assert.equal(machineAgentId({ env: { ...env, MYRMO_AGENT_ID: "my-agent" } }), "my-agent");
+});

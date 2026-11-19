@@ -10,8 +10,12 @@
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
+import { randomUUID } from "node:crypto";
 import { detectPackages, detectRuntime } from "./packages.mjs";
 import { redactText } from "./redact.mjs";
+import { readState, stateFile, writeState } from "./state.mjs";
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const PUBLIC_HOSTS = new Set(["myrmo.dev", "www.myrmo.dev"]);
 const trim = (url) => String(url ?? "").trim().replace(/\/+$/, "");
@@ -155,8 +159,10 @@ function environmentOf(line, cwd, env) {
 export async function lookup(line, { env = process.env, settings = {}, fetcher = fetch, timeoutMs = 6000, agent = "myrmo-hook/1", cwd = process.cwd() } = {}) {
   const colony = colonyOf(env, settings);
   const url = `${colony.url}/v1/search`;
-  const headers = { "content-type": "application/json", "user-agent": agent, ...clientHeader() };
-  if (env.MYRMO_AGENT_ID) headers["x-myrmo-agent"] = env.MYRMO_AGENT_ID;
+  const id = clientIdentity();
+  const headers = { "content-type": "application/json", "user-agent": agent, ...clientHeader(id?.version, id?.name) };
+  const machine = machineAgentId({ env });
+  if (machine) headers["x-myrmo-agent"] = machine;
   // A private colony needs the person's access key, the same one the MCP server sends.
   if (colony.apiKey) headers.authorization = `Bearer ${colony.apiKey}`;
   const ctrl = new AbortController();
@@ -287,8 +293,10 @@ export function briefEnabled(env = process.env, settings = {}) {
 /** Ask the colony's task index; null when it cannot be reached or has none. */
 export async function lookupTask(task, { env = process.env, settings = {}, fetcher = fetch, timeoutMs = 5000, agent = "myrmo-hook/1" } = {}) {
   const colony = colonyOf(env, settings);
-  const headers = { "content-type": "application/json", "user-agent": agent, ...clientHeader() };
-  if (env.MYRMO_AGENT_ID) headers["x-myrmo-agent"] = env.MYRMO_AGENT_ID;
+  const id = clientIdentity();
+  const headers = { "content-type": "application/json", "user-agent": agent, ...clientHeader(id?.version, id?.name) };
+  const machine = machineAgentId({ env });
+  if (machine) headers["x-myrmo-agent"] = machine;
   if (colony.apiKey) headers.authorization = `Bearer ${colony.apiKey}`;
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);
@@ -370,6 +378,49 @@ export function pluginVersion(dir = new URL(".", import.meta.url)) {
   }
 }
 
+/**
+ * The version of this installation, written by `myrmo-mcp init` next to the hooks it copies (~/.myrmo/version.txt).
+ * null when init has not run here (the Claude Code plugin, which carries its own version in plugin.json).
+ */
+export function installVersion(file = process.env.MYRMO_VERSION_FILE?.trim() || join(homedir(), ".myrmo", "version.txt")) {
+  try {
+    const v = readFileSync(file, "utf8").trim();
+    return /^\d{1,4}\.\d{1,4}\.\d{1,6}/.test(v) ? v : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Who this hook says it is, for the colony's client-versions panel: the Claude Code plugin when it runs inside one,
+ * else the myrmo-mcp installation that copied these hooks. null when neither version is known.
+ */
+export function clientIdentity() {
+  const plugin = pluginVersion();
+  if (plugin) return { name: "myrmo-plugin", version: plugin };
+  const installed = installVersion();
+  if (installed) return { name: "myrmo-mcp", version: installed };
+  return null;
+}
+
+/**
+ * The agent id a hook sends so the colony can register its client version, regardless of which provider's hook it is
+ * (Cline, Gemini, Antigravity, …): MYRMO_AGENT_ID when the person set one, else a stable id for this machine, kept in
+ * the hooks' state folder. null when no state folder can be trusted. Provider-agnostic: a provider that is not known in
+ * advance still identifies, because the id is not tied to the provider's name.
+ */
+export function machineAgentId({ env = process.env, platform = process.platform } = {}) {
+  const set = env.MYRMO_AGENT_ID?.trim();
+  if (set) return set;
+  const file = stateFile("machine", { env, platform, prefix: "agent-" });
+  if (!file) return null;
+  const state = readState(file, platform);
+  if (typeof state.agent_id === "string" && UUID.test(state.agent_id)) return state.agent_id;
+  const id = randomUUID();
+  if (writeState(file, { ...state, agent_id: id })) return id;
+  return null;
+}
+
 /** -1, 0 or 1, comparing the numeric parts of two versions (`0.32.0` < `0.33.0` < `0.33.0` = `0.33`). */
 export function compareVersions(a, b) {
   const pa = String(a).split(/[.+-]/).map((x) => Number.parseInt(x, 10) || 0);
@@ -381,8 +432,8 @@ export function compareVersions(a, b) {
 }
 
 /** The header a client sends to say what it is, so an operator sees who runs an old version. */
-export function clientHeader(version = pluginVersion()) {
-  return version ? { "x-myrmo-client": `myrmo-plugin/${version}` } : {};
+export function clientHeader(version = pluginVersion(), name = "myrmo-plugin") {
+  return version ? { "x-myrmo-client": `${name}/${version}` } : {};
 }
 
 /**
@@ -392,6 +443,7 @@ export function clientHeader(version = pluginVersion()) {
 export async function updateNotice({ env = process.env, settings = {}, now = Date.now(), current = pluginVersion(), cacheFile, fetcher = fetch, timeoutMs = 2500 } = {}) {
   if (env.MYRMO_UPDATE_CHECK === "off" || !current || !cacheFile) return null;
   const colony = colonyOf(env, settings);
+  const id = clientIdentity();
   let cache = {};
   try {
     cache = JSON.parse(readFileSync(cacheFile, "utf8")) ?? {};
@@ -403,7 +455,9 @@ export async function updateNotice({ env = process.env, settings = {}, now = Dat
   let latest = cache.url === colony.url && now - Number(cache.at ?? 0) < day ? cache.latest : undefined;
   if (typeof latest === "string" && !VERSION.test(latest)) latest = undefined;
   if (latest === undefined) {
-    const headers = { accept: "application/json", "user-agent": "myrmo-claude-code-hook/1", ...clientHeader(current) };
+    const headers = { accept: "application/json", "user-agent": "myrmo-claude-code-hook/1", ...clientHeader(current, id?.name) };
+    const machine = machineAgentId({ env });
+    if (machine) headers["x-myrmo-agent"] = machine;
     if (colony.apiKey) headers.authorization = `Bearer ${colony.apiKey}`;
     try {
       const res = await fetcher(`${colony.url}/v1/version`, { headers, signal: AbortSignal.timeout(timeoutMs) });

@@ -68,6 +68,26 @@ test("a request marked private is never logged and asks the colony nothing", asy
   assert.equal(readdirSync(d.dir).filter((f) => f.endsWith(".json")).length, 0);
 });
 
+test("the installation's version is read from version.txt, and the plugin wins when present", async () => {
+  const { writeFileSync } = await import("node:fs");
+  const versionFile = join(fresh(), "version.txt");
+  writeFileSync(versionFile, "0.37.0\n");
+  const { installVersion, pluginVersion, clientIdentity } = await import("../scripts/lookup.mjs");
+  // The installation's version is what init writes next to the hooks; the hooks send it as myrmo-mcp/<version>
+  // when there is no Claude Code plugin (the case for Cline/Gemini/Antigravity).
+  assert.equal(installVersion(versionFile), "0.37.0");
+  assert.equal(installVersion(join(fresh(), "nope.txt")), null, "missing file -> null");
+  // Inside the repository the plugin manifest exists, so clientIdentity prefers it (the Claude Code case).
+  const id = clientIdentity();
+  if (pluginVersion()) {
+    assert.equal(id?.name, "myrmo-plugin");
+    assert.equal(id?.version, pluginVersion());
+  } else {
+    assert.equal(id?.name, "myrmo-mcp");
+    assert.equal(id?.version, "0.37.0");
+  }
+});
+
 test("nothing happens without MYRMO_WORKLOG=1", async () => {
   let calls = 0;
   const count = async () => { calls++; return []; };

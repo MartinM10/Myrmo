@@ -11,7 +11,7 @@ import { execFileSync } from "node:child_process";
 import { closeSync, existsSync, fstatSync, openSync, readSync } from "node:fs";
 import { homedir } from "node:os";
 import { basename, join } from "node:path";
-import { clientHeader, clip, colonyOf, personalText } from "./lookup.mjs";
+import { clientHeader, clientIdentity, clip, colonyOf, machineAgentId, personalText } from "./lookup.mjs";
 import { redactText } from "./redact.mjs";
 
 /** A long token with upper case, lower case and digits, and no word to it: a pasted secret with no name in front. */
@@ -74,13 +74,15 @@ export function worklogTarget(input, { env = process.env, settings = {}, run = e
   return scope ? { colony, keepPersonal, scope, repo: where.repo || basename(cwd), branch: where.branch } : null;
 }
 
-export async function send(target, path, body, { fetcher = fetch, timeoutMs = 3000 } = {}) {
+export async function send(target, path, body, { fetcher = fetch, timeoutMs = 3000, env = process.env } = {}) {
+  const id = clientIdentity();
+  const agent = machineAgentId({ env });
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
     const res = await fetcher(`${target.colony.url}${path}`, {
       method: "POST",
-      headers: { "content-type": "application/json", authorization: `Bearer ${target.colony.apiKey}`, "user-agent": "myrmo-claude-code-hook/1", ...clientHeader() },
+      headers: { "content-type": "application/json", authorization: `Bearer ${target.colony.apiKey}`, "user-agent": "myrmo-claude-code-hook/1", ...clientHeader(id?.version, id?.name), ...(agent ? { "x-myrmo-agent": agent } : {}) },
       body: JSON.stringify(body),
       signal: ctrl.signal,
     });
@@ -92,12 +94,14 @@ export async function send(target, path, body, { fetcher = fetch, timeoutMs = 30
   }
 }
 
-async function getJson(target, path, { fetcher = fetch, timeoutMs = 3000 } = {}) {
+async function getJson(target, path, { fetcher = fetch, timeoutMs = 3000, env = process.env } = {}) {
+  const id = clientIdentity();
+  const agent = machineAgentId({ env });
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
     const res = await fetcher(`${target.colony.url}${path}`, {
-      headers: { authorization: `Bearer ${target.colony.apiKey}`, "user-agent": "myrmo-claude-code-hook/1", ...clientHeader() },
+      headers: { authorization: `Bearer ${target.colony.apiKey}`, "user-agent": "myrmo-claude-code-hook/1", ...clientHeader(id?.version, id?.name), ...(agent ? { "x-myrmo-agent": agent } : {}) },
       signal: ctrl.signal,
     });
     return res.ok ? await res.json() : null;
