@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.38.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.37.0...mcp-v0.38.0) (2026-11-19)
+
+
+### Features
+
+* **worklog:** Antigravity keeps the work log; fix(worklog): Cline's hooks go to the Documents folder Cline uses ([#47](https://github.com/MartinM10/Myrmo/issues/47)) ([807b539](https://github.com/MartinM10/Myrmo/commit/807b539667c868c9cc4c9e171637bf13bcebe937))
+
 ## [0.37.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.36.0...mcp-v0.37.0) (2026-11-18)
 
 
