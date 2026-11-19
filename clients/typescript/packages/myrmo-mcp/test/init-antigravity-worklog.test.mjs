@@ -7,12 +7,12 @@ import assert from "node:assert/strict";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { agyHookNode, workLogChecks } from "../dist/doctor.js";
 import { AGY_WORKLOG_EVENTS, AGY_WORKLOG_GROUP, HOOK_SCRIPTS, agyWorkLogCommand, documentsDir, mergeAgyWorkLog, runInit } from "../dist/init.js";
+import { HOOKS, KIT_COPY, fakeKit } from "./fake-kit.mjs";
 
 const KEY = `myk_${"e".repeat(64)}`;
-const HOOKS = fileURLToPath(new URL("../dist/hooks", import.meta.url));
+const KIT = fakeKit();
 let saved;
 beforeEach(() => { saved = process.env.MYRMO_CONFIG; });
 afterEach(() => { if (saved === undefined) delete process.env.MYRMO_CONFIG; else process.env.MYRMO_CONFIG = saved; });
@@ -28,11 +28,29 @@ function machine({ agy = true, hooks, mcp } = {}) {
 }
 const file = (m) => join(m.home, ".gemini", "config", "hooks.json");
 const read = (m) => JSON.parse(readFileSync(file(m), "utf8"));
-const run = (m, extra = {}) => runInit({ clients: ["antigravity"], dryRun: false, home: m.home, log: m.log, url: "https://myrmo.example.internal", key: KEY, private: true, hooksSource: HOOKS, ...extra });
+const run = (m, extra = {}) => runInit({ clients: ["antigravity"], dryRun: false, home: m.home, log: m.log, url: "https://myrmo.example.internal", key: KEY, private: true, hooksSource: HOOKS, kit: KIT, ...extra });
 
-test("the Antigravity work log script travels with the others", () => {
-  assert.ok(HOOK_SCRIPTS.includes("antigravity-worklog.mjs"));
-  assert.ok(existsSync(join(HOOKS, "antigravity-worklog.mjs")), "dist/hooks has the script (npm run build copies it)");
+test("the Antigravity work log script is not in this package: it comes with the colony kit", () => {
+  assert.ok(!HOOK_SCRIPTS.includes("antigravity-worklog.mjs"));
+  assert.equal(existsSync(join(HOOKS, "antigravity-worklog.mjs")), false);
+});
+
+test("without a kit, the error lookup hook is still installed from the package, and the work log is not", () => {
+  const m = machine({ hooks: {} });
+  run(m, { worklog: true, kit: null });
+  const hooks = read(m);
+  assert.equal(hooks[AGY_WORKLOG_GROUP], undefined, "no work log group");
+  assert.ok(hooks.myrmo, "the error lookup hook is registered");
+  for (const f of HOOK_SCRIPTS) assert.ok(existsSync(join(m.home, ".myrmo", "hooks", f)), f);
+  assert.ok(!readFileSync(join(m.home, ".myrmo", "hooks", "lookup.mjs"), "utf8").includes(KIT_COPY), "the package's own copy");
+  assert.match(m.out.join("\n"), /Antigravity: the work log comes with the kit .*npx myrmo-mcp@latest kit/);
+});
+
+test("with a kit, the error lookup hook runs from the kit's set too, never a mix", () => {
+  const m = machine({ hooks: {} });
+  run(m, { worklog: true });
+  assert.ok(read(m).myrmo && read(m)[AGY_WORKLOG_GROUP]);
+  assert.ok(readFileSync(join(m.home, ".myrmo", "hooks", "lookup.mjs"), "utf8").includes(KIT_COPY), "the kit's copy, not the package's");
 });
 
 test("the command names its event and turns the work log on, in sh and in cmd", () => {

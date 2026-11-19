@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { workLogChecks } from "../dist/doctor.js";
+import { kitCheck, workLogChecks } from "../dist/doctor.js";
 import { CLINE_HOOK_EVENTS, clineWrapper } from "../dist/init.js";
 
 const KEY = "myk_" + "b".repeat(64);
@@ -13,7 +13,7 @@ const fetchWith = (status) => async () => new Response("{}", { status });
 const enrolled = fetchWith(200);
 const linux = "linux";
 
-function home({ claude = false, cline = false, hooks = false, node = process.execPath, cursor = false } = {}) {
+function home({ claude = false, cline = false, hooks = false, node = process.execPath, cursor = false, script = true } = {}) {
   const h = mkdtempSync(join(tmpdir(), "doctor-wl-"));
   if (claude) {
     mkdirSync(join(h, ".claude", "plugins"), { recursive: true });
@@ -24,6 +24,11 @@ function home({ claude = false, cline = false, hooks = false, node = process.exe
     const dir = join(h, "Documents", "Cline", "Hooks");
     mkdirSync(dir, { recursive: true });
     for (const e of CLINE_HOOK_EVENTS) writeFileSync(join(dir, e), clineWrapper(node, join(h, ".myrmo", "hooks", "cline-hook.mjs"), linux));
+    // The script they run, which init copies from the colony kit.
+    if (script) {
+      mkdirSync(join(h, ".myrmo", "hooks"), { recursive: true });
+      writeFileSync(join(h, ".myrmo", "hooks", "cline-hook.mjs"), "export {};\n");
+    }
   }
   if (cursor) {
     mkdirSync(join(h, ".cursor"), { recursive: true });
@@ -44,7 +49,7 @@ test("a key that is not enrolled is told whom to ask, and nothing else is checke
   const checks = await workLogChecks(input(home({ claude: true, cline: true })), fetchWith(403));
   assert.equal(checks.length, 1);
   assert.equal(checks[0].level, "warn");
-  assert.match(checks[0].fix, /MYRMO_WORKLOG_PEOPLE/);
+  assert.match(checks[0].fix, /enrol your key/);
 });
 
 test("Claude Code is recorded with MYRMO_WORKLOG=1 in its settings, in a work log hook or in the shell", async () => {
@@ -69,22 +74,35 @@ test("Cline: no hooks, hooks in place, and hooks whose node is gone", async () =
   const gone = byName(await workLogChecks(input(home({ cline: true, hooks: true, node: "/no/such/node" })), enrolled), "Work log, Cline");
   assert.equal(gone.level, "warn");
   assert.match(gone.detail, /no longer exists/);
+  const noScript = byName(await workLogChecks(input(home({ cline: true, hooks: true, script: false })), enrolled), "Work log, Cline");
+  assert.equal(noScript.level, "warn");
+  assert.match(noScript.detail, /comes with the colony kit/);
+  assert.match(noScript.fix, /npx myrmo-mcp@latest kit/);
 });
 
 test("an agent Myrmo has no work log hook for is named, and warned about only when nothing else records", async () => {
   const alone = byName(await workLogChecks(input(home({ cursor: true })), enrolled), "Work log, other agents");
   assert.equal(alone.level, "warn");
   assert.match(alone.detail, /Cursor: not recorded/);
-  assert.match(alone.detail, /myrmo_matters/);
   const withCline = byName(await workLogChecks(input(home({ cursor: true, cline: true, hooks: true })), enrolled), "Work log, other agents");
   assert.equal(withCline.level, "ok");
 });
 
-test("a pause is reported", async () => {
-  const h = home({ claude: true });
-  mkdirSync(join(h, ".myrmo"), { recursive: true });
-  writeFileSync(join(h, ".myrmo", "worklog-paused"), "");
-  assert.match(byName(await workLogChecks(input(h, { env: { MYRMO_WORKLOG: "1" } }), enrolled), "Work log").detail, /paused/);
+test("the colony kit: installed, out of date, offered but missing, in development, or none", () => {
+  const kit = { version: "1.2.3-abcdef1234", dir: "/k" };
+  assert.equal(kitCheck(kit, undefined, true).level, "ok");
+  assert.match(kitCheck(kit, "1.2.3-abcdef1234", true).detail, /1\.2\.3-abcdef1234 installed/);
+  const old = kitCheck(kit, "1.2.4-0000000000", true);
+  assert.equal(old.level, "warn");
+  assert.match(old.fix, /npx myrmo-mcp@latest kit/);
+  const missing = kitCheck(null, "1.2.4-0000000000", true);
+  assert.equal(missing.level, "warn");
+  assert.match(missing.detail, /none installed; this colony offers 1\.2\.4-0000000000/);
+  const dev = kitCheck({ version: "dev", dir: "/src/kit", dev: true }, undefined, true);
+  assert.equal(dev.level, "warn");
+  assert.match(dev.detail, /MYRMO_KIT_DEV=\/src\/kit/);
+  assert.equal(kitCheck(null, undefined, true).level, "ok");
+  assert.equal(kitCheck(null, undefined, false), null, "nothing to say for a colony that is not an organisation's");
 });
 
 test("Claude Code recorded both by the plugin and by a hook of its own is a warning", async () => {

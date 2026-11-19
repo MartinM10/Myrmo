@@ -6,12 +6,12 @@ import assert from "node:assert/strict";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { geminiHookNode, workLogChecks } from "../dist/doctor.js";
 import { GEMINI_HOOK_EVENTS, GEMINI_HOOK_NAME, HOOK_SCRIPTS, geminiCommand, geminiInstalled, mergeGeminiHooks, runInit } from "../dist/init.js";
+import { HOOKS, fakeKit } from "./fake-kit.mjs";
 
 const KEY = `myk_${"e".repeat(64)}`;
-const HOOKS = fileURLToPath(new URL("../dist/hooks", import.meta.url));
+const KIT = fakeKit();
 let saved;
 beforeEach(() => { saved = process.env.MYRMO_CONFIG; });
 afterEach(() => { if (saved === undefined) delete process.env.MYRMO_CONFIG; else process.env.MYRMO_CONFIG = saved; });
@@ -26,12 +26,20 @@ function machine({ gemini = true, settings } = {}) {
 }
 const file = (m) => join(m.home, ".gemini", "settings.json");
 const read = (m) => JSON.parse(readFileSync(file(m), "utf8"));
-const run = (m, extra = {}) => runInit({ clients: ["gemini"], dryRun: false, home: m.home, log: m.log, url: "https://myrmo.example.internal", key: KEY, private: true, hooksSource: HOOKS, ...extra });
+const run = (m, extra = {}) => runInit({ clients: ["gemini"], dryRun: false, home: m.home, log: m.log, url: "https://myrmo.example.internal", key: KEY, private: true, hooksSource: HOOKS, kit: KIT, ...extra });
 const mine = (settings, event) => (settings.hooks[event] ?? []).filter((d) => d.hooks?.some((h) => h.name === GEMINI_HOOK_NAME));
 
-test("the Gemini CLI hook script travels with the others", () => {
-  assert.ok(HOOK_SCRIPTS.includes("gemini-hook.mjs"));
-  assert.ok(existsSync(join(HOOKS, "gemini-hook.mjs")), "dist/hooks has the script (npm run build copies it)");
+test("the Gemini CLI hook script is not in this package: it comes with the colony kit", () => {
+  assert.ok(!HOOK_SCRIPTS.includes("gemini-hook.mjs"));
+  assert.equal(existsSync(join(HOOKS, "gemini-hook.mjs")), false);
+});
+
+test("without a kit, --worklog says where the work log comes from and leaves Gemini CLI's settings alone", () => {
+  const m = machine({ settings: { theme: "x" } });
+  run(m, { worklog: true, kit: null });
+  assert.equal(read(m).hooks, undefined, "no hooks registered");
+  assert.equal(read(m).theme, "x");
+  assert.match(m.out.join("\n"), /Gemini CLI: the work log comes with the kit .*npx myrmo-mcp@latest kit/);
 });
 
 test("Gemini CLI is found by its folder's settings, sessions or history", () => {
@@ -71,7 +79,7 @@ test("with --worklog every event gets the hook, next to the person's own, and th
   }
   assert.deepEqual(s.hooks.AfterTool[0], theirs);
   assert.ok(existsSync(join(m.home, ".myrmo", "hooks", "gemini-hook.mjs")));
-  assert.ok(existsSync(join(m.home, ".myrmo", "hooks", "worklog.mjs")));
+  assert.ok(existsSync(join(m.home, ".myrmo", "hooks", "on-failure.mjs")), "with the kit's shared modules");
   assert.ok(existsSync(`${file(m)}.before-myrmo-worklog`), "a copy of the settings is kept before the first change");
 });
 

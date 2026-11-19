@@ -7,6 +7,7 @@ import { join } from "node:path";
 import { AGY_WORKLOG_EVENTS, AGY_WORKLOG_GROUP, CLINE_HOOK_EVENTS, CLINE_MARK, GEMINI_HOOK_EVENTS, GEMINI_HOOK_NAME, claudeCodeSetUp, claudeWorkLogHook, clineHooksDir, clineInstalled, geminiInstalled, targets } from "./init.js";
 import { compareVersions, describeColony, VERSION, VERSION_SHAPE } from "./server.js";
 import { t } from "./i18n.js";
+import { findKit, GET_KIT, type KitInfo } from "./kit.js";
 
 export type Level = "ok" | "warn" | "fail";
 export interface Check {
@@ -32,6 +33,29 @@ export interface DoctorInput {
   /** The environment this command runs in: where MYRMO_WORKLOG is looked for (default: process.env). */
   env?: NodeJS.ProcessEnv;
   platform?: NodeJS.Platform;
+  /** The colony kit in use (default: the one installed on this machine, src/kit.ts `findKit`). */
+  kit?: KitInfo | null;
+}
+
+/**
+ * The colony kit: what only an organisation's colony offers on the client side, installed from it. One line for a
+ * private colony, or wherever a kit is installed or offered; none otherwise.
+ */
+export function kitCheck(kit: KitInfo | null, offered: string | undefined, privateMode: boolean): Check | null {
+  const name = t("Colony kit", "Kit de la colonia");
+  if (kit?.dev) {
+    return { level: "warn", name, detail: t(`a kit in development, unsigned (MYRMO_KIT_DEV=${kit.dir})`, `un kit en desarrollo, sin firmar (MYRMO_KIT_DEV=${kit.dir})`), fix: t("Unset MYRMO_KIT_DEV unless you are developing the kit.", "Quita MYRMO_KIT_DEV salvo que estés desarrollando el kit.") };
+  }
+  if (kit) {
+    if (offered && offered !== kit.version) {
+      return { level: "warn", name, detail: t(`${kit.version} installed, this colony offers ${offered}`, `${kit.version} instalado, esta colonia ofrece ${offered}`), fix: t(`${GET_KIT}   (Claude Code updates it by itself when a session starts)`, `${GET_KIT}   (Claude Code lo actualiza solo al empezar una sesión)`) };
+    }
+    return { level: "ok", name, detail: t(`${kit.version} installed`, `${kit.version} instalado`) };
+  }
+  if (offered) {
+    return { level: "warn", name, detail: t(`none installed; this colony offers ${offered} (the team's work log and its tools come with it)`, `ninguno instalado; esta colonia ofrece ${offered} (el registro de trabajo del equipo y sus herramientas vienen con él)`), fix: t(`${GET_KIT}   (Claude Code installs it by itself when a session starts)`, `${GET_KIT}   (Claude Code lo instala solo al empezar una sesión)`) };
+  }
+  return privateMode ? { level: "ok", name, detail: t("none installed, and this colony offers none", "ninguno instalado, y esta colonia no ofrece ninguno") } : null;
 }
 
 const PUBLIC_HOSTS = new Set(["myrmo.dev", "www.myrmo.dev"]);
@@ -98,12 +122,15 @@ export async function workLogChecks(input: DoctorInput, fetchImpl: typeof fetch)
 
   const enrolled = await call(fetchImpl, `${input.url.replace(/\/+$/, "")}/v1/worklog/matters?limit=1`, input.apiKey);
   if ("status" in enrolled && enrolled.status === 403) {
-    checks.push({ level: "warn", name, detail: t("this colony keeps one, but your key is not enrolled in it", "esta colonia lo lleva, pero tu clave no está inscrita"), fix: t("Ask whoever runs the colony to add your key's name to MYRMO_WORKLOG_PEOPLE", "Pide a quien opera la colonia que añada el nombre de tu clave a MYRMO_WORKLOG_PEOPLE") });
+    checks.push({ level: "warn", name, detail: t("this colony keeps one, but your key is not enrolled in it", "esta colonia lo lleva, pero tu clave no está inscrita"), fix: t("Ask whoever runs the colony to enrol your key in the work log", "Pide a quien opera la colonia que inscriba tu clave en el registro de trabajo") });
     return checks;
   }
-  if (existsSync(join(input.home, ".myrmo", "worklog-paused")) || env.MYRMO_WORKLOG_PAUSE === "1") {
-    checks.push({ level: "warn", name, detail: t("paused on this machine: nothing is recorded", "en pausa en esta máquina: no se registra nada"), fix: t("Delete ~/.myrmo/worklog-paused (and unset MYRMO_WORKLOG_PAUSE) to resume", "Borra ~/.myrmo/worklog-paused (y quita MYRMO_WORKLOG_PAUSE) para reanudar") });
-  }
+  // The hooks of Cline, Gemini CLI and Antigravity run a script that comes with the colony kit, copied to ~/.myrmo/hooks.
+  const script = (file: string) => existsSync(join(input.home, ".myrmo", "hooks", file));
+  const noScript = {
+    detail: t("the hooks are in place, but the script they run is not on this machine (it comes with the colony kit)", "los hooks están puestos, pero el script que ejecutan no está en esta máquina (viene con el kit de la colonia)"),
+    fix: t(`${GET_KIT}   then   npx myrmo-mcp@latest init --worklog`, `${GET_KIT}   y después   npx myrmo-mcp@latest init --worklog`),
+  };
 
   let capturing = 0;
   if (claudeCodeSetUp(input.home)) {
@@ -153,6 +180,8 @@ export async function workLogChecks(input: DoctorInput, fetchImpl: typeof fetch)
       checks.push({ level: "warn", name: `${name}, Cline`, detail: t(`not recorded: the hooks start a node that no longer exists (${broken.join(", ")})`, `no se registra: los hooks arrancan un node que ya no existe (${broken.join(", ")})`), fix });
     } else if (missing.length) {
       checks.push({ level: "warn", name: `${name}, Cline`, detail: t(`incomplete: ${missing.join(", ")} missing`, `incompleto: falta ${missing.join(", ")}`), fix });
+    } else if (foreign.length < CLINE_HOOK_EVENTS.length && !script("cline-hook.mjs")) {
+      checks.push({ level: "warn", name: `${name}, Cline`, ...noScript });
     } else {
       capturing++;
       checks.push({ level: "ok", name: `${name}, Cline`, detail: foreign.length ? t(`recorded, except ${foreign.join(", ")}: hooks of your own are in their place`, `se registra, salvo ${foreign.join(", ")}: en su lugar hay hooks tuyos`) : t("recorded (hooks in place; reload VS Code once after installing them)", "se registra (hooks instalados; recarga VS Code una vez tras instalarlos)") });
@@ -191,6 +220,8 @@ export async function workLogChecks(input: DoctorInput, fetchImpl: typeof fetch)
         checks.push({ level: "warn", name: `${name}, Gemini CLI`, detail: t(`incomplete: ${missing.join(", ")} missing`, `incompleto: falta ${missing.join(", ")}`), fix });
       } else if (settings?.hooksConfig?.enabled === false) {
         checks.push({ level: "warn", name: `${name}, Gemini CLI`, detail: t("not recorded: hooks are turned off in Gemini CLI (hooksConfig.enabled: false)", "no se registra: los hooks están desactivados en Gemini CLI (hooksConfig.enabled: false)"), fix: t("Remove hooksConfig.enabled: false from ~/.gemini/settings.json, or run /hooks enable-all", "Quita hooksConfig.enabled: false de ~/.gemini/settings.json, o ejecuta /hooks enable-all") });
+      } else if (!script("gemini-hook.mjs")) {
+        checks.push({ level: "warn", name: `${name}, Gemini CLI`, ...noScript });
       } else {
         capturing++;
         checks.push({ level: "ok", name: `${name}, Gemini CLI`, detail: t("recorded (hooks in place; restart Gemini CLI once after installing them)", "se registra (hooks instalados; reinicia Gemini CLI una vez tras instalarlos)") });
@@ -232,6 +263,8 @@ export async function workLogChecks(input: DoctorInput, fetchImpl: typeof fetch)
         checks.push({ level: "warn", name: `${name}, Antigravity`, detail: t(`incomplete: ${missing.join(", ")} missing`, `incompleto: falta ${missing.join(", ")}`), fix });
       } else if (group?.enabled === false) {
         checks.push({ level: "warn", name: `${name}, Antigravity`, detail: t(`not recorded: the hook is turned off ("enabled": false in ${AGY_WORKLOG_GROUP})`, `no se registra: el hook está desactivado ("enabled": false en ${AGY_WORKLOG_GROUP})`), fix });
+      } else if (!script("antigravity-worklog.mjs")) {
+        checks.push({ level: "warn", name: `${name}, Antigravity`, ...noScript });
       } else {
         capturing++;
         checks.push({ level: "ok", name: `${name}, Antigravity`, detail: t("recorded (hook in place; it starts with the next conversation)", "se registra (hook instalado; empieza con la próxima conversación)") });
@@ -247,7 +280,7 @@ export async function workLogChecks(input: DoctorInput, fetchImpl: typeof fetch)
     checks.push({
       level: capturing ? "ok" : "warn",
       name: t(`${name}, other agents`, `${name}, otros agentes`),
-      detail: t(`${others.join(", ")}: not recorded (Myrmo has no work log hook for them yet); their agents can still read it with myrmo_matters`, `${others.join(", ")}: no se registra (Myrmo aún no tiene hook del registro para ellos); sus agentes sí pueden leerlo con myrmo_matters`),
+      detail: t(`${others.join(", ")}: not recorded (Myrmo has no work log hook for them yet)`, `${others.join(", ")}: no se registra (Myrmo aún no tiene hook del registro para ellos)`),
       ...(capturing ? {} : { fix: t("Use Claude Code, Cline, Gemini CLI or Antigravity for the work you want in the work log", "Usa Claude Code, Cline, Gemini CLI o Antigravity para el trabajo que quieras en el registro") }),
     });
   }
@@ -366,11 +399,14 @@ export async function diagnose(input: DoctorInput): Promise<Check[]> {
   );
 
   // Is this client the one the colony was released with? An older one misses what came after it.
+  let offeredKit: string | undefined;
   const version = await call(fetchImpl, `${input.url.replace(/\/+$/, "")}/v1/version`, input.apiKey);
   if ("status" in version && version.status === 200) {
     let latest: string | undefined;
     try {
-      latest = (JSON.parse(version.body) as { clients?: { mcp?: string } }).clients?.mcp;
+      const clients = (JSON.parse(version.body) as { clients?: { mcp?: string; kit?: string } }).clients;
+      latest = clients?.mcp;
+      offeredKit = typeof clients?.kit === "string" ? clients.kit.slice(0, 80) : undefined;
     } catch {
       latest = undefined;
     }
@@ -381,6 +417,9 @@ export async function diagnose(input: DoctorInput): Promise<Check[]> {
       checks.push({ level: "ok", name: t("Myrmo version", "Versión de Myrmo"), detail: t(`myrmo-mcp ${VERSION}, up to date with this colony`, `myrmo-mcp ${VERSION}, al día con esta colonia`) });
     }
   }
+
+  const kitLine = kitCheck(input.kit !== undefined ? input.kit : await findKit(input.env ?? process.env), offeredKit, input.privateMode);
+  if (kitLine) checks.push(kitLine);
 
   const claude = claudeCodeSetUp(input.home);
   const gemini = join(input.home, ".gemini", "GEMINI.md");

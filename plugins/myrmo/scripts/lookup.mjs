@@ -465,6 +465,9 @@ export async function updateNotice({ env = process.env, settings = {}, now = Dat
       // Shown to the person: only something shaped like a version, never words a colony chose.
       const said = body?.clients?.plugin;
       latest = typeof said === "string" && /^\d{1,4}\.\d{1,4}\.\d{1,6}(?:-[0-9A-Za-z.]{1,20})?$/.test(said) ? said : null;
+      // The colony kit it serves (an organisation's colony), installed by the SessionStart hook: kit.mjs.
+      const kit = body?.clients?.kit;
+      cache = { ...cache, kit: typeof kit === "string" && /^\d{1,4}\.\d{1,4}\.\d{1,6}-[0-9a-f]{6,64}$/.test(kit) ? kit : null };
       // What the colony is, for the hooks and the MCP server's next start.
       if (body?.colony) rememberDeclared(colony.url, body.colony, env);
     } catch {

@@ -21,6 +21,7 @@ import { fileURLToPath } from "node:url";
 import { readConfig, writeConfig, type PublishMode } from "myrmo";
 import { VERSION } from "./server.js";
 import { t as tx } from "./i18n.js";
+import { GET_KIT, kitHas, kitInstructions, kitScripts, packageHooks, type KitInfo } from "./kit.js";
 
 export const AGENTS_BLOCK = `<!-- myrmo:start -->
 ## Myrmo: shared memory of solved errors
@@ -93,19 +94,14 @@ You can call myrmo_brief, myrmo_search, myrmo_report and myrmo_publish. The colo
 6. Keep internal tool, service, machine and command names, network addresses, policy ids, error codes and
    internal package names exactly as printed. Never include credentials, tokens, people's names, e-mail
    addresses or customer and business data: write a placeholder such as <token>.
-7. If the user asks to continue or resume something, or what the team is doing, call myrmo_matters, then
-   myrmo_matter for the one that fits, so you do not redo or undo what a colleague did. Matters come from
-   the team's work log, which hooks on each person's machine record by themselves: never write one with
-   myrmo_publish. If the user asks why their own work does not appear, or how to turn it on, suggest
-   \`npx myrmo-mcp@latest doctor\` (it says, agent by agent, whether it is recorded), then
-   \`npx myrmo-mcp@latest init --worklog\` and restarting the agent.
-8. If the user wants more say or privacy, tell them what they can choose: //privado (or //private) at the
-   start of a message records nothing; the file ~/.myrmo/worklog-paused pauses recording until it is
-   deleted; "Ask me first" on the colony's /team page keeps their matters theirs until they share one;
-   \`npx myrmo-mcp config publish ask\` (or off) shows every publication before it is sent; and
-   \`npx myrmo-mcp config\` lists the other settings.
 <!-- myrmo:end -->
 `;
+
+/** The private block with the text of the colony's kit (its instructions.md) inside the markers, when there is one. */
+export function privateBlock(kitText?: string): string {
+  if (!kitText?.trim()) return AGENTS_BLOCK_PRIVATE;
+  return AGENTS_BLOCK_PRIVATE.replace("<!-- myrmo:end -->", `\n${kitText.trim()}\n<!-- myrmo:end -->`);
+}
 
 export const AGENTS_BLOCK_READ_ONLY = `<!-- myrmo:start -->
 ## Myrmo: shared memory of solved errors (search and report only)
@@ -259,7 +255,8 @@ export interface InitOptions {
   key?: string; // that colony's access key
   keySource?: "argument" | "file" | "stdin"; // where the key came from: on the command line it is in the shell's history
   publish?: PublishMode; // how publishing works for that colony only
-  hooksSource?: string; // where the hook scripts to install come from (default: dist/hooks of this package)
+  hooksSource?: string; // where this package's hook scripts come from when there is no kit (default: dist/hooks)
+  kit?: KitInfo | null; // the colony kit in use (src/kit.ts finds or installs it before init runs); the work log needs it
   env?: NodeJS.ProcessEnv; // where to look for the claude command (default: the process environment)
   rules?: boolean; // write the usage rules to Gemini CLI's and Windsurf's global instructions (default true)
   home?: string;
@@ -375,8 +372,34 @@ export function mergeHooks(current: string | undefined, command: string): { text
  * Point this machine at another colony: saves it in the settings file (with its key, private mode and publish choice,
  * which apply only to that colony), and for Antigravity installs the hook that looks errors up there.
  */
-/** The scripts the hooks are made of, copied together (scripts/copy-hooks.mjs puts them in dist/hooks). */
-export const HOOK_SCRIPTS = ["cline-hook.mjs", "gemini-hook.mjs", "antigravity-hook.mjs", "antigravity-worklog.mjs", "on-failure.mjs", "lookup.mjs", "worklog.mjs", "effort.mjs", "state.mjs", "redact.mjs", "packages.mjs"];
+/** This package's hook scripts, copied together (scripts/copy-hooks.mjs puts them in dist/hooks). */
+export const HOOK_SCRIPTS = ["antigravity-hook.mjs", "on-failure.mjs", "lookup.mjs", "effort.mjs", "state.mjs", "redact.mjs", "packages.mjs", "kit.mjs"];
+
+/**
+ * Copies the hook scripts into ~/.myrmo/hooks as one self-contained set: the kit's when one is installed (it carries its
+ * own copies of the shared modules, so the package's are never mixed in), else this package's.
+ */
+export function copyHookScripts(opts: InitOptions, dir: string): void {
+  mkdirSync(dir, { recursive: true });
+  if (opts.kit) {
+    for (const name of kitScripts(opts.kit)) copyFileSync(join(opts.kit.dir, name), join(dir, name));
+    return;
+  }
+  const source = opts.hooksSource ?? packageHooks();
+  for (const name of HOOK_SCRIPTS) copyFileSync(join(source, name), join(dir, name));
+}
+
+/** Whether the installed kit carries an agent's work log script; if not, the person is told how to get it. */
+function kitFor(opts: InitOptions, agent: string, script: string, log: (l: string) => void): boolean {
+  if (kitHas(opts.kit, script)) return true;
+  log(
+    tx(
+      `${agent}: the work log comes with the kit your organisation's colony serves, and ${opts.kit ? `the kit installed here (${opts.kit.version}) does not carry it` : "no kit is installed here"}; get it with \`${GET_KIT}\`, then run this again`,
+      `${agent}: el registro de trabajo viene con el kit que sirve la colonia de tu organización, y ${opts.kit ? `el kit instalado aquí (${opts.kit.version}) no lo trae` : "aquí no hay ningún kit instalado"}; consíguelo con \`${GET_KIT}\` y vuelve a ejecutar esto`,
+    ),
+  );
+  return false;
+}
 
 /**
  * The version of this myrmo-mcp, written next to the hooks init copies, so that the hooks (which carry no version of
@@ -495,10 +518,10 @@ export function installClineHooks(opts: InitOptions, home: string, log: (l: stri
     log(tx("Cline: found. To keep your work log from Cline as well, run this again with --worklog (what the hooks do: https://myrmo.dev/docs)", "Cline: encontrado. Para guardar también tu registro de trabajo desde Cline, ejecuta esto otra vez con --worklog (qué hacen los hooks: https://myrmo.dev/docs)"));
     return;
   }
+  if (!kitFor(opts, "Cline", "cline-hook.mjs", log)) return;
   const win = process.platform === "win32";
   const dir = clineHooksDir(home);
   const scripts = join(home, ".myrmo", "hooks");
-  const source = opts.hooksSource ?? join(dirname(fileURLToPath(import.meta.url)), "hooks");
   const script = join(scripts, "cline-hook.mjs");
   const verb = opts.dryRun ? "would" : "did";
   const kept: string[] = [];
@@ -516,8 +539,7 @@ export function installClineHooks(opts: InitOptions, home: string, log: (l: stri
     if (!win) chmodSync(file, 0o755);
   }
   if (!opts.dryRun && written.length) {
-    mkdirSync(scripts, { recursive: true });
-    for (const name of HOOK_SCRIPTS) copyFileSync(join(source, name), join(scripts, name));
+    copyHookScripts(opts, scripts);
     writeInstallVersion(home, VERSION, opts.dryRun, log);
   }
   if (written.length) log(tx(`Cline: ${verb} install the work log hooks (${written.join(", ")}) in ${dir}; restart VS Code so Cline picks them up`, `Cline: ${opts.dryRun ? "se instalarían" : "instalados"} los hooks del registro de trabajo (${written.join(", ")}) en ${dir}; reinicia VS Code para que Cline los recoja`));
@@ -610,9 +632,9 @@ export function installAgyWorkLog(opts: InitOptions, home: string, log: (l: stri
     log(tx("Antigravity: found. To keep your work log from Antigravity as well, run this again with --worklog (what the hooks do: https://myrmo.dev/docs)", "Antigravity: encontrado. Para guardar también tu registro de trabajo desde Antigravity, ejecuta esto otra vez con --worklog (qué hacen los hooks: https://myrmo.dev/docs)"));
     return;
   }
+  if (!kitFor(opts, "Antigravity", "antigravity-worklog.mjs", log)) return;
   const file = join(home, ".gemini", "config", "hooks.json");
   const scripts = join(home, ".myrmo", "hooks");
-  const source = opts.hooksSource ?? join(dirname(fileURLToPath(import.meta.url)), "hooks");
   const current = existsSync(file) ? readFileSync(file, "utf8") : undefined;
   const merged = mergeAgyWorkLog(current, (event) => agyWorkLogCommand(process.execPath, join(scripts, "antigravity-worklog.mjs"), event));
   if (!merged) {
@@ -620,8 +642,7 @@ export function installAgyWorkLog(opts: InitOptions, home: string, log: (l: stri
     return;
   }
   if (!opts.dryRun) {
-    mkdirSync(scripts, { recursive: true });
-    for (const name of HOOK_SCRIPTS) copyFileSync(join(source, name), join(scripts, name));
+    copyHookScripts(opts, scripts);
     writeInstallVersion(home, VERSION, opts.dryRun, log);
     if (merged.changed) {
       if (current !== undefined && !existsSync(`${file}.before-myrmo-worklog`)) copyFileSync(file, `${file}.before-myrmo-worklog`);
@@ -640,9 +661,9 @@ export function installGeminiHooks(opts: InitOptions, home: string, log: (l: str
     log(tx("Gemini CLI: found. To keep your work log from Gemini CLI as well, run this again with --worklog (what the hooks do: https://myrmo.dev/docs)", "Gemini CLI: encontrado. Para guardar también tu registro de trabajo desde Gemini CLI, ejecuta esto otra vez con --worklog (qué hacen los hooks: https://myrmo.dev/docs)"));
     return;
   }
+  if (!kitFor(opts, "Gemini CLI", "gemini-hook.mjs", log)) return;
   const file = join(home, ".gemini", "settings.json");
   const scripts = join(home, ".myrmo", "hooks");
-  const source = opts.hooksSource ?? join(dirname(fileURLToPath(import.meta.url)), "hooks");
   let settings: Record<string, any>;
   try {
     const text = existsSync(file) ? readFileSync(file, "utf8") : "";
@@ -654,8 +675,7 @@ export function installGeminiHooks(opts: InitOptions, home: string, log: (l: str
   }
   const merged = mergeGeminiHooks(settings, geminiCommand(process.execPath, join(scripts, "gemini-hook.mjs")));
   if (!opts.dryRun) {
-    mkdirSync(scripts, { recursive: true });
-    for (const name of HOOK_SCRIPTS) copyFileSync(join(source, name), join(scripts, name));
+    copyHookScripts(opts, scripts);
     writeInstallVersion(home, VERSION, opts.dryRun, log);
     if (merged.changed) {
       if (existsSync(file) && !existsSync(`${file}.before-myrmo-worklog`)) copyFileSync(file, `${file}.before-myrmo-worklog`);
@@ -716,7 +736,6 @@ function setUpColony(opts: InitOptions, home: string, log: (l: string) => void, 
   // looks the error up in this colony (and reminds the agent to report and to publish).
   const agy = targets(home).find((t) => t.id === "antigravity")!;
   if (!opts.private || !wanted("antigravity") || (opts.clients.length === 0 && !existsSync(agy.marker))) return;
-  const source = opts.hooksSource ?? join(dirname(fileURLToPath(import.meta.url)), "hooks");
   const dir = join(home, ".myrmo", "hooks");
   const script = join(dir, "antigravity-hook.mjs");
   const file = join(home, ".gemini", "config", "hooks.json");
@@ -727,8 +746,8 @@ function setUpColony(opts: InitOptions, home: string, log: (l: string) => void, 
     return;
   }
   if (!opts.dryRun) {
-    mkdirSync(dir, { recursive: true });
-    for (const name of HOOK_SCRIPTS) copyFileSync(join(source, name), join(dir, name));
+    // A kit that does not carry this hook (it should) leaves the package's set: one or the other, never a mix.
+    copyHookScripts(kitHas(opts.kit, "antigravity-hook.mjs") ? opts : { ...opts, kit: null }, dir);
     writeInstallVersion(home, VERSION, opts.dryRun, log);
     if (merged.changed) {
       mkdirSync(dirname(file), { recursive: true });
@@ -825,7 +844,7 @@ export function runInit(opts: InitOptions): { configured: string[]; skipped: str
     );
   }
 
-  const block = opts.readOnly ? AGENTS_BLOCK_READ_ONLY : opts.private ? AGENTS_BLOCK_PRIVATE : AGENTS_BLOCK;
+  const block = opts.readOnly ? AGENTS_BLOCK_READ_ONLY : opts.private ? privateBlock(kitInstructions(opts.kit)) : AGENTS_BLOCK;
   if (opts.rules !== false) {
     for (const r of rulesFiles(home)) {
       if (!wanted(r.id) || (opts.clients.length === 0 && !existsSync(r.marker))) continue;

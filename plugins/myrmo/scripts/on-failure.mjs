@@ -40,9 +40,18 @@ import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { measureAndSend } from "./effort.mjs";
-import { briefEnabled, briefNote, lookup, lookupEnabled, lookupNote, lookupTask, privateColony, taskOf, updateNotice } from "./lookup.mjs";
+import { briefEnabled, briefNote, colonyOf, lookup, lookupEnabled, lookupNote, lookupTask, personalText, privateColony, taskOf, updateNotice } from "./lookup.mjs";
+import { currentKit, installKit, loadKit } from "./kit.mjs";
 import { readState, stateFile, writeState } from "./state.mjs";
-import { DIGEST_SOURCES, digestMatters, digestNote, isContinuation, isPrivate, logExchange, recallEvents, recallNote, worklogTarget } from "./worklog.mjs";
+
+// The team's work log comes with the kit an organisation's colony serves (kit.mjs), whose worklog.mjs exports `forHook`.
+// Without a kit there is none, and every work log step below does nothing.
+const NO_KIT = { target: () => null, sessionNote: async () => null, promptNote: async () => null, record: async () => {} };
+const teamLog = async () => (await loadKit("worklog.mjs"))?.forHook ?? NO_KIT;
+
+// "//privado" or "//private" at the start of a request: nothing about it is logged or asked of the colony, kit or not.
+const PRIVATE_MARK = /^\s*\/\/\s*(?:privad[oa]|private)\b/i;
+const isPrivate = (prompt) => PRIVATE_MARK.test(personalText(prompt));
 
 // Commands that fail or print errors as part of normal work: a probe that found nothing, a diff that differs, a log
 // being read. Their output is not a problem of the user's.
@@ -556,6 +565,19 @@ function save(file, before, after) {
   writeState(file, after);
 }
 
+/** Installs the kit the colony announced in /v1/version (cached by updateNotice) when it is not the one in use. */
+async function refreshKit(settings, cacheFile) {
+  try {
+    const colony = colonyOf(process.env, settings);
+    if (!colony.private) return;
+    const announced = JSON.parse(readFileSync(cacheFile, "utf8"))?.kit;
+    if (!announced || currentKit()?.version === announced) return;
+    await installKit({ url: colony.url, apiKey: colony.apiKey });
+  } catch (err) {
+    process.stderr.write(`myrmo: the colony kit was not installed: ${err.message}\n`);
+  }
+}
+
 async function main() {
   let raw = "";
   for await (const chunk of process.stdin) raw += chunk;
@@ -568,9 +590,12 @@ async function main() {
     if (hookMode(process.env, settings) === "off") return;
     const cacheFile = join(process.env.MYRMO_HOOK_STATE_DIR || join(homedir(), ".myrmo"), "update-check.json");
     const notice = await updateNotice({ settings, cacheFile });
+    // The organisation's colony serves a kit (its own client code): install it, or the newer one, before the session uses it.
+    await refreshKit(settings, cacheFile);
     // The work log: what colleagues recorded since this person's last session, for the agent.
-    const target = worklogTarget(input, { settings });
-    const digest = target && DIGEST_SOURCES.includes(input.source ?? "startup") ? digestNote(await digestMatters(input, target)) : null;
+    const team = await teamLog();
+    const target = team.target(input, { settings });
+    const digest = target ? await team.sessionNote(input, target) : null;
     const out = {};
     if (notice) out.systemMessage = notice;
     if (digest) out.hookSpecificOutput = { hookEventName: "SessionStart", additionalContext: digest };
@@ -588,9 +613,10 @@ async function main() {
       return;
     }
     // The work log: this request is kept for the Stop hook, and what colleagues recorded about it comes back.
-    const target = worklogTarget(input, { settings });
+    const team = await teamLog();
+    const target = team.target(input, { settings });
     const withPrompt = target ? { ...state, worklogPrompt: String(input.prompt ?? "") } : state;
-    const logged = target && (task || isContinuation(input.prompt)) ? recallNote(await recallEvents(input, target, task)) : null;
+    const logged = target ? await team.promptNote(input, target, task) : null;
     if (!task || !briefEnabled(process.env, settings)) {
       save(file, state, withPrompt);
       if (logged) process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: "UserPromptSubmit", additionalContext: logged } }));
@@ -610,8 +636,9 @@ async function main() {
     // The work log: the exchange that just ended, once. It costs no tokens and never holds the agent back.
     const prompt = stop.state?.worklogPrompt;
     if (prompt) {
-      const target = worklogTarget(input, { settings });
-      if (target) await logExchange(input, target, prompt);
+      const team = await teamLog();
+      const target = team.target(input, { settings });
+      if (target) await team.record(input, target, prompt);
       delete stop.state.worklogPrompt;
     }
     save(file, state, stop.state);
