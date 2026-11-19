@@ -27,7 +27,7 @@ if (!from) {
 }
 const to = join(pkg, "dist", "hooks");
 mkdirSync(to, { recursive: true });
-for (const file of ["cline-hook.mjs", "gemini-hook.mjs", "antigravity-hook.mjs", "on-failure.mjs", "lookup.mjs", "effort.mjs", "state.mjs", "redact.mjs", "worklog.mjs", "packages.mjs"]) copyFileSync(join(from, file), join(to, file));
+for (const file of ["cline-hook.mjs", "gemini-hook.mjs", "antigravity-hook.mjs", "antigravity-worklog.mjs", "on-failure.mjs", "lookup.mjs", "effort.mjs", "state.mjs", "redact.mjs", "worklog.mjs", "packages.mjs"]) copyFileSync(join(from, file), join(to, file));
 
 const protocol = above("protocol", "trail.v1.schema.json");
 if (!protocol) {

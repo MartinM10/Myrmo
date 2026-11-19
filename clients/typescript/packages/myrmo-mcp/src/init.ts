@@ -254,7 +254,7 @@ export interface InitOptions {
   agentsMd?: string; // a markdown file to put the block in
   readOnly?: boolean; // the block for repositories where agents must not publish
   private?: boolean; // the rules and hooks for an organisation's private colony
-  worklog?: boolean; // also keep this person's work log from Cline and Gemini CLI (their hooks) and Claude Code (MYRMO_WORKLOG=1)
+  worklog?: boolean; // also keep this person's work log from Cline, Gemini CLI and Antigravity (their hooks) and Claude Code (MYRMO_WORKLOG=1)
   url?: string; // another colony to use, saved in the settings file with what goes with it
   key?: string; // that colony's access key
   keySource?: "argument" | "file" | "stdin"; // where the key came from: on the command line it is in the shell's history
@@ -376,18 +376,41 @@ export function mergeHooks(current: string | undefined, command: string): { text
  * which apply only to that colony), and for Antigravity installs the hook that looks errors up there.
  */
 /** The scripts the hooks are made of, copied together (scripts/copy-hooks.mjs puts them in dist/hooks). */
-export const HOOK_SCRIPTS = ["cline-hook.mjs", "gemini-hook.mjs", "antigravity-hook.mjs", "on-failure.mjs", "lookup.mjs", "worklog.mjs", "effort.mjs", "state.mjs", "redact.mjs", "packages.mjs"];
+export const HOOK_SCRIPTS = ["cline-hook.mjs", "gemini-hook.mjs", "antigravity-hook.mjs", "antigravity-worklog.mjs", "on-failure.mjs", "lookup.mjs", "worklog.mjs", "effort.mjs", "state.mjs", "redact.mjs", "packages.mjs"];
 
 /** The events Cline runs a hook for that the work log uses. Cline looks for an executable named after the event. */
 export const CLINE_HOOK_EVENTS = ["UserPromptSubmit", "PostToolUse", "TaskComplete", "TaskCancel"];
 export const CLINE_MARK = "myrmo-work-log (written by myrmo-mcp init)";
 
-/** Cline's global hooks folder, where it looks on every project (Cline 4.1: ~/Documents/Cline/Hooks). */
-export const clineHooksDir = (home: string) => join(home, "Documents", "Cline", "Hooks");
+/**
+ * The person's Documents folder, found the way Cline finds it (Cline 4.1, extension.js): on Windows the one the system
+ * names, often inside OneDrive; on Linux `xdg-user-dir DOCUMENTS`, which is ~/Documentos on a system in Spanish; else
+ * ~/Documents. The system is asked only for the real home folder: a test's or a dry run's home keeps ~/Documents.
+ */
+export function documentsDir(home: string, platform: NodeJS.Platform = process.platform, ask: (cmd: string, args: string[]) => string = askSystem): string {
+  const fallback = join(home, "Documents");
+  if (home !== homedir()) return fallback;
+  try {
+    const found = platform === "win32"
+      ? ask("powershell", ["-NoProfile", "-Command", "[System.Environment]::GetFolderPath([System.Environment+SpecialFolder]::MyDocuments)"])
+      : platform === "linux" ? ask("xdg-user-dir", ["DOCUMENTS"]) : "";
+    return found.trim() || fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function askSystem(cmd: string, args: string[]): string {
+  const r = spawnSync(cmd, args, { encoding: "utf8", timeout: 5000, windowsHide: true });
+  return r.status === 0 ? String(r.stdout ?? "") : "";
+}
+
+/** Cline's global hooks folder, where it looks on every project (Cline 4.1: <Documents>/Cline/Hooks). */
+export const clineHooksDir = (home: string, documents: string = documentsDir(home)) => join(documents, "Cline", "Hooks");
 
 /** Whether Cline is on this machine: its data folder, its documents folder or its VS Code extension. */
 export function clineInstalled(home: string): boolean {
-  if (existsSync(join(home, ".cline")) || existsSync(join(home, "Documents", "Cline"))) return true;
+  if (existsSync(join(home, ".cline")) || existsSync(join(home, "Documents", "Cline")) || existsSync(join(documentsDir(home), "Cline"))) return true;
   for (const dir of [join(home, ".vscode", "extensions"), join(home, ".vscode-server", "extensions")]) {
     try {
       if (readdirSync(dir).some((n) => n.startsWith("saoudrizwan.claude-dev"))) return true;
@@ -529,6 +552,69 @@ export function mergeGeminiHooks(settings: Record<string, any>, command: string)
   return { settings: { ...settings, hooks }, changed };
 }
 
+/** The events Antigravity runs the work log's hook for, and the name of its group in ~/.gemini/config/hooks.json. */
+export const AGY_WORKLOG_EVENTS = ["SessionStart", "PreInvocation", "Stop"];
+export const AGY_WORKLOG_GROUP = "myrmo-work-log";
+
+/**
+ * The command Antigravity runs for one event. It runs it through `sh -c` (or `cmd /c` on Windows) and does not say which
+ * event it is, so the event goes as an argument, and --worklog turns the work log on (no environment of the person's
+ * shell is assumed). On Unix node is written in as an absolute path, as for Cline: an editor started from the desktop
+ * may not see nvm's node. On Windows the line must not start with a quote, or `cmd /c` strips the first and last ones.
+ */
+export function agyWorkLogCommand(node: string, script: string, event: string, platform: NodeJS.Platform = process.platform): string {
+  if (platform === "win32") return `${/\s/.test(node) ? "node" : node} "${script}" ${event} --worklog`;
+  const q = (s: string) => `'${s.replace(/'/g, `'\\''`)}'`;
+  return `${q(node)} ${q(script)} ${event} --worklog`;
+}
+
+/** hooks.json with the work log's group added or brought up to date, the rest as it was; null when it is not valid JSON. */
+export function mergeAgyWorkLog(current: string | undefined, command: (event: string) => string): { text: string; changed: boolean } | null {
+  let hooks: Record<string, unknown> = {};
+  if (current !== undefined && current.trim() !== "") {
+    try {
+      const parsed = JSON.parse(current) as unknown;
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
+      hooks = parsed as Record<string, unknown>;
+    } catch {
+      return null;
+    }
+  }
+  const mine = Object.fromEntries(AGY_WORKLOG_EVENTS.map((e) => [e, [{ type: "command", command: command(e), timeout: 15 }]]));
+  if (JSON.stringify(hooks[AGY_WORKLOG_GROUP]) === JSON.stringify(mine)) return { text: current ?? "", changed: false };
+  return { text: JSON.stringify({ ...hooks, [AGY_WORKLOG_GROUP]: mine }, null, 2) + "\n", changed: true };
+}
+
+/** Installs the work log's hook for Antigravity, or says how to. Only with --worklog. */
+export function installAgyWorkLog(opts: InitOptions, home: string, log: (l: string) => void, wanted: (id: string) => boolean = () => true): void {
+  const agy = targets(home).find((t) => t.id === "antigravity")!;
+  if (!opts.private || !wanted("antigravity") || !(existsSync(agy.marker) || opts.clients.includes("antigravity"))) return;
+  if (!opts.worklog) {
+    log(tx("Antigravity: found. To keep your work log from Antigravity as well, run this again with --worklog (what the hooks do: https://myrmo.dev/docs)", "Antigravity: encontrado. Para guardar también tu registro de trabajo desde Antigravity, ejecuta esto otra vez con --worklog (qué hacen los hooks: https://myrmo.dev/docs)"));
+    return;
+  }
+  const file = join(home, ".gemini", "config", "hooks.json");
+  const scripts = join(home, ".myrmo", "hooks");
+  const source = opts.hooksSource ?? join(dirname(fileURLToPath(import.meta.url)), "hooks");
+  const current = existsSync(file) ? readFileSync(file, "utf8") : undefined;
+  const merged = mergeAgyWorkLog(current, (event) => agyWorkLogCommand(process.execPath, join(scripts, "antigravity-worklog.mjs"), event));
+  if (!merged) {
+    log(tx(`Antigravity: ${file} is not valid JSON, left untouched; the work log hook was not installed`, `Antigravity: ${file} no es un JSON válido, no se ha tocado; el hook del registro de trabajo no se ha instalado`));
+    return;
+  }
+  if (!opts.dryRun) {
+    mkdirSync(scripts, { recursive: true });
+    for (const name of HOOK_SCRIPTS) copyFileSync(join(source, name), join(scripts, name));
+    if (merged.changed) {
+      if (current !== undefined && !existsSync(`${file}.before-myrmo-worklog`)) copyFileSync(file, `${file}.before-myrmo-worklog`);
+      mkdirSync(dirname(file), { recursive: true });
+      writeFileSync(file, merged.text);
+    }
+  }
+  if (!merged.changed) log(tx(`Antigravity: the work log hook is already in ${file}`, `Antigravity: el hook del registro de trabajo ya está en ${file}`));
+  else log(tx(`Antigravity: ${opts.dryRun ? "would install" : "installed"} the work log hook (${AGY_WORKLOG_EVENTS.join(", ")}) in ${file}; start a new conversation in Antigravity`, `Antigravity: ${opts.dryRun ? "se instalaría" : "instalado"} el hook del registro de trabajo (${AGY_WORKLOG_EVENTS.join(", ")}) en ${file}; abre una conversación nueva en Antigravity`));
+}
+
 /** Installs the work log's hooks for Gemini CLI, or says how to. Only with --worklog; hooks of the person's own are kept. */
 export function installGeminiHooks(opts: InitOptions, home: string, log: (l: string) => void, wanted: (id: string) => boolean = () => true): void {
   if (!opts.private || !wanted("gemini") || !(geminiInstalled(home) || opts.clients.includes("gemini"))) return;
@@ -604,6 +690,7 @@ function setUpColony(opts: InitOptions, home: string, log: (l: string) => void, 
 
   installClineHooks(opts, home, log);
   installGeminiHooks(opts, home, log, wanted);
+  installAgyWorkLog(opts, home, log, wanted);
   enableClaudeWorkLog(opts, home, log);
 
   // Antigravity has no plugin: copy the hook next to the settings and register it, so that after a failed command it
@@ -651,6 +738,7 @@ export function runInit(opts: InitOptions): { configured: string[]; skipped: str
     if (saved?.url && (saved.private === true || Boolean(saved.api_key))) {
       installClineHooks({ ...opts, private: true }, home, log);
       installGeminiHooks({ ...opts, private: true }, home, log, wanted);
+      installAgyWorkLog({ ...opts, private: true }, home, log, wanted);
       enableClaudeWorkLog({ ...opts, private: true }, home, log);
     }
     else log(tx("--worklog needs your organisation's colony: run init with --url and --key first", "--worklog necesita la colonia de tu organización: ejecuta antes init con --url y --key"));
