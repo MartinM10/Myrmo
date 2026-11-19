@@ -47,6 +47,7 @@ const USAGE = `myrmo-mcp ${VERSION}: the Myrmo MCP server and its commands.
   myrmo-mcp init [options]           set this machine's agents up (add --url, --key or --key-file, --private for a team colony)
   myrmo-mcp join <invitation link>   join a colony with an invitation and set this machine's agents up for it
   myrmo-mcp doctor                   check that this machine can use the colony, and say what to fix
+  myrmo-mcp kit [install|status]     install or update the kit your organisation's colony serves, or show it
   myrmo-mcp config [setting value]   show or change a setting (publish, hook, ...)
   myrmo-mcp export <dir> [--skill]   write the colony's trails as Markdown notes
   myrmo-mcp pilot-roi [days] [--json] a private colony's pilot summary (needs MYRMO_ADMIN_TOKEN)
@@ -60,13 +61,14 @@ const USAGE_ES = `myrmo-mcp ${VERSION}: el servidor MCP de Myrmo y sus comandos.
   myrmo-mcp init [opciones]          configura los agentes de esta máquina (añade --url, --key o --key-file, --private para la colonia de un equipo)
   myrmo-mcp join <enlace>            se une a una colonia con una invitación y configura para ella los agentes de esta máquina
   myrmo-mcp doctor                   comprueba que esta máquina puede usar la colonia y dice qué arreglar
+  myrmo-mcp kit [install|status]     instala o actualiza el kit que sirve la colonia de tu organización, o lo enseña
   myrmo-mcp config [ajuste valor]    enseña o cambia un ajuste (publish, hook, ...)
   myrmo-mcp export <dir> [--skill]   escribe los rastros de la colonia como notas Markdown
   myrmo-mcp pilot-roi [días] [--json] el resumen del piloto de una colonia privada (necesita MYRMO_ADMIN_TOKEN)
   myrmo-mcp --version
 
 Para ver los mensajes en inglés: MYRMO_LANG=en. Documentación: https://myrmo.dev/docs/es/reference/mcp`;
-const COMMANDS = ["init", "join", "doctor", "config", "export", "pilot-roi"];
+const COMMANDS = ["init", "join", "doctor", "kit", "config", "export", "pilot-roi"];
 const INIT_USAGE = `myrmo-mcp init [options]: set up the agents on this machine to use Myrmo.
 
   (no options)                 every agent client found: Claude Code (plugin), Cursor, Windsurf, Gemini CLI,
@@ -81,7 +83,8 @@ const INIT_USAGE = `myrmo-mcp init [options]: set up the agents on this machine 
   --agents-md [file]           also write the usage rules into this repository's AGENTS.md
   --read-only                  with --agents-md: agents in this repository search and report, never publish
   --no-rules                   do not write usage rules into Gemini CLI's or Windsurf's global instructions
-  --dry-run                    show what would change, change nothing
+  --worklog                    also set up the team's work log, from the kit your organisation's colony serves
+  --dry-run                   show what would change, change nothing
   --yes                        do not ask anything (init alone in a terminal asks a few questions)
 
 Afterwards: npx myrmo-mcp doctor (checks everything), npx myrmo-mcp config (shows and changes settings).`;
@@ -99,7 +102,8 @@ const INIT_USAGE_ES = `myrmo-mcp init [opciones]: configura los agentes de esta 
   --agents-md [file]           escribe también las reglas de uso en el AGENTS.md de este repositorio
   --read-only                  con --agents-md: los agentes de este repositorio buscan y reportan, nunca publican
   --no-rules                   no escribe las reglas de uso en las instrucciones globales de Gemini CLI o Windsurf
-  --dry-run                    enseña lo que cambiaría, sin cambiar nada
+  --worklog                    configura también el registro de trabajo del equipo, con el kit que sirve la colonia de tu organización
+  --dry-run                   enseña lo que cambiaría, sin cambiar nada
   --yes                        no pregunta nada (init solo, en una terminal, hace unas pocas preguntas)
 
 Después: npx myrmo-mcp doctor (lo comprueba todo), npx myrmo-mcp config (enseña y cambia los ajustes).`;
@@ -212,13 +216,13 @@ if (args[0] === "pilot-roi") {
 }
 
 /** GET /v1/version from the colony, or null. The saved key belongs to the saved colony only (fileColony matches the URL). */
-async function askVersion(timeoutMs: number): Promise<{ clients?: { mcp?: string }; colony?: unknown } | null> {
+async function askVersion(timeoutMs: number): Promise<{ clients?: { mcp?: string; kit?: string }; colony?: unknown } | null> {
   try {
     const res = await fetch(`${colonyUrl.replace(/\/+$/, "")}/v1/version`, {
       headers: { accept: "application/json", "x-myrmo-client": `myrmo-mcp/${VERSION}`, ...(colonyKey ? { authorization: `Bearer ${colonyKey}` } : {}) },
       signal: AbortSignal.timeout(timeoutMs),
     });
-    return res.ok ? ((await res.json()) as { clients?: { mcp?: string }; colony?: unknown }) : null;
+    return res.ok ? ((await res.json()) as { clients?: { mcp?: string; kit?: string }; colony?: unknown }) : null;
   } catch {
     return null;
   }
@@ -241,6 +245,46 @@ if (args[0] === "doctor") {
   });
   console.log(render(checks));
   process.exit(checks.some((c) => c.level === "fail") ? 1 : 0);
+}
+
+// `myrmo-mcp kit [install|status]`: the client features only an organisation's colony offers (the team's work log, its
+// tools for agents) come as a signed kit that colony serves to its members. `install` (the default) installs or updates
+// it in ~/.myrmo/kit; `status` says which one is installed and which one the colony offers.
+if (args[0] === "kit") {
+  const sub = args[1] && !args[1].startsWith("-") ? args[1] : "install";
+  if (sub !== "install" && sub !== "status") {
+    console.error(tx("Usage: myrmo-mcp kit [install|status]", "Uso: myrmo-mcp kit [install|status]"));
+    process.exit(2);
+  }
+  const { findKit, installFromColony } = await import("./kit.js");
+  if (sub === "status") {
+    const kit = await findKit();
+    const offered = (await askVersion(5000))?.clients?.kit;
+    console.log(
+      kit
+        ? kit.dev
+          ? tx(`Installed: a kit in development (MYRMO_KIT_DEV=${kit.dir}), unsigned`, `Instalado: un kit en desarrollo (MYRMO_KIT_DEV=${kit.dir}), sin firmar`)
+          : tx(`Installed: ${kit.version} (${kit.dir})`, `Instalado: ${kit.version} (${kit.dir})`)
+        : tx("Installed: none", "Instalado: ninguno"),
+    );
+    console.log(
+      offered
+        ? tx(`${colonyUrl} offers: ${offered}${kit?.version === offered ? " (up to date)" : ""}`, `${colonyUrl} ofrece: ${offered}${kit?.version === offered ? " (al día)" : ""}`)
+        : tx(`${colonyUrl} offers none: it is the public colony, a server older than the kit, or your key is not a member's`, `${colonyUrl} no ofrece ninguno: es la colonia pública, un servidor anterior al kit, o tu clave no es de un miembro`),
+    );
+    if (offered && kit?.version !== offered && !kit?.dev) console.log(tx("Install it with: npx myrmo-mcp@latest kit", "Instálalo con: npx myrmo-mcp@latest kit"));
+    process.exit(0);
+  }
+  const kit = await installFromColony({ url: colonyUrl, key: colonyKey, client: `myrmo-mcp/${VERSION}` }, (l) => console.log(l));
+  if (kit) console.log(tx("Restart your agents so they load it. Already set up the work log for Cline, Gemini CLI or Antigravity? Run npx myrmo-mcp@latest init --worklog again to bring their hooks up to date.", "Reinicia tus agentes para que lo carguen. ¿Ya tenías el registro de trabajo en Cline, Gemini CLI o Antigravity? Vuelve a ejecutar npx myrmo-mcp@latest init --worklog para poner al día sus hooks."));
+  process.exit(kit ? 0 : 1);
+}
+
+/** Init's options with the colony kit in use: installed or updated first when the work log is asked for (--worklog). */
+async function withKit(opts: Parameters<typeof runInit>[0]): Promise<Parameters<typeof runInit>[0]> {
+  const { findKit, installFromColony } = await import("./kit.js");
+  const kit = opts.worklog ? await installFromColony({ url: opts.url, key: opts.key, dryRun: opts.dryRun, client: `myrmo-mcp/${VERSION}` }, (l) => console.log(l)) : await findKit();
+  return { ...opts, kit };
 }
 
 if (args[0] === "join") {
@@ -285,7 +329,7 @@ if (args[0] === "join") {
     process.exit(1);
   }
   console.log(tx(`Joined ${inv.url} as "${joined.name}". Setting up this machine's agents...\n`, `Te has unido a ${inv.url} como "${joined.name}". Configurando los agentes de esta máquina...\n`));
-  runInit({ ...parsed, key: joined.key, keySource: "file" });
+  runInit(await withKit({ ...parsed, key: joined.key, keySource: "file" }));
   console.log(tx("\nCheck it any time with: npx myrmo-mcp doctor", "\nCompruébalo cuando quieras con: npx myrmo-mcp doctor"));
   process.exit(0);
 }
@@ -341,7 +385,7 @@ if (args[0] === "init") {
         if (answer.publicPublish) setSetting("publish", answer.publicPublish);
       }
       console.log("");
-      runInit(opts);
+      runInit(await withKit(opts));
       console.log(tx("\nCheck it any time with: npx myrmo-mcp doctor", "\nCompruébalo cuando quieras con: npx myrmo-mcp doctor"));
       process.exit(0);
     } catch (err) {
@@ -354,7 +398,7 @@ if (args[0] === "init") {
     console.error(parsed);
     process.exit(2);
   }
-  runInit(parsed);
+  runInit(await withKit(parsed));
   process.exit(0);
 }
 
@@ -382,8 +426,11 @@ if (flag("--http")) {
   // It says which client it is, so an operator sees in the admin panel who runs an old one.
   const colony = new Colony({ publish: publishMode, private: privacy.on, keepPersonal: declared?.keep_personal === true, headers: { "x-myrmo-client": `myrmo-mcp/${VERSION}` } });
   if (privacy.warning) console.error(`myrmo-mcp: ${privacy.warning}`);
+  // An organisation's colony serves more to its members as a kit (its tools and their rules): loaded once, if installed.
+  const kit = privacy.on ? await (await import("./kit.js")).serverKit() : undefined;
   const server = createServer({
     colony,
+    kit,
     privateColony: privacy.on,
     keepPersonal: declared?.keep_personal === true,
     identity: (() => {
@@ -458,6 +505,8 @@ async function serveHttp(port: number, host: string) {
       }));
   const warned = privateMode(url, process.env, false, undefined, false).warning;
   if (warned) console.error(`myrmo-mcp: ${warned}`);
+  // A kit installed on the machine that hosts this server: its tools go to callers for whom the colony is private.
+  const kit = await (await import("./kit.js")).serverKit();
   const http = createHttpServer(async (req, res) => {
     const path = (req.url ?? "/").split("?")[0];
     if (path === "/healthz") return sendJson(res, 200, { status: "ok", version: VERSION });
@@ -492,7 +541,7 @@ async function serveHttp(port: number, host: string) {
       // The hosted server has no identity of its own: it forwards the header of whoever is calling.
       agentId: false,
     });
-    const server = createServer({ colony, publishMode: "off", minFailedAttempts, fillLocalEnvironment: false, hosted: true, privateColony: privacy.on, keepPersonal });
+    const server = createServer({ colony, kit, publishMode: "off", minFailedAttempts, fillLocalEnvironment: false, hosted: true, privateColony: privacy.on, keepPersonal });
     // A web page can make a browser send requests to this port under a name it controls (DNS rebinding): only the
     // Host names this server is meant for are answered (MYRMO_MCP_ALLOWED_HOSTS).
     const transport = new StreamableHTTPServerTransport({

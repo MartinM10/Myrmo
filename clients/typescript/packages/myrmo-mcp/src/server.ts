@@ -7,7 +7,7 @@ import { Colony, MyrmoError, detectEnvironment, formatResult, writeConfig, type 
 import { z } from "zod";
 import { checkTrail } from "./check.js";
 import { buildInstructions } from "./instructions.js";
-import { MATTER_DESCRIPTION, MATTERS_DESCRIPTION, formatMatter, formatMatters } from "./worklog.js";
+import type { ServerKit } from "./kit.js";
 
 export const VERSION = "0.38.1"; // x-release-please-version
 
@@ -48,6 +48,11 @@ export interface ServerOptions {
   privateColony?: boolean;
   /** The private colony keeps people's and customers' names (GET /v1/version). Credentials still go. */
   keepPersonal?: boolean;
+  /**
+   * The colony kit installed on this machine (src/kit.ts `serverKit`, loaded before the server is made): for a private
+   * colony its tools are registered and its text is added to the instructions. Without one they are simply absent.
+   */
+  kit?: ServerKit;
   /** What the colony says it is (GET /v1/version), once known: myrmo_status tells the person what it keeps about them. */
   colonyDescription?: () => { profile?: string; people_detail?: string | null; holdout_percent?: number; effort?: boolean } | undefined;
 }
@@ -435,7 +440,15 @@ async function heldForApproval(opts: ServerOptions, trail: Trail, why = "", amen
 export function createServer(opts: ServerOptions): McpServer {
   const server = new McpServer(
     { name: "myrmo", version: VERSION },
-    { instructions: buildInstructions({ hosted: opts.hosted ?? false, minFailedAttempts: opts.minFailedAttempts, privateColony: opts.privateColony, keepPersonal: opts.keepPersonal }) },
+    {
+      instructions: buildInstructions({
+        hosted: opts.hosted ?? false,
+        minFailedAttempts: opts.minFailedAttempts,
+        privateColony: opts.privateColony,
+        keepPersonal: opts.keepPersonal,
+        kitText: opts.privateColony ? opts.kit?.instructions : undefined,
+      }),
+    },
   );
   const privateUrl = opts.privateColony ? opts.colony.url : undefined;
   const where = () => destinationLine(opts.colony.url, opts.privateColony === true, opts.identity);
@@ -523,55 +536,14 @@ export function createServer(opts: ServerOptions): McpServer {
     );
   }
 
-  // The team's work log, for an agent that picks up work or wants to know what the others are doing. An SDK or a colony
-  // without it answers that there is none.
-  const colonyWorklog = opts.colony as { listMatters?: Colony["listMatters"]; readMatter?: Colony["readMatter"] };
-  if (opts.privateColony && typeof colonyWorklog.listMatters === "function" && typeof colonyWorklog.readMatter === "function") {
-    const failed = (err: unknown) =>
-      err instanceof MyrmoError && err.code === "not_enrolled"
-        ? text("You are not enrolled in this colony's work log: ask its administrator.", true)
-        : text(errorText(err), true);
-    server.registerTool(
-      "myrmo_matters",
-      {
-        title: "What is the team working on?",
-        description: MATTERS_DESCRIPTION,
-        inputSchema: {
-          query: z.string().max(200).optional().describe("Only matters about this, in the user's words."),
-          others: z.boolean().optional().describe("Only matters somebody else worked on: what the rest of the team is doing."),
-          mine: z.boolean().optional().describe("Only matters this person worked on."),
-          hours: z.number().int().min(1).max(720).optional().describe("Only matters with activity in the last this many hours."),
-          limit: z.number().int().min(1).max(50).optional().describe("How many to list (default 15)."),
-        },
-        annotations: { readOnlyHint: true, openWorldHint: false },
-      },
-      async (args) => {
-        try {
-          return text(withUpdate(`${formatMatters(await colonyWorklog.listMatters!({ q: args.query, others: args.others, mine: args.mine, hours: args.hours, limit: args.limit }))}\n${where()}`));
-        } catch (err) {
-          return failed(err);
-        }
-      },
-    );
-    server.registerTool(
-      "myrmo_matter",
-      {
-        title: "Read a matter to continue it",
-        description: MATTER_DESCRIPTION,
-        inputSchema: {
-          name: z.string().min(2).max(200).describe("The matter's name, as listed by myrmo_matters (a part of it is enough)."),
-          everything: z.boolean().optional().describe("Every event and every earlier state, not only the recent ones."),
-        },
-        annotations: { readOnlyHint: true, openWorldHint: false },
-      },
-      async (args) => {
-        try {
-          return text(withUpdate(`${formatMatter(await colonyWorklog.readMatter!(args.name, args.everything))}\n${where()}`));
-        } catch (err) {
-          return failed(err);
-        }
-      },
-    );
+  // What only an organisation's colony offers comes with the kit it serves (its mcp-tools.mjs): its tools are registered
+  // here when one is installed. A kit that fails to register leaves the server as it is.
+  if (opts.privateColony && opts.kit?.registerTools) {
+    try {
+      opts.kit.registerTools({ server, colony: opts.colony, z, text, errorText, finish: (answer: string) => withUpdate(`${answer}\n${where()}`) });
+    } catch (err) {
+      console.error(`myrmo-mcp: the colony kit ${opts.kit.version} could not add its tools: ${err instanceof Error ? err.message : String(err)}`);
+    }
   }
 
   server.registerTool(

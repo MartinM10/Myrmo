@@ -6,11 +6,11 @@ import assert from "node:assert/strict";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { CLINE_HOOK_EVENTS, HOOK_SCRIPTS, clineInstalled, clineWrapper, parseInitArgs, runInit } from "../dist/init.js";
+import { HOOKS, KIT_COPY, fakeKit } from "./fake-kit.mjs";
 
 const KEY = `myk_${"d".repeat(64)}`;
-const HOOKS = fileURLToPath(new URL("../dist/hooks", import.meta.url));
+const KIT = fakeKit();
 let saved;
 beforeEach(() => { saved = process.env.MYRMO_CONFIG; });
 afterEach(() => { if (saved === undefined) delete process.env.MYRMO_CONFIG; else process.env.MYRMO_CONFIG = saved; });
@@ -24,12 +24,20 @@ function machine({ cline = true } = {}) {
 }
 /** The file Cline runs for an event: named after it, with .ps1 on Windows. */
 const hookFile = (home, event) => join(home, "Documents", "Cline", "Hooks", process.platform === "win32" ? `${event}.ps1` : event);
-const run = (m, extra = {}) => runInit({ clients: [], dryRun: false, home: m.home, log: m.log, url: "https://myrmo.example.internal", key: KEY, private: true, hooksSource: HOOKS, ...extra });
+const run = (m, extra = {}) => runInit({ clients: [], dryRun: false, home: m.home, log: m.log, url: "https://myrmo.example.internal", key: KEY, private: true, hooksSource: HOOKS, kit: KIT, ...extra });
 
-test("--worklog is an option, and the Cline hook script travels with the others", () => {
+test("--worklog is an option, and the Cline hook script is not in this package: it comes with the colony kit", () => {
   assert.equal(parseInitArgs(["--worklog"]).worklog, true);
-  assert.ok(HOOK_SCRIPTS.includes("cline-hook.mjs"));
-  assert.ok(existsSync(join(HOOKS, "cline-hook.mjs")), "dist/hooks has the script (npm run build copies it)");
+  assert.ok(!HOOK_SCRIPTS.includes("cline-hook.mjs"));
+  assert.equal(existsSync(join(HOOKS, "cline-hook.mjs")), false, "dist/hooks does not carry it");
+});
+
+test("without a kit, --worklog says where the work log comes from and installs nothing for Cline", () => {
+  const m = machine();
+  run(m, { worklog: true, kit: null });
+  assert.equal(existsSync(join(m.home, "Documents", "Cline", "Hooks")), false);
+  assert.equal(existsSync(join(m.home, ".myrmo", "hooks", "cline-hook.mjs")), false);
+  assert.match(m.out.join("\n"), /Cline: the work log comes with the kit your organisation's colony serves, and no kit is installed here; get it with `npx myrmo-mcp@latest kit`/);
 });
 
 test("Cline is found by its folders or its VS Code extension", () => {
@@ -61,7 +69,9 @@ test("with --worklog the four hooks are written, executable, with an absolute no
     assert.ok(text.includes(join(m.home, ".myrmo", "hooks", "cline-hook.mjs")));
   }
   assert.ok(existsSync(join(m.home, ".myrmo", "hooks", "cline-hook.mjs")));
-  assert.ok(existsSync(join(m.home, ".myrmo", "hooks", "worklog.mjs")));
+  // The kit's whole set, its own copies of the shared modules included: never a mix with the package's.
+  assert.ok(readFileSync(join(m.home, ".myrmo", "hooks", "lookup.mjs"), "utf8").includes(KIT_COPY));
+  assert.equal(existsSync(join(m.home, ".myrmo", "hooks", "mcp-tools.mjs")), true);
   // The installation's version is written next to the hooks, so the hooks can report it to the colony.
   assert.ok(existsSync(join(m.home, ".myrmo", "version.txt")), "version.txt is written");
   assert.match(readFileSync(join(m.home, ".myrmo", "version.txt"), "utf8"), /^\d+\.\d+\.\d+/);
@@ -89,7 +99,7 @@ test("--dry-run writes nothing", () => {
 
 test("without a private colony there is no work log", () => {
   const m = machine();
-  runInit({ clients: [], dryRun: false, home: m.home, log: m.log, hooksSource: HOOKS, worklog: true });
+  runInit({ clients: [], dryRun: false, home: m.home, log: m.log, hooksSource: HOOKS, kit: KIT, worklog: true });
   assert.equal(existsSync(join(m.home, "Documents", "Cline", "Hooks")), false);
 });
 
@@ -103,7 +113,7 @@ test("the wrapper quotes paths with spaces and has a Windows form", () => {
 test("running init again for the same colony keeps its key and publish choice", () => {
   const m = machine();
   run(m, { publish: "ask" });
-  runInit({ clients: [], dryRun: false, home: m.home, log: m.log, url: "https://myrmo.example.internal/", private: true, hooksSource: HOOKS, worklog: true });
+  runInit({ clients: [], dryRun: false, home: m.home, log: m.log, url: "https://myrmo.example.internal/", private: true, hooksSource: HOOKS, kit: KIT, worklog: true });
   const saved = JSON.parse(readFileSync(process.env.MYRMO_CONFIG, "utf8")).colony;
   assert.equal(saved.api_key, KEY);
   assert.equal(saved.publish, "ask");
@@ -120,10 +130,10 @@ test("another colony's url does not inherit the saved key", () => {
 test("init --worklog alone uses the colony already saved, and refuses without one", () => {
   const m = machine();
   run(m);
-  runInit({ clients: [], dryRun: false, home: m.home, log: m.log, hooksSource: HOOKS, worklog: true });
+  runInit({ clients: [], dryRun: false, home: m.home, log: m.log, hooksSource: HOOKS, kit: KIT, worklog: true });
   assert.ok(existsSync(hookFile(m.home, "UserPromptSubmit")));
   const bare = machine();
-  runInit({ clients: [], dryRun: false, home: bare.home, log: bare.log, hooksSource: HOOKS, worklog: true });
+  runInit({ clients: [], dryRun: false, home: bare.home, log: bare.log, hooksSource: HOOKS, kit: KIT, worklog: true });
   assert.equal(existsSync(join(bare.home, "Documents", "Cline", "Hooks")), false);
   assert.match(bare.out.join("\n"), /needs your organisation's colony/);
 });
