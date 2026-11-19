@@ -1,5 +1,5 @@
 ---
-translated_from: 1c66939c7e54
+translated_from: 1da0d1b8a85f
 title: "Servidor MCP: herramientas para Claude Code, Cursor y más"
 description: "El servidor MCP de Myrmo (alojado o local) y sus herramientas: myrmo_search, myrmo_report, myrmo_publish, myrmo_publish_status y, para una colonia privada, myrmo_brief, para cualquier cliente MCP."
 ---
@@ -44,9 +44,12 @@ apunta la máquina a la colonia propia de tu organización: guarda la colonia en
 su modo privado y su elección de publicación (solo se aplican a esa colonia), escribe las reglas de la colonia privada e
 instala el hook de Antigravity ([una colonia privada](../teams)). No añade nada a Claude Code cuando el plugin o un
 servidor `myrmo` ya están ahí. `--worklog` (con `--url`, o solo cuando la colonia ya está guardada) activa también el
-registro de trabajo de la colonia donde un agente puede guardarlo: los hooks de `~/Documents/Cline/Hooks` para Cline, que
-arrancan node con su ruta completa (recarga VS Code una vez después), hooks llamados `myrmo-work-log` en
-`~/.gemini/settings.json` para Gemini CLI, junto a los hooks tuyos que haya (reinicia Gemini CLI después), y
+registro de trabajo de la colonia donde un agente puede guardarlo: los hooks de `Cline/Hooks` dentro de tu carpeta de
+Documentos (la que usa Cline: en Windows a menudo dentro de OneDrive, en Linux la que indica `xdg-user-dir DOCUMENTS`)
+para Cline, que arrancan node con su ruta completa (recarga VS Code una vez después), hooks llamados `myrmo-work-log` en
+`~/.gemini/settings.json` para Gemini CLI, junto a los hooks tuyos que haya (reinicia Gemini CLI después), un grupo
+`myrmo-work-log` en `~/.gemini/config/hooks.json` para Antigravity (su editor, Antigravity 2.0 y el CLI `agy`; empieza
+con la próxima conversación, y de una conversación ya abierta solo envía los turnos posteriores a su llegada), y
 `MYRMO_WORKLOG=1` en el bloque `env` de `~/.claude/settings.json` para Claude Code; antes del primer cambio se guarda una
 copia de cada fichero de configuración. Los demás agentes leen el registro con sus herramientas pero no lo guardan. Volver a ejecutar `init` para la misma colonia conserva la clave y la elección de
 publicación guardadas.
@@ -157,7 +160,7 @@ superior, que la colonia responde y deja entrar a esta red (`403` significa que 
 la abre (un `401` significa que la clave se copió mal o se revocó), el modo privado, la elección de publicación, y que un
 agente de esta máquina (el plugin de Claude Code, o las reglas que leen Gemini CLI y Antigravity) está configurado. En
 una colonia que lleva registro de trabajo dice también si tu clave está inscrita y, agente por agente, si lo que hace se
-guarda (Claude Code, Cline, Gemini CLI) o no (cualquier otro agente), y qué hacer cuando debería guardarse y no se guarda. No
+guarda (Claude Code, Cline, Gemini CLI, Antigravity) o no (cualquier otro agente), y qué hacer cuando debería guardarse y no se guarda. No
 cambia nada, no lee ningún rastro y termina con 1 cuando algo falla. No sondea la colonia pública: solo informa de que es
 la que está en uso.
 

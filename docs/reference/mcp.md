@@ -39,9 +39,12 @@ points the machine at your organisation's own colony: it saves the colony in the
 mode and publish choice (they apply only to that colony), writes the private colony's rules and installs Antigravity's
 hook ([a private colony](../teams)). It adds nothing to Claude Code when the plugin or a `myrmo`
 server is already there. `--worklog` (with `--url`, or alone once the colony is saved) also turns on the colony's work
-log where an agent can record it: the hooks in `~/Documents/Cline/Hooks` for Cline, which start node by its full path
+log where an agent can record it: the hooks in `Cline/Hooks` inside your Documents folder (the one Cline uses: on Windows
+often inside OneDrive, on Linux the one `xdg-user-dir DOCUMENTS` names) for Cline, which start node by its full path
 (reload VS Code once afterwards), hooks named `myrmo-work-log` in `~/.gemini/settings.json` for Gemini CLI, next to any
-hooks of your own (restart Gemini CLI afterwards), and `MYRMO_WORKLOG=1` in the `env` block of `~/.claude/settings.json`
+hooks of your own (restart Gemini CLI afterwards), a `myrmo-work-log` group in `~/.gemini/config/hooks.json` for
+Antigravity (its editor, Antigravity 2.0 and the `agy` CLI; it starts with the next conversation, and from a conversation
+already open it sends only the turns after it arrived), and `MYRMO_WORKLOG=1` in the `env` block of `~/.claude/settings.json`
 for Claude Code; a copy of each settings file is kept before its first change. Other agents read the work log through
 their tools but do not record it. Running
 `init` again for the same colony keeps the saved key and publish choice.
@@ -147,7 +150,7 @@ Checks that this machine can use the colony and says what to do about each failu
 that the colony answers and lets this network in (`403` means the colony does not allow it), that the key opens it
 (a `401` means the key was copied wrong or revoked), private mode, the publish choice, and that an agent on this machine
 (Claude Code's plugin, or the rules Gemini CLI and Antigravity read) is set up. For a colony that keeps a work log it
-also says whether your key is enrolled and, agent by agent, whether what it does is recorded (Claude Code, Cline, Gemini CLI) or not
+also says whether your key is enrolled and, agent by agent, whether what it does is recorded (Claude Code, Cline, Gemini CLI, Antigravity) or not
 (every other agent), and what to do when it should be and is not. It changes nothing, reads no trail, and
 exits 1 when something fails. It does not probe the public colony: it only reports that it is the one in use.
 

@@ -4,7 +4,7 @@
 
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { CLINE_HOOK_EVENTS, CLINE_MARK, GEMINI_HOOK_EVENTS, GEMINI_HOOK_NAME, claudeCodeSetUp, claudeWorkLogHook, clineHooksDir, clineInstalled, geminiInstalled, targets } from "./init.js";
+import { AGY_WORKLOG_EVENTS, AGY_WORKLOG_GROUP, CLINE_HOOK_EVENTS, CLINE_MARK, GEMINI_HOOK_EVENTS, GEMINI_HOOK_NAME, claudeCodeSetUp, claudeWorkLogHook, clineHooksDir, clineInstalled, geminiInstalled, targets } from "./init.js";
 import { compareVersions, describeColony, VERSION, VERSION_SHAPE } from "./server.js";
 import { t } from "./i18n.js";
 
@@ -47,6 +47,12 @@ async function call(fetchImpl: typeof fetch, url: string, key?: string): Promise
     const cause = (err as { cause?: { code?: string } }).cause?.code ?? (err as Error).name;
     return { error: String(cause) };
   }
+}
+
+/** The node an Antigravity work log command starts, as init wrote it; undefined for a bare `node` or another shape. */
+export function agyHookNode(command: string): string | undefined {
+  const m = /^'([^']+)'\s/.exec(command) ?? /^([^\s"']+)\s+"/.exec(command);
+  return m && m[1] !== "node" ? m[1] : undefined;
 }
 
 /** The node a Gemini CLI hook command starts, as init wrote it (the first quoted path); undefined for another shape. */
@@ -192,16 +198,57 @@ export async function workLogChecks(input: DoctorInput, fetchImpl: typeof fetch)
     }
   }
 
+  // Antigravity (its editor, 2.0 and the agy CLI): the work log's group in ~/.gemini/config/hooks.json.
+  let agyChecked = false;
+  const agyMcp = join(input.home, ".gemini", "config", "mcp_config.json");
+  const agyHooks = join(input.home, ".gemini", "config", "hooks.json");
+  const agyUses = existsSync(agyMcp) && /myrmo/i.test(readFileSync(agyMcp, "utf8"));
+  if (agyUses || existsSync(agyHooks)) {
+    let hooks: any = {};
+    try {
+      hooks = JSON.parse(readFileSync(agyHooks, "utf8"));
+    } catch {
+      /* missing or damaged: no hooks */
+    }
+    const group = hooks?.[AGY_WORKLOG_GROUP];
+    const commands = new Map<string, string>();
+    for (const event of AGY_WORKLOG_EVENTS) {
+      const command = Array.isArray(group?.[event]) ? group[event].find((h: any) => typeof h?.command === "string")?.command : undefined;
+      if (command) commands.set(event, command);
+    }
+    if (commands.size || agyUses) {
+      agyChecked = true;
+      const missing = AGY_WORKLOG_EVENTS.filter((e) => !commands.has(e));
+      const broken = [...commands].filter(([, c]) => {
+        const node = agyHookNode(c);
+        return node !== undefined && !existsSync(node);
+      }).map(([e]) => e);
+      const fix = t("npx myrmo-mcp@latest init --worklog   then start a new conversation in Antigravity", "npx myrmo-mcp@latest init --worklog   y abre una conversación nueva en Antigravity");
+      if (missing.length === AGY_WORKLOG_EVENTS.length) {
+        checks.push({ level: "warn", name: `${name}, Antigravity`, detail: t("not recorded: the hook is not installed", "no se registra: el hook no está instalado"), fix });
+      } else if (broken.length) {
+        checks.push({ level: "warn", name: `${name}, Antigravity`, detail: t(`not recorded: the hook starts a node that no longer exists (${broken.join(", ")})`, `no se registra: el hook arranca un node que ya no existe (${broken.join(", ")})`), fix });
+      } else if (missing.length) {
+        checks.push({ level: "warn", name: `${name}, Antigravity`, detail: t(`incomplete: ${missing.join(", ")} missing`, `incompleto: falta ${missing.join(", ")}`), fix });
+      } else if (group?.enabled === false) {
+        checks.push({ level: "warn", name: `${name}, Antigravity`, detail: t(`not recorded: the hook is turned off ("enabled": false in ${AGY_WORKLOG_GROUP})`, `no se registra: el hook está desactivado ("enabled": false en ${AGY_WORKLOG_GROUP})`), fix });
+      } else {
+        capturing++;
+        checks.push({ level: "ok", name: `${name}, Antigravity`, detail: t("recorded (hook in place; it starts with the next conversation)", "se registra (hook instalado; empieza con la próxima conversación)") });
+      }
+    }
+  }
+
   // Everything else Myrmo can set up talks to the colony through its tools, but has no hook that records the work.
   const others = targets(input.home, platform)
-    .filter((c) => c.id !== "claude-desktop" && !(geminiChecked && c.id === "gemini") && existsSync(c.file) && /myrmo/i.test(readFileSync(c.file, "utf8")))
+    .filter((c) => c.id !== "claude-desktop" && !(geminiChecked && c.id === "gemini") && !(agyChecked && c.id === "antigravity") && existsSync(c.file) && /myrmo/i.test(readFileSync(c.file, "utf8")))
     .map((c) => c.name);
   if (others.length) {
     checks.push({
       level: capturing ? "ok" : "warn",
       name: t(`${name}, other agents`, `${name}, otros agentes`),
       detail: t(`${others.join(", ")}: not recorded (Myrmo has no work log hook for them yet); their agents can still read it with myrmo_matters`, `${others.join(", ")}: no se registra (Myrmo aún no tiene hook del registro para ellos); sus agentes sí pueden leerlo con myrmo_matters`),
-      ...(capturing ? {} : { fix: t("Use Claude Code, Cline or Gemini CLI for the work you want in the work log", "Usa Claude Code, Cline o Gemini CLI para el trabajo que quieras en el registro") }),
+      ...(capturing ? {} : { fix: t("Use Claude Code, Cline, Gemini CLI or Antigravity for the work you want in the work log", "Usa Claude Code, Cline, Gemini CLI o Antigravity para el trabajo que quieras en el registro") }),
     });
   }
   return checks;
