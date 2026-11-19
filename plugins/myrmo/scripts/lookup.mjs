@@ -452,7 +452,8 @@ export async function updateNotice({ env = process.env, settings = {}, now = Dat
   }
   const day = 24 * 3600_000;
   const VERSION = /^\d{1,4}\.\d{1,4}\.\d{1,6}(?:-[0-9A-Za-z.]{1,20})?$/;
-  let latest = cache.url === colony.url && now - Number(cache.at ?? 0) < day ? cache.latest : undefined;
+  // A cache written before the plugin knew about the colony kit has no "kit": ask again, or a new kit would wait a day.
+  let latest = cache.url === colony.url && now - Number(cache.at ?? 0) < day && "kit" in cache ? cache.latest : undefined;
   if (typeof latest === "string" && !VERSION.test(latest)) latest = undefined;
   if (latest === undefined) {
     const headers = { accept: "application/json", "user-agent": "myrmo-claude-code-hook/1", ...clientHeader(current, id?.name) };
@@ -473,7 +474,8 @@ export async function updateNotice({ env = process.env, settings = {}, now = Dat
     } catch {
       latest = null;
     }
-    cache = { ...cache, url: colony.url, at: now, latest };
+    // A colony that did not answer is asked again tomorrow, like the version, not at every session start.
+    cache = { kit: null, ...cache, url: colony.url, at: now, latest };
   }
   let notice = null;
   const alreadyToday = cache.told === latest && now - Number(cache.toldAt ?? 0) < day;
