@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.38.1](https://github.com/MartinM10/Myrmo/compare/mcp-v0.38.0...mcp-v0.38.1) (2026-11-19)
+
+
+### Bug fixes
+
+* **plugin:** the hooks tell the colony their real version ([#49](https://github.com/MartinM10/Myrmo/issues/49)) ([74db56a](https://github.com/MartinM10/Myrmo/commit/74db56a20968d590de7e525b1fc05bcc9ab162d8))
+
 ## [0.38.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.37.0...mcp-v0.38.0) (2026-11-19)
 
 

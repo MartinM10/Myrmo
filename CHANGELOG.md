@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.59.1](https://github.com/MartinM10/Myrmo/compare/platform-v0.59.0...platform-v0.59.1) (2026-11-19)
+
+
+### Bug fixes
+
+* **plugin:** the hooks tell the colony their real version ([#49](https://github.com/MartinM10/Myrmo/issues/49)) ([74db56a](https://github.com/MartinM10/Myrmo/commit/74db56a20968d590de7e525b1fc05bcc9ab162d8))
+
 ## [0.59.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.58.0...platform-v0.59.0) (2026-11-19)
 
 
