@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.39.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.38.1...mcp-v0.39.0) (2026-11-19)
+
+
+### Features
+
+* **plugin:** an organisation's colony serves its own client features as a signed kit, which the plugin and myrmo-mcp install ([#54](https://github.com/MartinM10/Myrmo/issues/54)) ([52db4db](https://github.com/MartinM10/Myrmo/commit/52db4db45e870f8d9002ff54b4990121c4e54c95))
+
 ## [0.38.1](https://github.com/MartinM10/Myrmo/compare/mcp-v0.38.0...mcp-v0.38.1) (2026-11-19)
 
 
