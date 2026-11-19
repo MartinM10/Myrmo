@@ -62,6 +62,9 @@ test("with --worklog the four hooks are written, executable, with an absolute no
   }
   assert.ok(existsSync(join(m.home, ".myrmo", "hooks", "cline-hook.mjs")));
   assert.ok(existsSync(join(m.home, ".myrmo", "hooks", "worklog.mjs")));
+  // The installation's version is written next to the hooks, so the hooks can report it to the colony.
+  assert.ok(existsSync(join(m.home, ".myrmo", "version.txt")), "version.txt is written");
+  assert.match(readFileSync(join(m.home, ".myrmo", "version.txt"), "utf8"), /^\d+\.\d+\.\d+/);
 });
 
 test("running it again changes nothing, and a hook of the person's own is left alone", () => {

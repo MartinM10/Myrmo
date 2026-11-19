@@ -378,6 +378,22 @@ export function mergeHooks(current: string | undefined, command: string): { text
 /** The scripts the hooks are made of, copied together (scripts/copy-hooks.mjs puts them in dist/hooks). */
 export const HOOK_SCRIPTS = ["cline-hook.mjs", "gemini-hook.mjs", "antigravity-hook.mjs", "antigravity-worklog.mjs", "on-failure.mjs", "lookup.mjs", "worklog.mjs", "effort.mjs", "state.mjs", "redact.mjs", "packages.mjs"];
 
+/**
+ * The version of this myrmo-mcp, written next to the hooks init copies, so that the hooks (which carry no version of
+ * their own outside the Claude Code plugin) can tell the colony which client version they run. The colony's admin panel
+ * reads it from the x-myrmo-client header the hooks send.
+ */
+export function writeInstallVersion(home: string, version: string, dryRun: boolean, log: (l: string) => void): void {
+  const file = join(home, ".myrmo", "version.txt");
+  if (dryRun) return;
+  try {
+    mkdirSync(dirname(file), { recursive: true });
+    writeFileSync(file, `${version}\n`);
+  } catch {
+    log(tx(`Could not write ${file}; the hooks will not report their version to the colony`, `No se pudo escribir ${file}; los hooks no informarán su versión a la colonia`));
+  }
+}
+
 /** The events Cline runs a hook for that the work log uses. Cline looks for an executable named after the event. */
 export const CLINE_HOOK_EVENTS = ["UserPromptSubmit", "PostToolUse", "TaskComplete", "TaskCancel"];
 export const CLINE_MARK = "myrmo-work-log (written by myrmo-mcp init)";
@@ -502,6 +518,7 @@ export function installClineHooks(opts: InitOptions, home: string, log: (l: stri
   if (!opts.dryRun && written.length) {
     mkdirSync(scripts, { recursive: true });
     for (const name of HOOK_SCRIPTS) copyFileSync(join(source, name), join(scripts, name));
+    writeInstallVersion(home, VERSION, opts.dryRun, log);
   }
   if (written.length) log(tx(`Cline: ${verb} install the work log hooks (${written.join(", ")}) in ${dir}; restart VS Code so Cline picks them up`, `Cline: ${opts.dryRun ? "se instalarían" : "instalados"} los hooks del registro de trabajo (${written.join(", ")}) en ${dir}; reinicia VS Code para que Cline los recoja`));
   if (kept.length) log(tx(`Cline: ${kept.join(", ")} in ${dir} are hooks of your own, left untouched; the work log will not see those events`, `Cline: ${kept.join(", ")} en ${dir} son hooks tuyos, no se han tocado; el registro de trabajo no verá esos eventos`));
@@ -605,6 +622,7 @@ export function installAgyWorkLog(opts: InitOptions, home: string, log: (l: stri
   if (!opts.dryRun) {
     mkdirSync(scripts, { recursive: true });
     for (const name of HOOK_SCRIPTS) copyFileSync(join(source, name), join(scripts, name));
+    writeInstallVersion(home, VERSION, opts.dryRun, log);
     if (merged.changed) {
       if (current !== undefined && !existsSync(`${file}.before-myrmo-worklog`)) copyFileSync(file, `${file}.before-myrmo-worklog`);
       mkdirSync(dirname(file), { recursive: true });
@@ -638,6 +656,7 @@ export function installGeminiHooks(opts: InitOptions, home: string, log: (l: str
   if (!opts.dryRun) {
     mkdirSync(scripts, { recursive: true });
     for (const name of HOOK_SCRIPTS) copyFileSync(join(source, name), join(scripts, name));
+    writeInstallVersion(home, VERSION, opts.dryRun, log);
     if (merged.changed) {
       if (existsSync(file) && !existsSync(`${file}.before-myrmo-worklog`)) copyFileSync(file, `${file}.before-myrmo-worklog`);
       mkdirSync(dirname(file), { recursive: true });
@@ -710,6 +729,7 @@ function setUpColony(opts: InitOptions, home: string, log: (l: string) => void, 
   if (!opts.dryRun) {
     mkdirSync(dir, { recursive: true });
     for (const name of HOOK_SCRIPTS) copyFileSync(join(source, name), join(dir, name));
+    writeInstallVersion(home, VERSION, opts.dryRun, log);
     if (merged.changed) {
       mkdirSync(dirname(file), { recursive: true });
       writeFileSync(file, merged.text);
