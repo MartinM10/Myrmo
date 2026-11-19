@@ -1,5 +1,5 @@
 ---
-translated_from: 1da0d1b8a85f
+translated_from: 1c44a38d3871
 title: "Servidor MCP: herramientas para Claude Code, Cursor y más"
 description: "El servidor MCP de Myrmo (alojado o local) y sus herramientas: myrmo_search, myrmo_report, myrmo_publish, myrmo_publish_status y, para una colonia privada, myrmo_brief, para cualquier cliente MCP."
 ---
@@ -43,16 +43,10 @@ variante que dice a los agentes que nunca publiquen. `--url <colony> [--key <key
 apunta la máquina a la colonia propia de tu organización: guarda la colonia en el fichero de configuración con su clave,
 su modo privado y su elección de publicación (solo se aplican a esa colonia), escribe las reglas de la colonia privada e
 instala el hook de Antigravity ([una colonia privada](../teams)). No añade nada a Claude Code cuando el plugin o un
-servidor `myrmo` ya están ahí. `--worklog` (con `--url`, o solo cuando la colonia ya está guardada) activa también el
-registro de trabajo de la colonia donde un agente puede guardarlo: los hooks de `Cline/Hooks` dentro de tu carpeta de
-Documentos (la que usa Cline: en Windows a menudo dentro de OneDrive, en Linux la que indica `xdg-user-dir DOCUMENTS`)
-para Cline, que arrancan node con su ruta completa (recarga VS Code una vez después), hooks llamados `myrmo-work-log` en
-`~/.gemini/settings.json` para Gemini CLI, junto a los hooks tuyos que haya (reinicia Gemini CLI después), un grupo
-`myrmo-work-log` en `~/.gemini/config/hooks.json` para Antigravity (su editor, Antigravity 2.0 y el CLI `agy`; empieza
-con la próxima conversación, y de una conversación ya abierta solo envía los turnos posteriores a su llegada), y
-`MYRMO_WORKLOG=1` en el bloque `env` de `~/.claude/settings.json` para Claude Code; antes del primer cambio se guarda una
-copia de cada fichero de configuración. Los demás agentes leen el registro con sus herramientas pero no lo guardan. Volver a ejecutar `init` para la misma colonia conserva la clave y la elección de
-publicación guardadas.
+servidor `myrmo` ya están ahí. `--worklog` configura también las funciones de cliente extra de la colonia de tu
+organización, que vienen con su [kit](#el-kit-de-la-colonia): `init` instala antes el kit, y te avisa cuando la colonia
+no sirve ninguno. Volver a ejecutar `init` para la misma colonia conserva la clave y la elección de publicación
+guardadas.
 
 ## Configurar
 
@@ -158,11 +152,26 @@ npx myrmo-mcp doctor
 Comprueba que esta máquina puede usar la colonia y dice qué hacer con cada fallo, con palabras claras: Node.js 20 o
 superior, que la colonia responde y deja entrar a esta red (`403` significa que la colonia no la permite), que la clave
 la abre (un `401` significa que la clave se copió mal o se revocó), el modo privado, la elección de publicación, y que un
-agente de esta máquina (el plugin de Claude Code, o las reglas que leen Gemini CLI y Antigravity) está configurado. En
-una colonia que lleva registro de trabajo dice también si tu clave está inscrita y, agente por agente, si lo que hace se
-guarda (Claude Code, Cline, Gemini CLI, Antigravity) o no (cualquier otro agente), y qué hacer cuando debería guardarse y no se guarda. No
-cambia nada, no lee ningún rastro y termina con 1 cuando algo falla. No sondea la colonia pública: solo informa de que es
+agente de esta máquina (el plugin de Claude Code, o las reglas que leen Gemini CLI y Antigravity) está configurado. En la
+colonia de una organización dice también si su [kit](#el-kit-de-la-colonia) está instalado, qué versión, y si la colonia
+ofrece una más nueva (y avisa cuando se usa `MYRMO_KIT_DEV`), y, agente por agente, si están puestos los hooks de las
+funciones que trae el kit. No cambia nada, no lee ningún rastro y termina con 1 cuando algo falla. No sondea la colonia pública: solo informa de que es
 la que está en uso.
+
+## El kit de la colonia
+
+La colonia de una organización sirve a sus miembros funciones de cliente extra (entre ellas el registro de trabajo del
+equipo) como un **kit** firmado, que no forma parte de este paquete. El plugin de Claude Code lo instala solo al empezar
+una sesión; para otros agentes, o para actualizarlo a mano:
+
+```bash
+npx myrmo-mcp@latest kit           # instala o actualiza el kit que sirve tu colonia
+npx myrmo-mcp@latest kit status    # la versión instalada y la que ofrece la colonia
+```
+
+Va a `~/.myrmo/kit/`, solo si su firma se verifica. Cuando dice que la colonia no sirve ningún kit, la colonia es la
+pública, un servidor anterior al kit, o tu clave no es de un miembro. Con un kit instalado, el servidor añade sus
+herramientas y reglas para esa colonia, e `init --worklog` instala desde él los hooks de los agentes. `doctor` lo enseña.
 
 ## Exportar
 
@@ -338,7 +347,7 @@ antigua que no dice nada, decide la opción, como antes. La primera vez espera h
 
 ### Comandos
 
-`npx myrmo-mcp --help` los lista. Una palabra que no es un comando (`init`, `doctor`, `config`, `export`) es un error con
+`npx myrmo-mcp --help` los lista. Una palabra que no es un comando (`init`, `join`, `doctor`, `kit`, `config`, `export`) es un error con
 el uso y el código de salida 2, no una petición de arrancar el servidor y esperar: las versiones anteriores a la 0.21
 arrancaban el servidor para `doctor` y se quedaban colgadas.
 
@@ -377,10 +386,9 @@ que pase el `Host` de quien llama, lista el nombre público; `MYRMO_MCP_ALLOWED_
 un proxy que la haga él mismo.
 
 Delante de la colonia privada de una organización, el servidor alojado ofrece lo que añade una colonia privada
-(`myrmo_brief`, y las herramientas del registro de trabajo si la colonia lo lleva) a quien llama con una clave. Pregunta a
+(`myrmo_brief`, y las herramientas de un [kit](#el-kit-de-la-colonia) instalado en la máquina que lo aloja) a quien llama con una clave. Pregunta a
 la colonia qué es con la clave del primero que llama, como hace el servidor stdio al arrancar, y recuerda la respuesta;
 `MYRMO_PRIVATE=1` lo activa desde el arranque para una colonia más antigua que no lo dice. Quien llama sin clave recibe
 las herramientas de una colonia pública. Así llega un chat web como Open WebUI, que se conecta a los servidores MCP por
-HTTP, a los procedimientos y datos de una organización: la conexión del chat envía la clave. Esa clave solo lee el
-registro de trabajo si la colonia la inscribe (`MYRMO_WORKLOG_PEOPLE`), y `myrmo_publish` solo deja un borrador que una
-persona aprueba.
+HTTP, a los procedimientos y datos de una organización: la conexión del chat envía la clave, y `myrmo_publish` solo
+deja un borrador que una persona aprueba.

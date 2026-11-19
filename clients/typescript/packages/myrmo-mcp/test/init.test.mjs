@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { AGENTS_BLOCK, AGENTS_BLOCK_PRIVATE, AGENTS_BLOCK_READ_ONLY, SHAPES, claudeCodeSetUp, mergeCodex, mergeServer, parseInitArgs, runInit, serverEntry, targets, upsertBlock } from "../dist/init.js";
+import { AGENTS_BLOCK, AGENTS_BLOCK_PRIVATE, AGENTS_BLOCK_READ_ONLY, SHAPES, claudeCodeSetUp, mergeCodex, mergeServer, parseInitArgs, privateBlock, runInit, serverEntry, targets, upsertBlock } from "../dist/init.js";
 import { VERSION } from "../dist/server.js";
 
 const PKG = `myrmo-mcp@${VERSION}`;
@@ -285,4 +285,20 @@ test("init --private writes the private colony's rules, which keep internal name
   assert.doesNotMatch(AGENTS_BLOCK_PRIVATE, /Everything published is public/);
   assert.match(AGENTS_BLOCK_PRIVATE, /myrmo_search/);
   assert.match(AGENTS_BLOCK_PRIVATE, /<!-- myrmo:end -->/);
+  assert.doesNotMatch(AGENTS_BLOCK_PRIVATE, /myrmo_matters|work log/, "what the kit adds is not in this package");
+});
+
+test("the private block carries the colony kit's own text inside the markers, when a kit is installed", async () => {
+  const { fakeKit, KIT_TEXT } = await import("./fake-kit.mjs");
+  assert.equal(privateBlock(undefined), AGENTS_BLOCK_PRIVATE);
+  const block = privateBlock(KIT_TEXT);
+  assert.ok(block.indexOf(KIT_TEXT) > block.indexOf("6. Keep internal tool"));
+  assert.ok(block.indexOf(KIT_TEXT) < block.indexOf("<!-- myrmo:end -->"));
+  const home = mkdtempSync(join(tmpdir(), "myrmo-init-kit-"));
+  const file = join(home, "AGENTS.md");
+  const out = [];
+  runInit({ clients: ["cursor"], dryRun: false, home, log: (l) => out.push(l), agentsMd: file, private: true, kit: fakeKit() });
+  assert.ok(readFileSync(file, "utf8").includes(KIT_TEXT));
+  runInit({ clients: ["cursor"], dryRun: false, home, log: (l) => out.push(l), agentsMd: file, private: true, kit: null });
+  assert.ok(!readFileSync(file, "utf8").includes(KIT_TEXT), "without a kit the block is the package's own again");
 });

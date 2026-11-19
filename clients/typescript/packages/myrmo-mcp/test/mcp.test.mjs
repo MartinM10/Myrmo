@@ -146,7 +146,8 @@ async function stdioClient(publish = "ask", { answer, env = {}, cwd } = {}) {
   const client = new Client({ name: "test-client", version: "1.0.0" }, answer ? { capabilities: { elicitation: {} } } : undefined);
   if (answer) client.setRequestHandler(ElicitRequestSchema, async (req) => answer(req.params));
   await client.connect(
-    new StdioClientTransport({ command: process.execPath, args: [ENTRY], ...(cwd ? { cwd } : {}), env: { ...process.env, MYRMO_URL: colonyUrl, MYRMO_PUBLISH: publish, MYRMO_CONFIG: join(sandbox, "default.json"), ...env } }),
+    // No colony kit unless a test gives one: the machine's own ~/.myrmo/kit is never read.
+    new StdioClientTransport({ command: process.execPath, args: [ENTRY], ...(cwd ? { cwd } : {}), env: { ...process.env, MYRMO_URL: colonyUrl, MYRMO_PUBLISH: publish, MYRMO_CONFIG: join(sandbox, "default.json"), MYRMO_HOOK_STATE_DIR: sandbox, MYRMO_KIT_DEV: "", ...env } }),
   );
   return client;
 }
@@ -766,7 +767,7 @@ async function hosted(env = {}, extraArgs = ["--host", "127.0.0.1"]) {
   for (let attempt = 0; attempt < 5; attempt++) {
     const port = 30000 + Math.floor(Math.random() * 20000);
     const proc = spawn(process.execPath, [ENTRY, "--http", "--port", String(port), ...extraArgs], {
-      env: { ...process.env, MYRMO_URL: colonyUrl, MYRMO_CONFIG: freshConfig(), MYRMO_API_KEY: "", MYRMO_MCP_ALLOWED_HOSTS: "", ...env },
+      env: { ...process.env, MYRMO_URL: colonyUrl, MYRMO_CONFIG: freshConfig(), MYRMO_API_KEY: "", MYRMO_MCP_ALLOWED_HOSTS: "", MYRMO_HOOK_STATE_DIR: sandbox, MYRMO_KIT_DEV: "", ...env },
       stdio: ["ignore", "ignore", "pipe"],
     });
     // The first line on stderr can come before the port accepts connections (slower runners, Windows): wait until it
@@ -992,6 +993,71 @@ test("private mode can come from the settings file that `init --url --private` w
   assert.match(other.getInstructions() ?? "", /everything published is public/i);
   await other.close();
 });
+
+test("a private colony's server adds the colony kit's tools and text when a kit is installed, and nothing without one", async () => {
+  const { fakeKit, KIT_TEXT } = await import("./fake-kit.mjs");
+  const kit = fakeKit();
+  const withKit = await stdioClient("ask", { env: { MYRMO_PRIVATE: "1", MYRMO_CONFIG: freshConfig(), MYRMO_KIT_DEV: kit.dir } });
+  const { tools } = await withKit.listTools();
+  assert.ok(tools.some((t) => t.name === "kit_probe"), "the kit's tool is offered");
+  assert.ok((withKit.getInstructions() ?? "").endsWith(KIT_TEXT), "the kit's text closes the instructions");
+  const answer = textOf(await withKit.callTool({ name: "kit_probe", arguments: { word: "hi" } }));
+  assert.match(answer, /^probe hi\n.*colony/s, "answered through the server's own helpers, with the colony line");
+  await withKit.close();
+
+  const without = await stdioClient("ask", { env: { MYRMO_PRIVATE: "1", MYRMO_CONFIG: freshConfig() } });
+  const plain = await without.listTools();
+  assert.ok(!plain.tools.some((t) => t.name === "kit_probe" || t.name === "myrmo_matters"));
+  assert.doesNotMatch(without.getInstructions() ?? "", /myrmo_matters|work log|KIT'S OWN/i);
+  await without.close();
+
+  const pub = await stdioClient("ask", { env: { MYRMO_PRIVATE: "", MYRMO_CONFIG: freshConfig(), MYRMO_KIT_DEV: kit.dir } });
+  assert.ok(!(await pub.listTools()).tools.some((t) => t.name === "kit_probe"), "a colony that is not private gets no kit tools");
+  assert.doesNotMatch(pub.getInstructions() ?? "", /KIT'S OWN/);
+  await pub.close();
+});
+
+/** Runs a myrmo-mcp command against the fake colony (asynchronously: the colony answers from this process). */
+function command(args, env = {}) {
+  return new Promise((resolve) => {
+    const proc = spawn(process.execPath, [ENTRY, ...args], { env: { ...process.env, MYRMO_URL: colonyUrl, MYRMO_CONFIG: freshConfig(), MYRMO_HOOK_STATE_DIR: sandbox, MYRMO_KIT_DEV: "", MYRMO_LANG: "en", ...env } });
+    let out = "";
+    proc.stdout.on("data", (d) => (out += d));
+    proc.stderr.on("data", (d) => (out += d));
+    proc.on("close", (status) => resolve({ status, out }));
+  });
+}
+
+test("myrmo-mcp kit says when the colony serves no kit, and kit status what is installed and what is offered", async () => {
+  const install = await command(["kit"]);
+  assert.equal(install.status, 1);
+  assert.match(install.out, /this colony serves no kit \(it is the public colony, a server older than the kit, or the key is not a member's\)/);
+  assert.ok(requests.some((r) => r.url === "/v1/kit"), "the colony was asked");
+  const status = await command(["kit", "status"]);
+  assert.equal(status.status, 0);
+  assert.match(status.out, /Installed: none/);
+  assert.match(status.out, /offers none/);
+  const { fakeKit } = await import("./fake-kit.mjs");
+  const dev = await command(["kit", "status"], { MYRMO_KIT_DEV: fakeKit().dir });
+  assert.match(dev.out, /a kit in development \(MYRMO_KIT_DEV=/);
+  assert.equal((await command(["kit", "everything"])).status, 2);
+});
+
+test("init --worklog asks the colony for its kit first, and without one says how the work log is had", async () => {
+  const home = mkdtempSync(join(tmpdir(), "myrmo-init-kit-"));
+  const run = await command(["init", "--url", colonyUrl, "--key-file", writeKey(home), "--worklog", "--client", "gemini", "--no-rules"], { HOME: home, USERPROFILE: home, MYRMO_HOOK_STATE_DIR: "" });
+  assert.equal(run.status, 0, run.out);
+  assert.match(run.out, /Kit: none installed: this colony serves no kit/);
+  assert.match(run.out, /Gemini CLI: the work log comes with the kit your organisation's colony serves, and no kit is installed here; get it with `npx myrmo-mcp@latest kit`/);
+  const kitAsked = requests.filter((r) => r.url === "/v1/kit").at(-1);
+  assert.equal(kitAsked.headers.authorization, `Bearer myk_${"f".repeat(64)}`, "with the key given to init");
+});
+
+function writeKey(dir) {
+  const file = join(dir, "key.txt");
+  writeFileSync(file, `myk_${"f".repeat(64)}\n`);
+  return file;
+}
 
 test("a private colony is asked what the organisation knows about a task, and keeps procedures and facts", async () => {
   const client = await stdioClient("auto", { env: { MYRMO_PRIVATE: "1", MYRMO_CONFIG: freshConfig() } });
