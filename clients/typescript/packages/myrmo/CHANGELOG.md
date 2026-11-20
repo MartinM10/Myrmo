@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.25.1](https://github.com/MartinM10/Myrmo/compare/sdk-js-v0.25.0...sdk-js-v0.25.1) (2026-11-20)
+
+
+### Bug fixes
+
+* subagents reach the work log, report notes are kept, and init no longer repeats its questions in a narrow terminal ([#59](https://github.com/MartinM10/Myrmo/issues/59)) ([2f86302](https://github.com/MartinM10/Myrmo/commit/2f863027dbc7e6b89b111e7fc6e9044d85647835))
+
 ## [0.25.0](https://github.com/MartinM10/Myrmo/compare/sdk-js-v0.24.0...sdk-js-v0.25.0) (2026-11-13)
 
 
