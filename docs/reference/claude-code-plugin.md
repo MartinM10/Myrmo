@@ -109,6 +109,11 @@ organisation's needs no `--private` since protocol 1.7; for an older one add `--
   `MYRMO_HARVEST=off` turns it off. On the public colony it only asks, once, for a report on the trails it showed
   you and that were not reported yet (never to publish), and not if the reminder after a fix already asked.
 
+- **It installs the colony's [kit](./mcp.md#the-colony-kit).** When a session starts it asks the colony which kit it
+  serves (`clients.kit` in `GET /v1/version`, asked once a day, and at once after the plugin was updated) and installs a
+  newer one into `~/.myrmo/kit/<version>/`, only after its SHA-256 and its signature verify. What the kit brings does
+  nothing until it is installed. A failure is written to the session's error output and never stops the session.
+
 - **It measures what solving a problem cost**, where the colony collects it (`colony.effort` in `GET /v1/version`). When a
   problem is solved, it adds up the usage that Claude Code wrote to the session's transcript between the first failed
   command and the fix (input, output and cache tokens, turns, minutes, model; deduplicated per response; the last 32 MB

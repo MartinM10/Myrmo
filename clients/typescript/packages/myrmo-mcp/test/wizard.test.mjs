@@ -2,7 +2,9 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { canAsk, multiKey, selectKey, textKey, wizard } from "../dist/wizard.js";
+import { EventEmitter } from "node:events";
+import { PassThrough } from "node:stream";
+import { canAsk, multiKey, screenRows, selectKey, terminal, textKey, wizard } from "../dist/wizard.js";
 
 const keys = (reduce, state, ...names) => names.reduce((s, k) => reduce(s, typeof k === "string" ? { name: k, sequence: k } : k), state);
 
@@ -119,4 +121,30 @@ test("the public colony's address is refused as a private colony, and No changes
   assert.match(v, /public colony/);
   const no = scripted(["public", "found", "off", false]);
   assert.deepEqual(await wizard(no.asker, { clients, probe: async () => ({ ok: true }), readKeyFile: () => null }), { cancelled: true });
+});
+
+test("a line wider than the terminal counts as the rows it wraps onto, so a redraw does not leave copies behind", () => {
+  const red = (t) => `\x1b[36m${t}\x1b[0m`;
+  assert.equal(screenRows(["abc", "", "x".repeat(80)], 80), 3); // exactly the width is one row
+  assert.equal(screenRows(["x".repeat(81)], 80), 2);
+  assert.equal(screenRows([red("x".repeat(80)), "y".repeat(161)], 80), 1 + 3); // colour codes take no room
+  assert.equal(screenRows(["a", "b"], undefined), 2); // not a terminal: lines
+});
+
+test("in a narrow terminal an arrow, and a resize, go back over every row the question took", async () => {
+  const stdin = new PassThrough();
+  const stdout = Object.assign(new EventEmitter(), { columns: 40, written: [], write(s) { this.written.push(s); return true; } });
+  const ups = () => stdout.written.flatMap((s) => [...s.matchAll(/\x1b\[(\d+)A/g)].map((m) => Number(m[1])));
+  const ask = terminal(stdin, stdout, { NO_COLOR: "1" });
+  const long = "x".repeat(70); // "  " + 70 = 72 columns: two rows at 40, four at 20
+  const answer = ask.select("Where?", [{ value: "a", label: long }, { value: "b", label: "short" }]);
+  stdin.write("\x1b[B"); // down
+  await new Promise((r) => setImmediate(r));
+  assert.deepEqual(ups(), [1 + 2 + 1]); // question, the long choice on two rows, the short one
+  stdout.columns = 20;
+  stdout.emit("resize");
+  assert.deepEqual(ups(), [4, 1 + 4 + 1]); // what was on screen, reflowed at the new width
+  stdin.write("\r");
+  assert.equal(await answer, "b");
+  assert.equal(stdout.listenerCount("resize"), 0);
 });

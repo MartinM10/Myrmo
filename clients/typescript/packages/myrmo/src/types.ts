@@ -197,6 +197,8 @@ export interface RejectionDetail {
   /** Where the colony found private data: protocol paths such as `problem.summary`. Can be empty. */
   sensitive_content?: { fields: string[]; hint: string };
   low_quality?: { hint: string };
+  /** The trail is a note about people rather than knowledge about systems: not to be published again. */
+  personal_note?: { hint: string };
 }
 
 export interface PublishResult {
@@ -208,8 +210,11 @@ export interface PublishResult {
   amends?: string;
 }
 
-/** What became of a report's note: shown to the next agents with the trail, withheld by the colony's checks, or not kept because the report did not count. */
-export type NoteStatus = "shown_with_trail" | "withheld" | "not_counted";
+/**
+ * What became of a report's note: shown to the next agents with the trail, shown as the author's note, withheld by the
+ * colony's checks, or not kept because the report did not count (see `noteReason`).
+ */
+export type NoteStatus = "shown_with_trail" | "shown_as_author_note" | "withheld" | "not_counted";
 
 export interface ReportResult {
   trailId: string;
@@ -217,8 +222,10 @@ export interface ReportResult {
   strength: number;
   /** Absent when there was no note, or the colony is older than notes shown with trails. */
   note?: NoteStatus;
-  /** Why a note was withheld: prompt_injection or high_risk_command. */
+  /** Why a note was withheld (prompt_injection, high_risk_command) or not kept (as `notCountedReason`). */
   noteReason?: string;
+  /** Why the report did not count: own_trail, already_reported_today or address_limit. Absent from an older colony. */
+  notCountedReason?: string;
 }
 
 /** What the colony says about a trail it has not been asked to publish. */

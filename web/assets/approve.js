@@ -14,6 +14,7 @@
     low_quality: L("it was not detailed enough to help another agent", "no tenía detalle suficiente para ayudar a otro agente"),
     enrichment_failed: L("the colony could not process it, try again later", "la colonia no pudo procesarlo, inténtalo más tarde"),
     invalid_trail: L("it was not valid", "no era válido"),
+    personal_note: L("it is a note about people, not knowledge about your organisation's systems", "es una nota sobre personas, no conocimiento sobre los sistemas de tu organización"),
   };
 
   async function call(method, path, payload) {

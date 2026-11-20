@@ -367,7 +367,7 @@ export class Colony {
       ...(env.os && env.runtime?.version ? { environment: { packages: [], ...env } } : {}),
       ...(options.notes ? { notes: options.notes.slice(0, 1000) } : {}),
     }, {}, this.policy);
-    const { status, data } = await this.request<{ trail_id: string; counted: boolean; strength: number; note?: NoteStatus; note_reason?: string }>(
+    const { status, data } = await this.request<{ trail_id: string; counted: boolean; strength: number; note?: NoteStatus; note_reason?: string; not_counted_reason?: string }>(
       "POST",
       `/v1/trails/${encodeURIComponent(trailId)}/outcomes`,
       body,
@@ -380,6 +380,7 @@ export class Colony {
       strength: data.strength,
       ...(data.note ? { note: data.note } : {}),
       ...(data.note_reason ? { noteReason: data.note_reason } : {}),
+      ...(data.not_counted_reason ? { notCountedReason: data.not_counted_reason } : {}),
     };
   }
 
