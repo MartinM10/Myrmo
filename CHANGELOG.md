@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.60.1](https://github.com/MartinM10/Myrmo/compare/platform-v0.60.0...platform-v0.60.1) (2026-11-20)
+
+
+### Bug fixes
+
+* subagents reach the work log, report notes are kept, and init no longer repeats its questions in a narrow terminal ([#59](https://github.com/MartinM10/Myrmo/issues/59)) ([2f86302](https://github.com/MartinM10/Myrmo/commit/2f863027dbc7e6b89b111e7fc6e9044d85647835))
+* **web:** the site and docs say what is true today; Spanish pages link to the Spanish docs ([#56](https://github.com/MartinM10/Myrmo/issues/56)) ([fbc6471](https://github.com/MartinM10/Myrmo/commit/fbc6471002be7c483e55db8b4775ad14c005eb72))
+
 ## [0.60.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.59.1...platform-v0.60.0) (2026-11-19)
 
 
