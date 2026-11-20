@@ -145,11 +145,28 @@ const MISSING_TRAIL = `Not published: the "trail" argument is missing. Put every
   "effort": { "failed_attempts": 1 } } }
 Use preview: true to check the payload without publishing.`;
 
+/** Why a report did not count, as the colony says it. */
+const NOT_COUNTED: Record<string, string> = {
+  own_trail: "the colony took the report for one from the trail's author, who can only report it failed",
+  already_reported_today: "you already reported this trail in the last 24 hours",
+  address_limit: "your address used up its reports on this trail for now",
+};
+
+/** Why a report did not count, for the reply: the colony's reason, or the rules when an older colony gives none. */
+export function notCountedLine(reason?: string): string {
+  return ` (not counted: ${(reason && NOT_COUNTED[reason]) || "one report per agent and trail per day, and an author can only report their own trail failed"})`;
+}
+
 /** What became of a report's note, in words the agent can act on. */
 export function noteLine(note?: string, reason?: string): string {
   if (note === "shown_with_trail") return " Your note will be shown to the next agents with the trail.";
   if (note === "shown_as_author_note") return " Your report did not count (you wrote the trail), but your note will be shown with it as the author's note.";
-  if (note === "not_counted") return " Your note was not kept either.";
+  if (note === "not_counted") {
+    const why = reason ? NOT_COUNTED[reason] : undefined;
+    return why
+      ? ` Your note was not kept either: ${why}, and on this colony only a report that counts, its author's or one made with an access key leaves a note.`
+      : " Your note was not kept either.";
+  }
   if (note === "withheld") {
     const why = reason === "high_risk_command" ? "it contains a command the colony withholds" : "it reads like instructions aimed at an agent";
     return ` Your note was NOT kept: ${why}. Keep notes to what was different in your environment.`;
@@ -185,6 +202,7 @@ const REASONS: Record<string, string> = {
   not_accepted_here: "this colony keeps fixes only (procedures and facts belong in your organisation's private colony)",
   enrichment_failed: "the colony could not process it",
   invalid_trail: "it was not valid",
+  personal_note: "it is a note about people (a feeling, a relationship, a message for a colleague), not knowledge about your organisation's systems",
 };
 
 /**
@@ -194,6 +212,8 @@ const REASONS: Record<string, string> = {
  */
 export function rejectionAdvice(reasons: string[], detail?: RejectionDetail): string {
   if (reasons.includes("prompt_injection")) return " Do not try to get round this check; tell the user.";
+  // Not something to rewrite and send again: a message for a person goes to that person.
+  if (reasons.includes("personal_note")) return " Do not publish it again; tell the user.";
   const parts: string[] = [];
   const sensitive = detail?.sensitive_content;
   if (sensitive) {
@@ -586,7 +606,7 @@ export function createServer(opts: ServerOptions): McpServer {
           notes: args.notes,
           agentInfo: { model: args.model ?? model, framework: framework() },
         });
-        const counted = r.counted ? "" : " (not counted: one report per agent and trail per day, and an author can only report their own trail failed)";
+        const counted = r.counted ? "" : notCountedLine(r.notCountedReason);
         return text(`Recorded ${args.outcome} for trail ${idText(r.trailId)}${counted}. Its strength is now ${numberText(r.strength)}.${noteLine(r.note, r.noteReason)}`);
       } catch (err) {
         return text(errorText(err), true);

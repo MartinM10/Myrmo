@@ -517,6 +517,16 @@ function askToReport(state, now) {
 }
 
 /**
+ * The request the work log keeps for the Stop hook. One still kept (its background agents had not reported, or the turn
+ * never stopped) is not dropped: a new request from the person joins it, and a turn the client started does not replace it.
+ */
+export function nextWorklogPrompt(kept, prompt) {
+  const next = String(prompt ?? "");
+  if (!kept) return next;
+  return personalText(next).trim() ? `${kept}\n\n${next}` : kept;
+}
+
+/**
  * 6. The agent is about to stop. In a private colony, after a turn in which a failed command was made to work, ask it once
  * to share what it learned before it finishes: Claude Code then continues with this as its next instruction. At most once
  * every MYRMO_HARVEST_MINUTES (default 30) and three times a session, never while it is already continuing because of this
@@ -615,7 +625,7 @@ async function main() {
     // The work log: this request is kept for the Stop hook, and what colleagues recorded about it comes back.
     const team = await teamLog();
     const target = team.target(input, { settings });
-    const withPrompt = target ? { ...state, worklogPrompt: String(input.prompt ?? "") } : state;
+    const withPrompt = target ? { ...state, worklogPrompt: nextWorklogPrompt(state.worklogPrompt, input.prompt) } : state;
     const logged = target ? await team.promptNote(input, target, task) : null;
     if (!task || !briefEnabled(process.env, settings)) {
       save(file, state, withPrompt);
@@ -638,8 +648,9 @@ async function main() {
     if (prompt) {
       const team = await teamLog();
       const target = team.target(input, { settings });
-      if (target) await team.record(input, target, prompt);
-      delete stop.state.worklogPrompt;
+      // A request whose background agents are still working is kept for the Stop after their reports.
+      const sent = target ? await team.record(input, target, prompt, { wait: true }) : null;
+      if (!sent?.pending) delete stop.state.worklogPrompt;
     }
     save(file, state, stop.state);
     if (stop.reason) process.stdout.write(JSON.stringify({ decision: "block", reason: stop.reason }));

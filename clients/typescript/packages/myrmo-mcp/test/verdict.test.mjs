@@ -24,6 +24,13 @@ test("a rejection for an instruction aimed at an agent gets no advice on how to 
   assert.match(describeVerdict("rejected", "abc", ["sensitive_content", "prompt_injection"], undefined, detail), /Do not try to get round this check/);
 });
 
+test("a note about people is rejected for what it is, with no invitation to rewrite it", () => {
+  const out = describeVerdict("rejected", "abc", ["personal_note", "low_quality"], undefined, { ...detail, personal_note: { hint: "This reads as a note about people." } });
+  assert.match(out, /a note about people \(a feeling, a relationship, a message for a colleague\), not knowledge about your organisation's systems/);
+  assert.match(out, /Do not publish it again; tell the user\.$/);
+  assert.doesNotMatch(out, /fix it and publish once more/);
+});
+
 test("without detail the verdict is what it was, and a quality rejection says what is missing", () => {
   assert.equal(rejectionAdvice(["sensitive_content"], undefined), "");
   assert.match(describeVerdict("rejected", "abc", ["low_quality"], undefined, { low_quality: detail.low_quality }), /root cause/);

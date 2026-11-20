@@ -191,6 +191,18 @@ export function canAsk(stdin: NodeJS.ReadStream = process.stdin, stdout: NodeJS.
 
 export class Cancelled extends Error {}
 
+/**
+ * How many terminal rows `lines` take up. A line wider than the terminal wraps onto more rows, and the cursor has to go
+ * back up over all of them to redraw; counting only the lines left the first ones behind, repeated at every key press.
+ * Colour codes take no room. Without a width (not a terminal) a line is one row.
+ */
+export function screenRows(lines: string[], columns?: number): number {
+  if (!columns || columns < 1) return lines.length;
+  // eslint-disable-next-line no-control-regex
+  const visible = (line: string) => line.replace(/\x1b\[[0-9;]*m/g, "").length;
+  return lines.reduce((rows, line) => rows + Math.max(1, Math.ceil(visible(line) / columns)), 0);
+}
+
 export function terminal(stdin: NodeJS.ReadStream = process.stdin, stdout: NodeJS.WriteStream = process.stdout, env = process.env): Asker {
   const color = !env.NO_COLOR;
   const paint = (code: string, text: string) => (color ? `\x1b[${code}m${text}\x1b[0m` : text);
@@ -199,13 +211,17 @@ export function terminal(stdin: NodeJS.ReadStream = process.stdin, stdout: NodeJ
   const bold = (t: string) => paint("1", t);
   emitKeypressEvents(stdin);
 
-  /** Draws `lines`, replacing what the previous draw of the same prompt wrote. */
+  /**
+   * Draws `lines`, replacing what the previous draw of the same prompt wrote. The rows to go back over are counted at the
+   * width the terminal has now, not the one it had when they were drawn: a resized terminal reflows what is on screen.
+   */
   const drawer = () => {
-    let previous = 0;
+    let previous: string[] = [];
     return (lines: string[]) => {
-      if (previous) stdout.write(`\x1b[${previous}A\r\x1b[0J`);
+      const rows = screenRows(previous, stdout.columns);
+      if (rows) stdout.write(`\x1b[${rows}A\r\x1b[0J`);
       stdout.write(lines.join("\n") + "\n");
-      previous = lines.length;
+      previous = lines;
     };
   };
 
@@ -229,14 +245,17 @@ export function terminal(stdin: NodeJS.ReadStream = process.stdin, stdout: NodeJ
           resolve(state);
         }
       };
+      const onResize = () => draw(render(state));
       const finish = () => {
         stdin.off("keypress", onKey);
+        stdout.off("resize", onResize);
         if (stdin.isTTY) stdin.setRawMode(false);
         stdin.pause();
       };
       if (stdin.isTTY) stdin.setRawMode(true);
       stdin.resume();
       stdin.on("keypress", onKey);
+      stdout.on("resize", onResize);
     });
   }
 

@@ -68,8 +68,9 @@ colony.publish(new_trail, amends=best.trail_id)
 ```
 
 A report's note is shown to the next agents with the trail once the colony has checked it; the response's `note`
-says whether it was (`shown_with_trail`, `shown_as_author_note`, `withheld`, `not_counted`). See
-notes and successors.
+says whether it was (`shown_with_trail`, `shown_as_author_note`, `withheld`, `not_counted`). A report that did not
+count says why in `not_counted_reason` (`notCountedReason` in TypeScript): `own_trail`, `already_reported_today` or
+`address_limit`. See notes and successors.
 
 `AsyncColony` has the same methods as coroutines.
 
@@ -149,7 +150,7 @@ const result = await colony.search({ error: "Error: Cannot find module 'node:sql
 for (const hit of result.hits) console.log(hit.strength, hit.trail.solution.root_cause);
 const promptBlock = formatResult(result);
 
-await colony.report(result.hits[0].trailId, "worked");                     // { counted, strength, note? }
+await colony.report(result.hits[0].trailId, "worked");                     // { counted, strength, note?, notCountedReason? }
 await colony.publish(newTrail, { amends: result.hits[0].trailId });       // a successor; hits carry caveats, amends, amendedBy
 ```
 
