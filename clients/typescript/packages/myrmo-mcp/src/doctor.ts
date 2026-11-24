@@ -2,7 +2,7 @@
 // Every check says what it found and, when it fails, the one thing to try. Nothing is changed and no text of any
 // trail is read: it asks the colony whether it is up, whether it lets this network in and whether this key opens it.
 
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { AGY_WORKLOG_EVENTS, AGY_WORKLOG_GROUP, CLINE_HOOK_EVENTS, CLINE_MARK, GEMINI_HOOK_EVENTS, GEMINI_HOOK_NAME, claudeCodeSetUp, claudeWorkLogHook, clineHooksDir, clineInstalled, geminiInstalled, targets } from "./init.js";
 import { compareVersions, describeColony, VERSION, VERSION_SHAPE } from "./server.js";
@@ -109,6 +109,37 @@ export function claudeWorkLogSource(home: string, env: NodeJS.ProcessEnv): strin
 }
 
 /**
+ * Private mode on this machine (plugins/myrmo/scripts/privacy.mjs): a machine paused with ~/.myrmo/worklog-paused, or
+ * MYRMO_WORKLOG_PAUSE=1, sends nothing to Myrmo from any session, and a person can forget the file is there; sessions
+ * made private with //privado are counted, never read. Nothing is sent.
+ */
+/** Why a missing hook matters to private mode: without it, //privado cannot stop a call to Myrmo. */
+const privateGap = (missing: string[], es = false) =>
+  missing.some((e) => e === "PreToolUse" || e === "BeforeTool") ? (es ? " (sin él, //privado no puede parar una llamada a Myrmo)" : " (without it, //privado cannot stop a call to Myrmo)") : "";
+
+export function privacyCheck(home: string, env: NodeJS.ProcessEnv = process.env): Check | null {
+  const name = t("Private mode", "Modo privado");
+  const file = join(home, ".myrmo", "worklog-paused");
+  if (env.MYRMO_WORKLOG_PAUSE === "1" || existsSync(file)) {
+    const there = existsSync(file);
+    return {
+      level: "warn",
+      name,
+      detail: t(`this machine is paused (${there ? file : "MYRMO_WORKLOG_PAUSE=1"}): no session sends anything to Myrmo (no lookups, no work log, no publications)`, `esta máquina está en pausa (${there ? file : "MYRMO_WORKLOG_PAUSE=1"}): ninguna sesión envía nada a Myrmo (ni consultas, ni registro de trabajo, ni publicaciones)`),
+      fix: there ? t(`Delete ${file} to share again`, `Borra ${file} para volver a compartir`) : t("Unset MYRMO_WORKLOG_PAUSE to share again", "Quita MYRMO_WORKLOG_PAUSE para volver a compartir"),
+    };
+  }
+  let sessions = 0;
+  try {
+    sessions = readdirSync(join(home, ".myrmo", "private")).filter((f) => f.endsWith(".json")).length;
+  } catch {
+    sessions = 0;
+  }
+  if (!sessions) return null;
+  return { level: "ok", name, detail: t(`${sessions} session${sessions === 1 ? "" : "s"} made private with //privado (type //compartir in one to share it again)`, `${sessions} ${sessions === 1 ? "sesión hecha privada" : "sesiones hechas privadas"} con //privado (escribe //compartir en una para volver a compartirla)`) };
+}
+
+/**
  * The work log, client by client: which agents on this machine record what they do in it, and which cannot yet. Only
  * for a colony that keeps one; nothing is sent and no text is read.
  */
@@ -179,7 +210,7 @@ export async function workLogChecks(input: DoctorInput, fetchImpl: typeof fetch)
     } else if (broken.length) {
       checks.push({ level: "warn", name: `${name}, Cline`, detail: t(`not recorded: the hooks start a node that no longer exists (${broken.join(", ")})`, `no se registra: los hooks arrancan un node que ya no existe (${broken.join(", ")})`), fix });
     } else if (missing.length) {
-      checks.push({ level: "warn", name: `${name}, Cline`, detail: t(`incomplete: ${missing.join(", ")} missing`, `incompleto: falta ${missing.join(", ")}`), fix });
+      checks.push({ level: "warn", name: `${name}, Cline`, detail: t(`incomplete: ${missing.join(", ")} missing${privateGap(missing)}`, `incompleto: falta ${missing.join(", ")}${privateGap(missing, true)}`), fix });
     } else if (foreign.length < CLINE_HOOK_EVENTS.length && !script("cline-hook.mjs")) {
       checks.push({ level: "warn", name: `${name}, Cline`, ...noScript });
     } else {
@@ -217,7 +248,7 @@ export async function workLogChecks(input: DoctorInput, fetchImpl: typeof fetch)
       } else if (broken.length) {
         checks.push({ level: "warn", name: `${name}, Gemini CLI`, detail: t(`not recorded: the hooks start a node that no longer exists (${broken.join(", ")})`, `no se registra: los hooks arrancan un node que ya no existe (${broken.join(", ")})`), fix });
       } else if (missing.length) {
-        checks.push({ level: "warn", name: `${name}, Gemini CLI`, detail: t(`incomplete: ${missing.join(", ")} missing`, `incompleto: falta ${missing.join(", ")}`), fix });
+        checks.push({ level: "warn", name: `${name}, Gemini CLI`, detail: t(`incomplete: ${missing.join(", ")} missing${privateGap(missing)}`, `incompleto: falta ${missing.join(", ")}${privateGap(missing, true)}`), fix });
       } else if (settings?.hooksConfig?.enabled === false) {
         checks.push({ level: "warn", name: `${name}, Gemini CLI`, detail: t("not recorded: hooks are turned off in Gemini CLI (hooksConfig.enabled: false)", "no se registra: los hooks están desactivados en Gemini CLI (hooksConfig.enabled: false)"), fix: t("Remove hooksConfig.enabled: false from ~/.gemini/settings.json, or run /hooks enable-all", "Quita hooksConfig.enabled: false de ~/.gemini/settings.json, o ejecuta /hooks enable-all") });
       } else if (!script("gemini-hook.mjs")) {
@@ -260,7 +291,7 @@ export async function workLogChecks(input: DoctorInput, fetchImpl: typeof fetch)
       } else if (broken.length) {
         checks.push({ level: "warn", name: `${name}, Antigravity`, detail: t(`not recorded: the hook starts a node that no longer exists (${broken.join(", ")})`, `no se registra: el hook arranca un node que ya no existe (${broken.join(", ")})`), fix });
       } else if (missing.length) {
-        checks.push({ level: "warn", name: `${name}, Antigravity`, detail: t(`incomplete: ${missing.join(", ")} missing`, `incompleto: falta ${missing.join(", ")}`), fix });
+        checks.push({ level: "warn", name: `${name}, Antigravity`, detail: t(`incomplete: ${missing.join(", ")} missing${privateGap(missing)}`, `incompleto: falta ${missing.join(", ")}${privateGap(missing, true)}`), fix });
       } else if (group?.enabled === false) {
         checks.push({ level: "warn", name: `${name}, Antigravity`, detail: t(`not recorded: the hook is turned off ("enabled": false in ${AGY_WORKLOG_GROUP})`, `no se registra: el hook está desactivado ("enabled": false en ${AGY_WORKLOG_GROUP})`), fix });
       } else if (!script("antigravity-worklog.mjs")) {
@@ -382,10 +413,10 @@ export async function diagnose(input: DoctorInput): Promise<Check[]> {
   const declared = input.declared?.profile;
   checks.push(
     input.privateMode
-      ? { level: "ok", name: t("Private mode", "Modo privado"), detail: t(`agents keep your internal names in what they publish${declared === "organisation" ? " (the colony declares itself your organisation's)" : ""}`, `los agentes conservan tus nombres internos en lo que publican${declared === "organisation" ? " (la colonia se declara de tu organización)" : ""}`) }
+      ? { level: "ok", name: t("Organisation colony", "Colonia de organización"), detail: t(`agents keep your internal names in what they publish${declared === "organisation" ? " (the colony declares itself your organisation's)" : ""}`, `los agentes conservan tus nombres internos en lo que publican${declared === "organisation" ? " (la colonia se declara de tu organización)" : ""}`) }
       : declared === "public"
-        ? { level: "ok", name: t("Private mode", "Modo privado"), detail: t("off: the colony declares itself public, so internal names are removed", "desactivado: la colonia se declara pública, así que se quitan los nombres internos") }
-        : { level: "warn", name: t("Private mode", "Modo privado"), detail: t("off: agents would strip internal names from what they publish", "desactivado: los agentes quitarían los nombres internos de lo que publican"), fix: declared === "organisation" ? t("Set your access key (npx myrmo-mcp init --url <colony> --key <your key>).", "Configura tu clave de acceso (npx myrmo-mcp init --url <colony> --key <your key>).") : t("This colony does not say what it is (an older server): run the setup command again with --private (or set MYRMO_PRIVATE=1).", "Esta colonia no dice qué es (un servidor más antiguo): vuelve a ejecutar el comando de configuración con --private (o define MYRMO_PRIVATE=1).") },
+        ? { level: "ok", name: t("Organisation colony", "Colonia de organización"), detail: t("off: the colony declares itself public, so internal names are removed", "desactivado: la colonia se declara pública, así que se quitan los nombres internos") }
+        : { level: "warn", name: t("Organisation colony", "Colonia de organización"), detail: t("off: agents would strip internal names from what they publish", "desactivado: los agentes quitarían los nombres internos de lo que publican"), fix: declared === "organisation" ? t("Set your access key (npx myrmo-mcp init --url <colony> --key <your key>).", "Configura tu clave de acceso (npx myrmo-mcp init --url <colony> --key <your key>).") : t("This colony does not say what it is (an older server): run the setup command again with --private (or set MYRMO_PRIVATE=1).", "Esta colonia no dice qué es (un servidor más antiguo): vuelve a ejecutar el comando de configuración con --private (o define MYRMO_PRIVATE=1).") },
   );
   if (input.declared?.profile === "organisation") {
     checks.push({ level: "ok", name: t("What the colony keeps", "Lo que guarda la colonia"), detail: describeColony(input.declared) });
@@ -429,6 +460,8 @@ export async function diagnose(input: DoctorInput): Promise<Check[]> {
   } else {
     checks.push({ level: "fail", name: t("Agents", "Agentes"), detail: t("no agent on this machine is set up to use Myrmo", "ningún agente de esta máquina está configurado para usar Myrmo"), fix: t("Run the setup command again, then restart Claude Code or Antigravity.", "Vuelve a ejecutar el comando de configuración y reinicia Claude Code o Antigravity.") });
   }
+  const privacy = privacyCheck(input.home, input.env ?? process.env);
+  if (privacy) checks.push(privacy);
   checks.push(...(await workLogChecks(input, fetchImpl)));
   checks.push({
     level: "ok",

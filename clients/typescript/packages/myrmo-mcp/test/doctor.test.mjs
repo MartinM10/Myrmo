@@ -15,7 +15,7 @@ test("a colony that is up, a key that opens it and a private setup pass the netw
   const checks = await diagnose({ ...base, fetchImpl: answer({ "/readyz": { status: 200 }, "/v1/stats": { status: 200 } }) });
   assert.equal(find(checks, "Reaching the colony").level, "ok");
   assert.equal(find(checks, "Your access key").level, "ok");
-  assert.equal(find(checks, "Private mode").level, "ok");
+  assert.equal(find(checks, "Organisation colony").level, "ok");
   assert.equal(find(checks, "Publishing").level, "ok");
 });
 

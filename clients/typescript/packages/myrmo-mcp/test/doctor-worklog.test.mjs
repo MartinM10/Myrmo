@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { kitCheck, workLogChecks } from "../dist/doctor.js";
+import { kitCheck, privacyCheck, workLogChecks } from "../dist/doctor.js";
 import { CLINE_HOOK_EVENTS, clineWrapper } from "../dist/init.js";
 
 const KEY = "myk_" + "b".repeat(64);
@@ -111,4 +111,27 @@ test("Claude Code recorded both by the plugin and by a hook of its own is a warn
   const c = byName(await workLogChecks(input(h), enrolled), "Work log, Claude Code");
   assert.equal(c.level, "warn");
   assert.match(c.detail, /twice/);
+});
+
+test("doctor says when the machine is paused, which stops all of Myrmo, and counts the private sessions", () => {
+  const h = home();
+  assert.equal(privacyCheck(h, {}), null, "nothing private: nothing said");
+  assert.equal(privacyCheck(h, { MYRMO_WORKLOG_PAUSE: "1" }).level, "warn");
+  mkdirSync(join(h, ".myrmo", "private"), { recursive: true });
+  writeFileSync(join(h, ".myrmo", "private", "claude-a.json"), "{}");
+  writeFileSync(join(h, ".myrmo", "private", "cline-b.json"), "{}");
+  assert.match(privacyCheck(h, {}).detail, /^2 sessions made private/);
+  writeFileSync(join(h, ".myrmo", "worklog-paused"), "");
+  const paused = privacyCheck(h, {});
+  assert.equal(paused.level, "warn");
+  assert.match(paused.detail, /no session sends anything/);
+  assert.match(paused.fix, /worklog-paused to share again/);
+});
+
+test("a Cline missing the PreToolUse hook is told that //privado cannot stop a call to Myrmo", async () => {
+  const h = home({ cline: true, hooks: true });
+  const { rmSync } = await import("node:fs");
+  rmSync(join(h, "Documents", "Cline", "Hooks", "PreToolUse"));
+  const cline = byName(await workLogChecks(input(h), enrolled), "Work log, Cline");
+  assert.match(cline.detail, /PreToolUse missing \(without it, \/\/privado cannot stop a call to Myrmo\)/);
 });

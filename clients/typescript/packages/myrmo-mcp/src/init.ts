@@ -731,6 +731,13 @@ function setUpColony(opts: InitOptions, home: string, log: (l: string) => void, 
   installGeminiHooks(opts, home, log, wanted);
   installAgyWorkLog(opts, home, log, wanted);
   enableClaudeWorkLog(opts, home, log);
+  // Whoever turns the work log on is told, once, how to keep a session out of it.
+  if (opts.private && opts.worklog) {
+    log(tx(
+      "Private mode: type //privado (or //private) in a session and nothing from it goes to Myrmo until you type //compartir (or //share); other sessions keep sharing. To stop all of Myrmo on this machine, create the file ~/.myrmo/worklog-paused.",
+      "Modo privado: escribe //privado (o //private) en una sesión y nada de ella va a Myrmo hasta que escribas //compartir (o //share); las demás sesiones siguen compartiendo. Para parar todo Myrmo en esta máquina, crea el fichero ~/.myrmo/worklog-paused.",
+    ));
+  }
 
   // Antigravity has no plugin: copy the hook next to the settings and register it, so that after a failed command it
   // looks the error up in this colony (and reminds the agent to report and to publish).

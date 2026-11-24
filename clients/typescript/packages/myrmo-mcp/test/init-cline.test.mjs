@@ -53,9 +53,16 @@ test("without --worklog nothing is installed and the person is told how", () => 
   run(m);
   assert.equal(existsSync(join(m.home, "Documents", "Cline", "Hooks")), false);
   assert.match(m.out.join("\n"), /--worklog/);
+  assert.doesNotMatch(m.out.join("\n"), /\/\/privado/, "no work log: nothing to keep a session out of");
 });
 
-test("with --worklog the four hooks are written, executable, with an absolute node and the work log switched on", () => {
+test("turning the work log on says how to keep a session out of it", () => {
+  const m = machine();
+  run(m, { worklog: true });
+  assert.match(m.out.join("\n"), /\/\/(privado|private).*\/\/(compartir|share).*worklog-paused/);
+});
+
+test("with --worklog the hooks are written, executable, with an absolute node and the work log switched on", () => {
   const m = machine();
   run(m, { worklog: true });
   const dir = join(m.home, "Documents", "Cline", "Hooks");
