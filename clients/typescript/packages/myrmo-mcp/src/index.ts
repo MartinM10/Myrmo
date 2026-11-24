@@ -11,7 +11,7 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import { Colony, configPath, minFailedAttempts as resolveMinFailedAttempts, publishChoice, readConfig, setSetting, settingsReport, type PublishMode } from "myrmo";
 import * as sdk from "myrmo";
 import { parseInitArgs, runInit } from "./init.js";
-import { createServer, privateMode, VERSION } from "./server.js";
+import { createServer, PRIVATE_HEADERS, privateMode, VERSION } from "./server.js";
 import { allowedHosts, callerKey, DEFAULT_HTTP_HOST, hostedColonyUrl } from "./hosting.js";
 import { clean, readDeclared, rememberDeclared, type ColonyDescription } from "./profile.js";
 import { t as tx } from "./i18n.js";
@@ -424,12 +424,17 @@ if (flag("--http")) {
   const privacy = privateMode(colonyUrl, process.env, savedColony?.private === true, declared, Boolean(colonyKey));
   // In a private colony the network's addresses and host names stay in what is sent (the colony keeps them too).
   // It says which client it is, so an operator sees in the admin panel who runs an old one.
-  const colony = new Colony({ publish: publishMode, private: privacy.on, keepPersonal: declared?.keep_personal === true, headers: { "x-myrmo-client": `myrmo-mcp/${VERSION}` } });
+  const headers = { "x-myrmo-client": `myrmo-mcp/${VERSION}` };
+  const colonyOptions = { publish: publishMode, private: privacy.on, keepPersonal: declared?.keep_personal === true };
+  const colony = new Colony({ ...colonyOptions, headers });
+  // Lookups of a private session: nothing of them stays in this process either.
+  const privateLookups = new Colony({ ...colonyOptions, headers: { ...headers, ...PRIVATE_HEADERS }, cacheTtlMs: 0 });
   if (privacy.warning) console.error(`myrmo-mcp: ${privacy.warning}`);
   // An organisation's colony serves more to its members as a kit (its tools and their rules): loaded once, if installed.
   const kit = privacy.on ? await (await import("./kit.js")).serverKit() : undefined;
   const server = createServer({
     colony,
+    privateLookups,
     kit,
     privateColony: privacy.on,
     keepPersonal: declared?.keep_personal === true,
@@ -530,18 +535,20 @@ async function serveHttp(port: number, host: string) {
     if (key && !declared) await learn(key);
     const privacy = privateMode(url, process.env, false, declared, Boolean(key));
     const keepPersonal = declared?.keep_personal === true;
-    const colony = new Colony({
+    const colonyOptions = {
       url,
       headers,
       apiKey: key,
       private: privacy.on,
       keepPersonal,
-      publish: "off",
+      publish: "off" as const,
       cacheTtlMs: 0,
       // The hosted server has no identity of its own: it forwards the header of whoever is calling.
-      agentId: false,
-    });
-    const server = createServer({ colony, kit, publishMode: "off", minFailedAttempts, fillLocalEnvironment: false, hosted: true, privateColony: privacy.on, keepPersonal });
+      agentId: false as const,
+    };
+    const colony = new Colony(colonyOptions);
+    const privateLookups = new Colony({ ...colonyOptions, headers: { ...headers, ...PRIVATE_HEADERS } });
+    const server = createServer({ colony, privateLookups, kit, publishMode: "off", minFailedAttempts, fillLocalEnvironment: false, hosted: true, privateColony: privacy.on, keepPersonal });
     // A web page can make a browser send requests to this port under a name it controls (DNS rebinding): only the
     // Host names this server is meant for are answered (MYRMO_MCP_ALLOWED_HOSTS).
     const transport = new StreamableHTTPServerTransport({

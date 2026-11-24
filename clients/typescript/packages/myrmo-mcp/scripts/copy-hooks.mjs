@@ -29,7 +29,7 @@ const to = join(pkg, "dist", "hooks");
 mkdirSync(to, { recursive: true });
 // The same list as HOOK_SCRIPTS in src/init.ts. kit.mjs is also how this package finds and installs the colony kit, which
 // carries what only an organisation's colony offers (the work log's hooks among it): that is never in this package.
-const files = ["antigravity-hook.mjs", "on-failure.mjs", "lookup.mjs", "effort.mjs", "state.mjs", "redact.mjs", "packages.mjs", "kit.mjs"];
+const files = ["antigravity-hook.mjs", "on-failure.mjs", "lookup.mjs", "privacy.mjs", "effort.mjs", "state.mjs", "redact.mjs", "packages.mjs", "kit.mjs"];
 const missing = files.filter((file) => !existsSync(join(from, file)));
 if (missing.length) {
   console.error(`copy-hooks: ${missing.join(", ")} not found in ${from}; the package must not be built without them.`);

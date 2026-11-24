@@ -13,6 +13,7 @@ export type ColonyDescription = {
   people_detail?: "aggregate" | "named" | null;
   holdout_percent?: number;
   keep_personal?: boolean;
+  private_lookups?: boolean;
   worklog_scopes?: string[];
 };
 
@@ -32,6 +33,7 @@ export function clean(value: unknown): ColonyDescription | undefined {
   if (typeof v.task_search === "boolean") out.task_search = v.task_search;
   if (typeof v.effort === "boolean") out.effort = v.effort;
   if (typeof v.keep_personal === "boolean") out.keep_personal = v.keep_personal;
+  if (typeof v.private_lookups === "boolean") out.private_lookups = v.private_lookups;
   if (Array.isArray(v.worklog_scopes)) out.worklog_scopes = v.worklog_scopes.filter((r): r is string => typeof r === "string").slice(0, 50);
   if (v.people_detail === "aggregate" || v.people_detail === "named") out.people_detail = v.people_detail;
   if (typeof v.holdout_percent === "number" && v.holdout_percent >= 0 && v.holdout_percent <= 20) out.holdout_percent = Math.round(v.holdout_percent);

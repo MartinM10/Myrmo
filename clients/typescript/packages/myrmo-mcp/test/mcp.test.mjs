@@ -886,6 +886,9 @@ test("the hosted server asks a private colony what the organisation knows when M
     assert.match(instructions, /WHEN A TASK STARTS[\s\S]*myrmo_brief/);
     const answer = textOf(await client.callTool({ name: "myrmo_brief", arguments: { task: "Da de alta a una persona en LLDAP" } }));
     assert.match(answer, /10\.40\.2\.17/, "the organisation's own addresses are shown");
+    const marked = async (args) => (await sentBy(client, "myrmo_brief", { task: "Give a person access", ...args })).sent.map((r) => r.headers["x-myrmo-private"]);
+    assert.deepEqual(await marked({ private: true }), ["1"], "a lookup of a private session is marked private here too");
+    assert.deepEqual(await marked({}), [undefined]);
     await client.close();
   } finally {
     proc.kill();
@@ -1015,6 +1018,59 @@ test("a private colony's server adds the colony kit's tools and text when a kit 
   assert.ok(!(await pub.listTools()).tools.some((t) => t.name === "kit_probe"), "a colony that is not private gets no kit tools");
   assert.doesNotMatch(pub.getInstructions() ?? "", /KIT'S OWN/);
   await pub.close();
+});
+
+/** The requests a tool call sent to the colony. */
+async function sentBy(client, name, args) {
+  const before = requests.length;
+  const answer = textOf(await client.callTool({ name, arguments: args }));
+  return { answer, sent: requests.slice(before).filter((r) => r.url !== "/v1/version") };
+}
+
+test("a lookup of a private session is marked private for the colony, and only that lookup", async () => {
+  const { fakeKit } = await import("./fake-kit.mjs");
+  const client = await stdioClient("ask", { env: { MYRMO_PRIVATE: "1", MYRMO_CONFIG: freshConfig(), MYRMO_API_KEY: "myk_callerkey_0000000000", MYRMO_KIT_DEV: fakeKit().dir } });
+  const { tools } = await client.listTools();
+  for (const name of ["myrmo_search", "myrmo_brief", "kit_matters"]) {
+    const input = tools.find((t) => t.name === name).inputSchema;
+    assert.equal(input.properties.private?.type, "boolean", `${name} takes private`);
+    assert.match(input.properties.private.description, /keeps no trace of this lookup\. Do not set it yourself/);
+    assert.ok(!(input.required ?? []).includes("private"), `${name}: optional`);
+  }
+  for (const name of ["myrmo_publish", "myrmo_report", "myrmo_withdraw", "kit_probe"]) {
+    assert.equal(tools.find((t) => t.name === name).inputSchema.properties?.private, undefined, `${name} does not`);
+  }
+  const lookups = [
+    ["myrmo_search", { error: "TypeError: nothing known about this one" }, 2],
+    ["myrmo_search", { error: "ModuleNotFoundError: No module named 'distutils'" }, 1],
+    ["myrmo_brief", { task: "Give a person access to the staging cluster" }, 1],
+    ["kit_matters", { query: "cluster" }, 1],
+  ];
+  // Private first, then not (a private answer is not kept for later), then private again (nor is an ordinary one used).
+  for (const isPrivate of [true, false, true]) {
+    for (const [name, args, n] of lookups) {
+      const { answer, sent } = await sentBy(client, name, isPrivate ? { ...args, private: true } : args);
+      assert.equal(sent.length, n, `${name} private=${isPrivate}`);
+      for (const r of sent) {
+        assert.equal(r.headers["x-myrmo-private"], isPrivate ? "1" : undefined, `${name}: ${r.url} private=${isPrivate}`);
+        assert.equal(r.headers.authorization, "Bearer myk_callerkey_0000000000", "as the same caller");
+        assert.match(r.headers["x-myrmo-client"], /^myrmo-mcp\//);
+        assert.ok(!JSON.stringify([r.url, r.body]).includes("private"), "nothing else changes in the request");
+      }
+      assert.doesNotMatch(answer, /^Error/);
+    }
+  }
+  // Two lookups at once do not mix.
+  const [a, b] = await Promise.all([
+    sentBy(client, "kit_matters", { query: "one", private: true }),
+    sentBy(client, "kit_matters", { query: "two" }),
+  ]);
+  const all = [...a.sent, ...b.sent];
+  assert.equal(all.find((r) => r.url.includes("q=one")).headers["x-myrmo-private"], "1");
+  assert.equal(all.find((r) => r.url.includes("q=two")).headers["x-myrmo-private"], undefined);
+  const said = await sentBy(client, "myrmo_search", { error: "TypeError: nothing known about this one", private: false });
+  assert.ok(said.sent.every((r) => r.headers["x-myrmo-private"] === undefined), "false is the same as leaving it out");
+  await client.close();
 });
 
 /** Runs a myrmo-mcp command against the fake colony (asynchronously: the colony answers from this process). */

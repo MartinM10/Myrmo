@@ -28,6 +28,11 @@
 //   9. When a problem is solved, what it cost (tokens, time, model, from the session's transcript) is sent to a colony
 //      that collects it, to measure what the colony saves (effort.mjs). MYRMO_EFFORT=off turns it off.
 //
+// Private mode (privacy.mjs), on any colony: after //privado (or //private) a session sends nothing to Myrmo until
+// //compartir (or //share): no lookups, no work log, no request to publish or report, no effort figures. The person sees
+// a line saying so with every message, the agent is told, and a PreToolUse hook on Myrmo's tools turns down those that
+// share and asks the person before a lookup (sent marked private, so that the colony keeps no trace of it).
+//
 // And on any colony:
 //   8. When a session starts, the person is told once a day if their colony was released with a newer Myrmo plugin
 //      (SessionStart; lookup.mjs `updateNotice`). MYRMO_UPDATE_CHECK=off turns it off.
@@ -42,6 +47,7 @@ import { join } from "node:path";
 import { measureAndSend } from "./effort.mjs";
 import { briefEnabled, briefNote, colonyOf, lookup, lookupEnabled, lookupNote, lookupTask, personalText, privateColony, taskOf, updateNotice } from "./lookup.mjs";
 import { currentKit, installKit, loadKit } from "./kit.mjs";
+import { agentNote, applyPrompt, inheritAfterClear, lastCommandIn, lookupQuestion, privacyOf, sendRefusal, sessionKey, setPrivate, sharedNote, toolKind, userLine } from "./privacy.mjs";
 import { readState, stateFile, writeState } from "./state.mjs";
 
 // The team's work log comes with the kit an organisation's colony serves (kit.mjs), whose worklog.mjs exports `forHook`.
@@ -49,9 +55,6 @@ import { readState, stateFile, writeState } from "./state.mjs";
 const NO_KIT = { target: () => null, sessionNote: async () => null, promptNote: async () => null, record: async () => {} };
 const teamLog = async () => (await loadKit("worklog.mjs"))?.forHook ?? NO_KIT;
 
-// "//privado" or "//private" at the start of a request: nothing about it is logged or asked of the colony, kit or not.
-const PRIVATE_MARK = /^\s*\/\/\s*(?:privad[oa]|private)\b/i;
-const isPrivate = (prompt) => PRIVATE_MARK.test(personalText(prompt));
 
 // Commands that fail or print errors as part of normal work: a probe that found nothing, a diff that differs, a log
 // being read. Their output is not a problem of the user's.
@@ -588,6 +591,43 @@ async function refreshKit(settings, cacheFile) {
   }
 }
 
+/** Writes the hook's answer, when there is one. */
+const answer = (out) => {
+  if (out && Object.keys(out).length) process.stdout.write(JSON.stringify(out));
+};
+
+/**
+ * Private mode at the start of a session. A resumed session keeps its id, so it is still what it was. A fork has an id of
+ * its own: it stays private if the last command in its transcript was //privado. One made by /clear, or a fork whose
+ * transcript says nothing, stays private when a private session was just in use in the same folder.
+ * Returns the state and the line for the person, or null when the session shares.
+ */
+function privateAtStart(input, key) {
+  const source = input.source ?? "startup";
+  let inherited = false;
+  if ((source === "fork" || source === "resume") && !privacyOf(key).session && input.transcript_path) {
+    let last = null;
+    try {
+      last = lastCommandIn(readFileSync(input.transcript_path, "utf8"));
+    } catch {
+      /* no transcript yet */
+    }
+    if (last?.kind === "private") setPrivate(key, { lang: last.lang, cwd: input.cwd });
+    else if (!last && source === "fork") inherited = inheritAfterClear(key, input.cwd);
+  }
+  if (source === "clear" && !privacyOf(key).session) inherited = inheritAfterClear(key, input.cwd);
+  const state = privacyOf(key);
+  if (!state.private) return null;
+  const es = state.lang === "es";
+  const line = userLine(state);
+  const note = inherited
+    ? es
+      ? `${line} Sigue el modo privado de la sesión anterior en esta carpeta; escribe //compartir si quieres compartir esta.`
+      : `${line} The previous session in this folder was private, so this one is too; type //share to share this one.`
+    : line;
+  return { state, note };
+}
+
 async function main() {
   let raw = "";
   for await (const chunk of process.stdin) raw += chunk;
@@ -595,50 +635,103 @@ async function main() {
   const file = stateFile(input.session_id);
   const state = readState(file);
   const settings = readSettings();
+  const key = sessionKey("claude", input.session_id);
   // 8. A session starts: is this plugin older than what the colony was released with? Said to the person, not the agent.
   if (input.hook_event_name === "SessionStart") {
-    if (hookMode(process.env, settings) === "off") return;
+    const hidden = privateAtStart(input, key);
+    if (hookMode(process.env, settings) === "off") {
+      if (hidden) answer({ systemMessage: hidden.note });
+      return;
+    }
     const cacheFile = join(process.env.MYRMO_HOOK_STATE_DIR || join(homedir(), ".myrmo"), "update-check.json");
     const notice = await updateNotice({ settings, cacheFile });
     // The organisation's colony serves a kit (its own client code): install it, or the newer one, before the session uses it.
     await refreshKit(settings, cacheFile);
-    // The work log: what colleagues recorded since this person's last session, for the agent.
-    const team = await teamLog();
-    const target = team.target(input, { settings });
+    // The work log: what colleagues recorded since this person's last session, for the agent. Not for a private session,
+    // whose id it would send.
+    const team = hidden ? null : await teamLog();
+    const target = team ? team.target(input, { settings }) : null;
     const digest = target ? await team.sessionNote(input, target) : null;
     const out = {};
-    if (notice) out.systemMessage = notice;
-    if (digest) out.hookSpecificOutput = { hookEventName: "SessionStart", additionalContext: digest };
-    if (Object.keys(out).length) process.stdout.write(JSON.stringify(out));
+    const lines = [notice, hidden?.note].filter(Boolean);
+    if (lines.length) out.systemMessage = lines.join("\n");
+    const context = hidden ? agentNote(hidden.state, { canAsk: true }) : digest;
+    if (context) out.hookSpecificOutput = { hookEventName: "SessionStart", additionalContext: context };
+    answer(out);
+    return;
+  }
+  // Private mode: Myrmo's own tools. One that shares is turned down; a lookup is asked of the person first and sent
+  // marked private (the colony then keeps no trace of it). Whatever the hook mode: this is the person's choice.
+  if (input.hook_event_name === "PreToolUse") {
+    const kind = toolKind(input.tool_name);
+    const privacy = privacyOf(key);
+    if (!privacy.private || !kind || kind === "free") return;
+    const out = kind === "lookup"
+      ? { permissionDecision: "ask", permissionDecisionReason: lookupQuestion(privacy, { traceless: colonyOf(process.env, settings).declared?.private_lookups === true }), updatedInput: { ...(input.tool_input ?? {}), private: true } }
+      : { permissionDecision: "deny", permissionDecisionReason: sendRefusal(privacy) };
+    answer({ hookSpecificOutput: { hookEventName: "PreToolUse", ...out } });
     return;
   }
   // 6. The user sent a request: what does the organisation already know about this task?
   if (input.hook_event_name === "UserPromptSubmit") {
-    const task = taskOf(input.prompt);
-    if (hookMode(process.env, settings) === "off") return;
-    // The person said this one is private: nothing is kept for the Stop hook to log, and nothing is asked of the colony.
-    if (isPrivate(input.prompt)) {
+    const kept = { ...state };
+    const privacy = applyPrompt(key, input.prompt, { cwd: input.cwd });
+    if (privacy.private) {
+      // Nothing is kept for the Stop hook to log and nothing is asked of the colony. A request kept from before, still
+      // waiting for its background agents, is dropped too: the work log takes a turn from the person's last message, so
+      // sending it later would send the private turn's answer and activity with it.
       const { worklogPrompt, ...rest } = state;
       save(file, state, rest);
+      // A message that is only the command does not reach the model: the person sees the line, and that is all.
+      if (privacy.failed || (privacy.bare && privacy.command)) answer({ decision: "block", reason: userLine(privacy) });
+      else answer({ systemMessage: userLine(privacy), hookSpecificOutput: { hookEventName: "UserPromptSubmit", additionalContext: agentNote(privacy, { canAsk: true }) } });
+      return;
+    }
+    if (privacy.command === "share" && privacy.bare) {
+      // The command does not reach the agent: what it must know about the private part goes with the next message.
+      save(file, state, { ...state, sharedNote: true });
+      answer({ decision: "block", reason: userLine(privacy) });
+      return;
+    }
+    const resumed = privacy.command === "share" ? userLine(privacy) : null;
+    const after = resumed || state.sharedNote ? sharedNote({}) : null;
+    delete state.sharedNote;
+    const prompt = privacy.command === "share" ? privacy.prompt : input.prompt;
+    const task = taskOf(prompt);
+    if (hookMode(process.env, settings) === "off") {
+      save(file, kept, state);
+      answer({ ...(resumed ? { systemMessage: resumed } : {}), ...(after ? { hookSpecificOutput: { hookEventName: "UserPromptSubmit", additionalContext: after } } : {}) });
       return;
     }
     // The work log: this request is kept for the Stop hook, and what colleagues recorded about it comes back.
     const team = await teamLog();
     const target = team.target(input, { settings });
-    const withPrompt = target ? { ...state, worklogPrompt: nextWorklogPrompt(state.worklogPrompt, input.prompt) } : state;
-    const logged = target ? await team.promptNote(input, target, task) : null;
+    const withPrompt = target ? { ...state, worklogPrompt: nextWorklogPrompt(state.worklogPrompt, prompt) } : state;
+    const logged = target ? await team.promptNote({ ...input, prompt }, target, task) : null;
+    const out = resumed ? { systemMessage: resumed } : {};
     if (!task || !briefEnabled(process.env, settings)) {
-      save(file, state, withPrompt);
-      if (logged) process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: "UserPromptSubmit", additionalContext: logged } }));
+      save(file, kept, withPrompt);
+      const context = [after, logged].filter(Boolean).join("\n\n");
+      if (context) out.hookSpecificOutput = { hookEventName: "UserPromptSubmit", additionalContext: context };
+      answer(out);
       return;
     }
     const body = await lookupTask(task, { settings, agent: "myrmo-claude-code-hook/1" });
     // MYRMO_HOOK_BRIEF_MIN: the lowest score a suggestion may have (default 0.6).
     const min = Number(process.env.MYRMO_HOOK_BRIEF_MIN);
-    const out = briefNote(task, body, withPrompt, Date.now(), "", Number.isFinite(min) && min > 0 ? { min } : {});
-    save(file, state, out.state);
-    const note = [out.note, logged].filter(Boolean).join("\n\n");
-    if (note) process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: "UserPromptSubmit", additionalContext: note } }));
+    const brief = briefNote(task, body, withPrompt, Date.now(), "", Number.isFinite(min) && min > 0 ? { min } : {});
+    save(file, kept, brief.state);
+    const note = [after, brief.note, logged].filter(Boolean).join("\n\n");
+    if (note) out.hookSpecificOutput = { hookEventName: "UserPromptSubmit", additionalContext: note };
+    answer(out);
+    return;
+  }
+  // Private mode: what happens in a private session is not looked up, counted, logged or asked to be shared.
+  if (privacyOf(key).private) {
+    if (input.hook_event_name === "Stop" && state.worklogPrompt) {
+      const { worklogPrompt, ...rest } = state;
+      save(file, state, rest);
+    }
     return;
   }
   if (input.hook_event_name === "Stop") {
@@ -653,7 +746,7 @@ async function main() {
       if (!sent?.pending) delete stop.state.worklogPrompt;
     }
     save(file, state, stop.state);
-    if (stop.reason) process.stdout.write(JSON.stringify({ decision: "block", reason: stop.reason }));
+    if (stop.reason) answer({ decision: "block", reason: stop.reason });
     return;
   }
   const out = decide(input, { state, settings });
@@ -666,7 +759,7 @@ async function main() {
   // 9. A problem was solved: what it cost, to a colony that collects it.
   if (out.effort) await measureAndSend(out.effort, input.transcript_path, { settings });
   if (!out.note) return;
-  process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: input.hook_event_name ?? "PostToolUseFailure", additionalContext: out.note } }));
+  answer({ hookSpecificOutput: { hookEventName: input.hook_event_name ?? "PostToolUseFailure", additionalContext: out.note } });
 }
 
 // A hook must never get in the way of the agent: any problem here means "say nothing".

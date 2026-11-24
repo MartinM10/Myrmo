@@ -1,6 +1,7 @@
 // A private colony (MYRMO_PRIVATE=1 with MYRMO_URL set to it): the hooks look errors up themselves, the publish reminder
 // keeps internal names, and when the agent stops after commands failed it is asked once to share what it learned.
 
+import "./home.mjs";
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";

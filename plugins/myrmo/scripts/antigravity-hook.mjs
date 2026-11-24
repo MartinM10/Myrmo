@@ -13,11 +13,13 @@
 //   { "myrmo": { "PreInvocation": [ { "type": "command", "command": "node /path/to/antigravity-hook.mjs" } ] } }
 // It never blocks and answers {} whenever it has nothing to say or anything goes wrong. It sends nothing anywhere, except
 // the error line of a failed command to the colony when the automatic lookup is on (lookup.mjs: by default only for a
-// private colony).
+// private colony). In private mode (privacy.mjs: after //privado, until //compartir) it does not even do that, and it tells
+// the model not to call Myrmo: Antigravity gives a hook no way to stop a tool call.
 
 import { existsSync, readFileSync } from "node:fs";
 import { decide, readSettings } from "./on-failure.mjs";
 import { briefEnabled, briefNote as sharedBriefNote, lookup, lookupEnabled, lookupNote as sharedLookupNote, lookupTask, taskOf } from "./lookup.mjs";
+import { agentNote, commandOf, machinePaused, modes, sharedNote } from "./privacy.mjs";
 import { readState, stateFile, writeState } from "./state.mjs";
 
 const EXIT = /The command exited with code (-?\d+)\./;
@@ -110,13 +112,43 @@ export function newRequest(steps, from = 0) {
   return request;
 }
 
+/**
+ * Private mode in a conversation, from its requests: `visible` are the steps that are not in a private part of it, and
+ * `state` what it is now (privacy.mjs's shape, with `at`, the step of the newest request).
+ */
+export function privacyIn(steps, env = process.env) {
+  const inputs = steps.map((s, i) => ({ s, i })).filter(({ s }) => s.type === "USER_INPUT");
+  const on = modes(inputs.map(({ s }) => s.content));
+  const machine = machinePaused(env);
+  let mode = false;
+  let n = 0;
+  const visible = steps.filter((s) => {
+    if (s.type === "USER_INPUT") mode = on[n++];
+    return !mode && !machine;
+  });
+  const last = inputs.at(-1);
+  const command = last ? commandOf(last.s.content) : null;
+  const before = on.length > 1 ? on[on.length - 2] : false;
+  const session = on.at(-1) ?? false;
+  return {
+    visible,
+    state: {
+      private: session || machine, session, machine, failed: false,
+      changed: command && session !== before ? command.kind : null,
+      command: command?.kind ?? null, bare: command?.bare ?? false, lang: command?.lang ?? "en",
+      at: last ? Number(last.s.step_index ?? last.i) : -1,
+    },
+  };
+}
+
 /** Run the steps since the last call through `decide`; the last note it produced is the one to show. */
 export function step(input, state = {}, { now = Date.now(), env = process.env, settings = {}, transcript } = {}) {
   const steps = readSteps(transcript ?? "");
   const from = Number(state.agyNext ?? 0);
   let note = null;
   let current = state;
-  for (const event of events(steps, from)) {
+  const { visible, state: privacy } = privacyIn(steps, env);
+  for (const event of events(visible, from)) {
     const out = decide(event, { now, state: current, env, settings });
     current = out.state;
     if (out.note) note = out.note;
@@ -126,7 +158,19 @@ export function step(input, state = {}, { now = Date.now(), env = process.env, s
   // The error line a reminder to search quotes: what an automatic lookup searches for.
   const failure = note && /a command just failed|finished with exit 0/.test(note) ? (/«(.+?)»/.exec(note)?.[1] ?? "") : "";
   // A request the user just sent: what the task lookup searches for.
-  const task = taskOf(newRequest(steps, from));
+  const request = newRequest(steps, from);
+  if (privacy.private || (privacy.command === "share" && privacy.bare)) {
+    // Said once per request. What happened before it in this call is not looked up either.
+    const said = Number(state.agyPrivateAt ?? -1) >= privacy.at;
+    return { note: said ? null : privacy.private ? agentNote(privacy) : sharedNote(privacy), state: { ...next, agyPrivateAt: privacy.at }, failure: "", task: "" };
+  }
+  // Sharing again with a request: the agent is told, once, that the private part stays out.
+  const told = Number(state.agyPrivateAt ?? -1) >= privacy.at;
+  if (privacy.command === "share" && !told && !note) {
+    note = sharedNote(privacy);
+    next.agyPrivateAt = privacy.at;
+  }
+  const task = taskOf(privacy.command === "share" ? (commandOf(request)?.rest ?? request) : request);
   return { note: note && note.includes("myrmo_") ? note + HOW : note, state: next, failure, task };
 }
 

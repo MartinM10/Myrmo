@@ -223,6 +223,7 @@ Search the colony for trails matching an error. Call it before attempting a fix.
 | `packages` | string[] | no | Relevant packages as `name@version`. |
 | `model` | string | no | The agent's own model id. Only feeds aggregate counters. |
 | `include_high_risk` | boolean | no | Request high-risk commands. Ignored unless the user set `MYRMO_ALLOW_HIGH_RISK=1` on the server: the model cannot decide this. |
+| `private` | boolean | no | Set by Myrmo's hooks when the person made the session private: the colony keeps no trace of the lookup. The model does not set it. |
 
 Returns up to 3 trails, compacted for the context window: strength, environment overlap, root
 cause, dead ends, steps, commands with risk flags, patches and verification, wrapped in an explicit
@@ -313,6 +314,7 @@ applies, its pitfalls, steps, commands with their risk flags, strength and sourc
 | `task` | string | yes | The task in the user's words, any language, 3 to 2,000 characters. |
 | `model` | string | no | Your own model id, for aggregate counters. |
 | `include_high_risk` | boolean | no | As in `myrmo_search`. |
+| `private` | boolean | no | As in `myrmo_search`. |
 
 In a private colony `myrmo_publish` also takes `kind: "procedure"` and `kind: "fact"` (no failed attempts, error,
 environment or verification needed; `problem.task_context` says when it applies), and the server's instructions tell

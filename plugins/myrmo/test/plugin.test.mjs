@@ -1,6 +1,7 @@
 // The Claude Code plugin: the failure hook must stay quiet unless a search is worth suggesting,
 // never break the agent, and the manifests must point at files that exist.
 
+import "./home.mjs";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";

@@ -2,6 +2,7 @@
 // failed earlier now works, either while Myrmo had no trail for it (publish) or after it returned trails (report). Payloads below have the shape Claude Code 2.1.289 really
 // sends (captured from a live session): the failure event has no exit_code, only `error: "Exit code N\n<output>"`.
 
+import "./home.mjs";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";

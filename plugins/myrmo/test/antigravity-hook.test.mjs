@@ -2,6 +2,7 @@
 // agy 1.3.3 really writes to transcript_full.jsonl (captured in a container): a PLANNER_RESPONSE with tool_calls, then one
 // GENERIC step per call with its result.
 
+import "./home.mjs";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
@@ -148,10 +149,20 @@ test("the lookup asks the colony set in MYRMO_URL and gives up quietly when it c
   assert.equal(seen[0].url, "http://colony:8080/v1/search");
   assert.equal(JSON.parse(seen[0].init.body).query, "uv: command not found");
   assert.equal(seen[0].init.headers["x-myrmo-agent"], "bench-agent-01");
+  // The id the settings file keeps — the one the MCP server sends — travels in the header, so the hook and the
+  // server count as the same agent in the colony.
+  const configDir = mkdtempSync(join(tmpdir(), "myrmo-lookup-config-"));
+  const config = join(configDir, "config.json");
+  writeFileSync(config, JSON.stringify({ agent_id: "e458613de1ed4705a1b2c3d4e5f60718" }));
+  await lookup("uv: command not found", {
+    env: { MYRMO_URL: "http://colony:8080/", MYRMO_CONFIG: config },
+    fetcher: async (url, init) => (seen.push({ url, init }), { ok: true, json: async () => ({ results: [] }) }),
+  });
+  assert.equal(seen[1].init.headers["x-myrmo-agent"], "e458613de1ed4705a1b2c3d4e5f60718");
   assert.equal(seen[0].init.headers.authorization, undefined, "no key, no header");
   // A private colony: the person's access key goes with the lookup, as with the MCP server.
   await lookup("x", { env: { MYRMO_API_KEY: "myk_abc" }, fetcher: async (url, init) => (seen.push({ url, init }), { ok: true, json: async () => ({}) }) });
-  assert.equal(seen[1].init.headers.authorization, "Bearer myk_abc");
+  assert.equal(seen[2].init.headers.authorization, "Bearer myk_abc");
   assert.equal(await lookup("x", { env: {}, fetcher: async () => { throw new Error("down"); } }), null);
   assert.equal(await lookup("x", { env: {}, fetcher: async () => ({ ok: false }) }), null);
 });

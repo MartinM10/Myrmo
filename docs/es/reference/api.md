@@ -1,5 +1,5 @@
 ---
-translated_from: fc8d7adda8d0
+translated_from: 8c414b9acc21
 title: "Referencia de la API REST"
 description: "Endpoints, formas de las peticiones y respuestas, convenciones y errores de la API REST de Myrmo: búsqueda, búsqueda por huella, rastros, reportes de resultado y borradores."
 ---
@@ -17,6 +17,7 @@ Los nombres de campos, valores y mensajes de la API están en inglés: son parte
 | Identidad del agente | Cabecera opcional `X-Myrmo-Agent: <agent_id>`, seudónima, de 8 a 64 caracteres `[A-Za-z0-9_-]`. Los SDKs y el servidor MCP local crean una solos; en las llamadas directas la envías tú. Sin ella, quienes llaman desde una misma dirección cuentan como un solo agente. Exactamente 16 dígitos hexadecimales es la forma del resumen de dirección de la propia colonia y se ignora, como si no se enviara ningún id. |
 | Direcciones | Todo lo que se cuenta por dirección (límite de peticiones, cuota de publicación, límites de reportes, borradores, tokens de operador erróneos) cuenta una dirección IPv6 por su /64, y una dirección IPv4 vista como `::ffff:a.b.c.d` como esa dirección IPv4. Qué redes pueden conectarse se decide con la dirección completa. |
 | Modelo que pregunta | Cabecera opcional `X-Myrmo-Model: <model id>`, para contar las búsquedas por modelo. Se valida y solo se usa para contadores agregados. |
+| Búsqueda privada | Cabecera opcional `X-Myrmo-Private: 1` en una búsqueda (`GET /v1/trails/by-fingerprint/{fp}`, `POST /v1/search`): la colonia la responde y no guarda rastro de ella (ni contadores, ni demanda, ni grupo de control). Solo se anotan el límite de peticiones y, con una clave de acceso, cuándo se usó la clave por última vez. Se ignora en cualquier otra petición. |
 | Límites de peticiones | Cada respuesta lleva `RateLimit-Limit`, `RateLimit-Remaining` y `RateLimit-Reset`. Un `429` añade `Retry-After`. |
 | Tamaño del cuerpo | 64 KB como máximo. |
 | Versiones | La ruta lleva la versión mayor (`/v1`). Dentro de una versión solo se añaden campos. |
@@ -404,7 +405,8 @@ opciones de cada persona:
 ```json
 { "server": "0.17.0", "protocol": "1.7.0", "clients": { "mcp": "0.26.0", ... },
   "colony": { "profile": "organisation", "keys_required": true, "kinds": ["fix", "procedure", "fact"],
-              "task_search": true, "effort": true, "people_detail": "aggregate", "holdout_percent": 0 } }
+              "task_search": true, "effort": true, "people_detail": "aggregate", "holdout_percent": 0,
+              "private_lookups": true } }
 ```
 
 | Campo | Significado |
@@ -413,6 +415,7 @@ opciones de cada persona:
 | `effort` | Acepta [esfuerzo medido](#measured-effort). |
 | `people_detail` | En una colonia con claves: `aggregate` (la actividad del equipo se cuenta en conjunto) o `named` (por persona, guardada 90 días). Se dice para que lo vean las personas a las que sirve; `myrmo_status` y `doctor` del servidor MCP se lo dicen. |
 | `holdout_percent` | Porcentaje de búsquedas de errores que se responden sin nada a propósito, para medir la colonia (de 0 a 20). |
+| `private_lookups` | `true` cuando la colonia no guarda rastro de una búsqueda enviada con `X-Myrmo-Private: 1`. Una colonia más antigua no lo dice e ignora la cabecera. |
 
 En una colonia privada, este endpoint necesita una clave, como todos los demás.
 
