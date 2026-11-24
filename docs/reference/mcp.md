@@ -143,8 +143,10 @@ npx myrmo-mcp doctor
 
 Checks that this machine can use the colony and says what to do about each failure, in plain words: Node.js 20 or newer,
 that the colony answers and lets this network in (`403` means the colony does not allow it), that the key opens it
-(a `401` means the key was copied wrong or revoked), private mode, the publish choice, and that an agent on this machine
-(Claude Code's plugin, or the rules Gemini CLI and Antigravity read) is set up. For an organisation's colony it also
+(a `401` means the key was copied wrong or revoked), whether it is an organisation's colony, the publish choice, and that
+an agent on this machine (Claude Code's plugin, or the rules Gemini CLI and Antigravity read) is set up. It warns when the
+machine is paused (`~/.myrmo/worklog-paused`, which stops all of Myrmo in every session) and counts the sessions made
+private with [`//privado`](./claude-code-plugin.md#private-mode). For an organisation's colony it also
 says whether its [kit](#the-colony-kit) is installed, which version, and whether the colony offers a newer one (and
 warns when `MYRMO_KIT_DEV` is in use), and, agent by agent, whether the hooks of the features the kit brings are in
 place. It changes nothing, reads no trail, and exits 1 when something fails. It does not probe the public colony: it only reports that it is the one in use.
