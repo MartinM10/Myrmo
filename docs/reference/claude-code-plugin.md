@@ -144,6 +144,23 @@ The note also reaches subagents (checked with Claude Code 2.1.289), and subagent
 Claude Code on Windows runs commands with the PowerShell tool unless Git for Windows is installed, which
 is why the hook matches both tools.
 
+### Private mode
+
+Type `//private` (or `//privado`) and, from that message on, nothing from that session goes to Myrmo: no lookups by the
+hook, no work log, no requests to publish or report, no effort figures. It lasts until you type `//share` (or
+`//compartir`), which resumes from that message; what was done meanwhile is never sent. It is per session: another session
+open at the same time is not affected, a resumed one is still private, and one made by `/clear` or a fork of a private
+session starts private and says so.
+
+- Typed alone, the command does not reach the model. A line reminds you of the mode with every message.
+- A `PreToolUse` hook turns down Myrmo's tools that share. If the agent wants to look something up, you are asked first,
+  also when the tool is pre-approved, and the lookup goes marked private
+  ([what that means](./api.md)).
+- The file `~/.myrmo/worklog-paused` does the same for every session on the machine until you delete it, and
+  `MYRMO_WORKLOG_PAUSE=1` for the process it is set for.
+- It works whatever `MYRMO_HOOK` says. When you share again, the agent still remembers the private part; start a new
+  session if it must not come up.
+
 ## Publishing
 
 The plugin does not decide whether agents may publish: the first time an agent wants to, you are shown

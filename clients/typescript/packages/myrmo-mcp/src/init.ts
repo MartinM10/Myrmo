@@ -373,7 +373,7 @@ export function mergeHooks(current: string | undefined, command: string): { text
  * which apply only to that colony), and for Antigravity installs the hook that looks errors up there.
  */
 /** This package's hook scripts, copied together (scripts/copy-hooks.mjs puts them in dist/hooks). */
-export const HOOK_SCRIPTS = ["antigravity-hook.mjs", "on-failure.mjs", "lookup.mjs", "effort.mjs", "state.mjs", "redact.mjs", "packages.mjs", "kit.mjs"];
+export const HOOK_SCRIPTS = ["antigravity-hook.mjs", "on-failure.mjs", "lookup.mjs", "privacy.mjs", "effort.mjs", "state.mjs", "redact.mjs", "packages.mjs", "kit.mjs"];
 
 /**
  * Copies the hook scripts into ~/.myrmo/hooks as one self-contained set: the kit's when one is installed (it carries its
@@ -418,7 +418,7 @@ export function writeInstallVersion(home: string, version: string, dryRun: boole
 }
 
 /** The events Cline runs a hook for that the work log uses. Cline looks for an executable named after the event. */
-export const CLINE_HOOK_EVENTS = ["UserPromptSubmit", "PostToolUse", "TaskComplete", "TaskCancel"];
+export const CLINE_HOOK_EVENTS = ["UserPromptSubmit", "PreToolUse", "PostToolUse", "TaskComplete", "TaskCancel"];
 export const CLINE_MARK = "myrmo-work-log (written by myrmo-mcp init)";
 
 /**
@@ -547,7 +547,7 @@ export function installClineHooks(opts: InitOptions, home: string, log: (l: stri
 }
 
 /** The Gemini CLI events the work log uses, and the name its hooks carry in ~/.gemini/settings.json (how init finds its own). */
-export const GEMINI_HOOK_EVENTS = ["SessionStart", "BeforeAgent", "AfterTool", "AfterAgent", "SessionEnd"];
+export const GEMINI_HOOK_EVENTS = ["SessionStart", "BeforeAgent", "BeforeTool", "AfterTool", "AfterAgent", "SessionEnd"];
 export const GEMINI_HOOK_NAME = "myrmo-work-log";
 
 /** Whether Gemini CLI is (or was) used on this machine: it keeps its settings, history and sessions in ~/.gemini. */

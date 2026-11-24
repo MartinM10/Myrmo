@@ -1,6 +1,7 @@
 // The Myrmo MCP server: three tools that let any MCP client search, reinforce and publish
 // trails. The tool descriptions carry the usage rules, so models learn them on connect.
 
+import { AsyncLocalStorage } from "node:async_hooks";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import * as sdk from "myrmo";
 import { Colony, MyrmoError, detectEnvironment, formatResult, writeConfig, type Outcome, type Package, type PublishMode, type RejectionDetail, type Trail } from "myrmo";
@@ -13,6 +14,11 @@ export const VERSION = "0.39.1"; // x-release-please-version
 
 export interface ServerOptions {
   colony: Colony;
+  /**
+   * The same colony as the same caller, with X-Myrmo-Private on every request: it keeps no trace of a lookup made through
+   * it (`private: true`, set by Myrmo's hooks in a session the person made private). See `PRIVATE_HEADERS`.
+   */
+  privateLookups: Colony;
   /** Who this server acts as, for the agent to read: a prefix of the key's hash, or of the agent id. Never the key. */
   identity?: string;
   publishMode: PublishMode;
@@ -55,6 +61,39 @@ export interface ServerOptions {
   kit?: ServerKit;
   /** What the colony says it is (GET /v1/version), once known: myrmo_status tells the person what it keeps about them. */
   colonyDescription?: () => { profile?: string; people_detail?: string | null; holdout_percent?: number; effort?: boolean } | undefined;
+}
+
+/** What a lookup of a private session carries: the colony answers it and keeps no trace of it. */
+export const PRIVATE_HEADERS = { "x-myrmo-private": "1" };
+const PRIVATE_LOOKUP = "Set by Myrmo's hooks when the person made this session private: the colony keeps no trace of this lookup. Do not set it yourself.";
+const privateInput = () => z.boolean().optional().describe(PRIVATE_LOOKUP);
+
+/**
+ * The server and the colony as the colony kit's tools see them. Each of its lookup tools (read-only, with named inputs)
+ * also takes `private`, and a call with it reaches the colony through `privateLookups`. The kit's own code need not know.
+ */
+function withPrivateLookups(server: McpServer, opts: ServerOptions): { server: McpServer; colony: Colony } {
+  const isPrivate = new AsyncLocalStorage<boolean>();
+  // Methods run on the colony itself, which keeps private state a proxy has not.
+  const on = <T extends object>(target: T, prop: string | symbol): unknown => {
+    const value: unknown = Reflect.get(target, prop, target);
+    return typeof value === "function" ? value.bind(target) : value;
+  };
+  type Tool = { inputSchema?: Record<string, unknown>; annotations?: { readOnlyHint?: boolean } };
+  type Handler = (args: Record<string, unknown>, extra: unknown) => unknown;
+  const registerTool = (name: string, config: Tool, handler: Handler) => {
+    const shape = config.inputSchema;
+    // A zod object, rather than a plain record of inputs, is left as the kit wrote it.
+    if (!config.annotations?.readOnlyHint || !shape || "_zod" in shape || "_def" in shape) return register(name, config, handler);
+    return register(name, { ...config, inputSchema: { ...shape, private: privateInput() } }, (args, extra) =>
+      isPrivate.run(args.private === true, () => handler(args, extra)),
+    );
+  };
+  const register = server.registerTool.bind(server) as unknown as (name: string, config: Tool, handler: Handler) => unknown;
+  return {
+    server: new Proxy(server, { get: (target, prop) => (prop === "registerTool" ? registerTool : on(target, prop)) }),
+    colony: new Proxy(opts.colony, { get: (target, prop) => on(isPrivate.getStore() ? opts.privateLookups : target, prop) }),
+  };
 }
 
 const PUBLIC_HOSTS = new Set(["myrmo.dev", "www.myrmo.dev"]);
@@ -503,13 +542,14 @@ export function createServer(opts: ServerOptions): McpServer {
         packages: z.array(z.string().max(160)).max(30).optional().describe('Relevant packages as "name@version".'),
         model: z.string().max(128).optional().describe("Your own model id, e.g. claude-opus-5-5. Only used for aggregate counters."),
         include_high_risk: z.boolean().optional().describe("Request commands flagged high risk. Ignored unless the user enabled it in the server configuration."),
+        private: privateInput(),
       },
       annotations: { readOnlyHint: true, openWorldHint: true },
     },
     async (args) => {
       try {
         const detectedRuntime = args.runtime ? undefined : detectProjectRuntime();
-        const result = await opts.colony.search({
+        const result = await (args.private ? opts.privateLookups : opts.colony).search({
           error: args.error,
           errorType: args.error_type,
           runtime: args.runtime ?? detectedRuntime?.name,
@@ -541,12 +581,13 @@ export function createServer(opts: ServerOptions): McpServer {
           task: z.string().min(3).max(2000).describe("The task, in the user's words, e.g. 'despliega un tenant nuevo en dev con dos servicios'."),
           model: z.string().max(128).optional().describe("Your own model id, e.g. claude-opus-5-5. Only used for aggregate counters."),
           include_high_risk: z.boolean().optional().describe("Request commands flagged high risk. Ignored unless the user enabled it in the server configuration."),
+          private: privateInput(),
         },
         annotations: { readOnlyHint: true, openWorldHint: true },
       },
       async (args) => {
         try {
-          const result = await opts.colony.searchTask(args.task, { limit: 3, model: args.model });
+          const result = await (args.private ? opts.privateLookups : opts.colony).searchTask(args.task, { limit: 3, model: args.model });
           const includeHighRisk = (args.include_high_risk ?? false) && (opts.allowHighRisk ?? false);
           return text(withUpdate(`${formatBrief!(result, { includeHighRisk })}\n${where()}`));
         } catch (err) {
@@ -560,7 +601,7 @@ export function createServer(opts: ServerOptions): McpServer {
   // here when one is installed. A kit that fails to register leaves the server as it is.
   if (opts.privateColony && opts.kit?.registerTools) {
     try {
-      opts.kit.registerTools({ server, colony: opts.colony, z, text, errorText, finish: (answer: string) => withUpdate(`${answer}\n${where()}`) });
+      opts.kit.registerTools({ ...withPrivateLookups(server, opts), z, text, errorText, finish: (answer: string) => withUpdate(`${answer}\n${where()}`) });
     } catch (err) {
       console.error(`myrmo-mcp: the colony kit ${opts.kit.version} could not add its tools: ${err instanceof Error ? err.message : String(err)}`);
     }

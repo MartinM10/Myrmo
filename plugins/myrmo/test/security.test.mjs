@@ -2,6 +2,7 @@
 // ids come only from real header lines, what goes to a colony is redacted first, and numbers and risk from a colony are
 // never taken on trust.
 
+import "./home.mjs";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { chmodSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, statSync, symlinkSync, writeFileSync } from "node:fs";
@@ -22,7 +23,7 @@ test("the state lives in a folder of the person's own, not in the shared tempora
   assert.equal(stateDir({ XDG_RUNTIME_DIR: "/run/user/1000" }, "linux"), join("/run/user/1000", "myrmo"));
   assert.equal(stateDir({}, "linux"), join(homedir(), ".myrmo", "state"));
   assert.equal(stateDir({ XDG_RUNTIME_DIR: "C:\\x" }, "win32"), join(homedir(), ".myrmo", "state"));
-  assert.ok(!stateDir({}).startsWith(tmpdir()) || tmpdir().startsWith(homedir()));
+  assert.ok(stateDir({}).startsWith(homedir()), "the home folder, which these tests put in a temporary one");
 });
 
 test("the folder is created for the person alone, and one others can enter is closed or refused", { skip: !posix }, () => {

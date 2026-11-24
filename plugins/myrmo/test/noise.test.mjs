@@ -1,6 +1,7 @@
 // Fewer notes that ask nothing of the agent: answers that exit non-zero, looking around for files that are not there,
 // knowledge already shown in the session, and sharing again what was already published.
 
+import "./home.mjs";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { answered, decide, decideStop } from "../scripts/on-failure.mjs";

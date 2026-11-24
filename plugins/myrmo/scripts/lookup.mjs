@@ -37,6 +37,7 @@ export function cleanDeclared(value) {
     effort: value.effort === true,
     task_search: value.task_search === true,
     keep_personal: value.keep_personal === true,
+    private_lookups: value.private_lookups === true,
     worklog_scopes: Array.isArray(value.worklog_scopes) ? value.worklog_scopes.filter((r) => typeof r === "string").slice(0, 50) : [],
     people_detail: value.people_detail === "named" || value.people_detail === "aggregate" ? value.people_detail : null,
     holdout_percent: Number.isInteger(value.holdout_percent) && value.holdout_percent >= 0 && value.holdout_percent <= 20 ? value.holdout_percent : 0,
@@ -403,15 +404,28 @@ export function clientIdentity() {
   return null;
 }
 
+/** The agent id the settings file keeps, the same one the SDKs and the MCP server send (config.ts `readConfig`). */
+export function settingsAgentId(env = process.env) {
+  try {
+    const id = JSON.parse(readFileSync(env.MYRMO_CONFIG?.trim() || join(homedir(), ".myrmo", "config.json"), "utf8"))?.agent_id;
+    return typeof id === "string" && /^[A-Za-z0-9_-]{8,64}$/.test(id) ? id : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 /**
  * The agent id a hook sends so the colony can register its client version, regardless of which provider's hook it is
- * (Cline, Gemini, Antigravity, …): MYRMO_AGENT_ID when the person set one, else a stable id for this machine, kept in
- * the hooks' state folder. null when no state folder can be trusted. Provider-agnostic: a provider that is not known in
- * advance still identifies, because the id is not tied to the provider's name.
+ * (Cline, Gemini, Antigravity, …): MYRMO_AGENT_ID when the person set one, else the id the settings file keeps — the
+ * same one the MCP server and the SDKs send, so one person is one agent in the colony — else a stable id for this
+ * machine, kept in the hooks' state folder. null when no state folder can be trusted. Provider-agnostic: a provider
+ * that is not known in advance still identifies, because the id is not tied to the provider's name.
  */
 export function machineAgentId({ env = process.env, platform = process.platform } = {}) {
   const set = env.MYRMO_AGENT_ID?.trim();
   if (set) return set;
+  const fromSettings = settingsAgentId(env);
+  if (fromSettings) return fromSettings;
   const file = stateFile("machine", { env, platform, prefix: "agent-" });
   if (!file) return null;
   const state = readState(file, platform);

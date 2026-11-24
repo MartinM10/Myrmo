@@ -26,9 +26,13 @@ export function fakeKit({ tools = true, text = true } = {}) {
   if (tools) {
     writeFileSync(
       join(dir, "mcp-tools.mjs"),
-      `export function registerTools({ server, z, text, finish }) {
+      `export function registerTools({ server, colony, z, text, finish }) {
   server.registerTool("kit_probe", { title: "Kit probe", description: "A tool the kit adds.", inputSchema: { word: z.string().max(20).optional() } }, async (args) => text(finish("probe " + (args.word ?? ""))));
-  return ["kit_probe"];
+  server.registerTool("kit_matters", { title: "Kit lookup", description: "A lookup the kit adds.", inputSchema: { query: z.string().optional() }, annotations: { readOnlyHint: true } }, async (args) => {
+    await null;
+    return text(JSON.stringify([args, await colony.listMatters({ q: args.query })]));
+  });
+  return ["kit_probe", "kit_matters"];
 }
 `,
     );

@@ -1,6 +1,7 @@
 // Measured effort (effort.mjs): what solving a problem cost, read from the transcript and sent only to a colony that
 // declares it collects it.
 
+import "./home.mjs";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { mkdtempSync, writeFileSync } from "node:fs";
