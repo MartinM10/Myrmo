@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.40.0](https://github.com/MartinM10/Myrmo/compare/mcp-v0.39.1...mcp-v0.40.0) (2026-11-24)
+
+
+### Features
+
+* **privacy:** private mode per session (//privado until //compartir), with lookups the person approves ([#60](https://github.com/MartinM10/Myrmo/issues/60)) ([bd849ee](https://github.com/MartinM10/Myrmo/commit/bd849ee9a2ede2f709fbd3ddc34d088aafa573e6))
+
+
+### Bug fixes
+
+* **mcp:** doctor warns when the machine is paused and init says how to keep a session private ([#62](https://github.com/MartinM10/Myrmo/issues/62)) ([a554663](https://github.com/MartinM10/Myrmo/commit/a554663181bf010eb5b85485c55b0000d410ce89))
+
 ## [0.39.1](https://github.com/MartinM10/Myrmo/compare/mcp-v0.39.0...mcp-v0.39.1) (2026-11-20)
 
 
