@@ -38,6 +38,10 @@ test("the person is told what an organisation's colony keeps about them", () => 
   assert.match(describeColony({ profile: "organisation", people_detail: "named" }), /by name \(kept 90 days\)/);
   assert.match(describeColony({ profile: "organisation", people_detail: "aggregate", effort: true, holdout_percent: 5 }), /as a whole.*no text.*5% of error lookups/s);
   assert.equal(describeColony(undefined), "");
+  // In doctor it is in the person's language; for the agent it stays in English.
+  const es = (_en, es) => es;
+  assert.equal(describeColony({ profile: "public" }, es), "La colonia se declara pública.");
+  assert.match(describeColony({ profile: "organisation", people_detail: "aggregate", effort: true, holdout_percent: 5 }, es), /^La colonia se declara de tu organización\. Cuenta la actividad del equipo en conjunto.*sin texto.*El 5% de las búsquedas/s);
 });
 
 test("consent to publish a manual fix comes only from the user, and the public colony is named as public", () => {

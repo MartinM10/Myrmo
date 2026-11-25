@@ -276,15 +276,21 @@ export function destinationLine(url: string, privateMode: boolean, identity?: st
     : `Colony: ${url}, ${/^https?:\/\/(www\.)?myrmo\.dev\/?$/.test(url) ? "the PUBLIC colony: anyone can read what is published there" : "not marked private: nothing internal should go there"}.${who}`;
 }
 
-/** What the colony keeps about the people it serves, as it declares it, in words for the person. */
-export function describeColony(c?: { profile?: string; people_detail?: string | null; holdout_percent?: number; effort?: boolean }): string {
+/**
+ * What the colony keeps about the people it serves, as it declares it, in words for the person. `say` picks the language:
+ * English for the agent (the default), the person's own in `doctor`.
+ */
+export function describeColony(
+  c?: { profile?: string; people_detail?: string | null; holdout_percent?: number; effort?: boolean },
+  say: (en: string, es: string) => string = (en) => en,
+): string {
   if (!c?.profile) return "";
-  if (c.profile === "public") return "The colony declares itself public.";
-  const parts = ["The colony declares itself your organisation's."];
-  if (c.people_detail === "named") parts.push("It counts each person's searches, reports and publications by name (kept 90 days).");
-  else if (c.people_detail === "aggregate") parts.push("It counts the team's activity as a whole, not per person.");
-  if (c.effort) parts.push("Your client may send it what solving a problem cost (tokens, time, model; no text), kept only as totals.");
-  if (c.holdout_percent) parts.push(`${c.holdout_percent}% of error lookups are answered with nothing at random, to measure what the colony saves.`);
+  if (c.profile === "public") return say("The colony declares itself public.", "La colonia se declara pública.");
+  const parts = [say("The colony declares itself your organisation's.", "La colonia se declara de tu organización.")];
+  if (c.people_detail === "named") parts.push(say("It counts each person's searches, reports and publications by name (kept 90 days).", "Cuenta las búsquedas, reportes y publicaciones de cada persona con su nombre (las guarda 90 días)."));
+  else if (c.people_detail === "aggregate") parts.push(say("It counts the team's activity as a whole, not per person.", "Cuenta la actividad del equipo en conjunto, no por persona."));
+  if (c.effort) parts.push(say("Your client may send it what solving a problem cost (tokens, time, model; no text), kept only as totals.", "Tu cliente puede enviarle lo que costó resolver un problema (tokens, tiempo, modelo; sin texto), que solo se guarda como totales."));
+  if (c.holdout_percent) parts.push(say(`${c.holdout_percent}% of error lookups are answered with nothing at random, to measure what the colony saves.`, `El ${c.holdout_percent}% de las búsquedas de errores se responden sin nada, al azar, para medir lo que ahorra la colonia.`));
   return parts.join(" ");
 }
 
