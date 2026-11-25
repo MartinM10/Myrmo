@@ -419,7 +419,7 @@ export async function diagnose(input: DoctorInput): Promise<Check[]> {
         : { level: "warn", name: t("Organisation colony", "Colonia de organización"), detail: t("off: agents would strip internal names from what they publish", "desactivado: los agentes quitarían los nombres internos de lo que publican"), fix: declared === "organisation" ? t("Set your access key (npx myrmo-mcp init --url <colony> --key <your key>).", "Configura tu clave de acceso (npx myrmo-mcp init --url <colony> --key <your key>).") : t("This colony does not say what it is (an older server): run the setup command again with --private (or set MYRMO_PRIVATE=1).", "Esta colonia no dice qué es (un servidor más antiguo): vuelve a ejecutar el comando de configuración con --private (o define MYRMO_PRIVATE=1).") },
   );
   if (input.declared?.profile === "organisation") {
-    checks.push({ level: "ok", name: t("What the colony keeps", "Lo que guarda la colonia"), detail: describeColony(input.declared) });
+    checks.push({ level: "ok", name: t("What the colony keeps", "Lo que guarda la colonia"), detail: describeColony(input.declared, t) });
   }
   checks.push(
     input.publish === "auto"

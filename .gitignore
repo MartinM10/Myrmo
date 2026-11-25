@@ -24,5 +24,9 @@ seed-out/
 /myrmo-film-small.mp4
 # MyrmoBench agent transcripts: raw model output, kept locally for analysis only
 bench/results/*/transcripts/
+# Distiller capture folders: real or synthetic batches kept locally to compare models.
+# A sanitized batch that is meant to be shared goes in tools/worklog/test/fixtures/ (not ignored).
+synthetic-capture/
+myrmo-distill-capture/
 target/
 server/target/
