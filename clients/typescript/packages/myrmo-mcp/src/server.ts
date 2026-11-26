@@ -10,7 +10,7 @@ import { checkTrail } from "./check.js";
 import { buildInstructions } from "./instructions.js";
 import type { ServerKit } from "./kit.js";
 
-export const VERSION = "0.40.0"; // x-release-please-version
+export const VERSION = "0.40.1"; // x-release-please-version
 
 export interface ServerOptions {
   colony: Colony;

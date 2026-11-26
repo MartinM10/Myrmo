@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.61.1](https://github.com/MartinM10/Myrmo/compare/platform-v0.61.0...platform-v0.61.1) (2026-11-25)
+
+
+### Bug fixes
+
+* **mcp:** doctor says what the colony keeps in the person's language ([#63](https://github.com/MartinM10/Myrmo/issues/63)) ([1b96467](https://github.com/MartinM10/Myrmo/commit/1b96467321b9f33fd842cdb5b88fb7bfe4ce15b7))
+
 ## [0.61.0](https://github.com/MartinM10/Myrmo/compare/platform-v0.60.1...platform-v0.61.0) (2026-11-24)
 
 
